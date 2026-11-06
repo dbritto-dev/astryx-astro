@@ -406,3 +406,28 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `::backdrop`, gestures on the surface, a grab handle element rendered only for
   sheet-capable presentations). Reference: Popover (`runtime/popover.ts`, Popover.css).
   DropdownMenu / ContextMenu / Selector / DateInput adopt it the same way.
+
+## Comboboxes (`runtime/combobox.ts`)
+
+- `createCombobox({listbox, fields, isOpen, onActivate})` (highlight `data-ax-highlighted`,
+  `data-ax-keyboard` ring, `aria-activedescendant`, scroll into view, type-to-select, focus stays
+  in the field); `handleComboboxKey(combo, e, {kind: 'select'|'editable', …})`;
+  `<ax-combobox-layer>` (`popover="auto"` for buttons, `"manual"` + `data-ax-outside-press="dismiss"`
+  for text inputs); `keepLayerOpenFor`. Options are `[role=option][id][data-value]`.
+- Typeahead async: `astryx-query` {query, kind, signal, respond, update, reject} — claim with
+  preventDefault(); or `el.searchSource`; or `createStaticSource(items)` (exported).
+- Events: Selector `astryx-change` {value}; MultiSelector {values, change?}; ComplexSelector
+  {value}; Typeahead {value} + `astryx-change-query`, `astryx-query`.
+- `renderOption` / `renderValue` / `renderItem` are server-side function props.
+- Backlog: MultiSelector uses the `checkbox` Indicator as its check mark; review against
+  CheckboxInput parity.
+
+## Bottom sheets and adaptive presentation
+
+- `<ax-bottom-sheet>` (on the Dialog family's `ModalHostElement`), stacking, switcher
+  (`activeSheet`, `data-ax-switch-to`, `astryx-active-sheet-change`), `attachBottomSheet` (exported).
+- `presentation` contract (`elements/sheet/presentation.ts`): one compact-touch query; surface
+  chosen at open and kept in `data-ax-surface` until close; the same element is restyled
+  (class → `astryx-bottom-sheet`, full-viewport with `::backdrop`, gestures on the surface);
+  `'popover'` never reads the query. DropdownMenu, Selector, DateInput can adopt it.
+- Scroll lock matches `[data-ax-scroll-lock][data-ax-open="true"]` (values are "true"/"false").

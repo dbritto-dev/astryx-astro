@@ -17,6 +17,7 @@ export {routeFieldProps, statusIconPlan, textEntryTraitAttributes, joinAriaIDs, 
 export {stamp, stampAttr, seal, inherits} from './lib/cascade';
 export {attachDialog} from './components/Dialog/attach';
 export {attachDrawer} from './components/Drawer/attach';
+export {attachBottomSheet} from './components/BottomSheet/attach';
 export {proportional, pixel, generateColumns, resolveColumnWidths, DEFAULT_MIN_COLUMN_WIDTH, useTableSortable, useTableSortableState, useTableColumnResize, useTableStickyColumns, useTableRowExpansion, useTableRowStatus, useTableGroupedRows, useTableTreeData, useTableTreeState, useTableRowIndex} from './components/Table/table';
 export type * from './components/Table/types';
 export {createStaticSource} from './components/Typeahead/createStaticSource';
@@ -30,6 +31,8 @@ export {default as AvatarGroupOverflow} from './components/AvatarGroup/AvatarGro
 export {default as Badge} from './components/Badge/Badge.astro';
 export {default as Banner} from './components/Banner/Banner.astro';
 export {default as Blockquote} from './components/Blockquote/Blockquote.astro';
+export {default as BottomSheet} from './components/BottomSheet/BottomSheet.astro';
+export {default as BottomSheetSwitcher} from './components/BottomSheet/BottomSheetSwitcher.astro';
 export {default as Button} from './components/Button/Button.astro';
 export {default as ButtonGroup} from './components/ButtonGroup/ButtonGroup.astro';
 export {default as Calendar} from './components/Calendar/Calendar.astro';
