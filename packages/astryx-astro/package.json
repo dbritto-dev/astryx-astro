@@ -6,17 +6,26 @@
   "type": "module",
   "files": [
     "src",
-    "AGENTS.md",
+    "!src/**/*.demo.astro",
+    "!src/**/demo-*",
+    "!src/**/_demo*",
+    "!src/**/demoData.ts",
+    "README.md",
     "LICENSE",
     "NOTICE"
   ],
   "exports": {
     ".": "./src/index.ts",
-    "./components/*": "./src/components/*",
-    "./styles/*": "./src/styles/*",
+    "./integration": "./src/integration.ts",
     "./astryx.css": "./src/styles/astryx.css",
     "./themes/*.css": "./src/styles/themes/*.css",
-    "./elements/*": "./src/elements/*.ts"
+    "./styles/*": "./src/styles/*",
+    "./components/*.astro": "./src/components/*.astro",
+    "./components/*.css": "./src/components/*.css",
+    "./components/*": "./src/components/*.ts",
+    "./elements/*": "./src/elements/*.ts",
+    "./lib/*": "./src/lib/*.ts",
+    "./package.json": "./package.json"
   },
   "keywords": [
     "astro",
@@ -35,7 +44,7 @@
     "syntax": "node scripts/build-syntax.mjs"
   },
   "peerDependencies": {
-    "astro": ">=5"
+    "astro": "^7.0.0"
   },
   "devDependencies": {
     "@astryxdesign/cli": "0.7.9",

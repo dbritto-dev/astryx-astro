@@ -14,14 +14,16 @@
  *      pnpm tokens --check    (exits 1 when committed output is stale)
  */
 import {execFileSync} from 'node:child_process';
-import {mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync} from 'node:fs';
+import {mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync, existsSync} from 'node:fs';
 import {dirname, join, relative} from 'node:path';
+import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const stylesDir = join(pkgRoot, 'src/styles');
 const themesDir = join(stylesDir, 'themes');
-const buildDir = join(pkgRoot, '.tokens-build');
+// Theme builds go to a temp folder so `--check` never writes inside the package.
+const buildDir = mkdtempSync(join(tmpdir(), 'astryx-tokens-'));
 const check = process.argv.includes('--check');
 
 export const THEMES = ['neutral', 'butter', 'chocolate', 'gothic', 'matcha', 'stone', 'y2k'];
@@ -76,10 +78,11 @@ mkdirSync(buildDir, {recursive: true});
 const themeTokens = {};
 for (const theme of THEMES) {
   const dir = pkgDir(`@astryxdesign/theme-${theme}`);
-  const source = relative(pkgRoot, join(dir, `src/${theme}Theme.ts`));
+  const source = join(dir, `src/${theme}Theme.ts`);
   const out = join(buildDir, `${theme}.css`);
-  execFileSync('npx', ['astryx', 'theme', 'build', source, '--out', relative(pkgRoot, out)], {
-    cwd: pkgRoot,
+  // The CLI only writes inside its working directory, so run it from the temp folder.
+  execFileSync(join(pkgRoot, 'node_modules/.bin/astryx'), ['theme', 'build', source, '--out', `${theme}.css`], {
+    cwd: buildDir,
     stdio: ['ignore', 'ignore', 'inherit'],
   });
   const css = readFileSync(out, 'utf8').replace(/^\/\*[\s\S]*?\*\/\s*/, '');

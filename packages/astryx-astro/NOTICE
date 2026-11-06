@@ -26,12 +26,14 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-Theme icon artwork comes from Lucide (https://lucide.dev) via `lucide-static`, licensed
-under the ISC License, Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022
-as part of Feather (MIT); all other copyright (c) for Lucide are held by Lucide Contributors.
+Theme icon artwork comes from Lucide (https://lucide.dev) through the `lucide-static`
+dependency: ISC License, Copyright (c) 2026 Lucide Icons and Contributors.
 
 Syntax-highlighting preset palettes (src/styles/syntax.css) carry color values taken by Astryx
 from MIT-licensed editor themes: One Dark Pro (Binaryify), Dracula (Zeno Rocha), Monokai
 (Wimer Hazenberg), Nord (Arctic Ice Studio / Sven Greb), Tokyo Night and Tokyo Night Light
 (enkia), Catppuccin Mocha and Latte (Catppuccin contributors), GitHub Light and Dark (GitHub
-Primer team), Solarized Light (Ethan Schoonover) and One Light (GitHub / Atom team).
+Primer team), Solarized Light (Ethan Schoonover) and One Light (GitHub / Atom team). Each of
+those themes is distributed under the MIT License (the same terms as reproduced above, with
+the respective authors as copyright holders); see @astryxdesign/core
+src/theme/syntax/THIRD_PARTY_LICENSES.md.

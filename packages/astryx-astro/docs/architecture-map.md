@@ -1,6 +1,6 @@
 # Astryx → Astro port: architecture & planning report
 
-Source: `~/astryx` (`@astryxdesign/core` 0.7.10), read-only static analysis. LOC = non-test `.tsx` lines per component directory, plus non-stylex `.ts` in parentheses when ≥200. Core totals: about 136k tsx and 53k ts.
+Source: `~/astryx` (`@astryxdesign/core` 0.7.10 HEAD at analysis time), read-only static analysis. The port itself targets the installed **0.7.9** package (see AGENTS.md); differences between the two are minor. LOC = non-test `.tsx` lines per component directory, plus non-stylex `.ts` in parentheses when ≥200. Core totals: about 136k tsx and 53k ts.
 
 **Headline facts that shape the port**
 - **No JS positioner.**

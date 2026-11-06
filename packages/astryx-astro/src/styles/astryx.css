@@ -2,8 +2,10 @@
  * astryx-astro — global entry stylesheet.
  *
  * Layer order matches Astryx: reset → astryx-base (tokens + components) → astryx-theme.
- * Unlayered consumer CSS always wins. Component stylesheets are imported by each
- * .astro component, so a page only ships the CSS of the components it renders.
+ * Unlayered consumer CSS always wins. Each .astro component imports its own stylesheet, so
+ * a page ships the CSS of the components its modules import: import components by path
+ * (`astryx-astro/components/Button/Button.astro`) for the leanest pages; the package index
+ * imports every component.
  *
  * Usage (layout frontmatter):
  *   import 'astryx-astro/astryx.css';
