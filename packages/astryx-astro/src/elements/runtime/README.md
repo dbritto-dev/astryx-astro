@@ -493,3 +493,9 @@ Escape `close` for both popover kinds, outside press `native` (auto) or `dismiss
 `data-ax-keep-open` (or inside a marked wrapper — a clear or status button in the trigger box)
 become the layer's invoker for the press, so pressing them does not light-dismiss the list
 (useKeepLayerOpenProps).
+
+## Navigation hover menus
+
+`<ax-nav-menu>` (`src/elements/nav-menu.ts`) is the TopNav/SideNav hover menu: a PopoverElement
+driven by `createMenuHover` from `runtime/menu.ts` with native invoker links. Reuse it for any
+hover-opened navigation menu rather than wiring `createMenuHover` again.

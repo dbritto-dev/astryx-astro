@@ -487,3 +487,15 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `isHotkeyAllowedInInputs`; `show/hide/toggle/isOpen/value/searchSource`. One shared window
   keydown listener for opt-in hotkeys: `registerHotkey()` in `elements/hotkeys.ts` (client-only,
   `astryx-astro/elements/hotkeys`).
+
+## App shell and navigation
+
+- `<ax-app-shell>` sets `data-astryx-shell-mobile="true|false"` on `.astryx-app-shell` (before
+  first paint, then on breakpoint change) and fires `astryx-mobile-change` {isMobile}; TopNav
+  bars it controls get `data-mode="mobile-bar"`. Main content keeps its element across breakpoints.
+- Rows inside a drawer carry `data-ax-navigate`; MobileNav turns their activation into a bubbling
+  `astryx-navigate` {href, event} and closes on any that reaches it. `attachMobileNav` (exported).
+- Server-side shell state: locals keys in `AppShell/appShellContext.ts`.
+- `<ax-nav-menu>`: hover menu on PopoverElement + `createMenuHover`. `<ax-side-nav>`:
+  `collapse`/`expand`/`toggle`/`isCollapsed`, cancelable `astryx-collapse-change`, localStorage.
+- Cascade key `nav-heading-menu-size`.
