@@ -44,7 +44,8 @@ import Icon from '../Icon/Icon.astro';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
-import {stepperContext} from './stepperContext';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {STEPPER_LOCAL, type StepperRenderContext} from './stepperContext';
 import './Stepper.css';
 
 export type StepperOrientation = 'horizontal' | 'vertical';
@@ -99,7 +100,11 @@ const showsControls = collapsedVariant === 'withLabelAndControls' && isNonLinear
 const hasSummary = isHorizontal && collapsedVariant !== 'hiddenLabel';
 
 const stepsHtml = Astro.slots.has('default')
-  ? await stepperContext.run({activeStep, orientation, indicatorPosition, density, isNonLinear, locale}, () => Astro.slots.render('default'))
+  ? await renderWithLocals(
+      Astro,
+      {[STEPPER_LOCAL]: {activeStep, orientation, indicatorPosition, density, isNonLinear, locale} satisfies StepperRenderContext},
+      () => Astro.slots.render('default'),
+    )
   : '';
 
 const list = themeProps('stepper', {orientation, indicatorPosition});

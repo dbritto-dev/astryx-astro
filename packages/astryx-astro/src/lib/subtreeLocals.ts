@@ -27,6 +27,15 @@
  *
  *   const html = await renderWithLocals(Astro, {astryxLocale: 'fr-FR'}, () => Astro.slots.render('default'));
  *   <Fragment set:html={html} />
+ *
+ * Layer-scoped keys (Astryx `createLayerScopedContext` + `LayerContentBoundary`, contract #23):
+ * group contexts (List, CheckboxList, RadioList, TabList, Stepper …) end at layer boundaries.
+ * Their modules register the key with `layerScopedLocal('astryxList')`; every overlay renders
+ * its content slot through `renderLayerContent(Astro, render)`, which runs `render` with each
+ * registered key reset to its request value (normally `undefined`, i.e. no provider). Theme,
+ * locale / i18n, link-component and calendar keys are not layer-scoped and pass through.
+ *
+ *   const html = await seal(await renderLayerContent(Astro, () => Astro.slots.render('content')));
  */
 
 type Locals = Record<string, unknown>;
@@ -55,11 +64,26 @@ function storageCtor(): StorageCtor | null {
 
 // One store per process, shared by every copy of this module (Vite can load a module twice).
 const KEY = Symbol.for('astryx-astro/subtree-locals/v1');
-const holder = globalThis as unknown as {[KEY]?: {storage: Storage | null; base: WeakMap<object, Locals>}};
-const shared = (holder[KEY] ??= (() => {
+interface FallbackEntry {
+  depth: number;
+  had: boolean;
+  value: unknown;
+}
+interface Shared {
+  storage: Storage | null;
+  base: WeakMap<object, Locals>;
+  /** Keys registered with `layerScopedLocal()`. */
+  layerScoped?: Set<string>;
+  /** Fallback mode: the request value of each key while a provider has replaced it. */
+  fallback?: WeakMap<object, Map<string, FallbackEntry>>;
+}
+const holder = globalThis as unknown as {[KEY]?: Shared};
+const shared: Shared = (holder[KEY] ??= ((): Shared => {
   const Ctor = storageCtor();
   return {storage: Ctor ? new Ctor() : null, base: new WeakMap<object, Locals>()};
 })());
+const layerScoped = (shared.layerScoped ??= new Set<string>());
+const fallback = (shared.fallback ??= new WeakMap<object, Map<string, FallbackEntry>>());
 
 /** Whether providers isolate their subtree (AsyncLocalStorage available). */
 export function hasSubtreeIsolation(): boolean {
@@ -94,32 +118,89 @@ export function requestLocal(astro: {locals?: object}, key: string): unknown {
   const locals = astro.locals as Locals | undefined;
   if (!locals) return undefined;
   const base = shared.base.get(locals);
-  return base && Object.prototype.hasOwnProperty.call(base, key) ? base[key] : locals[key];
+  if (base && Object.prototype.hasOwnProperty.call(base, key)) return base[key];
+  const saved = fallback.get(locals)?.get(key);
+  return saved ? (saved.had ? saved.value : undefined) : locals[key];
 }
 
-/**
- * Render `render()` (normally `() => Astro.slots.render('default')`) with `values` visible
- * on `Astro.locals` to every component inside it. `undefined` values are skipped.
- */
-export async function renderWithLocals<T>(astro: {locals?: object}, values: Locals, render: () => Promise<T>): Promise<T> {
-  const locals = astro.locals as Locals | undefined;
-  const entries = Object.entries(values).filter(([, v]) => v !== undefined);
-  if (!locals || entries.length === 0) return render();
-  const own = Object.fromEntries(entries);
+/** Run `render` with `own` (every entry, `undefined` included) as the innermost frame. */
+async function runFrame<T>(locals: Locals, own: Locals, render: () => Promise<T>): Promise<T> {
   const {storage} = shared;
   if (storage) {
     for (const key of Object.keys(own)) install(locals, key);
     return storage.run({locals, values: own, parent: storage.getStore()}, render);
   }
-  // Fallback without AsyncLocalStorage: set for the duration of the render, then restore.
+  // Fallback without AsyncLocalStorage: set for the duration of the render, then restore
+  // (an `undefined` value deletes the key). The value a key had before its outermost override
+  // is kept, so `requestLocal()` and layer resets still see the request value.
+  let saved = fallback.get(locals);
+  if (!saved) fallback.set(locals, (saved = new Map()));
   const previous = Object.keys(own).map((k) => [k, Object.prototype.hasOwnProperty.call(locals, k), locals[k]] as const);
-  Object.assign(locals, own);
+  for (const [k, had, v] of previous) {
+    const entry = saved.get(k);
+    if (entry) entry.depth++;
+    else saved.set(k, {depth: 1, had, value: v});
+  }
+  for (const [k, v] of Object.entries(own)) {
+    if (v === undefined) delete locals[k];
+    else locals[k] = v;
+  }
   try {
     return await render();
   } finally {
     for (const [k, had, v] of previous) {
       if (had) locals[k] = v;
       else delete locals[k];
+      const entry = saved.get(k);
+      if (entry && --entry.depth === 0) saved.delete(k);
     }
   }
+}
+
+/**
+ * Render `render()` (normally `() => Astro.slots.render('default')`) with `values` visible
+ * on `Astro.locals` to every component inside it. `undefined` values are skipped (use
+ * `renderLayerContent()` to reset layer-scoped keys).
+ */
+export async function renderWithLocals<T>(astro: {locals?: object}, values: Locals, render: () => Promise<T>): Promise<T> {
+  const locals = astro.locals as Locals | undefined;
+  const entries = Object.entries(values).filter(([, v]) => v !== undefined);
+  if (!locals || entries.length === 0) return render();
+  return runFrame(locals, Object.fromEntries(entries), render);
+}
+
+/**
+ * Register a layer-scoped key (Astryx `createLayerScopedContext`): `renderLayerContent()`
+ * resets it inside every overlay's content. Call it where the key is defined, at module
+ * load (`export const LIST_LOCAL = layerScopedLocal('astryxList')`). Returns the key.
+ */
+export function layerScopedLocal<K extends string>(key: K): K {
+  layerScoped.add(key);
+  return key;
+}
+
+/** The registered layer-scoped keys. */
+export function layerScopedLocals(): readonly string[] {
+  return [...layerScoped];
+}
+
+/**
+ * Render an overlay's content (Astryx `LayerContentBoundary`): every layer-scoped key is reset
+ * to its request value — what a component outside any provider reads — for everything
+ * `render()` renders, so a List / RadioList / TabList / Stepper around the overlay does not
+ * reach into it. Other keys (Theme, locale, link component, calendar) keep the provider's
+ * value. Pair it with `seal()`, which ends the attribute cascades the same way:
+ *
+ *   const html = await seal(await renderLayerContent(Astro, () => Astro.slots.render('content')));
+ */
+export async function renderLayerContent<T>(astro: {locals?: object}, render: () => Promise<T>): Promise<T> {
+  const locals = astro.locals as Locals | undefined;
+  if (!locals) return render();
+  const reset: Locals = {};
+  for (const key of layerScoped) {
+    const current = locals[key];
+    const request = requestLocal(astro, key);
+    if (current !== request) reset[key] = request;
+  }
+  return Object.keys(reset).length === 0 ? render() : runFrame(locals, reset, render);
 }

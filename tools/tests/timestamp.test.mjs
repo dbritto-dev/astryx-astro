@@ -96,8 +96,8 @@ check('card placed above the timestamp', placed);
 
 console.log('Copy');
 const copyBtn = `#${cardId} .astryx-timestamp-copy-button`;
-const tipText = () => page.evaluate((sel) => document.getElementById(document.querySelector(sel).getAttribute('data-ax-copy-tooltip')).textContent, copyBtn);
-check('copy tooltip reads "Copy" and describes the button', (await tipText()) === 'Copy' && (await page.getAttribute(copyBtn, 'aria-describedby')) === (await page.getAttribute(copyBtn, 'data-ax-copy-tooltip')));
+const tipText = () => page.evaluate((sel) => document.getElementById(document.querySelector(sel).getAttribute('data-ax-tooltip')).textContent, copyBtn);
+check('copy tooltip reads "Copy" and describes the button', (await tipText()) === 'Copy' && (await page.getAttribute(copyBtn, 'aria-describedby')) === (await page.getAttribute(copyBtn, 'data-ax-tooltip')));
 await page.hover(copyBtn);
 await page.click(copyBtn);
 await sleep(80);

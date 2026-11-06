@@ -70,7 +70,7 @@ import CommandPaletteEmpty from './CommandPaletteEmpty.astro';
 import CommandPaletteFooter from './CommandPaletteFooter.astro';
 import {groupItems} from '../../lib/groupItems';
 import {resolveLocale, translator} from '../../lib/i18n';
-import {renderWithLocals} from '../../lib/subtreeLocals';
+import {renderLayerContent, renderWithLocals} from '../../lib/subtreeLocals';
 import {uid} from '../../lib/uid';
 import {pluralTemplates} from '../Field/clientMessages';
 import type {SearchableItem} from '../../lib/searchableItem';
@@ -140,12 +140,14 @@ const label = labelProp ?? t('@astryx.commandPalette.label');
 const items = searchSource?.items ?? [];
 const hasListbox = items.length > 0;
 const ctx: CommandPaletteContext = {listId, isInline, hasListbox, isOpen};
-const inputHtml = Astro.slots.has('input')
-  ? (await renderWithLocals(Astro, {[COMMAND_PALETTE_LOCALS_KEY]: ctx}, () => Astro.slots.render('input'))).trim()
-  : '';
-const footerHtml = Astro.slots.has('footer') ? (await Astro.slots.render('footer')).trim() : '';
-const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
-const emptyBootstrapHtml = Astro.slots.has('emptyBootstrapText') ? (await Astro.slots.render('emptyBootstrapText')).trim() : '';
+// The slots render as the Dialog's content (layer-scoped contexts reset, as in Astryx).
+const [inputHtml, footerHtml, emptySearchHtml, emptyBootstrapHtml] = await renderLayerContent(Astro, async () => {
+  const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+  const input = Astro.slots.has('input')
+    ? (await renderWithLocals(Astro, {[COMMAND_PALETTE_LOCALS_KEY]: ctx}, () => Astro.slots.render('input'))).trim()
+    : '';
+  return [input, await slotHtml('footer'), await slotHtml('emptySearchText'), await slotHtml('emptyBootstrapText')];
+});
 const groups = groupItems(items);
 const order = new Map(items.map((item, index) => [item, index]));
 const payload = (item: SearchableItem) => JSON.stringify({id: item.id, label: item.label, auxiliaryData: item.auxiliaryData});

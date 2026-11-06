@@ -15,6 +15,10 @@
  * renders as the trigger's next sibling (never inside it; ButtonGroup's end-cap selector
  * skips `[popover]`), the trigger carries `data-ax-tooltip="<layer id>"`, and the layer id is
  * composed into `aria-describedby` unless the tooltip repeats the accessible name.
+ * External tooltip: without `tooltip`, a caller's `data-ax-tooltip="<layer id>"` (a sibling
+ * `<Tooltip>` it renders, e.g. from `attachTooltip()`, whose text or enabled state it drives) is
+ * kept as the trigger attribute; the caller composes `aria-describedby` and the disabled form
+ * itself (the button stays natively `disabled` when `isDisabled`).
  *
  * Element and state (Astryx rules, contracts #1–#4):
  *  - `href` (and not truly disabled) → `<a>` (or `as` / Astro.locals.astryxLinkComponent,
@@ -236,6 +240,8 @@ const isTooltipName = tooltip != null && accessibleName != null && tooltip.trim(
 // Astryx renders the layer only for a non-empty tooltip (`if (tooltip)`); the trigger semantics
 // (aria-disabled instead of disabled) follow `tooltip != null`.
 const tip = tooltip ? attachTooltip() : null;
+// A caller's own tooltip layer (sibling mode): its id stays the trigger attribute.
+const externalTooltip = rest['data-ax-tooltip'] as string | undefined;
 const describedBy = tip && !isTooltipName
   ? mergeIds(rest['aria-describedby'] as string | undefined, tip.id)
   : (rest['aria-describedby'] as string | undefined);
@@ -251,7 +257,7 @@ const attrs: Record<string, unknown> = {
   'data-ax-inherit': inherits({[cascadeKeys.size]: isSizeInherited, [BUTTON_GROUP_KEY]: true, ...extraInherit}),
   'data-ax-icon-only': isIconOnly ? '' : undefined,
   'data-ax-disabled': isTrueDisabled ? '' : undefined,
-  'data-ax-tooltip': tooltip != null ? (tip?.id ?? '') : undefined,
+  'data-ax-tooltip': tip?.id ?? (externalTooltip || (tooltip != null ? '' : undefined)),
   'aria-label': needsAriaLabel ? label : rest['aria-label'],
   'aria-describedby': describedBy,
   'data-astryx-edge-comp': variant === 'ghost' ? '' : undefined,

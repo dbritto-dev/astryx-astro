@@ -48,10 +48,11 @@
  * Framework-free and SSR-safe to import.
  */
 import {isImeKeyEvent} from './dom';
-import {LayerElement, defineElement} from './layer';
+import {LayerElement, defineElement, type OpenChangeReason} from './layer';
 import type {LayerEscapeBehavior, LayerOutsidePress} from './layerStack';
 import {getModality} from './modality';
 import {createTypeahead, type Typeahead} from './typeahead';
+import {createSheetSurface, type SheetSurface} from '../sheet/surface';
 
 export const OPTION_SELECTOR = '[role="option"]';
 const HIGHLIGHTED = 'data-ax-highlighted';
@@ -442,13 +443,80 @@ function editableKey(combo: Combobox, e: KeyboardEvent, config: ComboboxKeyConfi
  * Attributes: everything `<ax-layer>` reads, plus `data-ax-outside-press="dismiss"` and
  * `data-ax-inside="<id> …"` (more elements whose presses count as inside, e.g. a clear button
  * outside the anchor).
+ *
+ * Presentation (Selector, MultiSelector): `data-ax-presentation="bottom-sheet|adaptive"` + the
+ * `ax-sheet-layer` class, the surface `.ax-sheet-surface` and `data-ax-surface-class` (its
+ * anchored theme classes, swapped for `astryx-bottom-sheet`) — the presentation contract
+ * (../sheet/surface.ts): opened as a sheet the layer is unanchored, a modal dialog named by
+ * `data-ax-sheet-label`, and `isSheet` tells the owner to move focus into it (SelectorBottomSheet).
  */
 export class ComboboxLayerElement extends LayerElement {
+  #sheet: SheetSurface | null = null;
+
+  /** Latched as a bottom sheet for the current opening. */
+  get isSheet(): boolean {
+    return this.#sheet?.isSheet ?? false;
+  }
+
+  connectedCallback(): void {
+    if (this.hasAttribute('data-ax-presentation')) {
+      this.#sheet ??= createSheetSurface({
+        layer: this,
+        surface: () => this.querySelector<HTMLElement>(':scope > .ax-sheet-surface'),
+        anchoredClass: this.getAttribute('data-ax-surface-class') ?? 'astryx-popover',
+        triggers: () => (this.id ? [...this.ownerDocument.querySelectorAll<HTMLElement>(`[popovertarget="${CSS.escape(this.id)}"][aria-haspopup]`)] : []),
+        anchoredHaspopup: () => 'listbox',
+      });
+      this.#sheet.connect();
+    }
+    super.connectedCallback();
+  }
+
+  disconnectedCallback(): void {
+    this.#sheet?.disconnect();
+    super.disconnectedCallback();
+  }
+
+  show(options: {anchor?: HTMLElement | null; source?: HTMLElement | null; reason?: OpenChangeReason} = {}): boolean {
+    if (!this.isOpen && this.#sheet) {
+      this.#sheet.latch();
+      // A sheet is never anchored.
+      if (this.#sheet.isSheet) return super.show({...options, anchor: null});
+    }
+    return super.show(options);
+  }
+
+  protected resolveAnchor(): HTMLElement | null {
+    // The first hook of every open (the native invoker's too): choose the surface here.
+    if (this.#sheet) {
+      this.#sheet.latch();
+      if (this.#sheet.isSheet) return null;
+    }
+    return super.resolveAnchor();
+  }
+
+  protected didOpen(): void {
+    if (this.#sheet?.isSheet) this.#sheet.start();
+  }
+
+  protected willClose(): void {
+    if (!this.#sheet) return;
+    this.#sheet.stop();
+    // The page scrolls again as the exit starts (useScrollLock(isOpen)).
+    this.removeAttribute('data-ax-scroll-lock');
+  }
+
+  protected didClose(): void {
+    this.#sheet?.closed();
+  }
+
   protected escapeBehavior(): LayerEscapeBehavior | null {
     return this.getAttribute('data-ax-escape') === 'none' ? null : 'close';
   }
 
   protected outsidePressMode(): LayerOutsidePress {
+    // A sheet covers the viewport: its own press beside the panel dismisses it.
+    if (this.#sheet?.isSheet) return 'ignore';
     if (this.getAttribute('data-ax-outside-press') === 'dismiss') return 'dismiss';
     return this.getAttribute('popover') === 'auto' ? 'native' : 'ignore';
   }

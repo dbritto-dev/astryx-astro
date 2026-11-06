@@ -9,13 +9,19 @@
  * for text-input owners, `popover="auto"` (light dismiss) otherwise. The layer root carries
  * `data-astryx-layer-root` and the slot is sealed, so size and group cascades end here.
  * usePopover passes no padding: the surface has none (the Calendar pads itself).
+ * `presentation` "bottom-sheet" | "adaptive-bottom-sheet" (DateInput): the presentation
+ * contract — the same layer is restyled as a modal bottom sheet as it opens (`<ax-popover>`'s
+ * sheet path), named by `label`.
  */
 import Button from '../Button/Button.astro';
 import {cx} from '../../lib/themeProps';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, placementAttrs} from '../Layer/layer';
 import '../Layer/Layer.css';
 import '../Popover/Popover.css';
+import '../BottomSheet/BottomSheet.css';
+import '../BottomSheet/presentation.css';
 import './DateInput.css';
 
 export interface Props {
@@ -38,31 +44,40 @@ export interface Props {
   class?: string;
   /** Extra class on the surface. */
   surfaceClass?: string;
+  /** The picker surface policy (DateInput). @default 'popover' */
+  presentation?: 'popover' | 'bottom-sheet' | 'adaptive-bottom-sheet';
   locale?: string;
 }
 
-const {id, anchorId, ownerId, labelFor, mode = 'manual', role = 'dialog', label, closeLabel, class: className, surfaceClass, locale} = Astro.props;
-const isDialog = role === 'dialog';
-const content = Astro.slots.has('default') ? await seal(await Astro.slots.render('default')) : '';
+const {id, anchorId, ownerId, labelFor, mode = 'manual', role = 'dialog', label, closeLabel, class: className, surfaceClass, presentation = 'popover', locale} = Astro.props;
+const canSheet = presentation !== 'popover';
+const isSheet = presentation === 'bottom-sheet';
+const isDialog = role === 'dialog' || isSheet;
+const content = Astro.slots.has('default') ? await seal(await renderLayerContent(Astro, () => Astro.slots.render('default'))) : '';
 ---
 <ax-picker-popover
   id={id}
   popover={mode}
-  class={cx('ax-layer ax-layer-motion ax-picker-layer', className)}
+  class={cx('ax-layer ax-layer-motion ax-picker-layer', canSheet && 'ax-sheet-layer', className)}
   data-astryx-layer-root=""
   {...placementAttrs({placement: 'below', alignment: 'start'})}
   data-ax-anchor={anchorId}
+  data-ax-presentation={canSheet ? presentation : undefined}
+  data-ax-surface={isSheet ? 'bottom-sheet' : undefined}
+  data-ax-sheet-label={canSheet ? label : undefined}
   data-ax-owner={ownerId}
   data-ax-label-for={labelFor}
   style={clearance('var(--spacing-1)')}
 >
   <div
-    class={cx('astryx-popover ax-focus-visible', surfaceClass)}
+    class={cx(isSheet ? 'astryx-bottom-sheet' : 'astryx-popover', 'ax-focus-visible', canSheet && 'ax-sheet-surface', surfaceClass)}
     role={isDialog ? 'dialog' : undefined}
     aria-modal={isDialog ? 'true' : undefined}
     aria-label={isDialog ? label : undefined}
     tabindex={isDialog ? -1 : undefined}
+    data-ax-height={canSheet ? 'hug' : undefined}
   >
+    {canSheet && <div class="ax-bottom-sheet-handle ax-sheet-handle ax-popover-sheet-handle" aria-hidden="true"></div>}
     <Fragment set:html={content} />
     {closeLabel && (
       <div class="ax-popover-fallback-close" data-astryx-popover-fallback-close>

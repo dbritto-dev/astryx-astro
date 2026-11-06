@@ -81,7 +81,7 @@ const source = await page.evaluate(() => document.querySelector('#cb-tsx templat
 check('clipboard holds the exact source', clip === source && clip.startsWith("import {useState} from 'react';\n\nexport function Counter") && clip.endsWith('</button>;\n}\n'), JSON.stringify(clip.slice(0, 60)));
 const copied = await page.evaluate((sel) => {
   const b = document.querySelector(sel);
-  const tip = document.getElementById(b.getAttribute('data-ax-copy-tooltip'));
+  const tip = document.getElementById(b.getAttribute('data-ax-tooltip'));
   const vis = (s) => getComputedStyle(b.querySelector(`.ax-copy-icon-state[data-state="${s}"]`)).display !== 'none';
   return {label: b.getAttribute('aria-label'), copied: b.hasAttribute('data-copied'), idle: vis('idle'), check: vis('copied'), tip: tip.textContent, describedBy: b.getAttribute('aria-describedby'), tipId: tip.id};
 }, btn);
@@ -96,7 +96,7 @@ await page.mouse.move(5, 5);
 await sleep(150);
 await page.hover(btn);
 await sleep(350);
-check('hover shows the "Copy code" tooltip', await page.evaluate((sel) => document.getElementById(document.querySelector(sel).getAttribute('data-ax-copy-tooltip')).matches(':popover-open'), btn));
+check('hover shows the "Copy code" tooltip', await page.evaluate((sel) => document.getElementById(document.querySelector(sel).getAttribute('data-ax-tooltip')).matches(':popover-open'), btn));
 await page.mouse.move(5, 5);
 await page.click('#cb-diff .astryx-code-block-copy-button');
 await sleep(50);

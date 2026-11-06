@@ -3,13 +3,21 @@
  * (@astryxdesign/core 0.7.9 hooks/useAdaptivePresentation.ts, Popover/Popover.tsx
  * `usePresentationSurface`, theme/themeAdaptations.ts `compactDefinition`).
  *
- * Vocabulary (the `presentation` prop of Popover now; DropdownMenu, ContextMenu, Selector,
- * MultiSelector, Tokenizer, PowerSearch, DateInput later):
+ * Vocabulary (the `presentation` prop of Popover, DropdownMenu (data `items`), Selector and
+ * MultiSelector; ContextMenu, Tokenizer, PowerSearch later):
  *
  *   'popover'       the anchored surface (default)
  *   'bottom-sheet'  always the sheet
  *   'adaptive'      the sheet on a compact screen with a coarse primary pointer, the anchored
  *                   surface everywhere else
+ *
+ * The date pickers' vocabulary (utils/inputPresentation.ts `resolvePickerPresentation`, the
+ * DateInput `presentation` prop) adds one adaptive value, resolved here too:
+ *
+ *   'adaptive-bottom-sheet'  the sheet under a coarse primary pointer (any size), else the
+ *                            popover (`COARSE_POINTER_QUERY`)
+ * (`native` / `adaptive-native` — the OS picker — are deferred; DateInput maps them to the
+ * popover, or to `adaptive-bottom-sheet` in a non-Gregorian calendar, as Astryx does.)
  *
  * Compact has ONE definition (contract #26): narrower than the theme's `md` width point
  * (768px by default) or shorter than 500px — so a phone in either orientation is compact,
@@ -45,19 +53,36 @@
  * 5. Triggers keep `aria-haspopup="dialog"` while the sheet is the surface an opening would
  *    choose (`watchCompactTouch()` keeps closed adaptive triggers current).
  *
- * Reference implementation: elements/runtime/popover.ts (`<ax-popover>`).
+ * Shared implementation: `createSheetSurface()` (./surface.ts) runs steps 2–5 for a layer element
+ * (Popover, DropdownMenu, Selector, MultiSelector, DateInput's picker); the generic sheet CSS is
+ * components/BottomSheet/presentation.css (`.ax-sheet-layer` / `.ax-sheet-surface`).
+ * Reference: elements/runtime/popover.ts (`<ax-popover>`).
  */
 
 /** The one compact-touch definition at the default width points (Astryx COMPACT_TOUCH_QUERY). */
 export const COMPACT_TOUCH_QUERY = '(width < 768px) and (pointer: coarse), (height < 500px) and (pointer: coarse)';
 /** Compact alone (layout behaviours). */
 export const COMPACT_QUERY = '(width < 768px), (height < 500px)';
+/** A coarse primary pointer (the date pickers' `adaptive-bottom-sheet`, Astryx TOUCH_POINTER_QUERY). */
+export const COARSE_POINTER_QUERY = '(pointer: coarse)';
 
 export type AdaptivePresentation = 'popover' | 'bottom-sheet' | 'adaptive';
-export type ResolvedPresentation = Exclude<AdaptivePresentation, 'adaptive'>;
+export type ResolvedPresentation = 'popover' | 'bottom-sheet';
 
 export function isAdaptivePresentation(value: string | null | undefined): value is AdaptivePresentation {
   return value === 'popover' || value === 'bottom-sheet' || value === 'adaptive';
+}
+
+/** Whether a presentation can resolve to the sheet (renders the sheet-capable markup). */
+export function canPresentSheet(presentation: string | null | undefined): boolean {
+  return presentation === 'bottom-sheet' || adaptiveQuery(presentation) != null;
+}
+
+/** The media query an adaptive presentation follows (null for a fixed one). */
+export function adaptiveQuery(presentation: string | null | undefined): string | null {
+  if (presentation === 'adaptive') return COMPACT_TOUCH_QUERY;
+  if (presentation === 'adaptive-bottom-sheet') return COARSE_POINTER_QUERY;
+  return null;
 }
 
 /** Whether `view` is a compact screen with a coarse primary pointer now. */
@@ -65,10 +90,14 @@ export function isCompactTouch(view: Window | null | undefined = typeof window =
   return typeof view?.matchMedia === 'function' && view.matchMedia(COMPACT_TOUCH_QUERY).matches;
 }
 
-/** Resolve a presentation now. Only `adaptive` reads the query. */
+/** Resolve a presentation now. Only the adaptive values read their query. */
 export function resolvePresentation(presentation: string | null | undefined, view?: Window | null): ResolvedPresentation {
   if (presentation === 'bottom-sheet') return 'bottom-sheet';
   if (presentation === 'adaptive') return isCompactTouch(view) ? 'bottom-sheet' : 'popover';
+  if (presentation === 'adaptive-bottom-sheet') {
+    const v = view === undefined ? (typeof window === 'undefined' ? null : window) : view;
+    return typeof v?.matchMedia === 'function' && v.matchMedia(COARSE_POINTER_QUERY).matches ? 'bottom-sheet' : 'popover';
+  }
   return 'popover';
 }
 
@@ -77,8 +106,13 @@ export function resolvePresentation(presentation: string | null | undefined, vie
  * listener per call; adaptive components share one (subscribe once per module).
  */
 export function watchCompactTouch(view: Window | null | undefined, listener: (isCompactTouch: boolean) => void): () => void {
+  return watchQuery(view, COMPACT_TOUCH_QUERY, listener);
+}
+
+/** `watchCompactTouch` for any query (an adaptive presentation's `adaptiveQuery()`). */
+export function watchQuery(view: Window | null | undefined, query: string, listener: (matches: boolean) => void): () => void {
   if (typeof view?.matchMedia !== 'function') return () => {};
-  const list = view.matchMedia(COMPACT_TOUCH_QUERY);
+  const list = view.matchMedia(query);
   const onChange = () => listener(list.matches);
   list.addEventListener('change', onChange);
   return () => list.removeEventListener('change', onChange);

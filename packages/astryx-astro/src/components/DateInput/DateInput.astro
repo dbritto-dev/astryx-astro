@@ -42,10 +42,16 @@
  *  - `format` as a function formats the server render; set `el.formatValue` for client commits
  *    (otherwise they use 'date_long'). `dateConstraints` run on the server over the Calendar's
  *    window (two years either side of the opening months).
- *  - `presentation` / `nativePicker` are accepted; every value renders this pointer surface.
- *    Deferred (AGENTS.md scope): the coarse-pointer bottom sheet (TouchDateField: swipe-paged
- *    months, month/year wheels, press feedback) and the native `<input type="date">` surface
- *    (NativeDateField) — plain touch use (tap the field or the toggle, type, pick a day) works.
+ *  - `presentation` (utils/inputPresentation.ts, the presentation contract in
+ *    elements/sheet/presentation.ts): "bottom-sheet" always, "adaptive-bottom-sheet" under a
+ *    coarse pointer — the calendar layer opens as a modal bottom sheet (hug height, named by the
+ *    dialog label, focus on the calendar's focus day, page scroll locked; a swipe down, a press
+ *    beside the panel or Escape closes it). "native" / "adaptive-native" (the default; the
+ *    deprecated `nativePicker` maps onto them) keep the popover — the OS picker
+ *    (NativeDateField) is deferred — except in a non-Gregorian calendar, where they are
+ *    "adaptive-bottom-sheet", as in Astryx (useCalendarPresentation). Deferred (AGENTS.md
+ *    scope): TouchDateField's own sheet content (swipe-paged months, month/year wheels, press
+ *    feedback) — the sheet shows the same Calendar.
  *  - `changeAction` (server actions / optimistic value) and `onChange` callbacks: use the event.
  *
  * @example
@@ -88,7 +94,7 @@ import './DateInput.css';
 export type DateInputSize = InputSize;
 export type DateInputStatus = InputStatus;
 export type DateInputFormat = 'date' | 'date_long' | 'date_weekday' | 'system_date';
-/** Which surface collects the date (only the popover surface is ported; see the header). */
+/** Which surface collects the date (the native picker is deferred; see the header). */
 export type DateInputPresentation = 'popover' | 'bottom-sheet' | 'native' | 'adaptive-bottom-sheet' | 'adaptive-native';
 /** @deprecated Use `presentation`. */
 export type DateInputNativePicker = 'touch' | 'always' | 'never';
@@ -120,7 +126,7 @@ export interface Props extends FieldComposedProps {
   format?: DateInputFormat | ((value: ISODateString) => string);
   /** Calendar the field reads, writes and shows; values stay Gregorian ISO. @default Astro.locals.astryxCalendar ?? 'gregory' */
   calendar?: CalendarSystem;
-  /** Picker surface (every value renders the popover; see the header). @default 'adaptive-native' */
+  /** Picker surface: popover, bottom sheet, or a sheet under a coarse pointer (native: see the header). @default 'adaptive-native' */
   presentation?: DateInputPresentation;
   /** @deprecated Use `presentation`. */
   nativePicker?: DateInputNativePicker;
@@ -143,8 +149,8 @@ const {
   weekStartsOn,
   format = 'date_long',
   calendar: calendarProp,
-  presentation: _presentation,
-  nativePicker: _nativePicker,
+  presentation: presentationProp,
+  nativePicker,
   htmlName,
   name,
   slot: _slot, ...props
@@ -156,6 +162,13 @@ const isEffectivelyDisabled = isDisabled || isLoading;
 const t = translator(Astro, r.locale);
 const locale = resolveLocale(Astro, r.locale);
 const calendar = calendarFromLocals(calendarProp, Astro, 'DateInput');
+// effectivePickerPresentation + calendarPickerPresentation (utils/inputPresentation.ts): the
+// OS picker shows only Gregorian dates, so elsewhere native policies use the Astryx sheet.
+const NATIVE_PICKER: Record<DateInputNativePicker, DateInputPresentation> = {touch: 'adaptive-native', always: 'native', never: 'adaptive-bottom-sheet'};
+const requestedPresentation: DateInputPresentation = presentationProp ?? (nativePicker ? NATIVE_PICKER[nativePicker] : 'adaptive-native');
+const isNativeCalendar = calendar === 'gregory' || calendar === 'iso8601';
+const pickerPresentation = !isNativeCalendar && (requestedPresentation === 'native' || requestedPresentation === 'adaptive-native') ? 'adaptive-bottom-sheet' : requestedPresentation;
+const sheetPresentation = pickerPresentation === 'bottom-sheet' || pickerPresentation === 'adaptive-bottom-sheet' ? pickerPresentation : 'popover';
 const size: DateInputSize = sizeProp ?? 'md';
 const value = valueProp && /^\d{4}-\d{2}-\d{2}$/.test(valueProp) ? valueProp : undefined;
 const placeholder = placeholderProp ?? t('@astryx.dateInput.placeholder');
@@ -265,6 +278,7 @@ const elementConfig = {
       labelFor={r.id}
       label={t('@astryx.dateInput.dialogLabel')}
       closeLabel={t('@astryx.dateInput.closeCalendar')}
+      presentation={sheetPresentation}
       locale={r.locale}
     >
       <Calendar

@@ -1,7 +1,7 @@
 /*
  * Shared primitives (private, `ax-` prefixed utility classes and attributes).
  * Ports of @astryxdesign/core utils/focusOutline.stylex.ts, utils/interactionOverlay.stylex.ts,
- * utils/rtlStyles, hooks/useScrollLock, utils/hitArea.
+ * utils/rtlStyles, hooks/useScrollLock, utils/hitArea, hooks/useKeyboardHint (styles).
  *
  * Components opt in by adding a class next to their `astryx-*` class, e.g.
  *   <button class="astryx-button ax-focus-visible ax-overlay-bg">
@@ -121,4 +121,37 @@
     --layout-padding-inner-y: initial;
     --_section-padding-propagated: initial;
   }
+
+  /* ── Keyboard hint (hooks/useKeyboardHint styles): the "← → to navigate" <ax-layer> that
+   *    Toolbar, SegmentedControl and TabList render below the focused item ───────────── */
+  .ax-keyboard-hint {
+    /* top layer + anchor positioned */
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    /* surface */
+    background-color: var(--color-background-popover);
+    border-radius: var(--radius-element);
+    box-shadow: var(--shadow-low);
+    padding-block-start: var(--spacing-1);
+    padding-block-end: var(--spacing-1);
+    padding-inline-start: var(--spacing-2);
+    padding-inline-end: var(--spacing-2);
+    /* typography */
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    /* animation */
+    opacity: 0;
+    transition-property: opacity, display, overlay;
+    transition-duration: 150ms;
+    transition-behavior: allow-discrete;
+    pointer-events: none;
+  }
+  .ax-keyboard-hint:popover-open { opacity: 1; }
+  .ax-keyboard-hint-keys { display: inline-flex; align-items: center; gap: var(--spacing-1); }
+  .ax-keyboard-hint-label { margin-inline-start: var(--spacing-1); }
 }

@@ -20,7 +20,8 @@
  *   under `prefers-reduced-motion` or a theme's `[data-astryx-reduced-motion]` it moves at once.
  *   RTL mirrors the travel (off on the reading start, on at the reading end).
  * - `isDisabled` keeps the tab stop: `aria-disabled`, `form=""`, no name, activation cancelled;
- *   `disabledMessage` adds a tooltip on the row that also describes the switch.
+ *   `disabledMessage` adds a tooltip that the row triggers (hover / any focus inside) and the
+ *   switch anchors (above, centred), which also describes the switch.
  * - `isLoading`: `aria-busy`, a Spinner in the thumb, toggling blocked, "Loading" announced once.
  * - `isRequired`: native `required` + `aria-required`; `aria-invalid` follows the status (false
  *   while required, so Chromium does not report an untouched switch invalid).
@@ -204,7 +205,7 @@ const labelProps = {
     )}
   </div>
   {status?.message && <FieldStatus type={status.type} message={status.message} id={statusMessageID} variant="detached" class="ax-switch-status" />}
-  {tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" alignment={labelPosition === 'start' ? 'end' : 'start'} focusTrigger="always" />}
+  {tip && <Tooltip {...tip.layer} anchor={r.id} content={disabledMessage} placement="above" focusTrigger="always" />}
 </ax-switch>
 <script>import '../../elements/switch';</script>
 {isBusy && <script>import '../../behaviors/busyAnnounce';</script>}

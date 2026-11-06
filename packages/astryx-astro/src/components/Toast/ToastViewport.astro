@@ -2,9 +2,9 @@
 /**
  * ToastViewport — the stack `toast()` shows notifications in. Port of @astryxdesign/core
  * Toast/ToastViewport.tsx (+ Layer/toastHost.tsx, Layer/modalOutlet.ts, Layer/layerInset.ts).
- * Behaviour: src/elements/toast.ts (`<ax-toast-viewport>`). Render it once, in the app layout
- * (LayerProvider's `toast` config maps to these props); `toast()` creates a fallback viewport
- * when the page has none.
+ * Behaviour: src/elements/toast.ts (`<ax-toast-viewport>`). LayerProvider renders one from its
+ * `toast` config (the props below); without a LayerProvider render it once, in the app layout.
+ * `toast()` creates a fallback viewport when the page has none.
  *
  * The viewport is a `popover="manual"` top-layer region (role="region", named by the
  * translated "Notifications" while it holds toasts), fixed to a corner inside the safe-area

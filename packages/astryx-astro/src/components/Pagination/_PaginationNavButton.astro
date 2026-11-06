@@ -8,9 +8,9 @@
  * Links mode: a link Button (`href`) with Button's own tooltip while it can navigate, else a
  * disabled `<button>`; nothing changes on the client.
  * Buttons mode: the state moves on the client, so the tooltip layer is rendered up front
- * (`isEnabled` following the state) and the button names it in `data-ax-nav-tip`;
- * <ax-pagination> turns that into the `data-ax-tooltip` trigger attribute on connect and then
- * toggles the button's `disabled` / `data-ax-disabled` and the layer's `isEnabled` together.
+ * (`isEnabled` following the state) and the button is its trigger through Button's external
+ * tooltip (`data-ax-tooltip`); <ax-pagination> toggles the button's `disabled` /
+ * `data-ax-disabled` and the layer's `isEnabled` together.
  * The tooltip repeats the accessible name, so it describes nothing (Button's rule).
  */
 import Button from '../Button/Button.astro';
@@ -49,7 +49,7 @@ const tip = isLinks ? null : attachTooltip();
   href={isLinks && isEnabled ? href : undefined}
   tooltip={isLinks && isEnabled ? label : undefined}
   data-ax-nav={kind}
-  data-ax-nav-tip={tip?.id}
+  data-ax-tooltip={tip?.id}
   hidden={isHidden || undefined}
   class={className}
 ><Icon slot="icon" icon={icon} size={iconSize} class="ax-mirror-rtl" /></Button>

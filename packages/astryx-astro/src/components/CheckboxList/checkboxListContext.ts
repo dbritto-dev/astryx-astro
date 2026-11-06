@@ -6,13 +6,16 @@
  *
  * Cascade keys (lib/cascade.ts) the item's native checkbox enrols in:
  *  - `checkbox-list-item` — stamped by the item itself (`_CheckboxSlot.astro`): the form `value`
- *    and, for a rich label, `aria-labelledby` (CheckboxInput routes neither to its input);
+ *    (CheckboxInput's `value` is the checked state; a rich label's `aria-labelledby` is a prop);
  *  - `checkbox-list-reason` — stamped by the list: the disabled reason's id, appended after the
  *    row description Item stamps (`item-description`), as Astryx orders them;
  *  - `checkbox-list-state` + `checkbox-list-required` — stamped by the list in two passes (read
  *    every box's state, then write): native `required` on the first enabled box while none is
  *    checked (requiredGroup.ts on the server). A select-all item does not take part.
+ * The locals key is layer-scoped (`layerScopedLocal()`): overlays render their content without it.
  */
+import {layerScopedLocal} from '../../lib/subtreeLocals';
+
 export interface CheckboxListContextValue {
   /** Collection mode: the list has a `value` array and owns the checked state. */
   isCollection: boolean;
@@ -31,7 +34,7 @@ export interface CheckboxListContextValue {
   htmlName?: string;
 }
 
-export const CHECKBOX_LIST_LOCAL = 'astryxCheckboxList';
+export const CHECKBOX_LIST_LOCAL = layerScopedLocal('astryxCheckboxList');
 export const CHECKBOX_ITEM_KEY = 'checkbox-list-item';
 export const CHECKBOX_REASON_KEY = 'checkbox-list-reason';
 export const CHECKBOX_STATE_KEY = 'checkbox-list-state';

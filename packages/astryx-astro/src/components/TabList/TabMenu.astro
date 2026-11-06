@@ -14,7 +14,8 @@
  * `role="menuitemradio"` row (`.astryx-tab-menu-item`) per option, `aria-checked` on the
  * selected one, which also shows a check.
  *
- * Behaviour (Astryx parity): click / Enter / Space toggle the menu and focus its first row;
+ * Behaviour (Astryx parity, menu runtime options `data-ax-open-focus="first"` and
+ * `data-ax-trigger-arrows="false"`): click / Enter / Space toggle the menu and focus its first row;
  * ↑/↓ wrap, Home/End, typeahead, Enter/Space or a click picks (the TabList fires its
  * `astryx-change` `{value}`, cancelable) and closes; Tab or Escape closes; focus returns to the
  * trigger. On the closed trigger ↑/↓ stay with the strip's roving focus (Astryx's trigger has
@@ -108,6 +109,8 @@ const surface = themeProps('popover');
   data-ax-anchor={triggerId}
   class="ax-layer ax-layer-motion ax-tab-menu-layer"
   data-astryx-layer-root=""
+  data-ax-open-focus="first"
+  data-ax-trigger-arrows="false"
   {...placementAttrs({placement: 'below', alignment: 'start'})}
 >
   <div class={cx(surface.themeClass, 'ax-focus-visible')} {...surface.attrs}>

@@ -241,4 +241,23 @@
   .astryx-divider.astryx-dropdown-menu-divider {
     margin-block: var(--spacing-1);
   }
+
+  /* ── Sheet presentation (BottomSheet/presentation.css restyles the layer and the surface):
+   *    MenuBottomSheet's hug height and menuBottomSheetStyles.content inset (16px above the
+   *    rows, 4px at the sides); the surface scrolls, so the menu and its regions lose their
+   *    caps; regions take the sheet's region inset. ── */
+  .ax-dropdown-menu-layer > .ax-sheet-surface.astryx-bottom-sheet {
+    --_ax-sheet-pbs: var(--spacing-4);
+    --_ax-sheet-pi: var(--spacing-1);
+    --_ax-sheet-pbe: 0px;
+  }
+  .ax-sheet-surface.astryx-bottom-sheet .astryx-dropdown-menu[data-ax-menu-root],
+  .ax-sheet-surface.astryx-bottom-sheet .ax-dropdown-menu-regions {
+    max-height: none;
+    max-inline-size: none;
+  }
+  .ax-sheet-surface.astryx-bottom-sheet .ax-dropdown-menu-region {
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+  }
 }

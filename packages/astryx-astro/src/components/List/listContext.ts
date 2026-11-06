@@ -4,10 +4,12 @@
  * so every ListItem inside reads the list's density, dividers, edge treatment and marker, and
  * nothing outside does. A nested List sets its own value for its own items.
  *
- * Deviation: Astryx's context is layer-scoped (a Popover or Dialog inside a list item resets
- * it). Subtree locals do not stop at layers, so a ListItem rendered inside an overlay that sits
- * inside a List reads that List's settings; wrap such items in their own List.
+ * Layer-scoped, as in Astryx (createLayerScopedContext): the key is registered with
+ * `layerScopedLocal()`, so a Popover, Dialog or other overlay inside a list item renders its
+ * content without it (`renderLayerContent()`).
  */
+import {layerScopedLocal} from '../../lib/subtreeLocals';
+
 export type ListDensity = 'compact' | 'balanced' | 'spacious';
 /** The public marker styles (`listStyle`). `decimal` renders an `<ol>`. */
 export type ListStyle = 'none' | 'disc' | 'decimal' | 'circle';
@@ -39,7 +41,7 @@ export interface ListContextValue {
   hasMarkerGutter?: boolean;
 }
 
-export const LIST_LOCAL = 'astryxList';
+export const LIST_LOCAL = layerScopedLocal('astryxList');
 
 export function readListContext(astro: {locals?: object}): ListContextValue | null {
   const value = (astro.locals as Record<string, unknown> | undefined)?.[LIST_LOCAL];

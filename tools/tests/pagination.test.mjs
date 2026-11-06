@@ -37,7 +37,7 @@ const pages = (id) => page.evaluate((id) => [...document.querySelectorAll(`#${id
   .map((el) => (el.hasAttribute('data-page') ? (el.getAttribute('aria-current') === 'page' ? `[${el.textContent.trim()}]` : el.textContent.trim()) : '…')).join(' '), id);
 const nav = (id, kind) => `#${id} [data-ax-nav="${kind}"]`;
 const navState = (id) => page.evaluate((id) => Object.fromEntries([...document.querySelectorAll(`#${id} [data-ax-nav]`)].map((b) => {
-  const tip = document.getElementById(b.dataset.axNavTip ?? b.dataset.axTooltip ?? '');
+  const tip = document.getElementById(b.dataset.axTooltip ?? '');
   return [b.dataset.axNav, `${b.disabled ? 'off' : 'on'}${b.hidden ? '/hidden' : ''}${tip ? (tip.getAttribute('data-ax-enabled') === 'false' ? '/tip-off' : '/tip-on') : ''}`];
 })), id);
 const polite = () => page.evaluate(() => document.querySelector('[data-astryx-live-region="polite"]')?.textContent ?? '');
@@ -58,8 +58,24 @@ check('prev / next: ghost icon-only, labelled, enabled with tooltips', await pag
   return p.getAttribute('aria-label') === 'Go to previous page' && n.getAttribute('aria-label') === 'Go to next page' && p.dataset.variant === 'ghost' && p.hasAttribute('data-ax-icon-only') &&
     p.dataset.axTooltip && document.getElementById(p.dataset.axTooltip)?.textContent.trim() === 'Go to previous page';
 }));
+check('server HTML: nav buttons are triggers of their own layers (Button external tooltip, no data-ax-nav-tip)', await page.evaluate(async () => {
+  const doc = new DOMParser().parseFromString(await (await fetch(location.href)).text(), 'text/html');
+  const buttons = [...doc.querySelectorAll('#pg-pages [data-ax-nav]')];
+  return buttons.length > 0 && buttons.every((b) => !b.hasAttribute('data-ax-nav-tip') && doc.getElementById(b.getAttribute('data-ax-tooltip') ?? '')?.localName === 'ax-tooltip');
+}));
 const startNav = await navState('pg-start');
 check('page 1: previous natively disabled, no tooltip; next enabled', startNav.previous === 'off/tip-off' && startNav.next === 'on/tip-on', JSON.stringify(startNav));
+{
+  const box = await page.locator('#pg-start [data-ax-nav="next"]').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, {steps: 2});
+  await sleep(320);
+  check('hovering an enabled nav button shows its tooltip', await page.evaluate(() => {
+    const id = document.querySelector('#pg-start [data-ax-nav="next"]').getAttribute('data-ax-tooltip');
+    return document.getElementById(id).matches(':popover-open');
+  }));
+  await page.mouse.move(1090, 890, {steps: 2});
+  await sleep(200);
+}
 
 console.log('Buttons mode: clicks');
 await page.click('#pg-pages [data-page="6"]');

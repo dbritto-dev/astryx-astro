@@ -9,6 +9,8 @@
  * Astryx's focusable `<span tabindex=0>` with the dashed hover indication.
  * Sibling mode (Astryx `anchorRef`): omit the slot; either the trigger carries the
  * attributes from `attachTooltip()` (./attach.ts), or pass `for` with its id.
+ * `anchor` (an element id, Astryx `positionRef`) positions the layer against another element
+ * than the one that triggers it: a row is the hover / focus trigger, its checkbox the anchor.
  *
  * The layer is `popover="hint"` (an engine without hint support reads the invalid value as
  * `manual`, the fallback Astryx uses; a controlled tooltip is `manual` so no other hint closes
@@ -25,6 +27,7 @@
  */
 import type {LayerAlignment, LayerPlacement} from '../../lib/types';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
 import '../Layer/Layer.css';
 import './Tooltip.css';
@@ -57,17 +60,19 @@ export interface Props {
   isDefaultOpen?: boolean;
   /** Sibling mode: id of a trigger rendered elsewhere (the runtime wires it). */
   for?: string;
+  /** Id of the element the layer positions against (Astryx `positionRef`). @default the trigger */
+  anchor?: string;
   /** Layer id (stable ids for `attachTooltip`). @default generated */
   id?: string;
 }
 
 const {
   content, placement = 'above', alignment = 'center', delay = 200, hideDelay = 0, focusTrigger = 'auto',
-  touchTrigger = 'auto', isEnabled = true, hasHoverIndication = 'auto', isOpen, isDefaultOpen, for: forId, id: idProp,
+  touchTrigger = 'auto', isEnabled = true, hasHoverIndication = 'auto', isOpen, isDefaultOpen, for: forId, anchor, id: idProp,
 } = Astro.props;
 
 const id = idProp ?? layerId('ax-tooltip');
-const contentHtml = Astro.slots.has('content') ? await seal(await Astro.slots.render('content')) : null;
+const contentHtml = Astro.slots.has('content') ? await seal(await renderLayerContent(Astro, () => Astro.slots.render('content'))) : null;
 let triggerHtml = '';
 let textOnly = false;
 if (!forId && Astro.slots.has('default')) {
@@ -97,7 +102,8 @@ const controlled = isOpen !== undefined;
   class="astryx-tooltip ax-layer ax-layer-motion"
   data-astryx-layer-root=""
   {...placementAttrs({placement, alignment, keepsAnchorClear: true})}
-  data-ax-anchor={forId}
+  data-ax-anchor={anchor ?? forId}
+  data-ax-for={anchor && forId && anchor !== forId ? forId : undefined}
   data-ax-delay={delay !== 200 ? delay : undefined}
   data-ax-hide-delay={hideDelay !== 0 ? hideDelay : undefined}
   data-ax-focus-trigger={focusTrigger !== 'auto' ? focusTrigger : undefined}

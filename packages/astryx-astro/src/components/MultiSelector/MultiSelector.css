@@ -198,4 +198,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* Sheet presentation (see Selector.css): the surface scrolls, so the list loses its cap. */
+  .ax-sheet-surface.astryx-bottom-sheet .ax-multi-selector-dropdown { max-height: none; }
 }

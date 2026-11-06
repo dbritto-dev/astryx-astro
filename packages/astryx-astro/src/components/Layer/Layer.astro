@@ -29,6 +29,7 @@ import type {LayerAlignment, LayerPlacement} from '../../lib/types';
 import {cx} from '../../lib/themeProps';
 import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, layerId, placementAttrs} from './layer';
 import './Layer.css';
 
@@ -72,7 +73,7 @@ const {
 } = Astro.props as typeof Astro.props & {slot?: string};
 
 const id = idProp ?? layerId('ax-layer');
-const html = await seal(await Astro.slots.render('default'));
+const html = await seal(await renderLayerContent(Astro, () => Astro.slots.render('default')));
 const fixed = mode === 'fixed';
 ---
 <ax-layer

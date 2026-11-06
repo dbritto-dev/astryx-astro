@@ -146,9 +146,10 @@ const inherit = inherits({
   data-ax-checkbox-value={isSelectAll ? undefined : value}
 >
   <Fragment slot="startContent">
-    <CheckboxSlot attrs={{value: isSelectAll ? undefined : value, 'aria-labelledby': namesFromVisibleLabel ? labelID : undefined}}>
+    <CheckboxSlot attrs={{value: isSelectAll ? undefined : value}}>
       <CheckboxInput
         id={id}
+        aria-labelledby={namesFromVisibleLabel ? labelID : undefined}
         label={checkboxLabel}
         isLabelHidden
         value={resolvedChecked}

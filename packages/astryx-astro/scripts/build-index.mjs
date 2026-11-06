@@ -24,7 +24,7 @@ const lines = [
   "export {defineSyntaxTheme, syntaxThemeToCSS} from './components/theme/syntaxTheme';",
   "export {themeRootAttributes} from './components/theme/themeRoot';",
   "export {resolveLinkComponent, linkDestination} from './components/LinkProvider/linkComponent';",
-  "export {renderWithLocals, requestLocal} from './lib/subtreeLocals';",
+  "export {renderWithLocals, requestLocal, renderLayerContent, layerScopedLocal, layerScopedLocals} from './lib/subtreeLocals';",
   "export {uid} from './lib/uid';",
   "export {routeFieldProps, statusIconPlan, textEntryTraitAttributes, joinAriaIDs, fieldId} from './components/Field/fieldProps';",
   "export {stamp, stampAttr, seal, inherits} from './lib/cascade';",

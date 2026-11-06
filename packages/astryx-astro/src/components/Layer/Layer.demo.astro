@@ -46,13 +46,25 @@ const alignments = ['start', 'center', 'end'] as const;
 </div>
 
 <div>
-  <p style={label}>LayerProvider inset (blockStart 64px): the gutter grows on that edge</p>
-  <LayerProvider inset={{blockStart: 64}} toast={{position: 'bottomEnd', maxVisible: 3}}>
+  <p style={label}>LayerProvider inset (blockStart 64px): the gutter grows on that edge. The provider renders the page's toast viewport from its `toast` config (bottom end, 3 visible); the nested provider only narrows the inset.</p>
+  <LayerProvider inset={{blockStart: 64}} toast={{position: 'bottomEnd', maxVisible: 3}} id="layer-provider-root">
     <button type="button" style={btn} popovertarget="layer-inset">Layer under a 64px bar</button>
     <Layer id="layer-inset" placement="above" lightDismiss offset={4}>
       <div style={panel}>inset-aware</div>
     </Layer>
+    <LayerProvider inset={{blockStart: 96}} toast={{position: 'topStart', maxVisible: 1}} id="layer-provider-nested">
+      <button type="button" style={btn} popovertarget="layer-inset-nested">Layer under a 96px bar (nested provider)</button>
+      <Layer id="layer-inset-nested" placement="above" lightDismiss offset={4}>
+        <div style={panel}>nested inset</div>
+      </Layer>
+    </LayerProvider>
+    <button type="button" style={btn} id="layer-provider-toast">Show a toast</button>
   </LayerProvider>
+  <script>
+    // Demo: raise a toast in the provider's viewport.
+    import {toast} from '../../elements/toast';
+    document.getElementById('layer-provider-toast')?.addEventListener('click', () => toast({body: 'Saved to the provider’s viewport'}));
+  </script>
 </div>
 
 <div>

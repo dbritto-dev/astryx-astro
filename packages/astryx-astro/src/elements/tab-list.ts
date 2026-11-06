@@ -2,13 +2,16 @@
  * <ax-tab-list> — the behaviour of TabList (light DOM; the element is the painted
  * `.astryx-tab-list`). Port of @astryxdesign/core TabList/TabList.tsx (selection, the reveal
  * effects, scroll-by-page arrows, handleRootFocus / handleRootBlur), Tab.tsx (handleSelect),
- * TabMenu.tsx (handleSelect, trigger label, focus-on-open), hooks/useScrollOverflow.ts and
+ * TabMenu.tsx (handleSelect, trigger label), hooks/useScrollOverflow.ts and
  * hooks/isRtlElement.ts, with hooks/useKeyboardHint.tsx through runtime/keyboardHint.ts.
  *
  * Roving focus (arrows, Home/End, one stop) is runtime/roving.ts, driven by the root's
  * `data-astryx-roving*` attributes; clicks and keys on `aria-disabled` tabs never get here
- * (runtime/disabledInteraction.ts). TabMenu dropdowns are `<ax-menu>` layers (runtime/menu.ts);
- * their radio group's `astryx-change` is taken over here and re-emitted as the TabList's.
+ * (runtime/disabledInteraction.ts). TabMenu dropdowns are `<ax-menu>` layers (runtime/menu.ts)
+ * with its `data-ax-open-focus="first"` (focus-on-open, whichever input opened it) and
+ * `data-ax-trigger-arrows="false"` (↑/↓ on the closed trigger stay with the strip's roving)
+ * options; their radio group's `astryx-change` is taken over here and re-emitted as the
+ * TabList's.
  *
  * API: `value` (get/set; setting moves the selection and fires nothing, like a new controlled
  * value). Event: `astryx-change` `{value}` — bubbles, composed, cancelable; dispatched on every
@@ -23,8 +26,7 @@
  * stop is revealed past the fade (scroll-padding read back from the computed style).
  */
 import {createKeyboardHint} from './runtime/keyboardHint';
-import {rovingFor, syncRovingTabStops} from './runtime/roving';
-import {focusForLastInput} from './runtime/modality';
+import {syncRovingTabStops} from './runtime/roving';
 import {isRtl} from './runtime/dom';
 
 const TAB = '[data-tab-value]';
@@ -34,11 +36,6 @@ const SCROLL_PAGE_RATIO = 0.8;
 const TOLERANCE = 1;
 
 const isRendered = (el: HTMLElement) => typeof el.checkVisibility !== 'function' || el.checkVisibility();
-
-interface MenuLayer extends HTMLElement {
-  readonly isOpen: boolean;
-  focusFirst?: () => boolean;
-}
 
 export class TabListElement extends HTMLElement {
   #value = '';
@@ -87,11 +84,6 @@ export class TabListElement extends HTMLElement {
     return id ? this.ownerDocument.getElementById(id) : null;
   }
 
-  #layerOf(trigger: HTMLElement): MenuLayer | null {
-    const id = trigger.getAttribute('popovertarget');
-    return id ? (this.ownerDocument.getElementById(id) as MenuLayer | null) : null;
-  }
-
   connectedCallback(): void {
     this.#value = this.getAttribute('data-ax-value') ?? '';
     const on = <K extends keyof HTMLElementEventMap>(target: EventTarget, type: K, fn: (e: HTMLElementEventMap[K]) => void, opts?: AddEventListenerOptions) => {
@@ -107,9 +99,7 @@ export class TabListElement extends HTMLElement {
     });
     on(this, 'focusin', (e) => this.#onFocusIn(e));
     on(this, 'focusout', () => { this.#focusRevealedValue = null; });
-    on(this, 'keydown', (e) => this.#onTriggerArrow(e), {capture: true});
     on(this, 'astryx-change', (e) => this.#onMenuChange(e as CustomEvent<{value: string}>));
-    on(this, 'astryx-open-change', (e) => this.#onMenuOpen(e as CustomEvent<{isOpen: boolean}>));
     if (this.#hasScroll) this.#observeOverflow();
     this.#reveal();
   }
@@ -156,23 +146,6 @@ export class TabListElement extends HTMLElement {
     if (!trigger) return;
     event.stopPropagation();
     if (!this.#select(String(event.detail?.value ?? ''))) event.preventDefault();
-  }
-
-  /** TabMenu focus-on-open: the first row, whichever input opened it (Astryx handleToggle). */
-  #onMenuOpen(event: CustomEvent<{isOpen: boolean}>): void {
-    if (!event.detail?.isOpen) return;
-    const layer = event.target as MenuLayer | null;
-    const trigger = this.#menuTriggers.find((t) => t.getAttribute('popovertarget') === layer?.id);
-    if (!layer || !trigger) return;
-    const view = this.ownerDocument.defaultView ?? window;
-    view.requestAnimationFrame(() => {
-      if (!layer.isOpen) return;
-      const menu = this.#menuOf(trigger);
-      const active = this.ownerDocument.activeElement;
-      if (menu && active instanceof HTMLElement && active.closest('[role="menuitemradio"]') && menu.contains(active)) return;
-      const first = menu?.querySelector<HTMLElement>('[role="menuitemradio"]:not([aria-disabled="true"])');
-      if (first) focusForLastInput(first);
-    });
   }
 
   #apply(next: string): void {
@@ -242,20 +215,6 @@ export class TabListElement extends HTMLElement {
     // scrollport, so arrowing onto a half-visible stop would leave it under the fade.
     this.#revealStop(stop);
     this.#focusRevealedValue = stop.getAttribute('data-tab-value');
-  }
-
-  /**
-   * ↑/↓ on a closed TabMenu trigger belong to the strip (Astryx's trigger has no arrow keys):
-   * keep the menu runtime from opening it and move through the list instead.
-   */
-  #onTriggerArrow(event: KeyboardEvent): void {
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.isComposing) return;
-    const trigger = event.target instanceof HTMLElement && event.target.matches(MENU_TRIGGER) ? event.target : null;
-    if (!this.#owns(trigger) || this.#layerOf(trigger)?.isOpen) return;
-    this.#hint.handleKeyDown(event);
-    rovingFor(this).handleKeyDown(event);
-    event.preventDefault();
   }
 
   // ── Reveal / scroll ────────────────────────────────────────────────────

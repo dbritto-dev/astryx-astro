@@ -5,7 +5,10 @@
  * outside does. Size is not part of it: the strip publishes it as CSS custom properties
  * (`--_ax-tab-height`, `--_ax-tab-icon-size`) so a size provider that restamps the TabList
  * root's `data-size` (cascade key `size`) resizes every tab without touching them.
+ * Layer-scoped (`layerScopedLocal()`): overlays inside the strip render their content without it.
  */
+import {layerScopedLocal} from '../../lib/subtreeLocals';
+
 export type TabListSize = 'sm' | 'md' | 'lg';
 export type TabListLayout = 'hug' | 'fill';
 /**
@@ -22,7 +25,7 @@ export interface TabListContextValue {
   pattern: TabListPattern;
 }
 
-export const TAB_LIST_LOCAL = 'astryxTabList';
+export const TAB_LIST_LOCAL = layerScopedLocal('astryxTabList');
 
 export function readTabListContext(astro: {locals?: object}): TabListContextValue | null {
   const value = (astro.locals as Record<string, unknown> | undefined)?.[TAB_LIST_LOCAL];

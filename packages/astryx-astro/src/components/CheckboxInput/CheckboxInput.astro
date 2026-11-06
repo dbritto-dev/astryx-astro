@@ -19,8 +19,9 @@
  *   load (the native `indeterminate` property carries the mixed state; no aria-checked).
  * - Focus ring on the indicator, only on `:focus-visible` (ax-indicator-ring-host/-ring).
  * - `isDisabled` keeps the tab stop: `aria-disabled`, detached from its form (`form=""`, no name),
- *   activation cancelled (runtime/disabledInteraction). `disabledMessage` adds a tooltip on the
- *   row (hover / keyboard focus) that also describes the input.
+ *   activation cancelled (runtime/disabledInteraction). `disabledMessage` adds a tooltip that the
+ *   row triggers (hover / any focus inside) and the checkbox anchors (above, centred), which
+ *   also describes the input.
  * - `isReadOnly`: full opacity, `aria-readonly`, toggling cancelled. `isLoading`: `aria-busy`,
  *   a Spinner in the box, toggling cancelled, "Loading" announced once.
  * - `isRequired`: native `required` + `aria-required` (a FormLayout default sets nothing here:
@@ -53,7 +54,7 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import type {SizeValue} from '../../lib/types';
-import {routeFieldProps, type FieldComposedProps, type InputStatus, type LabelIcon} from '../Field/fieldProps';
+import {joinAriaIDs, routeFieldProps, type FieldComposedProps, type InputStatus, type LabelIcon} from '../Field/fieldProps';
 import './CheckboxInput.css';
 
 export type CheckboxInputSize = 'sm' | 'md';
@@ -114,6 +115,9 @@ const {
 } = Astro.props as typeof Astro.props & {slot?: string};
 
 const r = routeFieldProps('CheckboxInput', props as unknown as FieldComposedProps & Record<string, unknown>);
+// A caller's `aria-labelledby` reaches the input as given (Astryx spreads it with the rest);
+// routeFieldProps consumes it for Field's own label, which a checkbox does not render.
+const ariaLabelledBy = joinAriaIDs((props as Record<string, unknown>)['aria-labelledby'] as string | undefined);
 const {isDisabled, status} = r;
 const {isLabelHidden, isOptional, isRequired, description, width} = r.field;
 const t = translator(Astro, r.locale);
@@ -156,6 +160,7 @@ const label = themeProps('checkbox-label');
         required={isRequired || undefined}
         aria-required={isRequired ? 'true' : undefined}
         aria-readonly={isReadOnly ? 'true' : undefined}
+        aria-labelledby={ariaLabelledBy}
         aria-describedby={describedBy}
         aria-invalid={status?.type === 'error' ? 'true' : undefined}
         aria-busy={isBusy ? 'true' : undefined}
@@ -173,7 +178,7 @@ const label = themeProps('checkbox-label');
     </div>
   </div>
   {status?.message && <FieldStatus type={status.type} message={status.message} id={r.ids.status} variant="detached" />}
-  {tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" alignment="start" focusTrigger="always" />}
+  {tip && <Tooltip {...tip.layer} anchor={r.id} content={disabledMessage} placement="above" focusTrigger="always" />}
 </ax-checkbox-input>
 <script>import '../../elements/checkbox-input';</script>
 {isBusy && <script>import '../../behaviors/busyAnnounce';</script>}

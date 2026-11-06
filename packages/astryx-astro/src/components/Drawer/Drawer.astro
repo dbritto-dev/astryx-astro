@@ -43,6 +43,7 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
 import {layerId} from '../Layer/layer';
 import {prepareLayerContent} from '../Dialog/content';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import '../Dialog/overlay.css';
 import './Drawer.css';
 
@@ -89,7 +90,7 @@ const {
 
 const id = idProp ?? layerId('ax-drawer');
 const {themeClass, attrs: themeAttrs} = themeProps('drawer', {side});
-const raw = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const raw = Astro.slots.has('default') ? await renderLayerContent(Astro, () => Astro.slots.render('default')) : '';
 const {html: content} = await prepareLayerContent(raw, {id, closeCommand: hasScrim ? 'close' : 'hide-popover'});
 const nativeAttrs = hasScrim ? {closedby: purpose === 'info' ? 'any' : purpose === 'form' ? 'closerequest' : 'none'} : {};
 ---

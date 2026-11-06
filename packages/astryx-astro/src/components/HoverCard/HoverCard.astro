@@ -24,6 +24,7 @@ import type {LayerAlignment, LayerPlacement} from '../../lib/types';
 import {cx} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
 import '../Layer/Layer.css';
 import './HoverCard.css';
@@ -79,7 +80,7 @@ function supportsAriaExpanded(tag: string, attrs: Record<string, string>): boole
 }
 
 const id = idProp ?? layerId('ax-hover-card');
-const contentHtml = Astro.slots.has('content') ? await seal(await Astro.slots.render('content')) : null;
+const contentHtml = Astro.slots.has('content') ? await seal(await renderLayerContent(Astro, () => Astro.slots.render('content'))) : null;
 const stamped = await stampTrigger(await Astro.slots.render('default'), (attrs, tag) => label
   ? {
       'data-ax-hover-card': id,

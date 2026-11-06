@@ -12,9 +12,9 @@
  *   import {toast} from 'astryx-astro/…/elements/toast';
  *   const dismiss = toast({body: 'Saved', endContent: undoButton, uniqueID: 'save'});
  *
- * `toast()` goes to the page's first `<ax-toast-viewport>` (ToastViewport.astro, ideally once in
- * the app layout); without one a fallback viewport is created in `<body>` (English strings, the
- * LayerProvider toast config when present), as Astryx's useToast does without a provider.
+ * `toast()` goes to the page's first `<ax-toast-viewport>` (the one LayerProvider renders, or a
+ * ToastViewport.astro in the app layout); without one a fallback viewport is created in `<body>`
+ * (English strings, default position and queue), as Astryx's useToast does without a provider.
  * Toasts raised before a viewport connects wait in the queue.
  *
  * Content is vanilla: `body` / `endContent` take a string (text), a Node, or a `<template>`
@@ -961,7 +961,6 @@ function ensureFallbackViewport() {
     fallbackScheduled = false;
     if (primaryViewport()) return connectDefaultQueue();
     if (import.meta.env?.DEV) console.warn('[astryx] toast(): no <ToastViewport> on the page; using a fallback viewport.');
-    const provider = document.querySelector<HTMLElement>('.ax-layer-provider[data-astryx-toast-position], .ax-layer-provider[data-astryx-toast-max-visible], .ax-layer-provider[data-astryx-toast-inset]');
     const home = document.createElement('div');
     home.className = 'ax-toast-home';
     home.setAttribute('data-astryx-toast-fallback', '');
@@ -969,13 +968,8 @@ function ensureFallbackViewport() {
     viewport.className = 'ax-toast-viewport ax-overlay-root';
     viewport.setAttribute('popover', 'manual');
     viewport.setAttribute('data-astryx-layer-root', '');
-    viewport.setAttribute('data-position', provider?.getAttribute('data-astryx-toast-position') ?? 'bottomEnd');
-    viewport.setAttribute('data-max-visible', provider?.getAttribute('data-astryx-toast-max-visible') ?? '5');
-    for (const pair of (provider?.getAttribute('data-astryx-toast-inset') ?? '').split(/\s+/).filter(Boolean)) {
-      const [edge, value] = pair.split(':');
-      const prop = {top: 'top', bottom: 'bottom', start: 'inset-inline-start', end: 'inset-inline-end'}[edge as 'top'];
-      if (prop && value) viewport.style.setProperty(prop, `${Number(value)}px`);
-    }
+    viewport.setAttribute('data-position', 'bottomEnd');
+    viewport.setAttribute('data-max-visible', '5');
     home.append(viewport);
     document.body.append(home);
   });

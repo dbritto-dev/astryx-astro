@@ -16,6 +16,7 @@
 import type {HTMLAttributes} from 'astro/types';
 import {cx} from '../../lib/themeProps';
 import {translator} from '../../lib/i18n';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import Tooltip from '../Tooltip/Tooltip.astro';
 import Icon from '../Icon/Icon.astro';
 import {attachTooltip} from '../Tooltip/attach';
@@ -36,7 +37,7 @@ export interface Props extends Pick<HTMLAttributes<'button'>, 'class' | 'style' 
 const {content, label, size = 'sm', locale, class: className, style, id} = Astro.props;
 const t = translator(Astro, locale);
 const tip = attachTooltip();
-const contentHtml = Astro.slots.has('content') ? await Astro.slots.render('content') : null;
+const contentHtml = Astro.slots.has('content') ? await renderLayerContent(Astro, () => Astro.slots.render('content')) : null;
 ---
 <button
   type="button"

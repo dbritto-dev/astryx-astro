@@ -121,7 +121,10 @@ Generated Astryx themes style components through stable hooks, e.g.
   `stamp()` the effective value onto descendants that opted in with
   `data-ax-inherit="<key> …"` (only when the prop was not explicit). Always render the
   effective `data-size` etc. yourself too, so theme rules match without a provider.
-  Overlays `seal()` their content: cascades end at layer roots.
+  Overlays `seal()` their content: cascades end at layer roots. Layer-scoped subtree-locals
+  contexts (List, CheckboxList, RadioList, TabList, Stepper — `layerScopedLocal()` in
+  `src/lib/subtreeLocals.ts`) end there too: render the content slot through
+  `renderLayerContent(Astro, () => Astro.slots.render(…))`.
 - `src/lib/safeUrl.ts`: run `safeHref()` on every href you render (Link, Button href, Item,
   Token, ClickableCard, Citation, Markdown, TopNav). A blocked URL renders an inert element.
 - `src/lib/padding.ts`, `src/lib/style.ts`, `src/lib/types.ts`, `src/lib/i18n.ts`.
@@ -144,7 +147,8 @@ Generated Astryx themes style components through stable hooks, e.g.
 3. One document Escape stack (topmost layer only, skip `defaultPrevented`, ignore IME), a
    press must start and end outside/on the backdrop to dismiss, focus returns with
    `preventScroll: true`.
-4. Every layer root carries `data-astryx-layer-root` and `seal()`s its slot content.
+4. Every layer root carries `data-astryx-layer-root` and `seal()`s its slot content, rendered
+   through `renderLayerContent()` (layer-scoped contexts reset, Theme/locale pass through).
 5. Entry/exit animation with `@starting-style` + `transition-behavior: allow-discrete`,
    tokens `--duration-*` / `--ease-*`; no travel under `prefers-reduced-motion` or
    `[data-astryx-reduced-motion]` (cross-fade instead).

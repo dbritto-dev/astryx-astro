@@ -36,25 +36,20 @@
  * takes Escape per `data-ax-escape-dismiss`, focuses as Astryx's sheet does (always: a
  * `[data-autofocus]`, else the first content control, else the surface) and lets toast hosts
  * re-enter the top layer above it. Adaptive triggers keep `aria-haspopup` current while
- * closed (one shared compact-touch MediaQueryList listener).
+ * closed (one shared compact-touch MediaQueryList listener). The surface handling is the shared
+ * `createSheetSurface()` (../sheet/surface.ts); subclasses read `isSheetSurface`.
  */
 import './disabledInteraction';
 import {FOCUSABLE_SELECTOR} from './dom';
 import {LayerElement, defineElement, type OpenChangeReason} from './layer';
 import {focusForLastInput} from './modality';
-import {notifyTopLayerEntry} from './modalOutlet';
 import type {LayerEscapeBehavior, LayerOutsidePress} from './layerStack';
-import {resolvePresentation, watchCompactTouch, type ResolvedPresentation} from '../sheet/presentation';
-import {createSheetGestures, type SheetGestures} from '../sheet/gestures';
+import type {ResolvedPresentation} from '../sheet/presentation';
+import {createSheetSurface} from '../sheet/surface';
 
 const FALLBACK_CLOSE = '[data-astryx-popover-fallback-close]';
 const OVERFLOW = 'data-astryx-overflow';
 const SHEET_HANDLE = '.ax-popover-sheet-handle';
-const MIN_RESERVE = 48;
-
-/** Adaptive popovers whose closed triggers follow the compact-touch query. */
-const adaptive = new Set<PopoverElement>();
-let stopWatching: (() => void) | null = null;
 
 function attemptFocus(element: HTMLElement, options?: FocusOptions): boolean {
   try {
@@ -67,11 +62,14 @@ function attemptFocus(element: HTMLElement, options?: FocusOptions): boolean {
 
 export class PopoverElement extends LayerElement {
   #observers: Array<() => void> = [];
-  /** The surface latched for the current opening (null between openings). */
-  #latched: ResolvedPresentation | null = null;
-  #original: {role: string | null; modal: string | null; label: string | null} | null = null;
-  #gestures: SheetGestures | null = null;
-  #sheetCleanup: Array<() => void> = [];
+  #sheet = createSheetSurface({
+    layer: this,
+    surface: () => this.surface,
+    anchoredClass: 'astryx-popover',
+    triggers: () => this.triggers(),
+    anchoredHaspopup: (role) => (role === 'dialog' ? 'dialog' : 'true'),
+    handle: () => this.surface?.querySelector<HTMLElement>(`:scope > ${SHEET_HANDLE}`) ?? null,
+  });
 
   /** The painted surface (`.astryx-popover`), the dialog when role="dialog". */
   get surface(): HTMLElement | null {
@@ -87,42 +85,43 @@ export class PopoverElement extends LayerElement {
 
   /** The presentation prop (`popover` when absent). */
   get presentation(): string {
-    return this.getAttribute('data-ax-presentation') ?? 'popover';
+    return this.#sheet.presentation;
   }
 
   /** The surface this opening uses (or would use now, while closed). */
   get surfaceMode(): ResolvedPresentation {
-    return this.#latched ?? resolvePresentation(this.presentation, this.ownerDocument.defaultView);
+    return this.#sheet.mode;
   }
 
-  get #isSheet(): boolean {
-    return this.#latched === 'bottom-sheet';
+  /** Latched as a bottom sheet for the current opening. */
+  protected get isSheetSurface(): boolean {
+    return this.#sheet.isSheet;
   }
 
   show(options: {anchor?: HTMLElement | null; source?: HTMLElement | null; reason?: OpenChangeReason} = {}): boolean {
     if (!this.isOpen) {
-      this.#latch();
+      this.#sheet.latch();
       // A sheet is never anchored.
-      if (this.#isSheet) return super.show({...options, anchor: null});
+      if (this.#sheet.isSheet) return super.show({...options, anchor: null});
     }
     return super.show(options);
   }
 
   protected resolveAnchor(): HTMLElement | null {
     // The first hook of every open (a native invoker's too): choose the surface here.
-    this.#latch();
-    if (this.#isSheet) return null;
+    this.#sheet.latch();
+    if (this.#sheet.isSheet) return null;
     return super.resolveAnchor() ?? this.triggers()[0] ?? null;
   }
 
   protected escapeBehavior(): LayerEscapeBehavior | null {
-    if (this.#isSheet) return this.getAttribute('data-ax-escape-dismiss') === 'false' ? 'block' : 'close';
+    if (this.#sheet.isSheet) return this.getAttribute('data-ax-escape-dismiss') === 'false' ? 'block' : 'close';
     return this.getAttribute('data-ax-escape') === 'none' ? null : ('close' as const);
   }
 
   protected outsidePressMode(): LayerOutsidePress {
     // A sheet's layer covers the viewport: its own backdrop-press handler dismisses.
-    if (this.#isSheet) return 'ignore';
+    if (this.#sheet.isSheet) return 'ignore';
     return this.getAttribute('popover') === 'auto' ? 'native' : 'ignore';
   }
 
@@ -137,11 +136,7 @@ export class PopoverElement extends LayerElement {
   connectedCallback(): void {
     super.connectedCallback();
     this.addEventListener('keydown', this.#onKeyDown);
-    if (this.presentation === 'adaptive') {
-      adaptive.add(this);
-      if (!stopWatching) stopWatching = watchCompactTouch(this.ownerDocument.defaultView, () => { for (const p of adaptive) p.syncClosedTriggers(); });
-      queueMicrotask(() => this.syncClosedTriggers());
-    }
+    this.#sheet.connect();
     // Sibling mode by id: a trigger rendered without the invoker attributes gets them now.
     const anchorId = this.getAttribute('data-ax-anchor');
     if (anchorId && this.id) {
@@ -163,12 +158,7 @@ export class PopoverElement extends LayerElement {
   disconnectedCallback(): void {
     this.removeEventListener('keydown', this.#onKeyDown);
     this.#stopObserving();
-    this.#stopSheet();
-    adaptive.delete(this);
-    if (adaptive.size === 0) {
-      stopWatching?.();
-      stopWatching = null;
-    }
+    this.#sheet.disconnect();
     super.disconnectedCallback();
   }
 
@@ -178,8 +168,8 @@ export class PopoverElement extends LayerElement {
 
   protected didOpen(): void {
     this.#observeOverflow();
-    if (this.#isSheet) {
-      this.#startSheet();
+    if (this.#sheet.isSheet) {
+      this.#sheet.start();
       this.#focusSheetTarget();
       return;
     }
@@ -189,7 +179,7 @@ export class PopoverElement extends LayerElement {
   protected willClose(): void {
     for (const t of this.triggers()) if (t.hasAttribute('aria-expanded')) t.setAttribute('aria-expanded', 'false');
     this.#stopObserving();
-    this.#stopSheet();
+    this.#sheet.stop();
     // The page scrolls again as the exit starts (useScrollLock(isOpen)).
     this.removeAttribute('data-ax-scroll-lock');
   }
@@ -197,111 +187,12 @@ export class PopoverElement extends LayerElement {
   protected didClose(): void {
     // The surface stays latched in the markup through the exit (it styles it); the next open
     // resolves again.
-    this.#latched = null;
-    this.syncClosedTriggers();
-  }
-
-  // ── Presentation ──────────────────────────────────────────────────────────
-
-  /** Choose the surface for this opening and restyle the same element for it. */
-  #latch() {
-    if (this.#latched && this.isOpen) return;
-    const surface = this.surface;
-    if (!surface) return;
-    if (this.#original === null) {
-      this.#original = {role: surface.getAttribute('role'), modal: surface.getAttribute('aria-modal'), label: surface.getAttribute('aria-label')};
-    }
-    const mode = resolvePresentation(this.presentation, this.ownerDocument.defaultView);
-    this.#latched = mode;
-    if (this.presentation === 'popover') return;
-    this.setAttribute('data-ax-surface', mode);
-    const isSheet = mode === 'bottom-sheet';
-    surface.classList.toggle('astryx-bottom-sheet', isSheet);
-    surface.classList.toggle('astryx-popover', !isSheet);
-    this.toggleAttribute('data-ax-scroll-lock', isSheet);
-    const set = (name: string, value: string | null) => (value == null ? surface.removeAttribute(name) : surface.setAttribute(name, value));
-    if (isSheet) {
-      set('role', 'dialog');
-      set('aria-modal', 'true');
-      set('aria-label', this.getAttribute('data-ax-sheet-label') || this.#triggerText() || null);
-      surface.tabIndex = -1;
-      surface.style.setProperty('--_sheet-reserve', `${this.#reserve()}px`);
-      this.style.removeProperty('--_sheet-scrim-opacity');
-    } else {
-      const o = this.#original;
-      set('role', o?.role ?? null);
-      set('aria-modal', o?.modal ?? null);
-      set('aria-label', o?.label ?? null);
-      if (o?.role !== 'dialog') surface.removeAttribute('tabindex');
-    }
-    for (const t of this.triggers()) t.setAttribute('aria-haspopup', isSheet || surface.getAttribute('role') === 'dialog' ? 'dialog' : 'true');
+    this.#sheet.closed();
   }
 
   /** Closed adaptive triggers announce the surface an opening would choose now. */
   syncClosedTriggers(): void {
-    if (this.isOpen || this.presentation !== 'adaptive') return;
-    const sheet = resolvePresentation('adaptive', this.ownerDocument.defaultView) === 'bottom-sheet';
-    const dialog = sheet || (this.#original?.role ?? this.surface?.getAttribute('role')) === 'dialog';
-    for (const t of this.triggers()) t.setAttribute('aria-haspopup', dialog ? 'dialog' : 'true');
-  }
-
-  #triggerText(): string {
-    const trigger = this.triggers()[0];
-    return trigger?.getAttribute('aria-label')?.trim() || trigger?.textContent?.trim() || '';
-  }
-
-  #reserve(): number {
-    const view = this.ownerDocument.defaultView ?? window;
-    return view.matchMedia?.('(any-pointer: coarse)').matches ? Math.max(MIN_RESERVE, Math.ceil(view.innerHeight * 0.4)) : MIN_RESERVE;
-  }
-
-  #startSheet() {
-    this.#stopSheet();
-    const surface = this.surface;
-    if (!surface) return;
-    if (!this.#gestures) {
-      this.#gestures = createSheetGestures({
-        panel: surface,
-        handle: surface.querySelector<HTMLElement>(`:scope > ${SHEET_HANDLE}`),
-        body: surface,
-        // The sheet always light-dismisses (a swipe down), whatever hasLightDismiss says.
-        canDismiss: () => true,
-        reserve: () => this.#reserve(),
-        onDismiss: () => this.hide('outside'),
-        onScrimOpacity: (opacity) => this.style.setProperty('--_sheet-scrim-opacity', String(opacity)),
-      });
-    }
-    this.#gestures.reset();
-    this.#gestures.attach();
-    // A press that starts and ends on the layer itself (beside or above the panel).
-    let started = false;
-    const onDown = (e: Event) => { started = e.target === this; };
-    const onUp = (e: Event) => {
-      const ended = started && e.target === this;
-      started = false;
-      if (ended) queueMicrotask(() => { if (this.isOpen && this.#isSheet) this.hide('outside'); });
-    };
-    const onCancel = () => { started = false; };
-    this.addEventListener('pointerdown', onDown);
-    this.addEventListener('pointerup', onUp);
-    this.addEventListener('pointercancel', onCancel);
-    this.#sheetCleanup.push(() => {
-      this.removeEventListener('pointerdown', onDown);
-      this.removeEventListener('pointerup', onUp);
-      this.removeEventListener('pointercancel', onCancel);
-    });
-    // Toast hosts re-enter the top layer above the sheet (it is a top-layer surface).
-    notifyTopLayerEntry();
-  }
-
-  #stopSheet() {
-    for (const fn of this.#sheetCleanup.splice(0)) fn();
-    if (this.#gestures) {
-      this.#gestures.detach();
-      // The panel leaves from where it rests: its CSS exit pose takes over.
-      this.#gestures.release();
-    }
-    this.style.removeProperty('--_sheet-scrim-opacity');
+    this.#sheet.syncClosedTriggers();
   }
 
   /** Popover.tsx sheet focus: `[data-autofocus]`, else the first genuine content control, else the surface. */

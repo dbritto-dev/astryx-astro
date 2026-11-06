@@ -4,7 +4,8 @@
  * IconButton + ComponentIcon in CodeBlock.tsx and TimestampHoverCard.tsx). Both icon states
  * of the slot are rendered (resolveComponentIcon per state; a theme's `null` hides a glyph
  * but keeps the button) and `data-copied` toggles them; the behaviour is
- * behaviors/clipboardCopy.ts. The tooltip is a sibling `<Tooltip>` the behaviour wires.
+ * behaviors/clipboardCopy.ts. The tooltip is a sibling `<Tooltip>` (Button's external tooltip,
+ * `data-ax-tooltip`) whose text the behaviour flips.
  */
 import IconButton from '../IconButton/IconButton.astro';
 import Icon from '../Icon/Icon.astro';
@@ -55,7 +56,7 @@ const copied = resolveComponentIcon(iconSlot, {copied: true}, {icon: 'check', si
   data-ax-copied-label={copiedLabel}
   data-ax-copy-announce={announce}
   data-ax-copy-reset={resetAfterMs != null ? String(resetAfterMs) : undefined}
-  data-ax-copy-tooltip={tipId}
+  data-ax-tooltip={tipId}
   data-ax-copy-tip={tip}
   data-ax-copied-tip={copiedTip}
 ><span slot="icon" class="ax-copy-icon"><span class="ax-copy-icon-state" data-state="idle">{idle.icon && <Icon icon={idle.icon} size={idle.size ?? 'sm'} variant={idle.variant as never} color="inherit" />}</span><span class="ax-copy-icon-state" data-state="copied">{copied.icon && <Icon icon={copied.icon} size={copied.size ?? 'sm'} variant={copied.variant as never} color="inherit" />}</span></span></IconButton><Tooltip id={tipId} content={tip} />

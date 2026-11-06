@@ -223,29 +223,4 @@
     text-overflow: ellipsis;
     min-width: 0;
   }
-
-  /* ── Keyboard hint (useKeyboardHint) ─────────────────────────────────── */
-  .ax-keyboard-hint {
-    background-color: var(--color-background-popover);
-    border-radius: var(--radius-element);
-    box-shadow: var(--shadow-low);
-    padding-block: var(--spacing-1);
-    padding-inline: var(--spacing-2);
-    font-size: var(--text-supporting-size);
-    line-height: var(--text-supporting-leading);
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-    opacity: 0;
-    transition-property: opacity, display, overlay;
-    transition-duration: 150ms;
-    transition-behavior: allow-discrete;
-    pointer-events: none;
-  }
-  .ax-keyboard-hint:popover-open { opacity: 1; }
-  .ax-keyboard-hint-keys {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-1);
-  }
-  .ax-keyboard-hint-label { margin-inline-start: var(--spacing-1); }
 }
