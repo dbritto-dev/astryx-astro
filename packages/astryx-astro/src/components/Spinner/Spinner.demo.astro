@@ -1,0 +1,34 @@
+---
+import Spinner, {type SpinnerShade, type SpinnerSize} from './Spinner.astro';
+const sizes: SpinnerSize[] = ['sm', 'md', 'lg', 'xl'];
+const shades: SpinnerShade[] = ['default', 'subtle', 'inherit'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1);min-width:56px';
+---
+<div style="display:grid;gap:var(--spacing-5);color:var(--color-text-primary)">
+  {shades.map((shade) => (
+    <div style="display:flex;flex-wrap:wrap;align-items:end;gap:var(--spacing-4)">
+      {sizes.map((size) => (
+        <span style={cell}><Spinner size={size} shade={shade} /><span style={caption}>{shade} · {size}</span></span>
+      ))}
+    </div>
+  ))}
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-4);padding:var(--spacing-4);border-radius:var(--radius-element);background:#1c1c1e">
+    {sizes.map((size) => <Spinner size={size} shade="onMedia" />)}
+    <span style="font-size:var(--font-size-xs);color:#fff">onMedia on a dark surface</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-3)">
+    <span style="display:inline-flex;align-items:center;gap:var(--spacing-2);padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-element);background:var(--color-accent);color:var(--color-on-accent);font-size:var(--font-size-sm)">
+      <Spinner size="sm" shade="inherit" aria-hidden="true" /> Saving…
+    </span>
+    <span style={caption}>inherit shade inside a colored surface (owner hides it with aria-hidden)</span>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;align-items:start;gap:var(--spacing-8)">
+    <Spinner size="xl" label="Loading results" />
+    <Spinner size="lg" shade="subtle" aria-label="Fetching data">
+      <span slot="label" style="text-align:center;font-size:var(--font-size-sm)"><strong>Fetching data</strong><br />This may take a moment</span>
+    </Spinner>
+    <span style={cell}><Spinner aria-label="Uploading attachment" /><span style={caption}>aria-label only</span></span>
+    <span style={cell}><Spinner locale="es-ES" /><span style={caption}>locale es-ES</span></span>
+  </div>
+</div>

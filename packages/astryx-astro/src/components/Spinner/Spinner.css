@@ -1,0 +1,97 @@
+/*
+ * Port of @astryxdesign/core Spinner/Spinner.tsx (styles, sizeStyles, shadeStyles,
+ * trackOpacityStyles) and Spinner/spinnerRotor.ts (rotation). Rule order mirrors the
+ * stylex.props() calls: wrapper/box → size → shade; circle → arc | track → track opacity.
+ *
+ * The size and shade groups DECLARE the public vars on the element carrying the
+ * `astryx-spinner` target (the box, or the wrapper when there is a label), so a theme rule
+ * such as `.astryx-spinner[data-size="xl"] { --spinner-diameter: 40px }` overrides them.
+ * Everything below reads the registered private pair, so a themed `0` stroke stays a length.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_spinner-ring-diameter { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --_spinner-ring-stroke { syntax: "<length>"; inherits: true; initial-value: 0px; }
+
+@layer astryx-base {
+  /* 100 turns per iteration: the main thread wakes at an iteration boundary once per 100 turns. */
+  @keyframes ax-spinner-rotation {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(36000deg); }
+  }
+
+  /* wrapper (labelled spinner) */
+  .ax-spinner-labelled { display: inline-flex; flex-direction: column; align-items: center; gap: var(--spacing-2); }
+
+  /* the progressbar box: the ring's size, never compressed by a flex host */
+  .ax-spinner-box {
+    display: inline-grid;
+    place-items: center;
+    vertical-align: middle;
+    --_spinner-ring-diameter: var(--spinner-diameter);
+    --_spinner-ring-stroke: var(--spinner-stroke-width);
+    --_spinner-box-size: calc(var(--_spinner-ring-diameter) + var(--_spinner-ring-stroke) * 2);
+    flex-shrink: 0;
+  }
+
+  /* size → public geometry vars */
+  .astryx-spinner[data-size="sm"] { --spinner-diameter: 10px; --spinner-stroke-width: 2px; --spinner-arc-fraction: 0.375; }
+  .astryx-spinner[data-size="md"] { --spinner-diameter: 14px; --spinner-stroke-width: 3px; --spinner-arc-fraction: 0.375; }
+  .astryx-spinner[data-size="lg"] { --spinner-diameter: 18px; --spinner-stroke-width: 3px; --spinner-arc-fraction: 0.375; }
+  .astryx-spinner[data-size="xl"] { --spinner-diameter: 28px; --spinner-stroke-width: 4px; --spinner-arc-fraction: 0.375; }
+
+  /* shade → public color vars */
+  .astryx-spinner[data-shade="default"] { --spinner-color: var(--color-accent); --spinner-track-color: var(--color-track); }
+  .astryx-spinner[data-shade="subtle"] { --spinner-color: var(--color-text-secondary); --spinner-track-color: var(--color-track); }
+  .astryx-spinner[data-shade="onMedia"] { --spinner-color: var(--color-on-dark); --spinner-track-color: var(--color-on-dark); }
+  .astryx-spinner[data-shade="inherit"] { --spinner-color: currentColor; --spinner-track-color: currentColor; }
+
+  /* track and rotor share the one grid cell, framed by the composed box size */
+  .ax-spinner-ring {
+    backface-visibility: hidden;
+    display: block;
+    grid-area: 1 / 1;
+    width: var(--_spinner-box-size);
+    height: var(--_spinner-box-size);
+    overflow: visible;
+  }
+  .ax-spinner-rotor {
+    display: block;
+    grid-area: 1 / 1;
+    width: var(--_spinner-box-size);
+    height: var(--_spinner-box-size);
+    /* spinnerRotorStyles.turn: compositor-only transform; reduced motion slows, never stops */
+    will-change: transform;
+    animation-duration: calc(var(--_astryx-pre-tempo-duration-slow-min, var(--duration-slow-min)) * 100);
+    animation-iteration-count: infinite;
+    animation-name: ax-spinner-rotation;
+    animation-timing-function: linear;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-spinner-rotor { animation-duration: calc(3s * 100); }
+  }
+
+  /* circles: the CSS geometry outranks the r / stroke-width presentation attributes */
+  .ax-spinner-circle {
+    fill: none;
+    transform-box: fill-box;
+    transform-origin: center;
+    stroke-linecap: round;
+    r: calc(var(--_spinner-ring-diameter) / 2);
+    stroke-width: var(--_spinner-ring-stroke);
+  }
+  .ax-spinner-arc {
+    stroke: var(--spinner-color);
+    transform: rotate(-90deg);
+    stroke-dasharray:
+      calc(var(--_spinner-ring-diameter) * 3.141592653589793 * var(--spinner-arc-fraction))
+      calc(var(--_spinner-ring-diameter) * 3.141592653589793 * (1 - var(--spinner-arc-fraction)));
+  }
+  .ax-spinner-track { stroke: var(--spinner-track-color); }
+
+  /* track alpha per shade (77/255 = the onMedia token's old "4D") */
+  .astryx-spinner[data-shade="default"] .ax-spinner-track { stroke-opacity: 1; }
+  .astryx-spinner[data-shade="subtle"] .ax-spinner-track { stroke-opacity: 1; }
+  .astryx-spinner[data-shade="onMedia"] .ax-spinner-track { stroke-opacity: 0.30196; }
+  .astryx-spinner[data-shade="inherit"] .ax-spinner-track { stroke-opacity: 0.3; }
+}

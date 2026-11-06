@@ -1,0 +1,76 @@
+---
+/**
+ * Kbd — a keyboard shortcut as styled <kbd> keys. Port of @astryxdesign/core Kbd (Kbd.tsx,
+ * utils/isApplePlatform.ts).
+ *
+ * The group is `role="img"` named with spoken words ("Control + K"); the glyph keys are
+ * aria-hidden. Platform-aware `mod`: Astryx renders the non-Apple form on the server (Ctrl,
+ * "Control") and switches to ⌘ / "Command" after hydration on Apple platforms. Here the
+ * server renders the same default and, only when `keys` contains `mod`, a tiny behaviour
+ * (data-ax-kbd-platform) swaps in the server-translated Apple strings on macOS / iOS.
+ *
+ * @example
+ * <Kbd keys="mod+k" />
+ * <Kbd keys="shift+plus" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator, type Translate} from '../../lib/i18n';
+import './Kbd.css';
+
+export interface Props extends HTMLAttributes<'span'> {
+  /**
+   * Shortcut keys separated by "+". Special keys: mod (⌘ on Apple, Ctrl elsewhere), ctrl,
+   * alt, shift, enter, backspace, escape, tab, up, down, left, right. Aliases: esc, return.
+   * Use "plus" for a literal "+" key.
+   */
+  keys: string;
+  /** Locale for key names and the accessible name. */
+  locale?: string;
+}
+
+const {keys, locale, class: className, ...rest} = Astro.props;
+const t = translator(Astro, locale);
+
+const KEY_DISPLAY = new Map<string, string>([
+  ['ctrl', '⌃'], ['alt', '⌥'], ['shift', '⇧'], ['enter', '↵'], ['backspace', '⌫'],
+  ['tab', '⇥'], ['up', '↑'], ['down', '↓'], ['left', '←'], ['right', '→'], ['plus', '+'],
+]);
+const KBD_KEY_ALIASES = new Map<string, string>([['esc', 'escape'], ['return', 'enter']]);
+const KEY_LABEL = new Map<string, string>([
+  ['ctrl', '@astryx.kbd.key.control'], ['alt', '@astryx.kbd.key.alt'], ['shift', '@astryx.kbd.key.shift'],
+  ['enter', '@astryx.kbd.key.enter'], ['backspace', '@astryx.kbd.key.backspace'], ['escape', '@astryx.kbd.key.escape'],
+  ['tab', '@astryx.kbd.key.tab'], ['up', '@astryx.kbd.key.up'], ['down', '@astryx.kbd.key.down'],
+  ['left', '@astryx.kbd.key.left'], ['right', '@astryx.kbd.key.right'], ['plus', '@astryx.kbd.key.plus'],
+]);
+
+function keyDisplay(key: string, isMac: boolean): string {
+  if (key === 'mod') return isMac ? '⌘' : t('@astryx.kbd.key.controlShort');
+  if (key === 'escape') return t('@astryx.kbd.key.escapeShort');
+  return KEY_DISPLAY.get(key) ?? key.toUpperCase();
+}
+function keyLabel(key: string, isMac: boolean): string {
+  if (key === 'mod') return t(isMac ? '@astryx.kbd.key.command' : '@astryx.kbd.key.control');
+  const labelKey = KEY_LABEL.get(key);
+  return labelKey ? t(labelKey) : key.toUpperCase();
+}
+const accessibleName = (parts: string[], isMac: boolean, tr: Translate) =>
+  parts.map((key) => keyLabel(key, isMac)).reduce((shortcut, key, i) => (i === 0 ? key : tr('@astryx.kbd.shortcut', {shortcut, key})), '');
+
+const parts = (keys ?? '').split('+').map((k) => k.trim().toLowerCase()).map((k) => KBD_KEY_ALIASES.get(k) ?? k);
+const hasMod = parts.includes('mod');
+const {themeClass} = themeProps('kbd');
+// Astryx spreads the caller's props first; role and the spoken name always win.
+const attrs: Record<string, unknown> = {
+  ...rest,
+  role: 'img',
+  'aria-label': accessibleName(parts, false, t),
+  class: cx(themeClass, className as string | undefined),
+  'data-ax-kbd-platform': hasMod ? '' : undefined,
+  'data-ax-kbd-apple-label': hasMod ? accessibleName(parts, true, t) : undefined,
+};
+---
+<span {...attrs}>{parts.map((key) => (
+  <kbd aria-hidden="true" data-ax-kbd-apple={key === 'mod' ? keyDisplay(key, true) : undefined}>{keyDisplay(key, false)}</kbd>
+))}</span>
+{hasMod && <script>import '../../behaviors/kbdPlatform';</script>}

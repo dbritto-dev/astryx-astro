@@ -1,0 +1,14 @@
+---
+import Kbd from './Kbd.astro';
+const shortcuts = ['mod+k', 'mod+shift+p', 'ctrl+alt+backspace', 'shift+plus', 'esc', 'return', 'tab', 'up', 'down', 'left', 'right', 'g+i'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-4);color:var(--color-text-primary)">
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4)">
+    {shortcuts.map((keys) => (
+      <span style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:var(--spacing-1)"><Kbd keys={keys} /><code style={caption}>{keys}</code></span>
+    ))}
+  </div>
+  <p style="margin:0;font-size:var(--font-size-sm)">Open the command palette with <Kbd keys="mod+k" /> or close it with <Kbd keys="escape" />.</p>
+  <p style="margin:0;font-size:var(--font-size-sm)">Pseudo-locale key names: <Kbd keys="mod+shift+enter" locale="pseudo" /></p>
+</div>

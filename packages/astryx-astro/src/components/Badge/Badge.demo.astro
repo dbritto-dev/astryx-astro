@@ -1,0 +1,22 @@
+---
+import Badge, {type BadgeVariant} from './Badge.astro';
+import Icon from '../Icon/Icon.astro';
+const semantic: BadgeVariant[] = ['neutral', 'info', 'success', 'warning', 'error'];
+const colors: BadgeVariant[] = ['blue', 'cyan', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'];
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-2)';
+---
+<div style="display:grid;gap:var(--spacing-4);color:var(--color-text-primary)">
+  <div style={row}>{semantic.map((variant) => <Badge variant={variant} label={variant} />)}</div>
+  <div style={row}>{colors.map((variant) => <Badge variant={variant} label={variant} />)}</div>
+  <div style={row}>
+    <Badge variant="success" label="Deployed" icon="check" />
+    <Badge variant="error" label="Failed" icon="error" />
+    <Badge variant="warning" label="Degraded"><Icon slot="icon" icon="warning" size="sm" /></Badge>
+    <Badge variant="info" label={3} />
+    <Badge variant="gray" label="gray (theme variant)" />
+    <Badge variant="purple"><Fragment slot="label"><strong>Design</strong> team</Fragment></Badge>
+  </div>
+  <div style="max-width:160px;border:1px dashed var(--color-border);padding:var(--spacing-2);border-radius:var(--radius-inner)">
+    <Badge variant="teal" label="A long category label that will not fit" />
+  </div>
+</div>

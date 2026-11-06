@@ -1,0 +1,55 @@
+/* Port of @astryxdesign/core StatusDot/StatusDot.tsx (styles, variants, pulseKeyframes). */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  @keyframes ax-status-dot-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  .astryx-status-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+  }
+
+  /* each variant sets the plate and the ink an icon paints with (currentColor) */
+  .astryx-status-dot[data-variant="success"] { background-color: var(--color-success); color: var(--color-on-success); }
+  .astryx-status-dot[data-variant="warning"] { background-color: var(--color-warning); color: var(--color-on-warning); }
+  .astryx-status-dot[data-variant="error"] { background-color: var(--color-error); color: var(--color-on-error); }
+  @media (forced-colors: active) {
+    .astryx-status-dot:is([data-variant="success"], [data-variant="warning"], [data-variant="error"]) {
+      outline-width: 1px;
+      outline-style: solid;
+      outline-color: CanvasText;
+      outline-offset: -1px;
+    }
+  }
+  .astryx-status-dot[data-variant="accent"] { background-color: var(--color-accent); color: var(--color-on-accent); }
+  .astryx-status-dot[data-variant="neutral"] { background-color: var(--color-icon-secondary); color: var(--color-background-surface); }
+
+  .astryx-status-dot[data-pulsing] {
+    animation-name: ax-status-dot-pulse;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-status-dot[data-pulsing] { animation-name: none; }
+  }
+
+  /* a supplied icon fills the whole 8px field */
+  .ax-status-dot-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    width: 8px;
+    height: 8px;
+  }
+}

@@ -1,0 +1,19 @@
+---
+import VisuallyHidden from './VisuallyHidden.astro';
+import Icon from '../Icon/Icon.astro';
+---
+<div style="display:grid;gap:var(--spacing-4);color:var(--color-text-primary)">
+  <div style="display:flex;align-items:center;gap:var(--spacing-3)">
+    <button type="button" style="display:inline-grid;place-items:center;width:var(--size-element-md);height:var(--size-element-md);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:inherit;cursor:pointer">
+      <Icon icon="close" size="sm" />
+      <VisuallyHidden>Close dialog</VisuallyHidden>
+    </button>
+    <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">Icon-only button; its accessible name “Close dialog” comes from VisuallyHidden.</span>
+  </div>
+  <p style="margin:0;position:relative">
+    Order total: $42.00<VisuallyHidden>, including tax and shipping</VisuallyHidden>
+    <span style="display:block;font-size:var(--font-size-sm);color:var(--color-text-secondary)">Screen readers also hear “, including tax and shipping”.</span>
+  </p>
+  <VisuallyHidden as="div" aria-live="polite" role="status" id="vh-live-region">Moved “Write docs” to Done</VisuallyHidden>
+  <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">A hidden <code>as="div"</code> polite live region is rendered above (id <code>vh-live-region</code>).</span>
+</div>

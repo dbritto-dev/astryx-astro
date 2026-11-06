@@ -1,0 +1,55 @@
+/* Port of @astryxdesign/core Badge/Badge.tsx (styles.base, styles.grows, variants, styles.label). */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-1);
+    height: var(--spacing-5);
+    padding-block: 0;
+    padding-inline: var(--spacing-2);
+    border-radius: var(--radius-full);
+    font-family: inherit;
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    /* one line by construction: clamp to the container instead of escaping it */
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* never shorter than one line of its label (a color-only badge keeps the fixed height) */
+  .astryx-badge[data-has-label] { min-height: 1lh; }
+
+  /* semantic variants: solid fills */
+  .astryx-badge[data-variant="neutral"] { background-color: var(--color-neutral); color: var(--color-text-primary); }
+  .astryx-badge[data-variant="info"] { background-color: var(--color-info); color: var(--color-on-info); }
+  .astryx-badge[data-variant="success"] { background-color: var(--color-success); color: var(--color-on-success); }
+  .astryx-badge[data-variant="warning"] { background-color: var(--color-warning); color: var(--color-on-warning); }
+  .astryx-badge[data-variant="error"] { background-color: var(--color-error); color: var(--color-on-error); }
+  /* forced colors replace status fills with Canvas; keep the fill's shape visible */
+  @media (forced-colors: active) {
+    .astryx-badge:is([data-variant="info"], [data-variant="success"], [data-variant="warning"], [data-variant="error"]) {
+      outline-width: 1px;
+      outline-style: solid;
+      outline-color: CanvasText;
+      outline-offset: -1px;
+    }
+  }
+
+  /* color variants: tinted fills with colored text */
+  .astryx-badge[data-variant="blue"] { background-color: var(--color-background-blue); color: var(--color-text-blue); }
+  .astryx-badge[data-variant="cyan"] { background-color: var(--color-background-cyan); color: var(--color-text-cyan); }
+  .astryx-badge[data-variant="green"] { background-color: var(--color-background-green); color: var(--color-text-green); }
+  .astryx-badge[data-variant="orange"] { background-color: var(--color-background-orange); color: var(--color-text-orange); }
+  .astryx-badge[data-variant="pink"] { background-color: var(--color-background-pink); color: var(--color-text-pink); }
+  .astryx-badge[data-variant="purple"] { background-color: var(--color-background-purple); color: var(--color-text-purple); }
+  .astryx-badge[data-variant="red"] { background-color: var(--color-background-red); color: var(--color-text-red); }
+  .astryx-badge[data-variant="teal"] { background-color: var(--color-background-teal); color: var(--color-text-teal); }
+  .astryx-badge[data-variant="yellow"] { background-color: var(--color-background-yellow); color: var(--color-text-yellow); }
+
+  /* the ellipsis sits on the label so the root keeps inline-flex icon centring */
+  .ax-badge-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+}
