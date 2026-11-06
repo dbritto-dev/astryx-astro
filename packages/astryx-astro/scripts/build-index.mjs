@@ -34,7 +34,7 @@ const lines = [
   "export {attachMobileNav} from './components/MobileNav/attach';",
   "export {generatePageRange} from './components/Pagination/pageRange';",
   "export {createPowerSearchConfig} from './components/PowerSearch/powerSearchModel';",
-  "export {proportional, pixel, generateColumns, resolveColumnWidths, DEFAULT_MIN_COLUMN_WIDTH, useTableSortable, useTableSortableState, useTableColumnResize, useTableStickyColumns, useTableRowExpansion, useTableRowStatus, useTableGroupedRows, useTableTreeData, useTableTreeState, useTableRowIndex, useTableSelection, useTableSelectionState} from './components/Table/table';",
+  "export {proportional, pixel, generateColumns, resolveColumnWidths, DEFAULT_MIN_COLUMN_WIDTH, useTableSortable, useTableSortableState, useTableColumnResize, useTableStickyColumns, useTableRowExpansion, useTableRowStatus, useTableGroupedRows, useTableTreeData, useTableTreeState, useTableRowIndex, useTableSelection, useTableSelectionState, useTableFiltering, useTableFilterState, toSearchFilters, useTablePagination, paginateData, useTableColumnSettings, useTableColumnSettingsState, resolveContextActions, useBaseTablePlugins} from './components/Table/table';",
   "export type * from './components/Table/types';",
   "export type * from './components/Chat/types';",
   "export {createStaticSource} from './components/Typeahead/createStaticSource';",

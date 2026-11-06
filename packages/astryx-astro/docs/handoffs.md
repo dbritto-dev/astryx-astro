@@ -530,3 +530,15 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `astryx-transcript`.
 - Markdown in chat: put `<Markdown>` (or an `<ax-markdown-stream>` from a `_MarkdownKit`) in a
   ghost ChatMessageBubble's default slot; set `list.isStreaming = true` while a reply streams.
+
+## Table plugins (complete)
+
+- Filtering (popover/inline/inline-compact): `astryx-filter-change` {columnKey, value, filters}
+  (cancelable); `table.filters`, `table.clearFilters()`; `hasClientFiltering`.
+- Pagination plugin: Pagination's own events; `table.paging`; `hasClientPaging`; page links.
+- Column settings: `astryx-columns-change` {activeColumnKeys} (cancelable);
+  `table.activeColumnKeys`; `TableColumnSettings` picker (MultiSelector).
+- Context menus: `astryx-context-action` {id, columnKey, rowKey, kind} (cancelable);
+  `table.registerContextAction(id, {state, select})`; sort and expand/collapse actions built in.
+- `<ax-table>` helpers `setRowPager()`, `matchCount`. All `useTable*` plugin functions exported.
+- Known: in the filter popover, autofocus lands on DateInput's calendar button, not its text field.
