@@ -15,11 +15,12 @@
  *   - explicit prop > nearest provider > component default: inner providers stamp first
  *     (their slots render before the outer provider sees the HTML) and consume the marker;
  *   - `apply = null` is a null provider: it consumes markers without stamping (reset);
- *   - layer roots end every cascade: overlays call `seal(html)` on their content.
+ *   - layer roots end every cascade: stamping never enters `[data-astryx-layer-root]`, and
+ *     overlays also call `seal(html)` on their content.
  * Rendering a slot to a string buffers that subtree (no streaming inside it), so only
  * providers use this.
  */
-import {ELEMENT_NODE, parse, render, walk} from 'ultrahtml';
+import {ELEMENT_NODE, parse, render, walk, type ElementNode, type Node} from 'ultrahtml';
 
 const ATTR = 'data-ax-inherit';
 
@@ -30,7 +31,24 @@ export function inherits(keys: Record<string, boolean | undefined>): string | un
 }
 
 type Attrs = Record<string, string>;
-type Apply = ((attrs: Attrs, tag: string) => void) | null;
+type Apply = ((attrs: Attrs, tag: string, node: ElementNode) => void) | null;
+
+const LAYER_ROOT = 'data-astryx-layer-root';
+
+/**
+ * Visit enrolled elements, never descending into a layer root: every Astryx group context is
+ * layer-scoped (contract #23), so a cascade stops at an overlay rendered inside the provider
+ * (a member's Tooltip, a Popover's own Buttons) even when that overlay wasn't sealed.
+ */
+function visitEnrolled(node: Node, fn: (el: ElementNode) => void): void {
+  for (const child of (node as ElementNode).children ?? []) {
+    if (child.type !== ELEMENT_NODE) continue;
+    const el = child as ElementNode;
+    if (LAYER_ROOT in (el.attributes as Attrs)) continue;
+    if ((el.attributes as Attrs)[ATTR]) fn(el);
+    visitEnrolled(el, fn);
+  }
+}
 
 /** Stamp one cascade key onto enrolled descendants and consume their marker. */
 export async function stamp(html: string, key: string, apply: Apply): Promise<string>;
@@ -40,14 +58,11 @@ export async function stamp(html: string, keyOrMap: string | Record<string, Appl
   const map: Record<string, Apply> = typeof keyOrMap === 'string' ? {[keyOrMap]: apply ?? null} : keyOrMap;
   if (!html || !html.includes(ATTR)) return html;
   const ast = parse(html);
-  await walk(ast, (node) => {
-    if (node.type !== ELEMENT_NODE) return;
+  visitEnrolled(ast, (node) => {
     const attrs = node.attributes as Attrs;
-    const marker = attrs[ATTR];
-    if (!marker) return;
     const remaining: string[] = [];
-    for (const key of marker.split(/\s+/)) {
-      if (key in map) map[key]?.(attrs, node.name);
+    for (const key of attrs[ATTR].split(/\s+/)) {
+      if (key in map) map[key]?.(attrs, node.name, node);
       else remaining.push(key);
     }
     if (remaining.length) attrs[ATTR] = remaining.join(' ');

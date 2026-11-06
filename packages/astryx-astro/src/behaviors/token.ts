@@ -14,10 +14,10 @@
  *    click on the surface opens the destination in a new tab (noopener); a click that ends
  *    a text selection does nothing.
  * Disabled tokens (`data-disabled`) do none of this; their controls are aria-disabled and
- * inert (behaviors/disabledInteraction.ts). Not ported: the touch press controller.
+ * inert (elements/runtime/disabledInteraction.ts). Not ported: the touch press controller.
  */
 import {defineBehavior} from '../elements/behavior';
-import './disabledInteraction';
+import '../elements/runtime/disabledInteraction';
 
 const INTERACTIVE = [
   'button', 'a', 'input', 'select', 'textarea', '[role="button"]', '[role="link"]', '[role="checkbox"]',

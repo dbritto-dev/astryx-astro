@@ -12,6 +12,7 @@
  * <Divider orientation="vertical" variant="strong" />
  * <Divider isFullBleed />  <!-- escapes the enclosing Card/Section padding -->
  */
+import {uid} from '../../lib/uid';
 import type {HTMLAttributes} from 'astro/types';
 import {cx, themeProps} from '../../lib/themeProps';
 import './Divider.css';
@@ -39,7 +40,7 @@ const {
 
 const hasLabelSlot = Astro.slots.has('label');
 const hasLabel = hasLabelSlot || (label != null && label !== '' && typeof label !== 'boolean');
-const labelId = `ax-divider-${Math.random().toString(36).slice(2, 10)}`;
+const labelId = uid(Astro, 'ax-divider');
 const resolvedLabelledBy = ariaLabelledBy ?? (hasLabel && ariaLabel == null ? labelId : undefined);
 const {themeClass, attrs} = themeProps('divider', {variant, orientation});
 ---

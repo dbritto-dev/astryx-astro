@@ -83,7 +83,7 @@ const decorative = await page.$$eval('.demo .astryx-avatar[role="presentation"]'
 check('nameless avatars are decorative (presentation + aria-hidden)', decorative.length >= 2 && decorative.every((v) => v === 'true'), JSON.stringify(decorative));
 const link = await page.getByRole('link', {name: 'Link Person'}).count();
 const button = await page.getByRole('button', {name: 'Button Person'}).count();
-check('href renders a named link, onClick a named button', link === 1 && button === 1, `link=${link} button=${button}`);
+check('href renders a named link, isClickable a named button', link === 1 && button === 1, `link=${link} button=${button}`);
 const blocked = await page.$$eval('.demo .astryx-avatar[aria-label="Blocked Link"]', (els) => els.map((e) => e.tagName.toLowerCase() + ':' + (e.getAttribute('href') ?? '')));
 check('blocked href renders a static avatar', blocked.length === 1 && blocked[0] === 'div:', JSON.stringify(blocked));
 const tip = await page.$eval('.demo .astryx-avatar[aria-label="jsmith"]', (el) => ({tab: el.getAttribute('tabindex'), desc: document.getElementById(el.getAttribute('aria-describedby') ?? '')?.textContent}));
@@ -94,7 +94,7 @@ check('tooltip={false}: no tab stop', noTip.tabindex === null, JSON.stringify(no
 // AvatarGroup restamps its members.
 await page.goto(`${base}/components/avatar-group/`);
 await page.waitForTimeout(150);
-const members = await page.$$eval('.demo .astryx-avatar-group[data-size="lg"][data-shape="rounded"] > *', (els) => els.map((e) => ({
+const members = await page.$$eval('.demo .astryx-avatar-group[data-size="lg"][data-shape="rounded"] > :not(ax-tooltip)', (els) => els.map((e) => ({
   cls: e.className, size: e.getAttribute('data-size'), shape: e.getAttribute('data-shape'), w: Math.round(e.getBoundingClientRect().width),
 })));
 check('group size/shape win over members (lg, rounded; 48px + 2px ring each side)',

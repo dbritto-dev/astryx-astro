@@ -22,6 +22,7 @@ export {default as AvatarGroupOverflow} from './components/AvatarGroup/AvatarGro
 export {default as Badge} from './components/Badge/Badge.astro';
 export {default as Blockquote} from './components/Blockquote/Blockquote.astro';
 export {default as Button} from './components/Button/Button.astro';
+export {default as ButtonGroup} from './components/ButtonGroup/ButtonGroup.astro';
 export {default as Card} from './components/Card/Card.astro';
 export {default as Center} from './components/Center/Center.astro';
 export {default as Citation} from './components/Citation/Citation.astro';
@@ -79,6 +80,7 @@ export {default as Timer} from './components/Timer/Timer.astro';
 export {default as ToggleButton} from './components/ToggleButton/ToggleButton.astro';
 export {default as ToggleButtonGroup} from './components/ToggleButton/ToggleButtonGroup.astro';
 export {default as Token} from './components/Token/Token.astro';
+export {default as Toolbar} from './components/Toolbar/Toolbar.astro';
 export {default as Tooltip} from './components/Tooltip/Tooltip.astro';
 export {default as VisuallyHidden} from './components/VisuallyHidden/VisuallyHidden.astro';
 export {default as InternationalizationProvider} from './components/i18n/InternationalizationProvider.astro';

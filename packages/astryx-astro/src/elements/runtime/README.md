@@ -57,6 +57,8 @@ the topmost presented) the message goes to that dialog's own direct-child region
 | `createAnnouncer({hasReplace})` | one instance that states one value (each message withdraws its previous one) |
 | `announceText(el, {politeness?, fallbackText?})` | speak an element's rendered text |
 | `renderedText(el)` | text as AT reads it (hidden parts skipped, blocks apart) |
+| `blockText(el)` | each child as its own block (useAnnounceRenderedText `skipFirstRender`) |
+| `createRenderedTextAnnouncer(el, {skipFirstRender?, politeness?, fallbackText?})` | `{sync(isShown?, occasion?)}`: useAnnounceRenderedText for a DOM element — speaks once per occasion, silent while the page loads (skipFirstRender), inside a live container, or hidden; `behaviors/announceRenderedText.ts` drives it with a MutationObserver |
 | `clearAnnouncements(politeness)`, `topmostModal()`, `enclosingModal(el)`, `isExposedModal(d)` | |
 
 ## layerStack.ts — Escape, outside press, gestures
@@ -216,10 +218,13 @@ syncTabStops}`; `rovingFor(container)`; `syncRovingTabStops(root)`.
 ## disabledInteraction.ts
 
 One capture-phase document listener: a click on (or inside) an `aria-disabled="true"`
-control (`button, a, input, select, textarea, summary, [role], [tabindex]`) is cancelled and
-stopped before any handler; Enter/Space keydowns on it are cancelled (so no synthetic click,
-and no `popovertarget` activation). Import it from any component that renders
-`aria-disabled` controls (`disabledControlOf(target)` is exported for custom checks).
+control (`button, a, input, select, textarea, summary, [tabindex]`, widget roles such as
+`[role="button"]`/`link`/`tab`/`option`, and any `[data-ax-disabled-interaction]` element) is
+cancelled and stopped before any handler; Enter/Space keydowns on it are cancelled (so no
+synthetic click, and no `popovertarget` activation). An aria-disabled group/landmark role does
+not swallow its content's clicks. Import it from any component that renders `aria-disabled`
+controls (`disabledControlOf(target)` is exported for custom checks). It is the only
+disabled-interaction listener (the former `behaviors/disabledInteraction.ts` is merged here).
 
 ---
 

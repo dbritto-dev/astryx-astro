@@ -6,15 +6,14 @@
  * Takes the group's size, shape and overlap (stamped by AvatarGroup, cascade key
  * `avatar-group`); standalone it is md / circle with no overlap. A negative count is
  * clamped to 0. Accessible name: the translated "{count} more" (`label` overrides it).
- * Static it is `role="img"`; with `onClick` it is a <button type="button"> carrying
- * `data-avatar-item`, so the group becomes keyboard-navigable.
- *
- * `onClick` (port note): an inline handler string (native `onclick`) or `true` to render
- * the button and attach a listener yourself.
+ * Static it is `role="img"`; with `isClickable` (Astryx `onClick`) it is a
+ * <button type="button"> carrying `data-avatar-item`, so the group becomes
+ * keyboard-navigable, and each click dispatches `astryx-click` (bubbles, composed) with
+ * `detail: {event}` (behaviors/clickEvent.ts).
  *
  * @example
  * <AvatarGroupOverflow count={users.length - 3} />
- * <AvatarGroupOverflow count={12} onClick="openAllMembers()" />
+ * <AvatarGroupOverflow count={12} isClickable />   (el.addEventListener('astryx-click', …))
  */
 import type {HTMLAttributes} from 'astro/types';
 import {cx, themeProps} from '../../lib/themeProps';
@@ -24,18 +23,18 @@ import {translator} from '../../lib/i18n';
 import {resolveSize} from '../Avatar/avatarParts';
 import './AvatarGroup.css';
 
-export interface Props extends Omit<HTMLAttributes<'span'>, 'onclick'> {
+export interface Props extends HTMLAttributes<'span'> {
   /** The overflow count; "+N" by default. */
   count: number;
-  /** Renders a <button type="button">: an inline handler string, or `true` to wire it yourself. */
-  onClick?: string | true;
+  /** Renders a <button type="button"> (Astryx `onClick`); clicks dispatch `astryx-click` {event}. @default false */
+  isClickable?: boolean;
   /** Accessible name (port extension). @default translated "{count} more" */
   label?: string;
   /** Locale for the default accessible name. */
   locale?: string;
 }
 
-const {count, onClick, label: labelProp, locale, class: className, style, ...rest} = Astro.props;
+const {count, isClickable = false, label: labelProp, locale, class: className, style, ...rest} = Astro.props;
 const t = translator(Astro, locale);
 const safeCount = Math.max(0, Number.isFinite(count) ? count : 0);
 const label = labelProp ?? t('@astryx.avatarGroup.overflow', {count: safeCount});
@@ -44,7 +43,7 @@ const hasContent = Astro.slots.has('default');
 const size = 'md';
 const shape = 'circle';
 const {themeClass, attrs} = themeProps('avatar-group-overflow', {size, shape});
-const isButton = onClick != null && (onClick as unknown) !== false;
+const isButton = isClickable;
 const shared = {
   ...attrs,
   'aria-label': label,
@@ -54,7 +53,8 @@ const shared = {
 };
 ---
 {isButton ? (
-  <button type="button" onclick={typeof onClick === 'string' ? onClick : undefined} {...rest} {...shared} data-avatar-item="" class={cx(themeClass, 'ax-focus-visible', 'ax-overlay-image-neutral', className as string | undefined)}>{hasContent ? <slot /> : `+${safeCount}`}</button>
+  <button type="button" {...rest} {...shared} data-avatar-item="" data-ax-click-event="" class={cx(themeClass, 'ax-focus-visible', 'ax-overlay-image-neutral', className as string | undefined)}>{hasContent ? <slot /> : `+${safeCount}`}</button>
 ) : (
   <span role="img" {...rest} {...shared} class={cx(themeClass, className as string | undefined)}>{hasContent ? <slot /> : `+${safeCount}`}</span>
 )}
+{isButton && <script>import '../../behaviors/clickEvent';</script>}

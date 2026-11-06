@@ -4,7 +4,8 @@
  * Rule groups follow the stylex.props() order in Button.tsx:
  *   focusOutline.focusVisible (ax-focus-visible) → base → size → iconOnly →
  *   interactionOverlay.backgroundImage (ax-overlay-image) → inactive → disabled →
- *   ariaDisabled → link → pressable → elevation → width (inline) → variant.
+ *   ariaDisabled → link → pressable → elevation → width (inline) → variant → ButtonGroup
+ *   member (groupStyles; see the note there).
  * Shared-class overrides use one extra class (`.astryx-button.ax-focus-visible`), never
  * stylesheet order. Private state attributes: data-ax-icon-only (isIconOnly),
  * data-ax-disabled (truly disabled, not busy-only). Inactive = :disabled or
@@ -111,6 +112,60 @@
     .astryx-button[data-variant="destructive"] { border-width: 1px; border-style: solid; border-color: CanvasText; }
   }
   .astryx-button[data-variant="destructive"].ax-focus-visible:focus-visible { outline-color: var(--color-error); }
+
+  /*
+   * ButtonGroup member (groupStyles, onSolid*; `data-ax-group` is stamped by ButtonGroup).
+   * Placed after the variants: StyleX gives these border longhands priority over the
+   * variants' `border-width` / `border-color` shorthands whatever the order, which source order
+   * reproduces here. The trailing end cap is not `:last-child`: a member's own layer (a
+   * tooltip's popover, a template marker) may follow it (IS_LAST_ITEM, Astryx #2508). Port
+   * addition: `script` is skipped too — Astro renders a component's `<script>` tag in place,
+   * right after the first instance of that component on the page.
+   * A member never scales on press (`!buttonGroup && pressable`) and paints no elevation.
+   */
+  .astryx-button[data-ax-group],
+  .astryx-button[data-ax-group]:active { transform: none; }
+  .astryx-button[data-ax-group="horizontal"] {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    border-inline-start-width: var(--border-width);
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--color-border);
+  }
+  .astryx-button[data-ax-group="horizontal"]:first-child {
+    border-start-start-radius: var(--radius-element);
+    border-end-start-radius: var(--radius-element);
+    border-inline-start-width: 0;
+    border-inline-start-style: none;
+  }
+  .astryx-button[data-ax-group="horizontal"]:nth-last-child(1 of :not([popover]):not(template):not(dialog):not(script)) {
+    border-start-end-radius: var(--radius-element);
+    border-end-end-radius: var(--radius-element);
+  }
+  .astryx-button[data-ax-group="vertical"] {
+    border-start-start-radius: 0;
+    border-start-end-radius: 0;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    border-block-start-width: var(--border-width);
+    border-block-start-style: solid;
+    border-block-start-color: var(--color-border);
+  }
+  .astryx-button[data-ax-group="vertical"]:first-child {
+    border-start-start-radius: var(--radius-element);
+    border-start-end-radius: var(--radius-element);
+    border-block-start-width: 0;
+    border-block-start-style: none;
+  }
+  .astryx-button[data-ax-group="vertical"]:nth-last-child(1 of :not([popover]):not(template):not(dialog):not(script)) {
+    border-end-start-radius: var(--radius-element);
+    border-end-end-radius: var(--radius-element);
+  }
+  /* On a solid fill the divider takes the on-accent ink. */
+  .astryx-button[data-ax-group="horizontal"]:is([data-variant="primary"], [data-variant="destructive"]) { border-inline-start-color: var(--color-on-accent); }
+  .astryx-button[data-ax-group="vertical"]:is([data-variant="primary"], [data-variant="destructive"]) { border-block-start-color: var(--color-on-accent); }
 
   /* content */
   .ax-button-content { display: contents; }

@@ -21,6 +21,7 @@
  *   <MetadataListItem label="Status">Active</MetadataListItem>
  * </MetadataList>
  */
+import {uid} from '../../lib/uid';
 import type {HTMLAttributes} from 'astro/types';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
@@ -94,7 +95,7 @@ if (!isHorizontal) {
 }
 
 const items = layoutItems(await Astro.slots.render('default'), {inline: !isStacked, max: effectiveMax});
-const contentId = `ax-metadata-list-${Math.random().toString(36).slice(2, 10)}`;
+const contentId = uid(Astro, 'ax-metadata-list');
 const showMore = showMoreLabel ?? t('@astryx.metadataList.showMore');
 const showLess = showLessLabel ?? t('@astryx.metadataList.showLess');
 const hasTitle = Astro.slots.has('title') || (title != null && title !== '');

@@ -1,0 +1,138 @@
+---
+import ButtonGroup from './ButtonGroup.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import SizeProvider from '../Button/_ButtonSizeProvider.astro';
+import type {ComponentSize, Elevation} from '../../lib/types';
+
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-4)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const note = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Horizontal (default) — one Tab stop, arrow keys move between members</h3>
+    <div style={row}>
+      <ButtonGroup label="Clipboard" data-test="basic">
+        <Button label="Copy" />
+        <Button label="Cut" />
+        <Button label="Paste" />
+      </ButtonGroup>
+      <ButtonGroup label="History">
+        <IconButton label="Undo" icon="chevronLeft" />
+        <IconButton label="Redo" icon="chevronRight" />
+      </ButtonGroup>
+      <ButtonGroup label="Approve action">
+        <Button label="Allow once" variant="primary" />
+        <IconButton label="Allow options" icon="chevronDown" variant="primary" />
+      </ButtonGroup>
+      <ButtonGroup label="Delete action">
+        <Button label="Delete" variant="destructive" />
+        <IconButton label="More delete options" icon="chevronDown" variant="destructive" />
+      </ButtonGroup>
+      <ButtonGroup label="Ghost actions">
+        <Button label="Bold" variant="ghost" />
+        <Button label="Italic" variant="ghost" />
+      </ButtonGroup>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Vertical</h3>
+    <div style={row}>
+      <ButtonGroup label="Alignment" orientation="vertical" data-test="vertical">
+        <Button label="Top" icon="arrowUp" />
+        <Button label="Middle" icon="arrowsUpDown" />
+        <Button label="Bottom" icon="arrowDown" />
+      </ButtonGroup>
+      <ButtonGroup label="Zoom" orientation="vertical" size="sm">
+        <IconButton label="Zoom in" icon="arrowUp" />
+        <IconButton label="Zoom out" icon="arrowDown" />
+      </ButtonGroup>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes (members without their own size follow the group; icons follow too)</h3>
+    <div style={row} data-test="sizes">
+      {sizes.map((size) => (
+        <ButtonGroup label={`Formatting ${size}`} size={size} data-case={size}>
+          <Button label="Save" icon="check" />
+          <IconButton label="Search" icon="search" />
+          <Button label="Explicit sm" size="sm" data-explicit />
+        </ButtonGroup>
+      ))}
+      <SizeProvider size="lg">
+        <ButtonGroup label="Inherited size" data-case="inherited">
+          <Button label="Inherited" icon="check" />
+          <IconButton label="Also inherited" icon="search" />
+        </ButtonGroup>
+      </SizeProvider>
+    </div>
+    <p style={note}>The last group sets no size: it inherits lg from the surrounding size provider, and so do its members.</p>
+  </section>
+
+  <section>
+    <h3 style={cap}>Elevation (one shadow on the group; members paint none)</h3>
+    <div style={row} data-test="elevation">
+      {elevations.map((elevation) => (
+        <ButtonGroup label={`Floating ${elevation}`} elevation={elevation} data-case={elevation}>
+          <Button label={elevation} elevation="high" />
+          <IconButton label="Close" icon="close" />
+        </ButtonGroup>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Members with layers, links, disabled and busy members</h3>
+    <div style={row} data-test="members">
+      <ButtonGroup label="View options" data-case="tooltip-last">
+        <Button label="Grid" icon="viewColumns" tooltip="Show as a grid" />
+        <Button label="List" icon="menu" tooltip="Show as a list" />
+      </ButtonGroup>
+      <ButtonGroup label="Navigation" data-case="links">
+        <Button label="Docs" href="/components/button/" />
+        <Button label="Source" href="https://example.com" target="_blank" rel="noopener noreferrer" icon="externalLink" />
+      </ButtonGroup>
+      <ButtonGroup label="Partially available" data-case="partial">
+        <Button label="First" />
+        <Button label="Skipped" isDisabled />
+        <Button label="Third" />
+        <Button label="Saving" isLoading />
+      </ButtonGroup>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled group</h3>
+    <div style={row} data-test="disabled">
+      <ButtonGroup label="Locked actions" isDisabled data-case="disabled">
+        <Button label="Archive" icon="upload" />
+        <Button label="Move" tooltip="Requires edit access" data-case-member="tooltip" />
+        <Button label="Open" href="/components/link/" data-case-member="link" />
+        <Button label="Sync" isLoading data-case-member="busy" />
+        <IconButton label="More" icon="moreHorizontal" />
+      </ButtonGroup>
+      <ButtonGroup label="Locked vertical" orientation="vertical" isDisabled size="sm">
+        <Button label="Up" icon="arrowUp" />
+        <Button label="Down" icon="arrowDown" />
+      </ButtonGroup>
+    </div>
+    <p style={note}>Every member is disabled (native <code>disabled</code>); one with a tooltip stays focusable through <code>aria-disabled</code> and is inert; a link member renders a button.</p>
+  </section>
+
+  <section>
+    <h3 style={cap}>Right-to-left</h3>
+    <div style={row} dir="rtl" data-test="rtl">
+      <ButtonGroup label="RTL actions">
+        <Button label="First" />
+        <Button label="Second" />
+        <Button label="Third"><Icon slot="icon" icon="chevronLeft" class="ax-mirror-rtl" /></Button>
+      </ButtonGroup>
+    </div>
+  </section>
+</div>

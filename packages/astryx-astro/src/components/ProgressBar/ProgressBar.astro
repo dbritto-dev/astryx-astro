@@ -8,7 +8,9 @@
  * hidden label stays in the tree), with aria-valuenow (clamped to 0…max), aria-valuemin 0,
  * aria-valuemax and aria-valuetext = the formatted value; indeterminate bars expose none of
  * the values. A non-finite value or max counts as 0. Marks sit outside the progressbar as
- * focusable `role="img"` ticks named by their label.
+ * focusable `role="img"` ticks named by their label, each revealing the label in a Tooltip
+ * above it on hover and on any keyboard focus (Astryx ProgressBarMarkTooltip:
+ * `placement="above"`, `focusTrigger="always"`; the tooltip also describes the tick).
  *
  * Motion: the fill slides with a transform (--duration-medium); under a coarse pointer it
  * moves linearly and never draws shorter than 16px above zero; the indeterminate bar
@@ -20,9 +22,8 @@
  * `--_progressbar-mark-width/-height` a theme's mark width/height become.
  *
  * Port notes: values are server-rendered (no client animation between values unless you
- * update `--_progress-bar-fill` and the aria-value* attributes yourself); Astryx reveals a
- * mark's label in a Tooltip, which is not ported yet; the touch layer's measured
- * "drawn share" for mark colouring under a finger is not reproduced.
+ * update `--_progress-bar-fill` and the aria-value* attributes yourself); the touch layer's
+ * measured "drawn share" for mark colouring under a finger is not reproduced.
  *
  * @example
  * <ProgressBar value={75} label="Upload progress" />
@@ -30,8 +31,11 @@
  * <ProgressBar value={3.2} max={5} label="Disk usage" hasValueLabel formatValueLabel={(v, m) => `${v} GB / ${m} GB`} />
  * <ProgressBar value={45} label="Fundraiser" marks={[{value: 80, label: 'Goal'}]} />
  */
+import {uid} from '../../lib/uid';
 import type {HTMLAttributes} from 'astro/types';
 import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import './ProgressBar.css';
@@ -42,7 +46,7 @@ export type ProgressBarVariant = 'accent' | 'success' | 'warning' | 'error' | 'n
 /** A fixed target mark on the track, in the same 0..max scale as `value`. */
 export interface ProgressBarMark {
   value: number;
-  /** Required: the mark's accessible name (and, in Astryx, its tooltip). */
+  /** Required: the mark's accessible name and its tooltip text. */
   label: string;
 }
 
@@ -102,7 +106,7 @@ const {
   ...rest
 } = Astro.props;
 
-const labelId = `ax-progress-label-${Math.random().toString(36).slice(2, 10)}`;
+const labelId = uid(Astro, 'ax-progress-label');
 const safeValue = Number.isFinite(value) ? value : 0;
 const safeMax = Number.isFinite(max) ? max : 0;
 const clampedValue = Math.min(Math.max(0, safeValue), safeMax);
@@ -160,5 +164,6 @@ const fillStyle = isIndeterminate
   style={fillStyle}
 ></div></div>{resolvedMarks.map((mark) => {
   const m = themeProps('progress-bar-mark', {variant: fillVariant, placement: mark.isOnFill ? 'fill' : 'track'});
-  return <span role="img" aria-label={mark.label} tabindex="0" class={cx(m.themeClass, 'ax-focus-visible')} {...m.attrs} style={`inset-inline-start:${mark.pct}%`}></span>;
+  const tip = attachTooltip();
+  return <Fragment><span role="img" aria-label={mark.label} tabindex="0" class={cx(m.themeClass, 'ax-focus-visible')} {...m.attrs} {...tip.trigger} style={`inset-inline-start:${mark.pct}%`}></span><Tooltip {...tip.layer} content={mark.label} placement="above" focusTrigger="always" /></Fragment>;
 })}</div></div>

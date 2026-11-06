@@ -12,12 +12,12 @@
  * A ToggleButtonGroup member with a value is left to its group (behaviors/
  * toggleButtonGroup.ts): member callbacks are ignored, as in Astryx.
  * Disabled toggles never get here: native `disabled` dispatches no click and an
- * aria-disabled one is stopped by behaviors/disabledInteraction.ts.
+ * aria-disabled one is stopped by elements/runtime/disabledInteraction.ts.
  *
  * Imperative API on the element: `isPressed` (get / set; setting does not dispatch).
  */
 import {defineBehavior} from '../elements/behavior';
-import './disabledInteraction';
+import '../elements/runtime/disabledInteraction';
 
 export interface PressedChangeDetail {
   isPressed: boolean;
