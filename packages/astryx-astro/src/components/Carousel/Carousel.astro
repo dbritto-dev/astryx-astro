@@ -22,8 +22,9 @@
  * runs out, focus moves to the scroller (preventScroll), never to <body>. Clicks scroll by
  * about one viewport (`clientWidth − half an item`), smooth unless reduced motion.
  *
- * Element API (CarouselHandle): `scrollNext()`, `scrollPrev()`, `scrollTo(index)`,
- * `canScrollNext()`, `canScrollPrev()`. State attributes on the scroller:
+ * Element API (CarouselHandle): `scrollNext()`, `scrollPrev()`, `scrollTo(index)` (also
+ * `scrollToIndex(index)`; Element.scrollTo's options / x,y forms pass through),
+ * `canScrollNext()`, `canScrollPrev()`. Deferred: none (Astryx has no autoplay or swipe paging). State attributes on the scroller:
  * `data-ax-overflow-start|end`, `data-ax-fade="start|end|both"`.
  *
  * @example

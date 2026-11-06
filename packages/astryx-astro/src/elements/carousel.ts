@@ -112,8 +112,21 @@ export class AxCarousel extends HTMLElement {
     this.#scrollBy(-1);
   }
 
-  /** Bring item `index` (clamped) to the start edge, scrolling only the carousel. */
-  scrollTo(index: number): void {
+  /**
+   * CarouselHandle.scrollTo(index): bring item `index` (clamped) to the start edge, scrolling
+   * only the carousel. Element.scrollTo's own forms (options, or x and y) pass through.
+   */
+  override scrollTo(index?: number | ScrollToOptions, y?: number): void {
+    if (typeof index !== 'number' || y !== undefined) {
+      if (typeof index === 'number') super.scrollTo(index, y ?? 0);
+      else super.scrollTo(index);
+      return;
+    }
+    this.scrollToIndex(index);
+  }
+
+  /** The same as `scrollTo(index)`, without the Element overload. */
+  scrollToIndex(index: number): void {
     const el = this.scroller;
     const items = el?.children;
     if (!el || !items || items.length === 0) return;

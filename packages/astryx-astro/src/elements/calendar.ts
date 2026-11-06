@@ -61,7 +61,7 @@ function parseValueAttr(raw: string | null): CalendarValue {
       return null;
     }
   }
-  return raw;
+  return raw as ISODateString;
 }
 
 const serializeValue = (v: CalendarValue) => (v == null ? null : typeof v === 'string' ? v : JSON.stringify({start: v.start, end: v.end}));

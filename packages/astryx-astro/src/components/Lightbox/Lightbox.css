@@ -1,0 +1,122 @@
+/*
+ * Port of @astryxdesign/core Lightbox/Lightbox.tsx (styles). The dialog also carries
+ * `ax-layer` (Layer.css: layerTextReset + layerStructureReset at zero specificity) and
+ * `data-astryx-layer-root` (shared.css: overlayPaddingReset); page scroll lock comes from
+ * `data-ax-scroll-lock` (shared.css). Theme hook: .astryx-lightbox.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  ax-lightbox { display: contents; }
+
+  .astryx-lightbox {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    /* The dynamic viewport: what a mobile browser shows (the caption stays above its toolbar). */
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    overflow: hidden;
+    outline: none;
+  }
+  .astryx-lightbox::backdrop {
+    background-color: var(--color-overlay);
+    backdrop-filter: blur(2px);
+  }
+
+  .ax-lightbox-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  .ax-lightbox-media-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .ax-lightbox-image-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+    min-height: 0;
+  }
+  .ax-lightbox-image-wrapper[data-ax-zoomable] { cursor: zoom-in; }
+  .ax-lightbox-image-wrapper[data-ax-zoomable][data-ax-zoomed] { cursor: grab; }
+  .ax-lightbox-image-wrapper[data-ax-zoomable][data-ax-dragging] { cursor: grabbing; }
+
+  .ax-lightbox-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    transition-property: transform;
+    transition-duration: 200ms;
+    transition-timing-function: ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-lightbox-image { transition-duration: 0ms; }
+  }
+  .ax-lightbox-image[data-ax-dragging] { transition-property: none; }
+  .ax-lightbox-video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    outline: none;
+  }
+  .ax-lightbox-caption {
+    color: var(--color-on-dark);
+    font-size: var(--text-large-size);
+    line-height: var(--text-large-leading);
+    text-align: center;
+    padding-block-start: var(--spacing-2);
+    padding-block-end: 0;
+    padding-inline: var(--spacing-3);
+    max-width: 600px;
+    flex-shrink: 0;
+  }
+  .ax-lightbox-caption[hidden] { display: none; }
+
+  /* Controls: ghost IconButtons placed over the viewer (closeButton / navButton + controlButton). */
+  .ax-lightbox-close.astryx-button {
+    position: absolute;
+    top: var(--spacing-3);
+    inset-inline-end: var(--spacing-3);
+    z-index: 1;
+  }
+  .ax-lightbox-nav.astryx-button {
+    position: absolute;
+    top: 50%;
+    /* `translate`, not `transform`: it composes with Button's own press scale. */
+    translate: 0 -50%;
+    z-index: 1;
+  }
+  .ax-lightbox-nav.astryx-button[data-side="prev"] { inset-inline-start: var(--spacing-3); }
+  .ax-lightbox-nav.astryx-button[data-side="next"] { inset-inline-end: var(--spacing-3); }
+  .ax-lightbox-control.astryx-button[data-variant] { color: var(--color-on-dark); }
+  .ax-lightbox-counter {
+    position: absolute;
+    top: var(--spacing-3);
+    inset-inline-start: var(--spacing-3);
+    color: var(--color-on-dark);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    z-index: 1;
+  }
+}

@@ -1,0 +1,185 @@
+---
+/**
+ * Lightbox — a fullscreen modal viewer for images and videos, single or gallery, with
+ * captions, a counter, keyboard and button navigation and optional zoom. Port of
+ * @astryxdesign/core Lightbox/Lightbox.tsx (styles, KEYBOARD_PAN_OFFSETS, zoom/pan, gallery
+ * announcements) and Lightbox/useLightbox.tsx (the trigger contract, see ./trigger.ts), with
+ * Layer/useLayerDismissal.ts, hooks/useScrollLock.ts, hooks/useFocusTrap.ts
+ * (useFocusRegionContainment) and hooks/ModalAnnounceProvider.tsx through the runtime.
+ * Behaviour: src/elements/lightbox.ts (`<ax-lightbox>`, a display:contents wrapper that owns
+ * the API; the theme target is the `<dialog class="astryx-lightbox">`).
+ *
+ * The dialog opens with `showModal()` (top layer, inert page, `::backdrop` overlay + blur),
+ * locks page scroll (`data-ax-scroll-lock`), joins the one Escape stack (Escape and the
+ * platform close request close it, top-most only, never mid-IME), closes on a backdrop press
+ * (not after a pan drag), keeps Tab inside it, and returns focus to the opener without
+ * scrolling (ring per last input). Its name is the current item's alt (else "Media viewer").
+ * Gallery (`media` array, > 1 item): Previous/Next IconButtons stay mounted and disable at the
+ * ends; ArrowLeft/ArrowRight follow the rendered direction (in RTL ArrowLeft is next); a
+ * counter shows "n / total"; each move during an open session is announced ("<alt>, 3 of 12"
+ * or "Image 3 of 12") in the dialog's own live region. Video items get native controls.
+ *
+ * Zoom (`hasZoom`, images, mouse and keyboard as in Astryx): double-click, Enter/Space on the
+ * focusable image wrapper (`role="button"` "Zoom", `aria-pressed`) or `+`/`=` and `-` toggle
+ * 2×; while zoomed, arrows pan 50px and a pointer drag pans; "Zoomed in, use arrow keys to pan"
+ * / "Zoomed out" are announced. Deferred: none of Astryx's own paths (it has no pinch).
+ *
+ * API (`<ax-lightbox>`): `open(index?)`, `close()`, `isOpen`, `index` (get/set), `next()`,
+ * `prev()`. Events (bubbling): `astryx-open-change` `{isOpen}`, `astryx-index-change` `{index}`.
+ * Triggers: `data-ax-lightbox="<id>"` (+ `data-ax-lightbox-index`) on any element opens it on
+ * click (and Enter/Space for non-buttons); `lightboxTriggerProps(id, index?)` gives
+ * useLightbox's `role="button"` / `tabindex` / `aria-haspopup="dialog"` attributes.
+ *
+ * Port notes: `isOpen` / `index` / `defaultIndex` seed the initial state (the element owns it
+ * afterwards; `onOpenChange` / `onIndexChange` → the events). `caption` is text. `hasAutoPlay`
+ * starts the video when the viewer opens (and pauses it on close) instead of an `autoplay`
+ * attribute, which would play inside the closed dialog of a server-rendered page.
+ *
+ * @example
+ * <button data-ax-lightbox="photos" data-ax-lightbox-index="2">Open</button>
+ * <Lightbox id="photos" media={[{src: a, alt: 'Harbour'}, {src: b, alt: 'Pier', caption: 'At dusk'}]} hasZoom />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import '../Layer/Layer.css';
+import './Lightbox.css';
+
+export type LightboxMediaType = 'image' | 'video';
+
+export interface LightboxMedia {
+  /** Media source URL. */
+  src: string;
+  /** Alt text (the `aria-label` of a video). */
+  alt: string;
+  /** Caption shown below the media. */
+  caption?: string;
+  /** @default 'image' */
+  type?: LightboxMediaType;
+}
+
+export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open'> {
+  /** One item, or an array for gallery mode. */
+  media: LightboxMedia | LightboxMedia[];
+  /** Open on load. @default false */
+  isOpen?: boolean;
+  /** Initial gallery index (Astryx `index`, controlled; here a seed like defaultIndex). */
+  index?: number;
+  /** Initial gallery index. @default 0 */
+  defaultIndex?: number;
+  /** Double-click / Enter / Space / + / - zoom for images; drag or arrows pan while zoomed. @default false */
+  hasZoom?: boolean;
+  /** Play a video item when the viewer opens. @default false */
+  hasAutoPlay?: boolean;
+  /** Locale for the translated labels (port extension). */
+  locale?: string;
+}
+
+const {
+  media,
+  isOpen = false,
+  index: indexProp,
+  defaultIndex = 0,
+  hasZoom = false,
+  hasAutoPlay = false,
+  locale,
+  id: idProp,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const items = Array.isArray(media) ? media : [media];
+const isGallery = items.length > 1;
+const startIndex = Math.max(0, Math.min(indexProp ?? defaultIndex, Math.max(0, items.length - 1)));
+const current = items[startIndex] ?? null;
+const id = idProp ?? uid(Astro, 'ax-lightbox');
+// Per-item strings computed here (the position message formats numbers with ICU).
+const payload = items.map((item, i) => ({
+  src: item.src,
+  alt: item.alt,
+  caption: item.caption ?? '',
+  type: item.type ?? 'image',
+  announce: item.alt
+    ? t('@astryx.lightbox.mediaPosition', {alt: item.alt, index: i + 1, total: items.length})
+    : t('@astryx.lightbox.imagePosition', {index: i + 1, total: items.length}),
+}));
+const isVideo = current?.type === 'video';
+const isZoomTarget = hasZoom && !isVideo;
+const {themeClass, attrs} = themeProps('lightbox');
+const Root = 'ax-lightbox' as 'div';
+---
+{current && (
+  <Root
+    id={id}
+    data-ax-media={JSON.stringify(payload)}
+    data-ax-index={String(startIndex)}
+    data-ax-zoom={hasZoom ? '' : undefined}
+    data-ax-autoplay={hasAutoPlay ? '' : undefined}
+    data-ax-open={isOpen ? 'true' : undefined}
+    data-ax-viewer-label={t('@astryx.lightbox.mediaViewer')}
+    data-ax-zoomed-in={t('@astryx.lightbox.zoomedIn')}
+    data-ax-zoomed-out={t('@astryx.lightbox.zoomedOut')}
+  >
+    <dialog
+      {...rest}
+      class={cx(themeClass, 'ax-layer', className)}
+      {...attrs}
+      aria-label={current.alt || t('@astryx.lightbox.mediaViewer')}
+      data-astryx-layer-root=""
+      data-ax-scroll-lock=""
+    >
+      <div class="ax-lightbox-container">
+        <IconButton
+          class="ax-lightbox-close ax-lightbox-control"
+          label={t('@astryx.lightbox.close')}
+          variant="ghost"
+          data-ax-lightbox-action="close"
+          locale={locale}
+        ><Icon slot="icon" icon="close" size="sm" color="inherit" /></IconButton>
+        {isGallery && (
+          <IconButton
+            class="ax-lightbox-nav ax-lightbox-control"
+            data-side="prev"
+            label={t('@astryx.lightbox.previous')}
+            variant="ghost"
+            isDisabled={startIndex <= 0}
+            data-ax-lightbox-action="prev"
+            locale={locale}
+          ><Icon slot="icon" icon="chevronLeft" size="sm" color="inherit" class="ax-mirror-rtl" /></IconButton>
+        )}
+        <div class="ax-lightbox-media-group">
+          <div
+            class="ax-lightbox-image-wrapper ax-focus-visible"
+            role={isZoomTarget ? 'button' : undefined}
+            tabindex={isZoomTarget ? '0' : undefined}
+            aria-pressed={isZoomTarget ? 'false' : undefined}
+            aria-label={isZoomTarget ? t('@astryx.lightbox.zoom') : undefined}
+            data-ax-zoomable={isZoomTarget ? '' : undefined}
+            data-ax-zoom-label={hasZoom ? t('@astryx.lightbox.zoom') : undefined}
+          >{isVideo
+            ? <video src={current.src} aria-label={current.alt} controls class="ax-lightbox-video" preload="metadata" />
+            : <img src={current.src} alt={current.alt} draggable="false" class="ax-lightbox-image" loading="lazy" />
+          }</div>
+          <div class="ax-lightbox-caption" hidden={current.caption ? undefined : true}>{current.caption}</div>
+        </div>
+        {isGallery && (
+          <IconButton
+            class="ax-lightbox-nav ax-lightbox-control"
+            data-side="next"
+            label={t('@astryx.lightbox.next')}
+            variant="ghost"
+            isDisabled={startIndex >= items.length - 1}
+            data-ax-lightbox-action="next"
+            locale={locale}
+          ><Icon slot="icon" icon="chevronRight" size="sm" color="inherit" class="ax-mirror-rtl" /></IconButton>
+        )}
+        {isGallery && <div class="ax-lightbox-counter">{startIndex + 1} / {items.length}</div>}
+      </div>
+    </dialog>
+  </Root>
+)}
+<script>import '../../elements/lightbox';</script>
