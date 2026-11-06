@@ -1,0 +1,101 @@
+/*
+ * Port of @astryxdesign/core Citation/Citation.tsx (styles). Rule groups follow the React
+ * stylex.props() order: label → labelWithIcon → labelHover → labelInteractive;
+ * number → numberHover → numberInteractive. Hover / interactive styles apply to the linked
+ * form only (`<a href>`); the hover guard and (hover: hover) gating are Astryx's.
+ * Themes restyle `.astryx-citation[data-variant="number"]` (neutral retunes its
+ * --color-text-secondary), which these rules read.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── label ────────────────────────────────────────────────────────────── */
+  .astryx-citation[data-variant="label"] {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    vertical-align: baseline;
+    height: var(--spacing-5);
+    font-size: var(--text-supporting-size);
+    font-weight: var(--text-supporting-weight);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-element);
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--color-border);
+    padding-inline: var(--spacing-2);
+    margin-inline-start: var(--spacing-0-5);
+    text-decoration: none;
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--duration-fast-max);
+    transition-timing-function: var(--ease-standard);
+    max-width: 15em;
+    overflow: hidden;
+  }
+  .astryx-citation[data-variant="label"][data-has-icon] { padding-inline-start: var(--spacing-0-5); }
+  .astryx-citation[data-variant="label"]:where([href]) { color: var(--color-text-secondary); }
+  @media (hover: hover) {
+    .astryx-citation[data-variant="label"]:where([href]):hover:where(:not(:disabled, [aria-disabled="true"])) {
+      background-color: var(--color-overlay-hover);
+      color: var(--color-text-primary);
+    }
+  }
+  .astryx-citation[data-variant="label"]:where([href]) { cursor: pointer; }
+  .astryx-citation[data-variant="label"]:where([href]):is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  .astryx-citation > .ax-citation-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .astryx-citation > .ax-citation-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    border-radius: var(--radius-full);
+    background-color: var(--color-background-surface);
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--color-border);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .astryx-citation > .ax-citation-icon > .ax-citation-image {
+    width: var(--spacing-3);
+    height: var(--spacing-3);
+  }
+
+  /* ── number ───────────────────────────────────────────────────────────── */
+  .astryx-citation[data-variant="number"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: super;
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    background-color: var(--color-accent-muted);
+    border-radius: var(--radius-full);
+    min-width: var(--spacing-5);
+    height: var(--spacing-5);
+    padding-inline: var(--spacing-1);
+    text-decoration: none;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast-max);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-citation[data-variant="number"]:where([href]) { background-color: var(--color-accent-muted); }
+  @media (hover: hover) {
+    .astryx-citation[data-variant="number"]:where([href]):hover:where(:not(:disabled, [aria-disabled="true"])) {
+      background-color: var(--color-overlay-hover);
+    }
+  }
+  .astryx-citation[data-variant="number"]:where([href]) { cursor: pointer; }
+  .astryx-citation[data-variant="number"]:where([href]):is(:disabled, [aria-disabled="true"]) { cursor: default; }
+}

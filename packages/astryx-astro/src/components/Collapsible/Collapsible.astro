@@ -1,0 +1,133 @@
+---
+/**
+ * Collapsible — a trigger button that shows and hides a content region (disclosure).
+ * Port of @astryxdesign/core Collapsible/Collapsible.tsx, useCollapsible.ts,
+ * CollapsibleGroupContext.tsx (presentation), utils/focusReturn.ts + useFocusLeavingChange.ts
+ * (focus kept across collapse); behaviour in src/elements/collapsible.ts (<ax-collapsible>).
+ *
+ * Markup (as Astryx): root `.astryx-collapsible` (`data-density`, `data-divided` in a divided
+ * group) > `<button type="button" aria-expanded aria-controls>` `.astryx-collapsible-trigger`
+ * (`data-density`, `data-chevron-position`, `data-open`, `data-disabled`) + region
+ * `.astryx-collapsible-content` (`data-density`, `data-open`). Closed content is hidden in the
+ * server HTML, as Astryx's SSR renders it, but with `hidden="until-found"` instead of
+ * `display: none`: find-in-page and text fragments still reach it and open the item (also
+ * before the script loads). A disabled closed item uses plain `hidden`.
+ *
+ * State: `isOpen` / `defaultIsOpen` (default true) set the server-rendered state; the
+ * element owns it afterwards. Inside a CollapsibleGroup an item with `value` takes the
+ * group's open set instead. Disabled: `aria-disabled` + `tabindex="-1"`, never native
+ * `disabled`; an open disabled item stays open.
+ * Focus inside the content when it closes moves to this trigger, without a ring after
+ * pointer input (focusForLastInput).
+ *
+ * Group presentation arrives by cascade stamping (lib/cascade.ts keys
+ * `collapsible-density`, `collapsible-divided`, `collapsible-chevron-position`;
+ * `collapsible-group` for the open state, see collapsibleSsr.ts). Like Astryx, the item
+ * resets presentation around its children, so nested collapsibles stay chrome-free.
+ *
+ * Element API: `isOpen` (get/set), `open()`, `close()`, `toggle()`, `value`.
+ * Events (bubbling, composed): `astryx-open-change` {isOpen} after a user toggle of a
+ * standalone item (a grouped item reports through the group's `astryx-change`).
+ *
+ * `animatedLayout` (Astryx: a useAnimatedLayout handle) is a boolean here: the content
+ * height glides open/closed on the `springs.settle` curve (CSS `interpolate-size`, where
+ * supported) with the chevron on the same timing; Reduce Motion is an immediate change
+ * (a 200 ms cross-fade on coarse pointers). Without it the change is immediate, as in Astryx.
+ * Deferred (AGENTS scope): the coarse-pointer press controller (usePressFeedback) and the
+ * FLIP glide of content outside the Collapsible (it reflows with the height instead).
+ *
+ * @example
+ * <Collapsible trigger="Details">Collapsible content</Collapsible>
+ * <Collapsible defaultIsOpen={false} chevronPosition="start"><Fragment slot="trigger">…</Fragment>…</Collapsible>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits, stamp} from '../../lib/cascade';
+import Icon from '../Icon/Icon.astro';
+import {CHEVRON_KEY, DENSITY_KEY, DIVIDED_KEY, GROUP_KEY, uid, type CollapsibleChevronPosition} from './collapsibleSsr';
+import './Collapsible.css';
+
+export type {CollapsibleChevronPosition, CollapsibleGroupDensity} from './collapsibleSsr';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Trigger content (always visible), as text; or pass markup in the `trigger` slot. */
+  trigger?: string;
+  /** Initial open state for a standalone item. Ignored when `value` binds it to a group. @default true */
+  defaultIsOpen?: boolean;
+  /** Server-rendered open state for a standalone item (the element owns it afterwards). */
+  isOpen?: boolean;
+  /** Not toggleable: dimmed, `aria-disabled`, out of the tab order. @default false */
+  isDisabled?: boolean;
+  /**
+   * `end`: trailing chevron, down when closed, up when open. `start`: leading arrow, inward
+   * when closed (mirrored in RTL), down when open. @default the group's chevronPosition, else 'end'
+   */
+  chevronPosition?: CollapsibleChevronPosition;
+  /** Identifier within a CollapsibleGroup; the group then owns the open state. */
+  value?: string;
+  /** Animate the height change (Astryx `animatedLayout`). @default false */
+  animatedLayout?: boolean;
+}
+
+const {
+  trigger,
+  defaultIsOpen,
+  isOpen: isOpenProp,
+  isDisabled = false,
+  chevronPosition,
+  value,
+  animatedLayout = false,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const isOpen = isOpenProp ?? defaultIsOpen ?? true;
+const position: CollapsibleChevronPosition = chevronPosition ?? 'end';
+const isChevronAtStart = position === 'start';
+const contentId = uid(Astro, 'ax-collapsible-content');
+
+const triggerHtml = Astro.slots.has('trigger') ? await Astro.slots.render('trigger') : null;
+// Presentation context reset around children: nested collapsibles never inherit row chrome.
+const contentHtml = Astro.slots.has('default')
+  ? await stamp(await Astro.slots.render('default'), {[DENSITY_KEY]: null, [DIVIDED_KEY]: null, [CHEVRON_KEY]: null})
+  : '';
+
+const root = themeProps('collapsible');
+const triggerTheme = themeProps('collapsible-trigger', {
+  chevronPosition: position,
+  open: isOpen ? 'open' : null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const contentTheme = themeProps('collapsible-content', {open: isOpen ? 'open' : null});
+---
+<ax-collapsible
+  class={cx(root.themeClass, className)}
+  {...root.attrs}
+  data-value={value}
+  data-ax-animate={animatedLayout ? '' : undefined}
+  data-ax-inherit={inherits({[DENSITY_KEY]: true, [DIVIDED_KEY]: true, [GROUP_KEY]: value != null})}
+  {...rest}
+>
+  <button
+    type="button"
+    class={cx(triggerTheme.themeClass, 'ax-focus-visible', 'ax-overlay-pressed-bg')}
+    {...triggerTheme.attrs}
+    aria-expanded={String(isOpen)}
+    aria-controls={contentId}
+    aria-disabled={isDisabled ? 'true' : undefined}
+    tabindex={isDisabled ? -1 : undefined}
+    data-ax-inherit={inherits({[DENSITY_KEY]: true, [CHEVRON_KEY]: chevronPosition === undefined})}
+  >
+    {isChevronAtStart && <Icon icon="chevronRight" size="sm" color="secondary" class="ax-collapsible-chevron" />}
+    <span class="ax-collapsible-label">{triggerHtml != null ? <Fragment set:html={triggerHtml} /> : trigger}</span>
+    {!isChevronAtStart && <Icon icon="chevronDown" size="sm" color="secondary" class="ax-collapsible-chevron" />}
+  </button>
+  <div
+    id={contentId}
+    class={contentTheme.themeClass}
+    {...contentTheme.attrs}
+    hidden={isOpen ? undefined : isDisabled ? '' : 'until-found'}
+    data-ax-inherit={DENSITY_KEY}
+  ><Fragment set:html={contentHtml} /></div>
+</ax-collapsible>
+<script>import '../../elements/collapsible';</script>

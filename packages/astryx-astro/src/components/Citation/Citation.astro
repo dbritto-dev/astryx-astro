@@ -1,0 +1,95 @@
+---
+/**
+ * Citation — an inline reference to an external source: a label chip with the source title
+ * (and optional icon), or a compact superscript number badge.
+ * Port of @astryxdesign/core Citation/Citation.tsx. No client JS.
+ *
+ * Navigation safety (contract #16): `source.url` goes through `safeHref()`. An accepted URL
+ * renders `<a role="doc-noteref" target="_blank" rel="noopener noreferrer">` with hover
+ * paint; a missing or rejected one renders an inert `<span role="group">` that still shows
+ * the citation. Both are named `@astryx.citation.label` ("Citation {number}: {title}") and
+ * carry `title`; the icon is decorative.
+ *
+ * Icon (label variant only), as Astryx resolves it: the `icon` slot (markup, as-is) or an
+ * Astro component in `source.icon` (rendered as a `sm` Icon) wins; else an image URL from
+ * `source.src`, or a string `source.icon` (Astryx's favicon back-compat: a string is an image
+ * URL, not an icon name), rendered as `<img alt="">`.
+ *
+ * @example
+ * <Citation number={1} source={{title: 'Astryx Design', url: 'https://example.com'}} />
+ * <Citation number={2} variant="number" source={{title: 'MDN', url: 'https://developer.mozilla.org'}} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {safeHref} from '../../lib/safeUrl';
+import {translator} from '../../lib/i18n';
+import Icon from '../Icon/Icon.astro';
+import {isAstroIconComponent, type AstroIconComponent} from '../Icon/iconRegistry';
+import './Citation.css';
+
+export interface CitationSource {
+  title?: string;
+  url?: string;
+  /** Image URL for a favicon or source logo, rendered as `<img src>` in the icon circle. */
+  src?: string;
+  /**
+   * Source icon before the label (label variant only): an Astro component (rendered as an
+   * Icon), or a string image URL (back-compat with favicon URLs). Markup goes in the `icon` slot.
+   */
+  icon?: string | AstroIconComponent;
+}
+
+export interface Props extends HTMLAttributes<'a'> {
+  /** Source: title, url, optional image `src` and `icon`. */
+  source: CitationSource;
+  /** The display index for this citation. */
+  number: number;
+  /** A label chip with the source title, or a compact numbered badge. @default 'label' */
+  variant?: 'label' | 'number';
+  /** Locale for the accessible name. @default the request locale */
+  locale?: string;
+}
+
+const {source, number, variant = 'label', locale, class: className, ...rest} = Astro.props;
+const t = translator(Astro, locale);
+const title = source.title ?? String(number);
+const href = source.url != null ? safeHref(source.url) : undefined;
+
+const iconComponent = source.icon != null && typeof source.icon !== 'string' && isAstroIconComponent(source.icon) ? source.icon : null;
+// renderIconSlot: markup renders as-is; a component type becomes a `sm` Icon.
+const iconHtml = variant === 'label' && Astro.slots.has('icon') ? await Astro.slots.render('icon') : null;
+const imageSrc = source.src ?? (typeof source.icon === 'string' ? source.icon : undefined);
+const hasIcon = iconHtml != null || iconComponent != null || imageSrc != null;
+
+const Tag = href ? 'a' : 'span';
+// doc-noteref is a link role; the inert span takes a naming role instead.
+const noteRole = href ? 'doc-noteref' : 'group';
+const linkProps = href ? {href, target: '_blank', rel: 'noopener noreferrer', title} : {title};
+const {themeClass, attrs} = themeProps('citation', {variant});
+---
+{variant === 'number' ? (
+  <Tag
+    {...rest}
+    role={noteRole}
+    aria-label={t('@astryx.citation.label', {number, title})}
+    {...linkProps}
+    class={cx(themeClass, className)}
+    {...attrs}
+  >{number}</Tag>
+) : (
+  <Tag
+    {...rest}
+    role={noteRole}
+    aria-label={t('@astryx.citation.label', {number, title})}
+    {...linkProps}
+    class={cx(themeClass, className)}
+    {...attrs}
+    data-has-icon={hasIcon ? '' : undefined}
+  >{hasIcon && (
+    <span aria-hidden="true" class="ax-citation-icon">{
+      iconHtml != null ? <Fragment set:html={iconHtml} />
+      : iconComponent != null ? <Icon icon={iconComponent} size="sm" />
+      : <img src={imageSrc} alt="" class="ax-citation-image" />
+    }</span>
+  )}<span class="ax-citation-label">{title}</span></Tag>
+)}
