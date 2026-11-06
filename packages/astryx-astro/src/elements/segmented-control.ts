@@ -3,12 +3,14 @@
  * painted `.astryx-segmented-control`). Port of @astryxdesign/core
  * SegmentedControl/SegmentedControl.tsx (selection-follows-focus, orderTabStop),
  * SegmentedControlItem.tsx (click selection), the fine-pointer path of
- * useSegmentedSelectionMotion.ts (lens slide on the segments' own transition timing) and
- * hooks/useKeyboardHint.tsx.
+ * useSegmentedSelectionMotion.ts (lens slide on the segments' own transition timing) and the
+ * useKeyboardHint wiring (runtime/keyboardHint.ts, on the `:scope > [data-ax-keyboard-hint]`
+ * layer, enabled while the control is not disabled).
  *
  * Arrow / Home / End navigation comes from runtime/roving.ts (`data-astryx-roving`, tab stops
- * managed here: `data-astryx-roving-tabindex="false"`). Clicks on `aria-disabled` segments
- * never get here (runtime/disabledInteraction.ts).
+ * managed here: `data-astryx-roving-tabindex="false"`; after placing its stop the control
+ * re-syncs the roving lists around it, e.g. a Toolbar that sweeps the segments into its own
+ * items). Clicks on `aria-disabled` segments never get here (runtime/disabledInteraction.ts).
  *
  * API: `value` (get/set; setting slides and fires nothing, like a new controlled value).
  * Event: `astryx-change` `{value}` — bubbles, composed, cancelable; dispatched before a user
@@ -17,11 +19,10 @@
  * Deferred (touch scope): the UIKit spring presentation, dragging the selected segment and
  * the reduced-motion ::after cross-fade of a finger's release.
  */
-import {isImeKeyEvent} from './runtime/dom';
+import {createKeyboardHint} from './runtime/keyboardHint';
+import {syncRovingTabStops} from './runtime/roving';
 
 const SEGMENT = '[role="radio"][data-value]';
-const ARROWS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
-const HINT_MS = 3000;
 
 /** The selected surface's paint, copied into the lens (Astryx SURFACE_PROPERTIES). */
 const SURFACE = [
@@ -44,12 +45,6 @@ const lensVar = (prop: string) => `--_segmented-lens-${prop.replace(/^-+/, '')}`
 
 interface Box { x: number; y: number; width: number; height: number }
 
-interface HintLayer extends HTMLElement {
-  show(options?: {anchor?: HTMLElement | null}): boolean;
-  hide(reason?: string): void;
-  readonly isOpen: boolean;
-}
-
 function isSegmentDisabled(segment: Element): boolean {
   return segment.getAttribute('aria-disabled') === 'true';
 }
@@ -61,8 +56,11 @@ function prefersReducedMotion(el: Element): boolean {
 
 export class SegmentedControlElement extends HTMLElement {
   #pressing = false;
-  #hintDismissed = false;
-  #hintTimer: ReturnType<typeof setTimeout> | null = null;
+  /** useKeyboardHint({orientation: 'horizontal', isEnabled: !isDisabled}); kept across moves. */
+  #hint = createKeyboardHint(this, {
+    layer: () => this.querySelector<HTMLElement>(':scope > [data-ax-keyboard-hint]'),
+    isEnabled: () => !this.isDisabled,
+  });
   #slide: {destination: HTMLElement; timer: ReturnType<typeof setTimeout>} | null = null;
   #cleanup: (() => void) | null = null;
 
@@ -103,7 +101,6 @@ export class SegmentedControlElement extends HTMLElement {
     };
     const onFocusIn = (e: FocusEvent) => {
       const target = e.target as HTMLElement;
-      this.#maybeShowHint(e);
       if (this.isDisabled) return;
       // Selection follows focus only for moves within the group; Tab-in stays a pure focus move.
       if (!(e.relatedTarget instanceof Node) || !this.contains(e.relatedTarget)) return;
@@ -113,36 +110,21 @@ export class SegmentedControlElement extends HTMLElement {
       if (!segment || isSegmentDisabled(segment)) return;
       if (segment.getAttribute('aria-checked') !== 'true') this.#select(segment);
     };
-    const onFocusOut = (e: FocusEvent) => {
-      const next = e.relatedTarget;
-      const hint = this.#hint();
-      if (!hint?.isOpen) return;
-      if (next instanceof HTMLElement && this.contains(next)) {
-        if (!this.#hintDismissed) hint.show({anchor: next});
-        return;
-      }
-      this.#dismissHint();
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isImeKeyEvent(e)) return;
-      if (ARROWS.has(e.key) && this.#hint()?.isOpen) this.#dismissHint();
-    };
+    // Before the control's own focus handling, as Astryx calls hint.onFocus first.
+    const detachHint = this.#hint.attach();
     this.addEventListener('click', onClick);
     this.addEventListener('pointerdown', onPointerDown);
     this.addEventListener('pointerup', onPointerEnd);
     this.addEventListener('pointercancel', onPointerEnd);
     this.addEventListener('focusin', onFocusIn);
-    this.addEventListener('focusout', onFocusOut);
-    this.addEventListener('keydown', onKeyDown);
     this.#syncTabStop();
     this.#cleanup = () => {
+      detachHint();
       this.removeEventListener('click', onClick);
       this.removeEventListener('pointerdown', onPointerDown);
       this.removeEventListener('pointerup', onPointerEnd);
       this.removeEventListener('pointercancel', onPointerEnd);
       this.removeEventListener('focusin', onFocusIn);
-      this.removeEventListener('focusout', onFocusOut);
-      this.removeEventListener('keydown', onKeyDown);
     };
   }
 
@@ -150,7 +132,6 @@ export class SegmentedControlElement extends HTMLElement {
     this.#cleanup?.();
     this.#cleanup = null;
     this.#finishSlide();
-    if (this.#hintTimer) clearTimeout(this.#hintTimer);
   }
 
   /** A user selection: ask first (cancelable `astryx-change`), then apply. */
@@ -188,6 +169,8 @@ export class SegmentedControlElement extends HTMLElement {
       const value = s === stop ? '0' : '-1';
       if (s.getAttribute('tabindex') !== value) s.setAttribute('tabindex', value);
     }
+    // A list around the control that counts the segments as its items keeps one stop.
+    if (this.isConnected) syncRovingTabStops(this);
   }
 
   // ── Lens ───────────────────────────────────────────────────────────────
@@ -278,31 +261,6 @@ export class SegmentedControlElement extends HTMLElement {
       if (this.#slide) return;
       for (const s of this.segments) if (s !== slide.destination) s.style.removeProperty('transition-property');
     });
-  }
-
-  // ── Keyboard hint ──────────────────────────────────────────────────────
-
-  #hint(): HintLayer | null {
-    return this.querySelector<HintLayer>(':scope > [data-ax-keyboard-hint]');
-  }
-
-  #maybeShowHint(e: FocusEvent): void {
-    const hint = this.#hint();
-    const target = e.target as HTMLElement;
-    if (!hint || this.#hintDismissed || this.isDisabled || typeof hint.show !== 'function') return;
-    if (!target.matches(':focus-visible')) return;
-    if (e.relatedTarget instanceof Node && this.contains(e.relatedTarget)) return;
-    hint.show({anchor: target});
-    if (this.#hintTimer) clearTimeout(this.#hintTimer);
-    this.#hintTimer = setTimeout(() => this.#dismissHint(), HINT_MS);
-  }
-
-  #dismissHint(): void {
-    this.#hintDismissed = true;
-    if (this.#hintTimer) clearTimeout(this.#hintTimer);
-    this.#hintTimer = null;
-    const hint = this.#hint();
-    if (hint?.isOpen) hint.hide('api');
   }
 }
 
