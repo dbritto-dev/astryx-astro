@@ -7,6 +7,7 @@ import TableRow from './TableRow.astro';
 import TableCell from './TableCell.astro';
 import TableHeaderCell from './TableHeaderCell.astro';
 import TableSelectionToolbar from './TableSelectionToolbar.astro';
+import TableColumnSettings from './TableColumnSettings.astro';
 import Button from '../Button/Button.astro';
 import {
   pixel,
@@ -23,12 +24,19 @@ import {
   useTableStickyColumns,
   useTableTreeData,
   useTableTreeState,
+  useTableFiltering,
+  useTableFilterState,
+  useTablePagination,
+  useTableColumnSettings,
+  useTableColumnSettingsState,
+  resolveContextActions,
   comp,
   el,
   withFeature,
   type TableColumn,
   type TablePlugin,
 } from './table';
+import {createPowerSearchConfig} from '../PowerSearch/powerSearchModel';
 import Badge from '../Badge/Badge.astro';
 import StatusDot from '../StatusDot/StatusDot.astro';
 import Avatar from '../Avatar/Avatar.astro';
@@ -227,6 +235,78 @@ const skeletonColumns: TableColumn[] = ['name', 'role', 'team'].map((key, i) => 
   header: key[0].toUpperCase() + key.slice(1),
   renderCell: () => comp(Skeleton, {height: 14, width: i === 0 ? '70%' : '50%', index: i, radius: 1}),
 }));
+
+// Filtering: PowerSearch fields the columns refer to; in-page rows filtered in the browser.
+interface FilterPerson extends Person {
+  started: Date;
+  skills: string[];
+}
+const skillSets = [['Go', 'Kubernetes'], ['Figma', 'Research'], ['SQL', 'Roadmaps'], ['Go', 'Terraform'], ['Python', 'SQL'], ['TypeScript', 'React'], ['Leadership'], ['Rust', 'Go'], ['Research'], ['Security', 'Go']];
+const filterPeople: FilterPerson[] = people.map((p, i) => ({...p, started: new Date(`${p.startDate}T00:00:00Z`), skills: skillSets[i % skillSets.length]}));
+const teamValues = [...new Set(people.map((p) => p.team))].sort().map((t) => ({value: t, label: t}));
+const {config: peopleSearch} = createPowerSearchConfig([
+  {key: 'name', type: 'string', label: 'Name'},
+  {key: 'team', type: 'enum', label: 'Team', enumValues: teamValues},
+  {key: 'status', type: 'enum', label: 'Status', enumValues: [{value: 'Active', label: 'Active'}, {value: 'Away', label: 'Away'}, {value: 'Offline', label: 'Offline'}]},
+  {key: 'salary', type: 'number', label: 'Salary'},
+  {key: 'started', type: 'date', label: 'Start date'},
+  {key: 'skills', type: 'string_list', label: 'Skills'},
+]);
+const filterColumns: TableColumn<FilterPerson>[] = [
+  {key: 'name', header: 'Name', width: proportional(2), filter: 'name'},
+  {key: 'team', header: 'Team', width: pixel(130), filter: 'team'},
+  {key: 'status', header: 'Status', width: pixel(140), filter: {field: 'status', operator: 'is_any_of'}, renderCell: (p) => comp(Badge, {variant: statusVariant[p.status], label: p.status})},
+  {key: 'salary', header: 'Salary', align: 'end', width: pixel(140), filter: {field: 'salary', operator: 'greater_than_or_equal'}, format: (v) => usd.format(v as number)},
+  {key: 'started', header: 'Start date', width: pixel(150), filter: {field: 'started', operator: 'after'}, format: (v) => date.format(v as Date)},
+  {key: 'skills', header: 'Skills', width: proportional(2), filter: 'skills', format: (v) => (v as string[]).join(', ')},
+];
+const popoverFilters = useTableFilterState({team: 'Platform'});
+const popoverFiltering = useTableFiltering({filters: popoverFilters.filters, searchConfig: peopleSearch, hasClientFiltering: true});
+const inlineFilters = useTableFilterState({status: ['Active', 'Away']});
+const inlineFiltering = useTableFiltering({filters: inlineFilters.filters, searchConfig: peopleSearch, variant: 'inline', hasClientFiltering: true});
+const inlinePaging = useTablePagination({page: 1, pageSize: 5, totalItems: filterPeople.length, hasClientPaging: true, align: 'end', variant: 'count'});
+const compactFiltering = useTableFiltering({filters: {}, searchConfig: peopleSearch, variant: 'inline-compact'});
+
+// Pagination: client paging of in-page rows, controls above and below, page sizes.
+const paging = useTablePagination({page: 2, pageSize: 5, totalItems: people.length, pageSizeOptions: [5, 10, 20], position: 'both', hasClientPaging: true});
+// Server-driven pages (links): Astryx's paginateData slices the data.
+const linkPaging = useTablePagination({page: 1, pageSize: 4, totalItems: people.length, size: 'sm', align: 'start', href: (p) => `?people-page=${p}`});
+
+// Context menus: a custom row-actions plugin (body cells) next to the sort header menus.
+const rowActions: TablePlugin<Person> = {
+  transformBodyCell: (props, _column, item) => ({
+    ...props,
+    contextMenuActions: () => [
+      ...resolveContextActions(props.contextMenuActions),
+      {id: 'edit', group: 'row', label: 'Edit', icon: 'wrench'},
+      {id: 'duplicate', group: 'row', label: 'Duplicate', icon: 'copy'},
+      {id: 'delete', group: 'danger', label: 'Delete', icon: 'close', variant: 'destructive', disabled: item.status === 'Offline'},
+    ],
+  }),
+};
+const contextSorting = useTableSortableState({data: people.slice(0, 6)});
+
+// Column settings: the picker + the plugin; Name always visible, Email hidden at first.
+const columnSettingsState = useTableColumnSettingsState({
+  columns: [
+    {key: 'name', label: 'Name', isAlwaysVisible: true},
+    {key: 'email', label: 'Email', group: 'Contact'},
+    {key: 'location', label: 'Location', group: 'Contact'},
+    {key: 'role', label: 'Role', group: 'Work'},
+    {key: 'team', label: 'Team', group: 'Work'},
+    {key: 'salary', label: 'Salary', group: 'Work'},
+  ],
+  activeColumnKeys: ['name', 'role', 'team', 'location', 'salary'],
+  defaultColumnKeys: ['name', 'role', 'team', 'location', 'salary'],
+});
+const settingsColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Name', width: proportional(2)},
+  {key: 'email', header: 'Email', width: proportional(3)},
+  {key: 'location', header: 'Location'},
+  {key: 'role', header: 'Role', width: proportional(2)},
+  {key: 'team', header: 'Team'},
+  {key: 'salary', header: 'Salary', align: 'end', width: pixel(120), format: (v) => usd.format(v as number)},
+];
 ---
 <style is:global>
   .demo-sticky-head .astryx-table-header-cell { position: sticky; top: 0; z-index: 2; background-color: var(--color-background-card); }
@@ -428,6 +508,44 @@ const skeletonColumns: TableColumn[] = ['name', 'role', 'team'].map((key, i) => 
   <section>
     <p style={caption}>Generated columns (no columns prop): headers and proportional widths come from the first row</p>
     <Table aria-label="Generated" data={people.slice(0, 3).map(({name, role, location, projects}) => ({name, role, location, projects}))} density="compact" />
+  </section>
+
+  <section data-test="filtering">
+    <p style={caption}>Filtering (useTableFiltering, popover variant): a funnel per filtered column opens its control with Reset / Apply; text, enum (Selector), enum list (MultiSelector), number, date and string-list (Tokenizer) fields from one PowerSearch config; rows filtered in the browser (hasClientFiltering)</p>
+    <Table aria-label="Filterable people" data={filterPeople} columns={filterColumns} idKey="id" plugins={{filter: popoverFiltering}} density="compact" hasHover id="table-filter" />
+  </section>
+
+  <section data-test="filtering-inline">
+    <p style={caption}>Inline filters below the headers with client paging (useTablePagination hasClientPaging, count variant) — a filter that matches nothing shows the table's empty state</p>
+    <Table aria-label="Inline filters" data={filterPeople} columns={filterColumns} idKey="id" plugins={{filter: inlineFiltering, pagination: inlinePaging}} density="compact" id="table-filter-inline" />
+  </section>
+
+  <section>
+    <p style={caption}>inline-compact: placeholders keep unfiltered headers level with filtered ones</p>
+    <Table aria-label="Compact inline filters" data={filterPeople.slice(0, 3)} columns={[{key: 'name', header: 'Name', filter: 'name'}, {key: 'role', header: 'Role'}, {key: 'team', header: 'Team', filter: 'team'}]} idKey="id" plugins={{filter: compactFiltering}} density="compact" id="table-filter-compact" />
+  </section>
+
+  <section data-test="paging">
+    <p style={caption}>Pagination (useTablePagination): controls above and below (distinct landmark names), page sizes 5 / 10 / 20, in-page rows paged in the browser</p>
+    <Table aria-label="Paged people" data={people} columns={basicColumns} idKey="id" plugins={{pagination: paging}} density="compact" id="table-paging" />
+  </section>
+
+  <section>
+    <p style={caption}>Server-driven pages: paginateData slices the rows, the Pagination links to each page (sm, start-aligned)</p>
+    <Table aria-label="Linked pages" data={people.slice(0, 4)} columns={basicColumns} idKey="id" plugins={{pagination: linkPaging}} density="compact" id="table-paging-links" />
+  </section>
+
+  <section data-test="context-menu">
+    <p style={caption}>Context menus: right-click a header for its sort actions, a row for its actions (a custom plugin: Edit, Duplicate, Delete — disabled for offline people); Shift+F10 opens them from a focused control. Choosing one dispatches astryx-context-action.</p>
+    <Table aria-label="Row actions" data={contextSorting.sortedData} columns={sortColumns.slice(0, 4)} idKey="id" plugins={{sort: useTableSortable(contextSorting.sortConfig), rowActions}} density="compact" hasHover id="table-context" />
+  </section>
+
+  <section data-test="column-settings">
+    <p style={caption}>Column settings (useTableColumnSettings + the TableColumnSettings picker): show, hide and reorder columns in the browser; Name always stays</p>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:var(--spacing-2)">
+      <TableColumnSettings for="table-columns" settings={columnSettingsState.columnSettingsConfig} label="Columns" size="sm" triggerDisplay="labels" style="width:280px" />
+    </div>
+    <Table aria-label="Configurable columns" data={people.slice(0, 5)} columns={settingsColumns} idKey="id" plugins={{columnSettings: useTableColumnSettings(columnSettingsState.columnSettingsConfig)}} density="compact" id="table-columns" />
   </section>
 
   <section>

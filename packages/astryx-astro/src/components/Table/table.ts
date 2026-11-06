@@ -15,7 +15,7 @@ export {
   DEFAULT_FLEXIBLE_COLUMN_MIN_WIDTH,
 } from './columnUtils';
 export {el, comp, html, slot, nodeText} from './node';
-export {orderPlugins, withFeature} from './pipeline';
+export {orderPlugins, orderPlugins as useBaseTablePlugins, withFeature, resolveContextActions} from './pipeline';
 export {useTableSortable, useTableSortableState, resolveSortKey} from './plugins/sortable';
 export {useTableColumnResize} from './plugins/columnResize';
 export {useTableStickyColumns} from './plugins/stickyColumns';
@@ -25,6 +25,9 @@ export {useTableGroupedRows} from './plugins/groupedRows';
 export {useTableTreeData, useTableTreeState} from './plugins/tree';
 export {useTableRowIndex} from './plugins/rowIndex';
 export {useTableSelection, useTableSelectionState, SELECTION_COLUMN_KEY} from './plugins/selection';
+export {useTableFiltering, useTableFilterState, toSearchFilters} from './plugins/filtering';
+export {useTablePagination, paginateData} from './plugins/pagination';
+export {useTableColumnSettings, useTableColumnSettingsState} from './plugins/columnSettings';
 
 export type * from './types';
 export type {
@@ -49,3 +52,11 @@ export type {
   UseTableSelectionStateResult,
   TableSelectionState,
 } from './plugins/selection';
+export type {UseTableFilteringConfig, UseTableFilterStateResult, TableFilterState, TableFilterValue, TableFilterVariant} from './plugins/filtering';
+export type {UseTablePaginationConfig} from './plugins/pagination';
+export type {
+  ColumnSettingsOption,
+  UseTableColumnSettingsConfig,
+  UseTableColumnSettingsStateConfig,
+  UseTableColumnSettingsStateReturn,
+} from './plugins/columnSettings';

@@ -1,0 +1,18 @@
+---
+/**
+ * One `<template>` holding a rendered context-menu row (or the divider), sized as a `md` menu's
+ * rows (DropdownMenuContext `menuSize`). Scripts the row rendered are lifted out so they run.
+ */
+import {splitScripts, stampMenuContent} from '../DropdownMenu/menuShared';
+
+interface Props {
+  name: string;
+  value: string;
+}
+
+const {name, value} = Astro.props;
+const html = await stampMenuContent(Astro.slots.has('default') ? await Astro.slots.render('default') : '', 'md');
+const {markup, scripts} = splitScripts(html);
+const attrs = {[name]: value};
+---
+<template {...attrs} set:html={markup}></template><Fragment set:html={scripts} />

@@ -11,13 +11,16 @@
  *
  * Event: `astryx-sort-change` (cancelable) `{sort}` on the `<ax-table>` — the payload of
  * Astryx `onSortChange`. `preventDefault()` keeps the current state (controlled).
- * Deferred: the header context-menu sort actions (ContextMenu not ported).
+ * Header context menu (right-click, or Shift+F10 on the Sort control): Sort ascending / Sort
+ * descending (a check mark on the active one, each replacing the sort with that column alone)
+ * and, while the column is sorted, Clear sort — Astryx getSortActions; ids `sort-asc`,
+ * `sort-desc`, `sort-clear` (`astryx-context-action` first, then the sort change).
  */
-import {withFeature} from '../pipeline';
+import {resolveContextActions, withFeature, type TableContextActionStates} from '../pipeline';
 import {comp} from '../node';
 import SortButton from '../_SortButton.astro';
 import SortTemplates from '../_SortTemplates.astro';
-import type {HeaderCellRenderProps, TableColumn, TablePlugin, TablePluginContext} from '../types';
+import type {HeaderCellRenderProps, TableColumn, TableContextAction, TablePlugin, TablePluginContext} from '../types';
 
 export type TableSortDirection = 'ascending' | 'descending';
 
@@ -212,8 +215,39 @@ export function useTableSortable<T extends Record<string, unknown>, TSortKey ext
       const entryIndex = sort.findIndex((e) => e.sortKey === sortKey);
       const entry = entryIndex >= 0 ? sort[entryIndex] : null;
       const rank = isMultiSortEnabled && sort.length > 1 && entryIndex >= 0 ? entryIndex + 1 : null;
+      const dir = entry?.direction ?? null;
+      // The header's context-menu sort actions (Astryx getSortActions): every look is rendered,
+      // the client picks the current one when the menu opens (elements/table-features/sort.ts).
+      const sortActions = (): Array<TableContextAction & TableContextActionStates> => [
+        {
+          id: 'sort-asc',
+          group: 'sort',
+          label: ctx.t('@astryx.table.sort.ascending'),
+          icon: 'arrowUp',
+          __states: {checked: {checked: true}, unchecked: {checked: false}},
+          __state: dir === 'ascending' ? 'checked' : 'unchecked',
+        },
+        {
+          id: 'sort-desc',
+          group: 'sort',
+          label: ctx.t('@astryx.table.sort.descending'),
+          icon: 'arrowDown',
+          __states: {checked: {checked: true}, unchecked: {checked: false}},
+          __state: dir === 'descending' ? 'checked' : 'unchecked',
+        },
+        {
+          id: 'sort-clear',
+          group: 'sort-clear',
+          label: ctx.t('@astryx.table.sort.clear'),
+          icon: 'close',
+          __states: {shown: {}, hidden: null},
+          __state: dir != null ? 'shown' : 'hidden',
+        },
+      ];
+      const priorActions = props.contextMenuActions;
       return {
         ...props,
+        contextMenuActions: () => [...resolveContextActions(priorActions), ...sortActions()],
         htmlProps: {...props.htmlProps, ...(entry != null ? {'aria-sort': entry.direction} : {})},
         content: comp(
           SortButton,

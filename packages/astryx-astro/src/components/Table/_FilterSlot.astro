@@ -1,0 +1,76 @@
+---
+/**
+ * One column's filter UI (Astryx useTableFiltering FilterSlot / PopoverFilterTrigger /
+ * InlineFilterSlot):
+ *  - `popover`: the funnel button (`aria-haspopup="dialog"`, "Filter <header>"; faded until the
+ *    header is hovered or the button focused, accent while a value is set) after the header
+ *    label, and its Popover (below / start, "Filter <header>") with the md control and Reset
+ *    (ghost) · Apply (primary) — the control edits a draft; Apply commits it, Reset clears.
+ *  - `inline` / `inline-compact`: the sm control with a clear button below the label, or an
+ *    aria-hidden placeholder of its height for a column without a filter.
+ * The slot sets `title=""` around its layers: the header cell's `title` must not reach them.
+ * Behaviour: elements/table-features/filter.ts.
+ */
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import Popover from '../Popover/Popover.astro';
+import {attachPopover} from '../Popover/attach';
+import FilterControl from './_FilterControl.astro';
+import {translator} from '../../lib/i18n';
+import type {OperatorValue} from '../PowerSearch/powerSearchModel';
+import type {TableFilterValue, TableFilterVariant} from './plugins/filterModel';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  variant: TableFilterVariant;
+  columnKey: string;
+  header: string;
+  operatorValue: OperatorValue | undefined;
+  value: TableFilterValue | undefined;
+  idBase: string;
+  table: TableRenderContext;
+}
+
+const {variant, columnKey, header, operatorValue: op, value, idBase, table} = Astro.props;
+const t = translator(Astro, table.locale);
+const label = t('@astryx.tableFiltering.filterByColumn', {header});
+const hasValue = value != null;
+const pop = attachPopover({id: `${idBase}-popover`, triggerId: `${idBase}-trigger`});
+const slotAttrs = op
+  ? {
+      'data-ax-filter-column': columnKey,
+      'data-ax-filter-type': op.type,
+      'data-ax-filter-min': 'minValue' in op && op.minValue != null ? op.minValue : undefined,
+      'data-ax-filter-max': 'maxValue' in op && op.maxValue != null ? op.maxValue : undefined,
+      'data-ax-filter-free-tokens': (op.type === 'string_list' || op.type === 'entity_list') && !(op as {searchSource?: unknown}).searchSource ? '' : undefined,
+    }
+  : {};
+---
+{variant === 'popover' && op ? (
+  <div class="ax-table-filter-after" data-variant="popover" {...slotAttrs}>
+    <button
+      type="button"
+      class="ax-table-filter-trigger ax-focus-visible"
+      aria-label={label}
+      data-active={hasValue ? '' : undefined}
+      {...pop.trigger}
+    ><Icon icon="funnel" size="xsm" color={hasValue ? 'accent' : 'secondary'} /></button>
+    <span class="ax-table-filter-layer" title="">
+      <Popover {...pop.layer} label={label} placement="below" alignment="start" locale={table.locale}>
+        <div slot="content" class="ax-table-filter-popover-content">
+          <FilterControl header={header} operatorValue={op} value={value} size="md" locale={table.locale} />
+          <div class="ax-table-filter-actions">
+            <Button label={t('@astryx.table.filter.reset')} variant="ghost" size="sm" data-ax-filter-action="reset" locale={table.locale} />
+            <div class="ax-table-filter-actions-spacer"></div>
+            <Button label={t('@astryx.table.filter.apply')} variant="primary" size="sm" data-ax-filter-action="apply" locale={table.locale} />
+          </div>
+        </div>
+      </Popover>
+    </span>
+  </div>
+) : (
+  <div class="ax-table-filter-inline" data-variant={variant} title="" {...slotAttrs}>
+    {op ? <FilterControl header={header} operatorValue={op} value={value} size="sm" hasClear locale={table.locale} /> : <div aria-hidden="true" class="ax-table-filter-placeholder" data-variant={variant}></div>}
+  </div>
+)}
+<script>import '../../elements/table-features/filter';</script>

@@ -16,7 +16,7 @@ registerTableBehavior('expansion', (table: AxTable) => {
 
   const render = (row: HTMLTableRowElement, isExpanded: boolean) => {
     row.toggleAttribute('data-ax-expanded', isExpanded);
-    const toggle = row.querySelector<HTMLButtonElement>(':scope > td > [data-expansion-toggle]');
+    const toggle = row.querySelector<HTMLButtonElement>(':scope > td > [data-expansion-toggle], :scope > td > .ax-table-context-trigger > [data-expansion-toggle]');
     if (toggle) {
       toggle.setAttribute('aria-expanded', String(isExpanded));
       const label = toggle.getAttribute(isExpanded ? 'data-ax-label-collapse' : 'data-ax-label-expand');
@@ -50,6 +50,15 @@ registerTableBehavior('expansion', (table: AxTable) => {
     if (row && table.owns(row) && table.isPlainRowClick(event, row)) toggleRow(row);
   };
 
+  // The row's context-menu Expand / Collapse action (every cell of an expandable row).
+  const unregister = table.registerContextAction('row-expansion-toggle', {
+    state: (area) => (area.closest('tr')?.hasAttribute('data-ax-expanded') ? 'collapse' : 'expand'),
+    select: (area) => {
+      const row = area.closest('tr');
+      if (row && row.hasAttribute('data-expansion-key')) toggleRow(row);
+    },
+  });
+
   table.addEventListener('click', onClick);
   table.api.set('expansion', {
     get: expandedKeys,
@@ -61,6 +70,7 @@ registerTableBehavior('expansion', (table: AxTable) => {
   });
   return () => {
     table.removeEventListener('click', onClick);
+    unregister();
     table.api.delete('expansion');
   };
 });

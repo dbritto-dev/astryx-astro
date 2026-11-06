@@ -9,8 +9,10 @@
  */
 import {devError, devWarn} from '../../lib/devWarning';
 import {styleToString, type StyleValue} from '../../lib/style';
+import {themeProps} from '../../lib/themeProps';
 import EmptyState from '../EmptyState/EmptyState.astro';
 import Text from '../Text/Text.astro';
+import ContextMenuTemplates from './_ContextMenuTemplates.astro';
 import {defaultCellText, generateColumns, resolveColumnWidths, resolveTableMinWidth} from './columnUtils';
 import {comp, el, isRenderable} from './node';
 import type {
@@ -21,6 +23,8 @@ import type {
   ScrollWrapperRenderProps,
   TableAttrs,
   TableColumn,
+  TableContextAction,
+  TableContextActions,
   TableDensity,
   TableIdKey,
   TableNode,
@@ -49,6 +53,145 @@ export function withFeature(htmlProps: TableAttrs, feature: string): TableAttrs 
 export function mergeStyle(a: TableAttrs['style'], b: TableAttrs['style']): string | undefined {
   const out = [styleToString(a as StyleValue), styleToString(b as StyleValue)].filter(Boolean).join(';');
   return out || undefined;
+}
+
+// =============================================================================
+// Context-menu actions (tableContextMenu.tsx)
+// =============================================================================
+
+/**
+ * Resolve a `contextMenuActions` value (array or getter) to a plain array — compose a prior
+ * plugin's actions with `[...resolveContextActions(props.contextMenuActions), ...mine]`.
+ */
+export function resolveContextActions(actions: TableContextActions | undefined): TableContextAction[] {
+  if (typeof actions === 'function') return actions();
+  return actions ?? [];
+}
+
+/**
+ * Port-internal: a first-party action whose look follows client state (the active sort
+ * direction, a row's expansion). `__states` names every look (`null` = not shown); `__state`
+ * is the one this render shows. When the menu opens, the client asks the feature module that
+ * registered the action id (`table.registerContextAction`) which state applies.
+ */
+export interface TableContextActionStates {
+  __states?: Record<string, Partial<TableContextAction> | null>;
+  __state?: string;
+  /** Mirror the icon in RTL (a chevron pointing toward the reveal direction). */
+  __mirrorIcon?: boolean;
+}
+
+/** One action of a cell's menu, as the client reads it (`data-ax-context-actions`). */
+export interface ContextMenuEntry {
+  id: string;
+  group?: string;
+  /** Template key per state. */
+  t: Record<string, string>;
+  /** The state this render shows (`null`: hidden). */
+  s: string | null;
+}
+
+/** A row template the client clones into a cell's menu (toContextMenuOptions → a ContextMenu data item). */
+export interface ContextMenuRowTemplate {
+  key: string;
+  id: string;
+  label: string;
+  icon?: unknown;
+  isDisabled?: boolean;
+  variant?: 'default' | 'destructive';
+  mirrorIcon?: boolean;
+}
+
+function contextRegistry() {
+  const byJson = new Map<string, ContextMenuRowTemplate>();
+  const icons = new Map<unknown, number>();
+  const register = (action: TableContextAction & TableContextActionStates): ContextMenuEntry => {
+    const states = action.__states ?? {default: {}};
+    const initial = action.__states ? (action.__state ?? Object.keys(states)[0]) : 'default';
+    const t: Record<string, string> = {};
+    for (const [state, patch] of Object.entries(states)) {
+      if (patch === null) continue;
+      const a = {...action, ...patch};
+      const label = typeof a.label === 'string' ? a.label : typeof a.label === 'number' ? String(a.label) : a.id;
+      // A checked action shows a check mark instead of its icon (Astryx toContextMenuOptions).
+      const icon = a.checked ? 'check' : a.icon == null || typeof a.icon === 'boolean' ? undefined : a.icon;
+      const row = {
+        id: a.id,
+        label,
+        icon,
+        isDisabled: a.disabled || undefined,
+        variant: a.variant === 'destructive' ? ('destructive' as const) : undefined,
+        mirrorIcon: (!a.checked && action.__mirrorIcon) || undefined,
+      };
+      const iconKey = typeof icon === 'string' || icon == null ? icon : `icon#${icons.get(icon) ?? icons.set(icon, icons.size).get(icon)}`;
+      const json = JSON.stringify({...row, icon: iconKey});
+      let entry = byJson.get(json);
+      if (!entry) byJson.set(json, (entry = {...row, key: `k${byJson.size + 1}`}));
+      t[state] = entry.key;
+    }
+    return {id: action.id, group: action.group, t, s: states[initial] === null ? null : initial};
+  };
+  return {register, templates: () => [...byJson.values()]};
+}
+
+/**
+ * Astryx wrapInTableContextMenu: the cell's content inside a ContextMenu trigger (for body
+ * cells a fill wrapper carrying the density padding, so a right-click anywhere in the cell
+ * opens it), the 1px cursor anchor, and the cell's `<ax-menu>` whose menu waits in a
+ * `<template>` until it opens (its rows are cloned from the table's row templates then).
+ */
+function contextMenuNodes(input: {
+  id: string;
+  kind: 'header' | 'body';
+  density: TableDensity;
+  entries: ContextMenuEntry[];
+  columnKey: string;
+  rowKey?: string;
+  label: string;
+  content: TableNode;
+  after?: TableNode;
+}): TableNode {
+  const {id, kind, density, entries, columnKey, rowKey, label, content, after} = input;
+  const areaId = `${id}-area`;
+  const anchorId = `${id}-anchor`;
+  const menu = themeProps('context-menu');
+  return [
+    el(
+      'div',
+      {
+        id: areaId,
+        class: ['ax-context-menu-trigger', 'ax-table-context-trigger'],
+        'data-ax-context-kind': kind,
+        'data-density': kind === 'body' ? density : undefined,
+        'data-ax-context-column': columnKey,
+        'data-ax-context-row': rowKey,
+        'data-ax-context-actions': JSON.stringify(entries),
+      },
+      [content, el('span', {id: anchorId, class: 'ax-context-menu-anchor', 'aria-hidden': 'true', style: 'left:0px;top:0px'})],
+    ),
+    after,
+    el(
+      'ax-menu',
+      {
+        id,
+        popover: 'manual',
+        'data-ax-menu-kind': 'context',
+        'data-ax-context-target': areaId,
+        'data-ax-anchor': anchorId,
+        class: ['ax-layer', 'ax-layer-motion', 'ax-context-menu-layer'],
+        'data-astryx-layer-root': '',
+        'data-placement': 'below',
+        'data-align': 'start',
+        // A header's `title` tooltip must not reach the menu (a DOM descendant here).
+        title: '',
+      },
+      el(
+        'template',
+        {'data-ax-menu-content': ''},
+        el('div', {id: `${id}-menu`, role: 'menu', tabindex: -1, 'aria-label': label, 'data-ax-overflow-tabbable': '', class: menu.themeClass, ...menu.attrs}),
+      ),
+    ),
+  ];
 }
 
 // =============================================================================
@@ -149,11 +292,15 @@ export function buildTable<T extends Record<string, unknown>>(input: BuildTableI
 
   const baseColumns: TableColumn<T>[] = isChildrenMode ? [] : (columnsProp ?? (data ? generateColumns(data) : []));
   const resolvedColumns = applyPlugins<TableColumn<T>[]>(plugins, 'transformColumns', baseColumns, ctx);
-  const resolvedWidths = resolveColumnWidths(resolvedColumns);
+  // Columns the column settings render hidden take no width (Astryx drops them).
+  const resolvedWidths = resolveColumnWidths(resolvedColumns.filter((c) => (c as unknown as Record<string, unknown>).__hiddenBySettings !== true));
   const columnsForPlugins = resolvedColumns as unknown as ReadonlyArray<TableColumn<Record<string, unknown>>>;
 
   // --- table ---
   const tableRenderProps = applyPlugins<TableRenderProps>(plugins, 'transformTable', {htmlProps: {}, xstyle: []}, ctx);
+  const contextMenus = contextRegistry();
+  let hasContextMenus = false;
+  const contextLabel = t('@astryx.contextMenu.label');
 
   // --- header cells ---
   const headerCells: TableNode[] = resolvedColumns.map((col, columnIndex) => {
@@ -182,12 +329,33 @@ export function buildTable<T extends Record<string, unknown>>(input: BuildTableI
     const labelId = `${ctx.idBase}-label-${columnIndex}`;
     const belowId = `${ctx.idBase}-below-${columnIndex}`;
     const hasBelow = isRenderable(below ?? null);
-    const inner: TableNode = !hasSlots
+    let inner: TableNode = !hasSlots
       ? resolvedContent
       : namesOwnHeader
         ? [el('span', {id: labelId}, [before, labelRow]), overlay, hasBelow ? el('div', {id: belowId}, below) : null]
         : [before, labelRow, overlay, below];
     const nameProps = namesOwnHeader ? {'aria-labelledby': hasBelow ? `${labelId} ${belowId}` : labelId} : {};
+    const headerActions = resolveContextActions(cell.contextMenuActions);
+    if (headerActions.length > 0) {
+      hasContextMenus = true;
+      // Deviation: the overlay (resize handle) stays outside the trigger, so the header cell
+      // stays its containing block.
+      const triggerContent: TableNode = !hasSlots
+        ? resolvedContent
+        : namesOwnHeader
+          ? [el('span', {id: labelId}, [before, labelRow]), hasBelow ? el('div', {id: belowId}, below) : null]
+          : [before, labelRow, below];
+      inner = contextMenuNodes({
+        id: `${ctx.idBase}-cm-h${columnIndex}`,
+        kind: 'header',
+        density: ctx.density,
+        entries: headerActions.map((a) => contextMenus.register(a)),
+        columnKey: col.key,
+        label: contextLabel,
+        content: triggerContent,
+        after: hasSlots ? overlay : undefined,
+      });
+    }
     return el(
       'th',
       {
@@ -229,11 +397,23 @@ export function buildTable<T extends Record<string, unknown>>(input: BuildTableI
             content = col.renderCell?.(item) ?? null;
           }
         }
-        return el(
-          'td',
-          {...cell.htmlProps, ...cellHooks(ctx.density, false), class: ['astryx-table-cell', ...cell.xstyle, ...classList(cell.htmlProps.class)]},
-          content,
-        );
+        const actions = resolveContextActions(cell.contextMenuActions);
+        const cellClass = ['astryx-table-cell', ...cell.xstyle, ...classList(cell.htmlProps.class)];
+        if (actions.length > 0) {
+          hasContextMenus = true;
+          cellClass.push('ax-table-context-cell');
+          content = contextMenuNodes({
+            id: `${ctx.idBase}-cm-${rowIndex}-${columnIndex}`,
+            kind: 'body',
+            density: ctx.density,
+            entries: actions.map((a) => contextMenus.register(a)),
+            columnKey: col.key,
+            rowKey: ctx.rowKey(item, rowIndex),
+            label: contextLabel,
+            content,
+          });
+        }
+        return el('td', {...cell.htmlProps, ...cellHooks(ctx.density, false), class: cellClass}, content);
       });
       const row = applyPlugins<BodyRowRenderProps>(
         plugins,
@@ -246,9 +426,20 @@ export function buildTable<T extends Record<string, unknown>>(input: BuildTableI
       bodyRows.push(el('tr', {...row.htmlProps, class: ['astryx-table-row', ...row.xstyle, ...classList(row.htmlProps.class)]}, row.children));
       if (row.afterRow != null) bodyRows.push(row.afterRow);
     });
-  } else if (!isChildrenMode && data != null && input.emptyState !== false) {
+  }
+  // --- scroll wrapper props (a plugin may ask for client row handling) ---
+  const wrapper = applyPlugins<ScrollWrapperRenderProps>(plugins, 'transformScrollWrapper', {htmlProps: {}, xstyle: []}, ctx);
+  const features = typeof wrapper.htmlProps['data-ax-features'] === 'string' ? (wrapper.htmlProps['data-ax-features'] as string).split(/\s+/) : [];
+  // Client filtering can empty a non-empty table: its empty state renders too, hidden while a
+  // row is visible (the <ax-table> toggles it; Astryx's filtered data is simply empty).
+  const keepsEmptyRow = hasData && features.includes('filter-rows');
+  if (!isChildrenMode && data != null && input.emptyState !== false && (!hasData || keepsEmptyRow)) {
     bodyRows.push(
-      el('tr', undefined, el('td', {colspan: resolvedColumns.length || undefined}, input.emptyState ?? comp(EmptyState, {title: t('@astryx.table.noData'), isCompact: true}))),
+      el(
+        'tr',
+        {'data-ax-empty-row': '', hidden: hasData ? true : undefined},
+        el('td', {colspan: resolvedColumns.length || undefined}, input.emptyState ?? comp(EmptyState, {title: t('@astryx.table.noData'), isCompact: true})),
+      ),
     );
   }
 
@@ -300,7 +491,10 @@ export function buildTable<T extends Record<string, unknown>>(input: BuildTableI
   );
 
   // --- scroll wrapper (Table.tsx TableScrollWrapper) ---
-  const wrapper = applyPlugins<ScrollWrapperRenderProps>(plugins, 'transformScrollWrapper', {htmlProps: {}, xstyle: []}, ctx);
+  if (hasContextMenus) {
+    wrapper.htmlProps = withFeature(wrapper.htmlProps, 'context-menu');
+    wrapper.afterTable = [wrapper.afterTable, comp(ContextMenuTemplates, {rows: contextMenus.templates()}, undefined, {table: true})];
+  }
   const tableLabel = rest['aria-label'] as string | undefined;
   const tableLabelledBy = (rest['aria-labelledby'] as string | undefined) ?? (tableLabel == null && input.caption ? input.caption.id : undefined);
   const label = tableLabelledBy != null ? undefined : (tableLabel ?? t('@astryx.table.label'));
@@ -334,6 +528,32 @@ export function buildTable<T extends Record<string, unknown>>(input: BuildTableI
     }
   }
   return {root};
+}
+
+/** The body `<tr>` nodes of a built table (for transformTableContext post-processing). */
+export function bodyRowNodes(root: TableNode): Array<{tag: string; attrs?: TableAttrs; children?: TableNode}> {
+  const out: Array<{tag: string; attrs?: TableAttrs; children?: TableNode}> = [];
+  const walk = (node: TableNode, inBody: boolean): boolean => {
+    if (node == null || typeof node !== 'object') return false;
+    if (Array.isArray(node)) {
+      for (const n of node) if (walk(n as TableNode, inBody)) return true;
+      return false;
+    }
+    if (!('tag' in node)) return false;
+    const n = node as {tag: string; attrs?: TableAttrs; children?: TableNode};
+    if (inBody && n.tag === 'tr') {
+      out.push(n);
+      return false;
+    }
+    if (n.tag === 'tbody') {
+      walk(n.children ?? null, true);
+      return true;
+    }
+    if (n.tag === 'ax-table' && out.length === 0) return walk(n.children ?? null, false);
+    return walk(n.children ?? null, inBody);
+  };
+  walk(root, false);
+  return out;
 }
 
 function classList(value: unknown): string[] {

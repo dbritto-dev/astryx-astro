@@ -23,10 +23,11 @@ browser lives in one custom element and small per-feature modules.
 | `useTableTreeState` / `useTableTreeData` | `plugins/tree.ts` (all rows rendered in tree order, collapsed subtrees `hidden`) + `table-features/tree.ts` (`astryx-expanded-ids-change`) |
 | `useTableRowIndex` | `plugins/rowIndex.ts` (+ the element renumbers visible rows after a re-sort/toggle) |
 | `useTableSelection(State)`, `TableSelectionToolbar` | `plugins/selection.ts` (server: `__xds_selection` column with CheckboxInputs, `aria-selected` + inline wash per selected row, row keys, the complete selected-key set) + `table-features/selection.ts` (toggles, select-all with the frozen set, events, `selectedKeys` / `clearSelection()`) + `TableSelectionToolbar.astro` / `elements/table-selection-toolbar.ts` (follows the table `for` its id) |
-| `useTableFiltering`, `useTableFilterState` | **deferred** (DateInput, MultiSelector, Tokenizer) |
-| `useTablePagination`, `paginateData` | **deferred** (Pagination) |
-| `useTableColumnSettings(State)` | **deferred** |
-| `tableContextMenu` / `contextMenuActions` | **deferred** (ContextMenu); actions are typed and carried through the pipeline, not rendered |
+| `useTableFiltering`, `useTableFilterState`, `toSearchFilters` | `plugins/filtering.ts` + `plugins/filterModel.ts` (pure, shared with the client) + `_FilterSlot.astro` / `_FilterControl.astro` (funnel + Popover with Reset / Apply, or inline controls; TextInput, NumberInput, Selector, MultiSelector, DateInput, TimeInput, Tokenizer) + `table-features/filter.ts` (draft / commit, `astryx-filter-change`, client row filtering, `filters` / `clearFilters()`) |
+| `useTablePagination`, `paginateData` | `plugins/pagination.ts` (`transformTableContext` → `_TablePagination.astro` above / below) + `table-features/paging.ts` (the Paginations kept in step, client paging, `paging`) |
+| `useTableColumnSettings`, `useTableColumnSettingsState` | `plugins/columnSettings.ts` (`transformColumns`; inactive settings columns rendered hidden) + `table-features/column-settings.ts` (reorder / hide in the DOM, widths re-resolved, `activeColumnKeys`) + `TableColumnSettings.astro` / `elements/table-column-settings.ts` (port extension: a MultiSelector picker `for` the table) |
+| `tableContextMenu` (`wrapInTableContextMenu`, `resolveContextActions`) / `contextMenuActions` | `pipeline.ts` (one ContextMenu trigger + `<ax-menu data-ax-menu-kind="context">` per cell with actions; row templates per distinct action look in `_ContextMenuTemplates.astro`) + `table-features/context-menu.ts` (rows built on open, `astryx-context-action`); sort (`sort-asc`/`sort-desc`/`sort-clear`) and row expansion (`row-expansion-toggle`) contribute theirs |
+| `useBaseTablePlugins` | `orderPlugins` (pipeline.ts) |
 | `glidingDivider`, `rowDivider` carry, `animatedLayout` | not ported (no glide; rows jump, as Astryx does without a handle) |
 
 The `useTable*` names are kept so Astryx knowledge transfers, but they are plain server
@@ -117,6 +118,86 @@ const {selectionConfig, selectionState} = useTableSelectionState({
   `[data-selected-count]` kept current. Hidden while nothing is selected.
 - Astryx has no Shift-range or row-click selection; keyboard is the checkboxes' own.
 
+### Filtering
+
+```astro
+---
+import {createPowerSearchConfig} from 'astryx-astro/components/PowerSearch/powerSearchModel';
+import {useTableFilterState, useTableFiltering} from 'astryx-astro/components/Table/table';
+const {config} = createPowerSearchConfig([{key: 'name', type: 'string'}, {key: 'status', type: 'enum', enumValues}]);
+const {filters} = useTableFilterState({status: 'active'});
+const filter = useTableFiltering({filters, searchConfig: config, variant: 'popover', hasClientFiltering: true});
+---
+<Table data={rows} columns={[{key: 'name', header: 'Name', filter: 'name'}, {key: 'status', header: 'Status', filter: {field: 'status', operator: 'is_any_of'}}]} plugins={{filter}} />
+```
+
+- `column.filter` names a PowerSearch field (its default operator) or `{field, operator}`; the
+  operator's value type picks the control: string → TextInput, integer / float → NumberInput
+  (integer step 1, the operator's bounds, live while the draft parses), enum → Selector ("All"),
+  enum_list → MultiSelector ("All", Select all, no search), date_absolute → DateInput, time →
+  TimeInput, string_list / entity_list → Tokenizer (the operator's static `searchSource`, else any
+  typed text becomes a token); nested / empty / date_relative / date_range / custom → none. Every
+  control is named "Filter <header>" (hidden label).
+- `variant`: `popover` (funnel after the label: faded to 0.35 until the header is hovered or it is
+  focused, accent while a value is set; its Popover holds the md control and Reset / Apply — the
+  control edits a draft seeded on open), `inline` / `inline-compact` (sm control with a clear
+  button below the label, an aria-hidden 32 / 28px placeholder under unfiltered columns, filter
+  columns without a width get `proportional(1)`).
+- `toSearchFilters(filters, columns, config)` + PowerSearch's `applyFilters` filter on the server
+  (Astryx's model: the page re-renders with the filtered data). Port extension
+  `hasClientFiltering`: pass every row; the server hides the rows the initial filters reject (same
+  matcher) and the client re-filters on every change (`table.addRowFilter`); the table's empty
+  state (default "No data" or the `empty` slot) shows while no row is left, and a group header
+  whose rows are all rejected hides too.
+- `useTableFilterState(initial)` returns `{filters, onFilterChange, clearAll}`; on the server the
+  last two return the next state (the table owns it on the client: `table.filters`,
+  `table.clearFilters()`).
+
+### Pagination
+
+- `useTablePagination({page, totalItems | totalPages | hasMore, pageSize = 10, pageSizeOptions,
+  variant = 'pages', size = 'md', position = 'below' | 'above' | 'both' | 'none', align =
+  'center', label})` renders Pagination around the table (nothing for a single page without
+  `hasMore`; `both` names the landmarks "<label> (top)" / "(bottom)"). Events are the
+  Pagination's: `astryx-change` {page}, `astryx-page-size-change` {pageSize} (then
+  `astryx-change` {page: 1}), cancelable, from the `<ax-pagination>`; the other Pagination of
+  `both` follows.
+- Server-driven paging: `paginateData(rows, page, pageSize)` (Astryx's coercions) + `href: (page)
+  => url` (port extension, Pagination links mode).
+- Port extension `hasClientPaging`: pass every row; the server hides the rows outside `page`, the
+  client pages the rendered rows (after client filters: the total follows the matching rows, a
+  filter change returns to page 1, the controls hide while one page is left). `table.paging`
+  ({page, pageSize}, get/set).
+
+### Column settings
+
+- `useTableColumnSettingsState({columns, activeColumnKeys, defaultColumnKeys})` → Astryx's
+  helper; with no React state `toggleColumn` / `showAllColumns` / `resetToDefault` /
+  `setActiveColumnKeys` return the next key list. `useTableColumnSettings(config)` shows the
+  active columns in order (first in the canonical plugin order).
+- Port extension: inactive settings columns render hidden after the active ones, so
+  `table.activeColumnKeys = [...]` (silent) or `TableColumnSettings` (`for` the table id,
+  `settings` = `columnSettingsConfig`; a MultiSelector with groups as sections and always-visible
+  columns disabled; toggling hides a column or re-shows it at the end) reorders and hides columns
+  in the DOM and re-resolves the widths over the visible ones. The picker's change dispatches
+  `astryx-columns-change` {activeColumnKeys} (cancelable).
+
+### Context menus
+
+- Plugins append `contextMenuActions` (`{id, label, icon, group, checked, disabled, variant}`, or a
+  getter) in `transformHeaderCell` / `transformBodyCell`, composing with
+  `resolveContextActions(props.contextMenuActions)`. A cell with actions wraps its content in a
+  ContextMenu trigger (body cells: the trigger fills the cell and carries its padding, so a
+  right-click anywhere in it opens the menu; Shift+F10 / the Menu key from a focused control in
+  the cell; a 500ms touch hold) and owns a context `<ax-menu>` whose rows are built when it opens:
+  groups in first-seen order with dividers, a check mark replacing the icon of a `checked` action.
+- `onSelect` cannot cross to the browser: choosing a row dispatches `astryx-context-action`
+  (cancelable) {id, columnKey, rowKey, kind} on the `<ax-table>`, then — unless prevented — the
+  first-party action runs: sortable headers (Sort ascending / Sort descending with the active one
+  checked, Clear sort while sorted) and every cell of an expandable row (Expand row / Collapse
+  row). Their looks follow client state (`table.registerContextAction(id, {state, select})`);
+  other getters are resolved on the server.
+
 ### Events (bubbling, composed, from `<ax-table>`)
 
 | Event | detail | Astryx |
@@ -129,10 +210,17 @@ const {selectionConfig, selectionState} = useTableSelectionState({
 | `astryx-select-item` (cancelable) | `{key, isSelected}` | `onSelectItem({item, isSelected})` |
 | `astryx-select-all` (cancelable) | `{isAllSelected}` | `onSelectAll({isAllSelected})` |
 | `astryx-selection-change` | `{selectedKeys, selectedCount, hasSelection}` | `setSelectedKeys(next)` |
+| `astryx-filter-change` (cancelable) | `{columnKey, value, filters}` (`value: null` clears) | `onFilterChange(columnKey, value)` |
+| `astryx-context-action` (cancelable) | `{id, columnKey, rowKey?, kind: 'header' \| 'body'}` | `action.onSelect()` |
+| `astryx-columns-change` (cancelable) | `{activeColumnKeys}` | `onChangeActiveColumnKeys(keys)` |
+
+Pagination's events come from its `<ax-pagination>` (a sibling of the `<ax-table>`):
+`astryx-change` {page} (`onPageChange`), `astryx-page-size-change` {pageSize} (`onPageSizeChange`).
 
 `preventDefault()` keeps the current state (controlled use). Element API: `sort`,
-`columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds`, `selectedKeys` (get/set),
-`clearSelection()`.
+`columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds`, `selectedKeys`, `filters`,
+`paging`, `activeColumnKeys` (get/set; setters dispatch no astryx event), `clearSelection()`,
+`clearFilters()`.
 
 Sticky header: Astryx has no prop. Either put the table in a block-scrolling container and pin
 `.astryx-table-header-cell` with caller CSS (works while the columns fit), or let the region
@@ -150,23 +238,12 @@ hasSlot}`). Header cells have Astryx's named slots `before | content | after | o
 write `withFeature(htmlProps, '<name>')` in `transformScrollWrapper`, load a module from the
 plugin's component, and in it call `registerTableBehavior('<name>', (table) => cleanup)`
 (`elements/table.ts`). `<ax-table>` helpers: `bodyRows()`, `headerCells()`, `owns()`, `emit()`,
-`template()`, `isPlainRowClick()`, `reorderBody()`, `updateVisibility()`, `addRowFilter()`,
-`renumber()`, `api`.
-
-Deferred plugins — where they plug in:
-
-- **Filtering** (`useTableFiltering`): `column.filter` is already typed; the trigger goes in the
-  header `after` slot, inline editors in `below` (ids and naming handled). Client filtering:
-  `table.addRowFilter(row => …)` hides rejected rows (and their panels) and renumbers.
-- **Pagination** (`useTablePagination`, `paginateData`): `transformTableContext(children)` returns
-  `[top?, children, bottom?]` with `comp(Pagination, …)`; pass `rowIndexStart`/`rowCount` for
-  ARIA. Server-driven pages (links) fit the server pipeline; in-page paging would add a row filter.
-- **Column settings**: `transformColumns` (server) — reorder/filter columns.
-- **Context menus**: `contextMenuActions` is typed on header/body cell render props and survives
-  the pipeline. When ContextMenu lands, TableCell/TableHeaderCell wrap their content in its
-  trigger (density padding moves onto it — restore the subtraction noted on
-  `.ax-table-expand-toggle` in Table.css) and the client maps action ids (`sort-asc`,
-  `sort-desc`, `sort-clear`, `row-expansion-toggle`) to the feature modules.
+`template()`, `isPlainRowClick()`, `reorderBody()`, `updateVisibility()`, `addRowFilter(accept)`,
+`setRowPager({page, pageSize})`, `matchCount` (+ internal `ax-table-rows` {count}),
+`registerContextAction(id, {state, select})`, `renumber()`, `api`. Server helpers in
+`pipeline.ts`: `resolveContextActions`, `bodyRowNodes(root)` (post-process rows in
+`transformTableContext`). Row filters, the pager and the empty-state row (`data-ax-empty-row`,
+rendered when a plugin adds the `filter-rows` feature) all go through `updateVisibility()`.
 
 ## Deviations
 
@@ -179,6 +256,20 @@ Deferred plugins — where they plug in:
 - Column resize skips every `resizable: false` column in its snapshot (Astryx's comment intent;
   its code only skipped the ones in `config.columns`).
 - Not ported: the gliding row/divider animation (`animatedLayout`), the pinned-divider carry of
-  app border overrides (`syncPinnedDividers`), context-menu actions, and the theme/mode watchers
-  (CSS already follows token changes).
-- Port extensions: `accessor`, `format`, the `caption` slot, `locale`.
+  app border overrides (`syncPinnedDividers`), and the theme/mode watchers (CSS already follows
+  token changes).
+- Context menus: a header's overlay (resize handle) stays outside the trigger, so the header cell
+  stays its containing block (Astryx wraps it too); a body cell's container-edge padding moves
+  onto the trigger as well (Astryx leaves it on the `<td>` and doubles the inset of the first and
+  last column). Action getters other than the first-party ones resolve when the cell renders on
+  the server, not when the menu opens. The menu rows' own `astryx-select` stays inside the table.
+- Filtering: the funnel and inline slots set `title=""` so the header's `title` tooltip does not
+  reach their layers (DOM descendants here, portalled in Astryx). An unchanged inline value fires
+  no event (popover Apply / Reset always do, as Astryx). Controls' own `astryx-change` events stay
+  inside the table.
+- Column settings render inactive settings columns hidden instead of dropping them (port
+  extension above); after a client change the table's `min-width` is the new column floor (a
+  consumer `min-width` is not merged again), and resize overrides are reset to the width specs.
+- Port extensions: `accessor`, `format`, the `caption` slot, `locale`, `hasClientFiltering`,
+  `hasClientPaging`, Pagination `href`, `TableColumnSettings`, `table.activeColumnKeys` /
+  `filters` / `paging`.

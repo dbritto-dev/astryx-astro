@@ -15,9 +15,14 @@
  * Shared helpers for behaviours: `bodyRows()`, `owns(node)`, `emit(type, detail, cancelable)`,
  * `reorderBody(compare)` (sorts rows within group sections and tree sibling sets, keeping
  * detail panels after their row), `updateVisibility()` (collapsed groups, collapsed tree
- * ancestors, closed panels → `hidden`) and `renumber()` (row-index cells, aria-rowindex).
+ * ancestors, closed panels, rows the filters reject or the pager leaves out → `hidden`; the
+ * empty-state row while none is left), `addRowFilter(accept)`, `setRowPager({page, pageSize})`,
+ * `matchCount` (+ the internal `ax-table-rows` {count} event), `renumber()` (row-index cells,
+ * aria-rowindex) and `registerContextAction(id, {state, select})` (first-party context-menu
+ * actions).
  * Feature APIs: `sort`, `columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds`,
- * `selectedKeys` + `clearSelection()` (selection).
+ * `selectedKeys` + `clearSelection()` (selection), `filters` + `clearFilters()` (filtering),
+ * `paging` (client paging), `activeColumnKeys` (column settings).
  */
 import {AxScrollableArea} from './scrollable-area';
 
@@ -37,6 +42,12 @@ export function registerTableBehavior(name: string, setup: TableBehavior): void 
 export interface TableFeatureApi {
   get(): unknown;
   set(value: unknown): void;
+}
+
+/** A first-party context-menu action (see `registerContextAction`); `area` is the cell's trigger. */
+export interface TableContextActionImpl {
+  state?: (area: HTMLElement) => string | null;
+  select?: (area: HTMLElement) => void;
 }
 
 /** Elements a click on which belongs to something else (Astryx INTERACTIVE_SELECTORS + layer roots). */
@@ -131,10 +142,13 @@ export class AxTable extends AxScrollableArea {
 
   #rowFilters = new Set<(row: HTMLTableRowElement) => boolean>();
   #hasFiltered = false;
+  #pager: {page: number; pageSize: number} | null = null;
+  #matchCount = -1;
 
   /**
-   * Hook for client-side filtering (deferred filtering plugin): a data row any filter rejects
-   * is hidden by `updateVisibility()` (its panel with it). Returns the remover.
+   * Client-side filtering (useTableFiltering `hasClientFiltering`): a data row any filter
+   * rejects is hidden by `updateVisibility()` (its panel with it; a group header whose rows are
+   * all rejected too; the empty-state row shows while no row is left). Returns the remover.
    */
   addRowFilter(filter: (row: HTMLTableRowElement) => boolean): () => void {
     this.#rowFilters.add(filter);
@@ -146,22 +160,78 @@ export class AxTable extends AxScrollableArea {
     };
   }
 
+  /**
+   * Client-side paging (useTablePagination `hasClientPaging`, Astryx paginateData on the
+   * rendered rows): only the `pageSize` rows of `page` among the rows the filters accept are
+   * shown (a tree row's descendants share its page). `null` shows every row.
+   */
+  setRowPager(pager: {page: number; pageSize: number} | null): void {
+    this.#pager = pager;
+    this.#hasFiltered = true;
+    this.updateVisibility();
+  }
+
+  /** Rows (top-level units) the row filters accept — the paging total; -1 before the first pass. */
+  get matchCount(): number {
+    return this.#matchCount;
+  }
+
   #managesVisibility() {
     const f = this.features;
     return this.#hasFiltered || f.includes('grouped') || f.includes('tree') || f.includes('expansion');
   }
 
+  static #isDataRow(row: HTMLTableRowElement): boolean {
+    return !row.hasAttribute('data-expansion-panel') && !row.hasAttribute('data-ax-group-key') && !row.hasAttribute('data-ax-empty-row');
+  }
+
   /**
    * Re-derive `hidden` for plugin-managed rows: a group's rows follow its header, a tree row
-   * needs every ancestor expanded, a detail panel needs its row visible and expanded.
+   * needs every ancestor expanded, a detail panel needs its row visible and expanded, a row the
+   * filters reject or the pager leaves out is hidden.
    */
   updateVisibility() {
     if (!this.#managesVisibility()) return;
+    const rows = this.bodyRows();
+    // Pass 1: which data rows the filters accept, and the pager's slice of them.
+    const accepted = new Set<HTMLTableRowElement>();
+    const groupHasRows = new Map<HTMLTableRowElement, boolean>();
+    let unitIndex = -1;
+    let unitInPage = true;
+    let group: HTMLTableRowElement | null = null;
+    const pageSize = this.#pager ? Math.max(1, this.#pager.pageSize) : Infinity;
+    const start = this.#pager ? (Math.max(1, this.#pager.page) - 1) * pageSize : 0;
+    for (const row of rows) {
+      if (row.hasAttribute('data-ax-group-key')) {
+        group = row;
+        groupHasRows.set(row, false);
+        continue;
+      }
+      if (!AxTable.#isDataRow(row)) continue;
+      const passes = this.#rowFilters.size === 0 || [...this.#rowFilters].every((accept) => accept(row));
+      if (!passes) continue;
+      const level = Number(row.getAttribute('aria-level') ?? '1');
+      if (level <= 1) {
+        unitIndex++;
+        unitInPage = unitIndex >= start && unitIndex < start + pageSize;
+      }
+      if (!unitInPage) continue;
+      accepted.add(row);
+      if (group) groupHasRows.set(group, true);
+    }
+    const count = unitIndex + 1;
+    // Pass 2: visibility.
     let groupCollapsed = false;
     const ancestors: {level: number; expanded: boolean}[] = [];
     let ownerVisible = true;
     let ownerExpanded = false;
-    for (const row of this.bodyRows()) {
+    let visibleRows = 0;
+    let emptyRow: HTMLTableRowElement | null = null;
+    for (const row of rows) {
+      if (row.hasAttribute('data-ax-empty-row')) {
+        emptyRow = row;
+        continue;
+      }
       if (row.hasAttribute('data-expansion-panel')) {
         row.hidden = !(ownerVisible && ownerExpanded);
         continue;
@@ -171,10 +241,10 @@ export class AxTable extends AxScrollableArea {
         ancestors.length = 0;
         ownerVisible = true;
         ownerExpanded = false;
-        row.hidden = false;
+        row.hidden = this.#hasFiltered ? !groupHasRows.get(row) : false;
         continue;
       }
-      const filtered = this.#rowFilters.size > 0 && [...this.#rowFilters].some((accept) => !accept(row));
+      const filtered = this.#hasFiltered && !accepted.has(row);
       const managed = row.hasAttribute('data-ax-tree-id') || row.hasAttribute('data-expansion-key') || groupCollapsed || row.hidden || this.#hasFiltered;
       let visible = !groupCollapsed && !filtered;
       if (row.hasAttribute('data-ax-tree-id')) {
@@ -184,10 +254,36 @@ export class AxTable extends AxScrollableArea {
         ancestors.push({level, expanded: row.getAttribute('aria-expanded') === 'true'});
       }
       if (managed) row.hidden = !visible;
+      if (!filtered) visibleRows++;
       ownerVisible = visible;
       ownerExpanded = row.hasAttribute('data-ax-expanded');
     }
+    if (emptyRow) emptyRow.hidden = !(this.#hasFiltered && visibleRows === 0);
     this.renumber();
+    if (this.#hasFiltered && count !== this.#matchCount) {
+      this.#matchCount = count;
+      this.dispatchEvent(new CustomEvent('ax-table-rows', {detail: {count}}));
+    }
+  }
+
+  // ── Context-menu actions (tableContextMenu.tsx) ────────────────────────────
+
+  readonly #contextActions = new Map<string, TableContextActionImpl>();
+
+  /**
+   * A feature module claims a first-party context-menu action id: `state(area)` picks the look
+   * the row shows when its menu opens (a key of the action's `__states`, `null` = left out),
+   * `select(area)` performs it after an un-prevented `astryx-context-action`.
+   */
+  registerContextAction(id: string, impl: TableContextActionImpl): () => void {
+    this.#contextActions.set(id, impl);
+    return () => {
+      if (this.#contextActions.get(id) === impl) this.#contextActions.delete(id);
+    };
+  }
+
+  contextAction(id: string): TableContextActionImpl | undefined {
+    return this.#contextActions.get(id);
   }
 
   /** Renumber row-index cells and aria-rowindex in the rendered (visible) order. */
@@ -196,7 +292,7 @@ export class AxTable extends AxScrollableArea {
     if (this.features.includes('row-index')) {
       let n = Number(this.getAttribute('data-ax-row-index-start') ?? '1');
       for (const row of rows) {
-        const cell = row.querySelector<HTMLElement>(':scope > td > [data-ax-row-index]');
+        const cell = row.querySelector<HTMLElement>(':scope > td > [data-ax-row-index], :scope > td > .ax-table-context-trigger > [data-ax-row-index]');
         if (cell) cell.textContent = String(n++);
       }
     }
@@ -277,6 +373,17 @@ export class AxTable extends AxScrollableArea {
   set selectedKeys(value) { this.api.get('selection')?.set(value); }
   /** Clear the complete selection (TableSelectionToolbar's Clear); dispatches `astryx-selection-change`. */
   clearSelection() { (this.api.get('selection') as (TableFeatureApi & {clear?: () => void}) | undefined)?.clear?.(); }
+  /** Column filters (useTableFiltering): the filter state map; setting applies without an event. */
+  get filters() { return this.api.get('filter')?.get(); }
+  set filters(value) { this.api.get('filter')?.set(value); }
+  /** Reset every filter as the user would (`astryx-filter-change` per cleared column). */
+  clearFilters() { (this.api.get('filter') as (TableFeatureApi & {clear?: () => void}) | undefined)?.clear?.(); }
+  /** Client paging (useTablePagination): `{page, pageSize}`; setting applies without an event. */
+  get paging() { return this.api.get('paging')?.get(); }
+  set paging(value) { this.api.get('paging')?.set(value); }
+  /** Column settings (useTableColumnSettings): the visible column keys in order; setting applies without an event. */
+  get activeColumnKeys() { return this.api.get('column-settings')?.get(); }
+  set activeColumnKeys(value) { this.api.get('column-settings')?.set(value); }
 }
 
 if (typeof customElements !== 'undefined' && !customElements.get('ax-table')) {

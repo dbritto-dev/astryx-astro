@@ -96,9 +96,14 @@ export interface TableSortableColumnConfig {
 export type TableColumnAlign = 'start' | 'center' | 'end';
 export type TableVerticalAlign = 'middle' | 'top' | 'bottom';
 
-/** Filter field reference (filtering plugin — deferred; accepted and ignored). */
+/**
+ * Filter field reference (useTableFiltering): a PowerSearch field key (`'status'`, its default
+ * operator) or `{field, operator}`, resolved against the plugin's `searchConfig`.
+ */
 export interface TableFilterFieldRef {
+  /** Key of the PowerSearchField in the searchConfig. */
   field: string;
+  /** Operator key on that field. @default the field's defaultOperator, else its first */
   operator?: string;
 }
 
@@ -122,7 +127,7 @@ export interface TableColumn<T extends Record<string, unknown> = Record<string, 
   resizable?: boolean;
   /** `true`, or `{sortKey}` to sort by another field. */
   sortable?: boolean | TableSortableColumnConfig;
-  /** Filtering plugin field (deferred: not rendered yet). */
+  /** Filtering plugin field (useTableFiltering): a PowerSearch field key or `{field, operator}`. */
   filter?: TableFilterFieldRef | string;
   /** Custom cell content (server-side; Astryx's render prop). */
   renderCell?: (item: T) => TableNode;
@@ -169,7 +174,11 @@ export interface HeaderCellRenderProps {
   after?: TableNode;
   overlay?: TableNode;
   below?: TableNode;
-  /** Context-menu actions (ContextMenu not ported yet: collected, not rendered). */
+  /**
+   * Right-click context-menu actions for this header cell. Plugins append theirs in
+   * transformHeaderCell (`resolveContextActions(props.contextMenuActions)`); the cell renders
+   * one ContextMenu around its content when any remain.
+   */
   contextMenuActions?: TableContextActions;
   columnIndex?: number;
   columns?: ReadonlyArray<TableColumn<Record<string, unknown>>>;
@@ -188,6 +197,7 @@ export interface BodyRowRenderProps {
 export interface BodyCellRenderProps {
   htmlProps: TableAttrs;
   xstyle: string[];
+  /** Right-click context-menu actions for this body cell (one ContextMenu per cell that has any). */
   contextMenuActions?: TableContextActions;
   columnIndex?: number;
   columns?: ReadonlyArray<TableColumn<Record<string, unknown>>>;
@@ -205,17 +215,29 @@ export interface ScrollWrapperRenderProps {
   afterTable?: TableNode;
 }
 
+/**
+ * One right-click context-menu action a plugin contributes (Astryx TableContextAction). The
+ * menu runs in the browser, so `onSelect` is never called: choosing the row dispatches
+ * `astryx-context-action` {id, columnKey, rowKey} on the `<ax-table>` (first-party ids —
+ * `sort-asc`, `sort-desc`, `sort-clear`, `row-expansion-toggle` — then act unless prevented).
+ */
 export interface TableContextAction {
+  /** Stable identifier, unique within one menu (the `id` of `astryx-context-action`). */
   id: string;
+  /** Visible label; a non-string label shows the id (as Astryx's data menu does). */
   label: TableNode;
+  /** Leading icon: an icon name (or an Astro icon component). */
   icon?: TableNode;
-  /** Not callable across the server/client boundary; kept for type parity. */
+  /** Astryx callback; not called in Astro — listen for `astryx-context-action`. */
   onSelect?: () => void;
   disabled?: boolean;
+  /** Actions with the same group cluster together; a divider separates groups (first-seen order). */
   group?: string;
+  /** Renders a check mark instead of the icon (e.g. the active sort direction). */
   checked?: boolean;
   variant?: 'default' | 'destructive';
 }
+/** A static list, or a getter (resolved when the cell renders — on the server in Astro). */
 export type TableContextActions = TableContextAction[] | (() => TableContextAction[]);
 
 // =============================================================================
