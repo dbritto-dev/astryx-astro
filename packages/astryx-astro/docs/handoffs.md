@@ -499,3 +499,18 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - `<ax-nav-menu>`: hover menu on PopoverElement + `createMenuHover`. `<ax-side-nav>`:
   `collapse`/`expand`/`toggle`/`isCollapsed`, cancelable `astryx-collapse-change`, localStorage.
 - Cascade key `nav-heading-menu-size`.
+
+## Markdown
+
+- Overrides: `components={{code, inlineCode, math, citation, link, heading, paragraph, image,
+  blockquote, hr}}` (Astryx props) — an Astro component (content in its default slot, server
+  only), a function `(props) => html | null | {component, props, children}`, or a tag name.
+  Plugin renderers and `inlinePlugins` return the same shapes.
+- One render function (`markdownPipeline.ts` + `markdownRender.ts`) for server and browser.
+  Astryx renders its own `<hN>`, `<div role="paragraph">`, `<hr>`, `<a>` (not Heading/Text/Divider/Link).
+- Streaming: `<Markdown isStreaming>` renders `<ax-markdown-stream>` with the current text and a
+  kit `<template>`; for client-created messages render `_MarkdownKit.astro` once (`id="…"`) and
+  create elements with `data-ax-kit="<id>"`. API: `append(chunk)`, `text`, `finish()`, `config`,
+  `components`/`plugins` (function overrides), `astryx-markdown-render` after each render.
+  Finished output equals a one-shot render (tested).
+- `hasLinkClickEvent` + cancelable `astryx-link-click` replace `onLinkClick`.

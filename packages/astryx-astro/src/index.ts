@@ -119,6 +119,7 @@ export {default as Link} from './components/Link/Link.astro';
 export {default as LinkProvider} from './components/LinkProvider/LinkProvider.astro';
 export {default as List} from './components/List/List.astro';
 export {default as ListItem} from './components/List/ListItem.astro';
+export {default as Markdown} from './components/Markdown/Markdown.astro';
 export {default as MetadataList} from './components/MetadataList/MetadataList.astro';
 export {default as MetadataListItem} from './components/MetadataList/MetadataListItem.astro';
 export {default as MobileNav} from './components/MobileNav/MobileNav.astro';
