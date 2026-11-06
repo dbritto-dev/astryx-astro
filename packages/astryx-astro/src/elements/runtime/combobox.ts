@@ -47,7 +47,7 @@
  *
  * Framework-free and SSR-safe to import.
  */
-import {isImeKeyEvent, isRtl} from './dom';
+import {isImeKeyEvent} from './dom';
 import {LayerElement, defineElement} from './layer';
 import type {LayerEscapeBehavior, LayerOutsidePress} from './layerStack';
 import {getModality} from './modality';
@@ -428,11 +428,6 @@ function editableKey(combo: Combobox, e: KeyboardEvent, config: ComboboxKeyConfi
     default:
       return false;
   }
-}
-
-/** The inline-end arrow for an element, resolved at interaction time (RTL). */
-export function inlineEndKey(el: Element): 'ArrowLeft' | 'ArrowRight' {
-  return isRtl(el) ? 'ArrowLeft' : 'ArrowRight';
 }
 
 // ── <ax-combobox-layer> ──────────────────────────────────────────────────────

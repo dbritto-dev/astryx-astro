@@ -174,6 +174,14 @@ await sleep(80);
 check('Escape closes the search panel', !(await isOpen(page, SL)));
 check('focus returns to the trigger', (await activeId(page)) === 'sel-search');
 check('closing resets the query', (await page.inputValue(searchInput)) === '' && (await page.evaluate((l) => [...document.querySelectorAll(`${l} [role="option"]`)].every((o) => !o.hidden), SL)));
+await page.click(S);
+await sleep(120);
+await page.keyboard.type('chi');
+await sleep(40);
+await page.click(`${SL} [data-value="Chile"]`);
+await sleep(80);
+check('a pointer pick from the search panel selects and closes', !(await isOpen(page, SL)) && (await page.inputValue('input[name="country"]')) === 'Chile');
+check('focus returns to the trigger after the pick', (await activeId(page)) === 'sel-search');
 
 console.log('Grouped + disabled options');
 const G = '#sel-grouped';
@@ -220,6 +228,7 @@ check('disabledMessage describes the trigger', !!describedDisabled && await page
 console.log('Selected-item overlay');
 const LG = '#sel-long';
 const LGL = `#${await layerOf('sel-long')}`;
+await page.evaluate((s) => document.querySelector(s).scrollIntoView({block: 'center'}), LG);
 await page.click(LG);
 await sleep(120);
 const geo = await page.evaluate(([t, l]) => {
@@ -228,6 +237,19 @@ const geo = await page.evaluate(([t, l]) => {
   return {box: box.top + box.height / 2, opt: opt.top + opt.height / 2};
 }, [LG, LGL]);
 check('the selected option sits over the trigger', Math.abs(geo.box - geo.opt) <= 3, JSON.stringify(geo));
+await page.keyboard.press('Escape');
+await sleep(60);
+await page.evaluate((s) => {
+  const box = document.querySelector(s).closest('ax-selector');
+  window.scrollBy(0, box.getBoundingClientRect().bottom - window.innerHeight + 8);
+}, LG);
+await page.click(LG);
+await sleep(120);
+const fit = await page.evaluate((l) => {
+  const r = document.querySelector(`${l} [role="listbox"]`).getBoundingClientRect();
+  return {top: r.top, bottom: r.bottom, vh: window.innerHeight};
+}, LGL);
+check('near the bottom edge the list is clamped into the viewport', fit.top >= 0 && fit.bottom <= fit.vh, JSON.stringify(fit));
 await page.keyboard.press('Escape');
 
 await done();

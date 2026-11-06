@@ -84,7 +84,7 @@ export abstract class ListboxSelectElement extends Base {
   /** Called from connectedCallback after the parts were found. */
   protected abstract setup(): Array<() => void>;
   /** Label match for the search row (substring, case-insensitive, Astryx optionMatchesQuery). */
-  protected matches(option: HTMLElement, query: string): boolean {
+  protected optionMatches(option: HTMLElement, query: string): boolean {
     if (!query) return true;
     return (option.getAttribute('data-ax-label') ?? option.textContent ?? '').toLowerCase().includes(query.toLowerCase());
   }
@@ -241,6 +241,7 @@ export abstract class ListboxSelectElement extends Base {
     this.search?.setAttribute('aria-expanded', 'false');
     this.querySelector('.ax-selector-chevron, .ax-multi-selector-chevron')?.setAttribute('data-state', 'collapsed');
     this.layer?.style.removeProperty('margin-block-start');
+    this.layer?.style.removeProperty('--_astryx-layer-try-fallbacks');
     this.combo?.highlight(null);
     this.typeahead?.reset();
     if (this.query !== '' || this.search?.value) this.setQuery('', {silent: true});
@@ -265,6 +266,7 @@ export abstract class ListboxSelectElement extends Base {
     if (!layer || !listbox || !this.isOpen) return;
     const target = this.combo?.selected() ?? this.combo?.options()[0] ?? null;
     layer.style.removeProperty('margin-block-start');
+    layer.style.removeProperty('--_astryx-layer-try-fallbacks');
     if (!target) return;
     const layoutTop = (el: HTMLElement) => {
       let top = 0;
@@ -274,10 +276,10 @@ export abstract class ListboxSelectElement extends Base {
     const anchorRect = this.getBoundingClientRect();
     const listboxHeight = listbox.offsetHeight;
     if (listboxHeight <= 0) return;
-    // Scroll a long list so the target is in it before measuring.
-    if (target.offsetTop + target.offsetHeight > listbox.scrollTop + listbox.clientHeight || target.offsetTop < listbox.scrollTop) {
-      target.scrollIntoView({block: 'nearest'});
-    }
+    // Scroll a long list (only the list, never the page) so the target is in it before measuring.
+    const rel = layoutTop(target) - layoutTop(listbox);
+    if (rel < listbox.scrollTop) listbox.scrollTop = rel;
+    else if (rel + target.offsetHeight > listbox.scrollTop + listbox.clientHeight) listbox.scrollTop = rel + target.offsetHeight - listbox.clientHeight;
     const itemCenter = layoutTop(target) - layoutTop(listbox) - listbox.scrollTop + target.offsetHeight / 2;
     const anchorCenter = anchorRect.top + anchorRect.height / 2;
     // The selected row renders one optical pixel below the trigger label at the same centre.
@@ -285,7 +287,12 @@ export abstract class ListboxSelectElement extends Base {
     const maxTop = Math.max(0, window.innerHeight - listboxHeight);
     const clampedTop = Math.min(Math.max(desiredTop, 0), maxTop);
     const offset = Math.max(0, anchorRect.bottom - clampedTop);
-    if (offset > 0) layer.style.setProperty('margin-block-start', `-${offset}px`);
+    if (offset > 0) {
+      layer.style.setProperty('margin-block-start', `-${offset}px`);
+      // The offset is already clamped to the viewport: a flip would invert the margin and push
+      // the list off-screen, so the layer keeps its placement while overlaid.
+      layer.style.setProperty('--_astryx-layer-try-fallbacks', 'none');
+    }
   }
 
   // ── Search row ────────────────────────────────────────────────────────────
@@ -363,7 +370,7 @@ export abstract class ListboxSelectElement extends Base {
     let count = 0;
     for (const option of listbox.querySelectorAll<HTMLElement>('[role="option"]')) {
       if (this.isFixedRow(option)) continue;
-      const match = this.matches(option, query);
+      const match = this.optionMatches(option, query);
       option.hidden = !match;
       if (match) count++;
     }

@@ -321,3 +321,88 @@ supply its `<dialog>` as an outlet while open.
 
 Client-only APIs (import from the element modules in the browser, not from the package index):
 `toast()`, `createToastQueue()`, `getToastContext()` (`src/elements/toast.ts`).
+
+---
+
+## combobox.ts — listbox comboboxes
+
+Ports Selector/hooks.ts useCombobox, MultiSelector/hooks.ts useMultiCombobox,
+hooks/useHighlightedOptionScroll.ts, hooks/useKeyboardHighlight.ts, Layer/outsidePress.ts (for
+manual lists) and Layer/useLayer.tsx useKeepLayerOpenProps.
+
+The shared controller of every combobox whose popup is a listbox: Selector, MultiSelector
+and Typeahead now; Tokenizer, PowerSearch, CommandPalette and the DateInput/TimeInput lists
+next. DOM focus never leaves the field: the active option is named by
+`aria-activedescendant`, a press anywhere in the list keeps focus in the field, and the
+owner keeps the value, `aria-selected` and `aria-expanded`.
+
+**Markup contract** (server-rendered; the controller reads it and writes only state):
+
+```html
+<button|input role="combobox" aria-controls="L" aria-expanded="false" [aria-autocomplete="list"]>
+<ax-combobox-layer id="P" popover="auto|manual" class="ax-layer …" data-ax-anchor="<field box id>"
+                   [data-ax-outside-press="dismiss"] [data-ax-inside="<id> …"]>
+  <div id="L" role="listbox" [aria-multiselectable="true"]>
+    <div role="option" id="L-item-0" data-value="apple" [data-ax-label="Apple"]
+         aria-selected="false" [aria-disabled="true"] [hidden]>…</div>
+    <div role="group" aria-label="Fruit" [hidden]><div aria-hidden="true">Fruit</div>…options…</div>
+    <div role="presentation">No options</div>   <!-- empty state: never an option -->
+  </div>
+</ax-combobox-layer>
+```
+
+- Options are `[role="option"]` (configurable) in DOM order; one that is `[hidden]` or inside
+  a `[hidden]` group is not navigable. Each needs an `id`. `aria-disabled="true"` options are
+  skipped by keys, pointer and typeahead. Typeahead reads `data-ax-label`, else the text.
+- Written state: `data-ax-highlighted` on the active option, `data-ax-keyboard` while that
+  highlight came from keyboard input (draw the in-row focus ring — useKeyboardHighlight), and
+  `aria-activedescendant` on every field while the list is open. Keyboard moves scroll the
+  option into view; pointer moves never do, and after a keyboard scroll the row under a still
+  pointer takes the highlight only once the pointer really moves (useHighlightedOptionScroll).
+- A button trigger is the layer's native invoker (`popovertarget`), so `popover="auto"` light
+  dismiss treats it as inside; a text input cannot be an invoker, so its list is
+  `popover="manual"` + `data-ax-outside-press="dismiss"` (the shared stack closes it when a
+  press starts **and** ends outside the layer and its anchor). Both close on Escape through
+  the stack (`data-ax-escape="none"` opts out) and never take focus.
+
+```ts
+import {createCombobox, handleComboboxKey} from '../../elements/runtime/combobox';
+const combo = createCombobox({listbox, fields: () => [trigger, searchInput], isOpen: () => layer.isOpen,
+  onActivate: (option, event) => commit(option)});
+const detach = combo.attach();                       // pointer highlight, focus keeping, click activation
+trigger.addEventListener('keydown', (e) => {
+  if (typeahead.onKeyDown(e)) return e.preventDefault();   // combo.typeahead({onMatch, getCurrent})
+  handleComboboxKey(combo, e, {kind: 'select', open: () => layer.show({source: trigger}),
+    close: () => layer.hide(), activate: (o) => commit(o)});
+});
+```
+
+| `createCombobox(config)` → | |
+|---|---|
+| `options()`, `enabled()`, `isDisabled(o)` | navigable options (not hidden) / not aria-disabled |
+| `highlighted()`, `highlightedIndex()`, `selected()`, `first()`, `last()` | |
+| `highlight(option \| null, source?)` | `'keyboard'` (scrolls, may ring), `'pointer'` (never scrolls), `'program'` |
+| `move(±1, {wrap?, source?})` | among enabled options; clamps unless `wrap` |
+| `sync()` | re-write aria-activedescendant; drop a highlight that was filtered out |
+| `typeahead({onMatch, getCurrent})` | `createTypeahead` over `options()` (Selector commits closed, highlights open; MultiSelector opens) |
+| `attach()` | listbox listeners; returns detach |
+
+`handleComboboxKey(combo, event, config)` — the keyboard map; returns true when it handled the
+key. IME composition is never a command; `defaultPrevented` keys are left alone.
+
+| `config` | |
+|---|---|
+| `kind: 'select'` | useCombobox / useMultiCombobox: ↓/↑ open (first / last) then move, clamped; Enter/Space open on the selection or activate (`isMultiple`: toggle, list stays open); Home/End/PageUp/PageDown first/last; Escape closes; Tab closes and moves on; Delete/Backspace call `clear` on a closed list without search; printable keys call `seed` (`hasSearch`) |
+| `kind: 'editable'` | a text field (getFieldProps, BaseTypeahead): closed ↓ calls `open`; open ↓/↑ wrap, Enter activates (never submits), Escape closes, Tab closes, Home/End first/last; chords other than Escape are the field's |
+| `hasSearch` / `isTextField` | a popup search row owns typing: Space, Home/End and characters stay with the text; PageUp/PageDown are the first/last substitutes |
+| `open(key)`, `close(reason)`, `activate(option, event)` | the owner's actions |
+| `openHighlight(key)` | `'first' \| 'last' \| 'selected' \| 'none'` after a key opened the list |
+| `clear`, `hasValue`, `seed`, `isMultiple`, `wrap`, `isDisabled` | |
+
+`<ax-combobox-layer>` (`ComboboxLayerElement extends LayerElement`): the list's layer root —
+Escape `close` for both popover kinds, outside press `native` (auto) or `dismiss`
+(`data-ax-outside-press`), presses on its anchor and on `data-ax-inside` ids count as inside.
+`comboboxLayer(owner, id)` finds one. `keepLayerOpenFor(root, () => layer)`: buttons marked
+`data-ax-keep-open` (or inside a marked wrapper — a clear or status button in the trigger box)
+become the layer's invoker for the press, so pressing them does not light-dismiss the list
+(useKeepLayerOpenProps).
