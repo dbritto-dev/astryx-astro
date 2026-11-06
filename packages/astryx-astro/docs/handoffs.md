@@ -84,3 +84,22 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
   (`aria-disabled` when they are tooltip triggers); link members become `<button>`; members
   show `data-elevation="none"` and lose the press-scale effect.
 - `clickAction` / `pressedChangeAction` (server functions) are not available in Astro.
+
+## Indicators (form controls build on these)
+
+- `<Indicator name="checkbox|radio|check" state size="sm|md" isDisabled>`; busy content (Spinner)
+  in the default slot. Resolves the active theme's replacement (`theme` prop →
+  `Astro.locals.astryxTheme`) then the default; themes swap with
+  `registerIndicatorTheme(theme, {check: RadioIndicator})`.
+- Owner hooks (Indicator.css): `ax-indicator-scope` on the row (enabled only) for hover tint;
+  `ax-indicator-ring-host` on the element holding the input + `ax-indicator-ring` around the
+  indicator paints the focus ring on the indicator.
+- Theme attrs: `data-size`, `data-checked` (`checked`/`indeterminate`), `data-disabled`.
+
+## Stand-ins to replace (from the content batch)
+
+- `behaviors/liveAnnounce.ts` → runtime `announce.ts`.
+- Tooltips on Avatar, Thumbnail labels, ProgressBar marks → tooltip attachment contract.
+- AvatarGroup renders `data-astryx-roving="horizontal"` (items `[data-avatar-item]`) → wire runtime roving.
+- Thumbnail remove button native stand-in → IconButton.
+- Inline handler-string `onClick`/`onRemove` props on Avatar/Thumbnail → events per AGENTS.md.

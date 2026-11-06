@@ -20,6 +20,7 @@ const lines = [
   "export type * from './components/Icon/iconRegistry';",
   "export {attachTooltip, attachHoverCard} from './components/Tooltip/attach';",
   "export {attachPopover} from './components/Popover/attach';",
+  "export {registerIndicatorTheme, getIndicator, defaultIndicators, resetIndicators} from './components/Indicator/indicatorRegistry';",
   '',
 ];
 const seen = new Set();
