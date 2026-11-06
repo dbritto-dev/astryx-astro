@@ -1,0 +1,87 @@
+---
+/**
+ * ChatLayout — the shell of a full chat interface: messages in page flow, the composer docked
+ * at the bottom behind a frosted-glass layer, auto-scroll and a scroll-to-bottom button.
+ * Port of @astryxdesign/core Chat/ChatLayout.tsx, useChatStreamScroll.ts and
+ * useChatNewMessages.ts (behaviour in elements/chat-layout.ts, `<ax-chat-layout>`).
+ *
+ * Layout contract: a flex column; the message area grows to fill what the sticky dock leaves
+ * (never shrinks), so a short conversation fits exactly and a long one scrolls. By default
+ * the root is the scroll container (`overflow-y: auto`); with `scrollRef` (a CSS selector,
+ * e.g. `"html"` for the document) that element scrolls instead and the dock is
+ * `position: fixed`. `container-type: inline-size` enables container queries below.
+ *
+ * Stick to bottom (useChatStreamScroll): content present at load, or the first content that
+ * makes the container scroll, is positioned at the bottom in one frame; later growth while
+ * following springs to the bottom (an instant jump under reduced motion). A scroll that lands
+ * above the last position the layout set or saw — wheel, touch, scrollbar, keyboard — stops
+ * following; settling within 10px of the bottom (scrollend) follows again. While following,
+ * scroll anchoring is off (`data-astryx-chat-following`).
+ *
+ * New messages (useChatNewMessages): the layout observes the ChatMessageList content
+ * (`[data-ax-chat-list-content]`, attached whenever it appears); every height change follows
+ * the stream while locked, and a new last `.astryx-chat-message` while scrolled up flags
+ * "New messages". The scroll button shows when scrolled more than 100px up or with new
+ * messages (expanded with that label); its click dismisses the flag and scrolls to bottom.
+ *
+ * Slots: default (typically ChatMessageList), `composer` (typically ChatComposer),
+ * `emptyState` (shown when the default slot renders nothing), `scrollButton` (replaces the
+ * default; `scrollButton={null}` hides it). Element API: `scrollToBottom({behavior})`,
+ * `scrollToMessage(el)`, `scrollToLastMessage()`, `lock()`, `unlock()`, `isLocked`,
+ * `isScrolledUp`, `hasNewMessages`, `dismissNewMessages()`.
+ *
+ * Theme hook: `.astryx-chat-layout[data-density]`.
+ *
+ * @example
+ * <ChatLayout density="spacious">
+ *   <ChatMessageList>…</ChatMessageList>
+ *   <ChatComposer slot="composer" />
+ * </ChatLayout>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import ScrollButton from './ChatLayoutScrollButton.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import type {ChatDensity} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Spacing, message-area max-width and blur height. @default 'balanced' */
+  density?: ChatDensity;
+  /** CSS selector of an external scroll container (e.g. "html"); default: the layout root. */
+  scrollRef?: string;
+  /** `null` hides the default scroll-to-bottom button (or use the `scrollButton` slot). */
+  scrollButton?: null;
+  locale?: string;
+}
+
+const {density = 'balanced', scrollRef, scrollButton, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const childrenHtml = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const showEmpty = childrenHtml.trim() === '';
+const emptyHtml = showEmpty && Astro.slots.has('emptyState') ? (await Astro.slots.render('emptyState')).trim() : '';
+const customButton = Astro.slots.has('scrollButton') ? await Astro.slots.render('scrollButton') : null;
+const hideButton = scrollButton === null && customButton == null;
+const isExternal = scrollRef != null && scrollRef !== '';
+const {themeClass, attrs} = themeProps('chat-layout', {density});
+---
+<ax-chat-layout
+  {...rest}
+  {...attrs}
+  class={cx(themeClass, className)}
+  data-ax-scroll-ref={isExternal ? scrollRef : undefined}
+  data-ax-external-scroll={isExternal ? '' : undefined}
+  data-ax-new-messages-label={t('@astryx.chatLayout.newMessages')}
+>
+  <div class="ax-chat-layout-messages" data-ax-density={density} data-ax-chat-message-area="">
+    {showEmpty && emptyHtml !== '' ? <div class="ax-chat-layout-empty"><Fragment set:html={emptyHtml} /></div> : <Fragment set:html={childrenHtml} />}
+  </div>
+  <div class="ax-chat-layout-dock-container" data-ax-fixed={isExternal ? '' : undefined}>
+    {customButton != null ? <Fragment set:html={customButton} /> : !hideButton && <ScrollButton locale={locale} data-ax-layout-owned="" />}
+    <div class="ax-chat-layout-blur" data-ax-density={density}></div>
+    <div class="ax-chat-layout-dock" data-ax-density={density}>
+      <div class="ax-chat-layout-dock-inner" data-ax-density={density}><slot name="composer" /></div>
+    </div>
+  </div>
+</ax-chat-layout>
+<script>import '../../elements/chat-layout';</script>

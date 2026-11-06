@@ -1,0 +1,116 @@
+---
+/**
+ * ChatDictationButton — the composer's microphone toggle for voice input.
+ * Port of @astryxdesign/core Chat/ChatDictationButton.tsx with the hooks it is driven by,
+ * useChatDictation.ts and useSpeechRecognition.ts (behaviour in elements/chat-dictation.ts,
+ * `<ax-chat-dictation-button>`).
+ *
+ * Idle: a ghost icon-only Button with the microphone ("Start dictation"). Listening: the icon
+ * gives way to five volume-reactive frequency bars (accent, blending toward the error color
+ * when the input clips past 20%) and the name becomes "Stop dictation". The Web Speech API is
+ * feature-detected in the browser (`SpeechRecognition` / `webkitSpeechRecognition`): without
+ * it the button stays hidden (`isHiddenWhenUnsupported`, default) or visible but disabled.
+ * Until the element has checked, the server markup is already in that state, so nothing
+ * flashes.
+ *
+ * Astryx passes a `dictation` object (useChatDictation's return); here the element owns the
+ * controller and `dictation` takes its options: `lang` (default the request locale),
+ * `continuous`, `interimResults`, `hasSounds` (start/stop cues, never on iOS) and `input` — a
+ * CSS selector of the ChatComposerInput that receives the transcript (default: the input of
+ * the enclosing ChatComposer). Interim results show as ghost text in that input
+ * (`data-astryx-dictation-interim`); final results are inserted at the caret through its
+ * `insertText()`, so they follow the normal change pipeline. "CAPS LOCK": a sustained loud
+ * voice uppercases the transcript, as in Astryx.
+ *
+ * Events (bubbling, composed): `astryx-dictation-start`, `astryx-dictation-end`,
+ * `astryx-transcript` {transcript, isFinal}, `astryx-dictation-result` {transcript},
+ * `astryx-dictation-error` {error, message}. API: `el.dictation` (`isSupported`,
+ * `isListening`, `isSpeaking`, `volume`, `bands`, `interimTranscript`, `start()`, `stop()`,
+ * `abort()`, `toggle()`, `transformTranscript`), and `createSpeechRecognition()` /
+ * `createChatDictation()` for custom UIs. Astryx makes no announcements of its own here: the
+ * button's name flips between start and stop.
+ *
+ * Theme hook: `.astryx-chat-dictation-button` (the wrapper).
+ *
+ * @example
+ * <ChatComposer><ChatDictationButton slot="sendActions" dictation={{hasSounds: true}} /></ChatComposer>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import './Chat.css';
+
+export interface ChatDictationOptions {
+  /** BCP-47 language. @default the request locale */
+  lang?: string;
+  /** Keep listening until stopped. @default true */
+  continuous?: boolean;
+  /** Report interim results. @default true */
+  interimResults?: boolean;
+  /** Subtle start / stop sounds. @default false */
+  hasSounds?: boolean;
+  /** CSS selector of the ChatComposerInput to dictate into. @default the enclosing composer's input */
+  input?: string;
+}
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** Dictation options (Astryx passes the useChatDictation return value). */
+  dictation?: ChatDictationOptions;
+  /** @default 'md' */
+  size?: 'sm' | 'md';
+  /** Hide when SpeechRecognition is unsupported; false keeps a disabled button. @default true */
+  isHiddenWhenUnsupported?: boolean;
+  /** Accessible name override. */
+  label?: string;
+  locale?: string;
+}
+
+const SIZE_CONFIG = {
+  sm: {barWidth: 2, barGap: 1.5, barMaxHeight: 14},
+  md: {barWidth: 2.5, barGap: 2, barMaxHeight: 18},
+} as const;
+const BAR_COUNT = 5;
+const BAR_MIN_SCALE = 0.08;
+
+const {dictation = {}, size = 'md', isHiddenWhenUnsupported = true, label, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const startLabel = t('@astryx.chatDictationButton.startDictation');
+const stopLabel = t('@astryx.chatDictationButton.stopDictation');
+const name = label ?? startLabel;
+const {barWidth, barGap, barMaxHeight} = SIZE_CONFIG[size];
+const {themeClass, attrs} = themeProps('chat-dictation-button');
+---
+<ax-chat-dictation-button
+  {...attrs}
+  class={cx(themeClass, className)}
+  hidden={isHiddenWhenUnsupported || undefined}
+  data-ax-hidden-when-unsupported={isHiddenWhenUnsupported ? '' : undefined}
+  data-ax-start-label={startLabel}
+  data-ax-stop-label={stopLabel}
+  data-ax-label={label}
+  data-ax-lang={dictation.lang ?? resolveLocale(Astro, locale)}
+  data-ax-continuous={dictation.continuous === false ? 'false' : undefined}
+  data-ax-interim={dictation.interimResults === false ? 'false' : undefined}
+  data-ax-sounds={dictation.hasSounds ? '' : undefined}
+  data-ax-input={dictation.input}
+  data-ax-no-speech={t('@astryx.chat.speechRecognition.noSpeechDetected')}
+  {...rest}
+>
+  <span class="ax-chat-dictation-bars" aria-hidden="true" hidden style={`gap:${barGap}px;height:${barMaxHeight}px`}>
+    {Array.from({length: BAR_COUNT}, () => (
+      <span class="ax-chat-dictation-bar" style={`width:${barWidth}px;height:100%;background-color:var(--color-accent);transform:scaleY(${BAR_MIN_SCALE})`}></span>
+    ))}
+  </span>
+  <Button
+    label={name}
+    aria-label={name}
+    variant="ghost"
+    size={size}
+    isIconOnly
+    isDisabled
+    data-ax-chat-dictation-toggle=""
+  ><Fragment slot="icon"><span class="ax-chat-send-icon" data-ax-chat-icon="microphone"><Icon icon="microphone" size={size} /></span></Fragment></Button>
+</ax-chat-dictation-button>
+<script>import '../../elements/chat-dictation';</script>

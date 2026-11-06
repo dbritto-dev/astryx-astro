@@ -1,0 +1,334 @@
+---
+import ChatLayout from './ChatLayout.astro';
+import ChatLayoutScrollButton from './ChatLayoutScrollButton.astro';
+import ChatMessageList from './ChatMessageList.astro';
+import ChatMessage from './ChatMessage.astro';
+import ChatMessageBubble from './ChatMessageBubble.astro';
+import ChatMessageMetadata from './ChatMessageMetadata.astro';
+import ChatSystemMessage from './ChatSystemMessage.astro';
+import ChatComposer from './ChatComposer.astro';
+import ChatComposerInput from './ChatComposerInput.astro';
+import ChatComposerDrawer from './ChatComposerDrawer.astro';
+import ChatComposerTokenElement from './ChatComposerTokenElement.astro';
+import ChatSendButton from './ChatSendButton.astro';
+import ChatTokenizedText from './ChatTokenizedText.astro';
+import ChatToolCalls from './ChatToolCalls.astro';
+import ChatDictationButton from './ChatDictationButton.astro';
+import Avatar from '../Avatar/Avatar.astro';
+import Badge from '../Badge/Badge.astro';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import {createStaticSource} from '../Typeahead/createStaticSource';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {ChatComposerToken, ChatComposerTrigger, ChatDensity, ChatMessageStatus} from './types';
+
+const people: SearchableItem<{group: string; role: string}>[] = [
+  {id: 'ada', label: 'Ada Lovelace', auxiliaryData: {group: 'Team', role: 'Analyst'}},
+  {id: 'grace', label: 'Grace Hopper', auxiliaryData: {group: 'Team', role: 'Compilers'}},
+  {id: 'margaret', label: 'Margaret Hamilton', auxiliaryData: {group: 'Team', role: 'Flight software'}},
+  {id: 'alan', label: 'Alan Kay', auxiliaryData: {group: 'Guests', role: 'Research'}},
+  {id: 'dieter', label: 'Dieter Rams', auxiliaryData: {group: 'Guests', role: 'Design'}},
+];
+const mention = (item: SearchableItem): ChatComposerToken => ({value: `@${item.id}`, label: `@${item.label}`, variant: 'blue'});
+const peopleTrigger: ChatComposerTrigger = {character: '@', searchSource: createStaticSource(people), onSelect: mention, hasMultiWordQuery: true, menuLabel: 'People'};
+// Answered by the page (astryx-query); the browser sets its onSelect (see the script).
+const commandTrigger: ChatComposerTrigger = {character: '/', menuLabel: 'Commands', emptySearchText: 'No such command'};
+const mentionTokens = people.map(mention);
+const densities: ChatDensity[] = ['compact', 'balanced', 'spacious'];
+const statuses: ChatMessageStatus[] = ['sending', 'sent', 'delivered', 'read', 'error'];
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const frame = 'display:flex;flex-direction:column;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-surface)';
+const grid = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--spacing-5);align-items:start';
+const diffHtml = `<pre style="margin:0;font-size:var(--text-supporting-size);font-family:var(--font-family-code)">- padding: 8px\n+ padding: var(--spacing-2)</pre>`;
+---
+<div style="display:grid;gap:var(--spacing-8);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Conversation (type @ for people, / for commands; Enter sends, Shift+Enter breaks the line)</h3>
+    <div id="chat-demo-frame" style={`${frame};height:600px`}>
+      <ChatLayout id="chat-demo-layout">
+        <ChatMessageList id="chat-demo-list" hasScrollToTopAction>
+          <ChatSystemMessage variant="divider">Today</ChatSystemMessage>
+          <ChatSystemMessage><Icon slot="icon" icon="info" size="sm" />Ada Lovelace joined the conversation</ChatSystemMessage>
+          <ChatMessage sender="user">
+            <ChatMessageBubble name="You" group="first">Can you check why the toolbar buttons look off in dark mode?</ChatMessageBubble>
+            <ChatMessageBubble group="last">
+              <ChatMessageMetadata slot="metadata" timestamp="9:41 AM" status="read" />
+              <ChatTokenizedText tokens={mentionTokens} text="@grace mentioned it in standup too." />
+            </ChatMessageBubble>
+          </ChatMessage>
+          <ChatMessage sender="assistant" name="Navi">
+            <Avatar slot="avatar" name="Navi" size="md" />
+            <ChatToolCalls calls={[
+              {name: 'read_file', target: 'Toolbar.tsx', duration: '120ms'},
+              {name: 'grep', target: '--color-overlay-hover', duration: '48ms', node: 'navi'},
+              {name: 'edit_file', target: 'Toolbar.css', additions: 3, deletions: 1, duration: '210ms', resultDetail: <Fragment set:html={diffHtml} />},
+            ]} />
+            <ChatMessageBubble variant="ghost">
+              <p style="margin:0">The ghost buttons painted their hover overlay with a hard-coded colour. I switched them to the overlay token, so dark mode now gets the lighter tint.</p>
+            </ChatMessageBubble>
+          </ChatMessage>
+          <ChatMessage sender="assistant" name="Navi">
+            <Avatar slot="avatar" name="Navi" size="md" />
+            <ChatMessageMetadata slot="metadata" timestamp="9:43 AM" footer="claude" />
+            <ChatToolCalls calls={[{name: 'run_tests', status: 'error', target: 'pnpm test toolbar', errorMessage: '2 snapshots are out of date'}]} />
+          </ChatMessage>
+        </ChatMessageList>
+        <ChatComposer slot="composer" id="chat-demo-composer" placeholder="Message Navi…">
+          <ChatComposerDrawer slot="drawer" count={2} label="Files">
+            <Badge label="Toolbar.tsx" icon="externalLink" />
+            <Badge label="Toolbar.css" icon="externalLink" />
+          </ChatComposerDrawer>
+          <Button slot="headerActions" label="Attach" icon="upload" variant="ghost" size="sm" isIconOnly />
+          <span slot="headerContext">Context 12%</span>
+          <ChatComposerInput slot="input" id="chat-demo-input" debounceMs={150} triggers={[{...peopleTrigger, renderItem: (item) => (
+            <span style="display:flex;align-items:center;gap:var(--spacing-2);min-width:0"><Avatar name={item.label} size="xsm" /><span class="ax-chat-trigger-item-label">{item.label}</span></span>
+          )}, commandTrigger]} />
+          <Button slot="footerActions" label="Claude" variant="ghost" size="md" endContent="chevronDown" />
+          <ChatDictationButton slot="sendActions" id="chat-demo-dictation" />
+        </ChatComposer>
+      </ChatLayout>
+    </div>
+    <p id="chat-demo-log" style="margin:var(--spacing-2) 0 0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)" aria-live="off"></p>
+  </section>
+
+  <section>
+    <h3 style={cap}>Density (list → messages → bubbles), grouped bubbles</h3>
+    <div style={grid}>
+      {densities.map((density) => (
+        <div style={frame}>
+          <ChatMessageList density={density} align="top">
+            <ChatMessage sender="assistant" name={density}>
+              <Avatar slot="avatar" name="Navi" size="sm" />
+              <ChatMessageBubble group="first">First bubble</ChatMessageBubble>
+              <ChatMessageBubble group="middle">Middle bubble</ChatMessageBubble>
+              <ChatMessageBubble group="last"><ChatMessageMetadata slot="metadata" timestamp="2:30 PM" />Last bubble</ChatMessageBubble>
+            </ChatMessage>
+            <ChatMessage sender="user">
+              <ChatMessageBubble group="first">Got it</ChatMessageBubble>
+              <ChatMessageBubble group="last"><ChatMessageMetadata slot="metadata" timestamp="2:31 PM" status="delivered" />Thanks!</ChatMessageBubble>
+            </ChatMessage>
+          </ChatMessageList>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Bubbles: filled, ghost, full width, explicit message density, gap override</h3>
+    <div style={frame}>
+      <ChatMessageList gap={2} align="top">
+        <ChatMessage sender="assistant"><ChatMessageBubble>Filled (assistant)</ChatMessageBubble></ChatMessage>
+        <ChatMessage sender="assistant"><ChatMessageBubble variant="ghost">Ghost: no boundary, same text column</ChatMessageBubble></ChatMessage>
+        <ChatMessage sender="assistant">
+          <ChatMessageBubble variant="ghost" width="100%">
+            <div style="padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-container)">An artifact card spanning the full message column</div>
+          </ChatMessageBubble>
+        </ChatMessage>
+        <ChatMessage sender="user" density="spacious"><ChatMessageBubble>Spacious message inside a balanced list</ChatMessageBubble></ChatMessage>
+        <ChatMessage sender="system"><ChatMessageBubble>A system-sender message: centered, no avatar</ChatMessageBubble></ChatMessage>
+      </ChatMessageList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Metadata and system messages</h3>
+    <div style={frame}>
+      <ChatMessageList align="top" density="compact">
+        {statuses.map((status) => (
+          <ChatMessage sender="user"><ChatMessageBubble><ChatMessageMetadata slot="metadata" timestamp="10:02 AM" footer="edited" status={status} />Status: {status}</ChatMessageBubble></ChatMessage>
+        ))}
+        <ChatMessage sender="assistant" name="Navi">
+          <Avatar slot="avatar" name="Navi" size="sm" />
+          <ChatMessageBubble variant="ghost">Footer actions below an unbubbled reply</ChatMessageBubble>
+          <ChatMessageMetadata slot="metadata" timestamp="10:03 AM">
+            <span slot="footer" style="display:inline-flex;gap:var(--spacing-1)"><Button label="Copy" icon="copy" variant="ghost" size="sm" isIconOnly /><Button label="Good response" icon="check" variant="ghost" size="sm" isIconOnly /></span>
+          </ChatMessageMetadata>
+        </ChatMessage>
+        <ChatSystemMessage variant="divider">March 15, 2026</ChatSystemMessage>
+        <ChatSystemMessage>Grace changed the topic to "Toolbar polish"</ChatSystemMessage>
+      </ChatMessageList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Composer states</h3>
+    <div style={grid}>
+      <ChatComposer placeholder="Default (low elevation)" />
+      <ChatComposer placeholder="Flat (elevation none)" elevation="none" />
+      <ChatComposer placeholder="Compact" density="compact"><ChatSendButton slot="sendButton" size="sm" /></ChatComposer>
+      <ChatComposer value="Draft that can be sent" status={{type: 'error', message: 'Message failed to send. Try again.'}} />
+      <ChatComposer placeholder="Warning on top" status={{type: 'warning', message: 'You are near the context limit.'}} statusPosition="top" />
+      <ChatComposer placeholder="Streaming (disabled, stop shown)" isDisabled isStopShown />
+      <ChatComposer placeholder="Collapsed drawer">
+        <ChatComposerDrawer slot="drawer" count={3} label="Attachments" defaultIsCollapsed>
+          <Badge label="spec.pdf" /><Badge label="notes.md" /><Badge label="diagram.png" />
+        </ChatComposerDrawer>
+      </ChatComposer>
+      <ChatComposer placeholder="Custom textarea input">
+        <textarea slot="input" rows="2" aria-label="Plain message" style="border:0;outline:0;padding:0" placeholder="A plain textarea in the input slot"></textarea>
+      </ChatComposer>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Standalone input, tokens and tokenized text</h3>
+    <div style={grid}>
+      <div>
+        <p style={cap}>ChatComposerInput (standalone: Enter dispatches astryx-submit)</p>
+        <ChatComposerInput id="chat-demo-standalone" triggers={[peopleTrigger]} placeholder="Mention someone with @" maxRows={4} />
+      </div>
+      <div>
+        <p style={cap}>ChatComposerTokenElement</p>
+        <ChatComposerTokenElement token={{value: '@ada', label: '@Ada Lovelace', variant: 'blue'}} />
+        <ChatComposerTokenElement token={{value: '/summarize', label: '/summarize', variant: 'purple', icon: 'search'}} />
+      </div>
+      <div>
+        <p style={cap}>ChatTokenizedText</p>
+        <ChatTokenizedText tokens={[...mentionTokens, {value: '/summarize', label: '/summarize', variant: 'purple'}]} text="/summarize the thread for @margaret and @alan" />
+      </div>
+      <div>
+        <p style={cap}>Send button states (standalone)</p>
+        <div style="display:flex;gap:var(--spacing-2)">
+          <ChatSendButton isDisabled={false} />
+          <ChatSendButton />
+          <ChatSendButton isStopShown />
+          <ChatSendButton size="sm" isDisabled={false} />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Scroll button, empty states</h3>
+    <div style={grid}>
+      <div style="display:flex;gap:var(--spacing-3);align-items:center">
+        <ChatLayoutScrollButton isVisible />
+        <ChatLayoutScrollButton isVisible label="New messages" />
+      </div>
+      <div style={`${frame};height:340px`}>
+        <ChatLayout density="compact">
+          <div slot="emptyState" style="color:var(--color-text-secondary)">No messages yet. Say hello!</div>
+          <ChatComposer slot="composer" density="compact" placeholder="Start the conversation" />
+        </ChatLayout>
+      </div>
+      <div style={`${frame};height:340px`}>
+        <ChatLayout density="spacious" scrollButton={null}>
+          <ChatMessageList density="spacious">
+            <div slot="emptyState" style="color:var(--color-text-secondary)">This list is empty</div>
+          </ChatMessageList>
+          <ChatComposer slot="composer" placeholder="Spacious layout" />
+        </ChatLayout>
+      </div>
+    </div>
+  </section>
+
+  <template id="chat-demo-user-template">
+    <ChatMessage sender="user"><ChatMessageBubble data-demo-text=""></ChatMessageBubble></ChatMessage>
+  </template>
+  <template id="chat-demo-assistant-template">
+    <ChatMessage sender="assistant" name="Navi">
+      <Avatar slot="avatar" name="Navi" size="md" />
+      <ChatMessageBubble variant="ghost"><p style="margin:0;white-space:pre-wrap" data-demo-text=""></p></ChatMessageBubble>
+    </ChatMessage>
+  </template>
+  <template id="chat-demo-badge-template"><Badge label="token" variant="blue" /></template>
+</div>
+<script>
+  // Demo backend: '/' commands (async), sent messages and a streamed reply.
+  import type {ChatComposerInputElement} from '../../elements/chat-composer-input';
+  import type {ChatComposerElement} from '../../elements/chat-composer';
+  import type {ChatMessageListElement} from '../../elements/chat-message-list';
+
+  const COMMANDS = [
+    {id: 'summarize', label: 'summarize', auxiliaryData: {group: 'Text'}},
+    {id: 'translate', label: 'translate', auxiliaryData: {group: 'Text'}},
+    {id: 'explain', label: 'explain', auxiliaryData: {group: 'Code'}},
+    {id: 'review', label: 'review', auxiliaryData: {group: 'Code'}},
+  ];
+  const REPLY = 'Sure — here is what I found. The toolbar uses the shared overlay tokens now, so hover and press paint follow the theme in light and dark mode alike.';
+
+  const input = document.getElementById('chat-demo-input') as ChatComposerInputElement | null;
+  const composer = document.getElementById('chat-demo-composer') as ChatComposerElement | null;
+  const list = document.getElementById('chat-demo-list') as ChatMessageListElement | null;
+  const log = document.getElementById('chat-demo-log');
+
+  customElements.whenDefined('ax-chat-composer-input').then(() => {
+    if (input) input.triggers = [{character: '/', onSelect: (item) => ({value: `/${item.id}`, label: `/${item.label}`, variant: 'purple'})}];
+  });
+
+  document.addEventListener('astryx-query', (event) => {
+    const detail = (event as CustomEvent).detail;
+    if ((event.target as Element).id !== 'chat-demo-input' || detail.trigger !== '/') return;
+    event.preventDefault();
+    const q = String(detail.query).toLowerCase();
+    const timer = setTimeout(() => detail.respond(COMMANDS.filter((c) => c.label.includes(q))), 300);
+    detail.signal.addEventListener('abort', () => clearTimeout(timer));
+  });
+
+  let streaming: ReturnType<typeof setInterval> | null = null;
+  const stopStreaming = () => {
+    if (streaming) clearInterval(streaming);
+    streaming = null;
+    if (list) list.isStreaming = false;
+    if (composer) {
+      composer.isStopShown = false;
+      composer.isDisabled = false;
+    }
+  };
+
+  const clone = (id: string) => (document.getElementById(id) as HTMLTemplateElement).content.firstElementChild!.cloneNode(true) as HTMLElement;
+
+  composer?.addEventListener('astryx-submit', (event) => {
+    const {value, tokens} = (event as CustomEvent<{value: string; tokens: {value: string; label?: string; variant?: string}[]}>).detail;
+    if (log) log.textContent = `astryx-submit ${JSON.stringify({value, tokens: tokens.map((t) => t.value)})}`;
+    const content = list?.contentElement;
+    if (!content) return;
+    const user = clone('chat-demo-user-template');
+    const bubble = user.querySelector('[data-demo-text]')!;
+    // Render token values back as badges (what ChatTokenizedText does on the server).
+    let rest = value;
+    for (const token of tokens) {
+      const at = rest.indexOf(token.value);
+      if (at < 0) continue;
+      bubble.append(rest.slice(0, at));
+      const badge = clone('chat-demo-badge-template');
+      badge.setAttribute('data-variant', token.variant ?? 'neutral');
+      badge.querySelector('.ax-badge-label')!.textContent = String(token.label ?? token.value);
+      bubble.append(badge);
+      rest = rest.slice(at + token.value.length);
+    }
+    bubble.append(rest);
+    content.append(user);
+    // Stream the reply word by word: the log is aria-busy until it completes.
+    const reply = clone('chat-demo-assistant-template');
+    const text = reply.querySelector('[data-demo-text]')!;
+    content.append(reply);
+    if (list) list.isStreaming = true;
+    if (composer) {
+      composer.isStopShown = true;
+      composer.isDisabled = true;
+    }
+    const words = REPLY.split(' ');
+    let i = 0;
+    streaming = setInterval(() => {
+      text.textContent += (i ? ' ' : '') + words[i++];
+      if (i >= words.length) stopStreaming();
+    }, 60);
+  });
+  composer?.addEventListener('astryx-stop', () => {
+    stopStreaming();
+    if (log) log.textContent = 'astryx-stop';
+  });
+
+  // Older messages when the top of the log scrolls into view (once).
+  let loadedOlder = false;
+  list?.addEventListener('astryx-scroll-to-top', (event) => {
+    if (loadedOlder) return;
+    loadedOlder = true;
+    (event as CustomEvent).detail.waitUntil(new Promise((resolve) => setTimeout(resolve, 600)));
+  });
+
+  document.getElementById('chat-demo-standalone')?.addEventListener('astryx-submit', (event) => {
+    if (log) log.textContent = `standalone astryx-submit ${JSON.stringify((event as CustomEvent).detail)}`;
+  });
+</script>

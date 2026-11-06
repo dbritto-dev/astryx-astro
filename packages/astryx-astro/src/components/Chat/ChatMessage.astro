@@ -1,0 +1,89 @@
+---
+/**
+ * ChatMessage — the sender wrapper of one message: alignment by sender, avatar, name,
+ * metadata. Port of @astryxdesign/core Chat/ChatMessage.tsx + chatMessage.vars.stylex.ts.
+ *
+ *   [Avatar] [Name     ]          a user message mirrors (row-reverse, end-aligned);
+ *            [Content  ]          a system message is centered and shows no avatar,
+ *            [Metadata ]          name or metadata.
+ *
+ * An `<article>` named by its visible name (`aria-labelledby`), falling back to the
+ * translated "Message from {sender}" (`aria-label`, also when the name renders no text).
+ * Density: explicit `density`, else the enclosing ChatMessageList's (cascade key
+ * `chat-density`), else 'balanced'. The message passes its sender (and an explicit density)
+ * to its bubbles and metadata (cascade key `chat-message`, chatCascade.ts).
+ * `--_chat-avatar-offset` is set from the article's own `:has([data-chat-name])`.
+ *
+ * Slots: default (bubbles, tool calls, any content), `avatar`, `name`, `metadata` (`name` /
+ * `metadata` also take text props). Empty slots create no wrapper; wrappers whose content
+ * renders nothing collapse (`:empty`).
+ *
+ * Theme hook: `.astryx-chat-message[data-sender][data-density]`.
+ *
+ * @example
+ * <ChatMessage sender="assistant" name="Navi">
+ *   <Avatar slot="avatar" name="Navi" size="md" />
+ *   <ChatMessageBubble>Hello!</ChatMessageBubble>
+ * </ChatMessage>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits, stamp} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {CHAT_DENSITY_KEY, CHAT_MESSAGE_KEY, densityApplier, senderApplier} from './chatCascade';
+import type {ChatDensity, ChatMessageSender} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'article'> {
+  /** Who sent the message: controls alignment and layout. */
+  sender: ChatMessageSender;
+  /** Sender name above the body (or the `name` slot); it labels the message. */
+  name?: string | number;
+  /** Metadata text below the body (or the `metadata` slot). */
+  metadata?: string | number;
+  /** Explicit density; else the list's; else 'balanced'. */
+  density?: ChatDensity;
+  locale?: string;
+}
+
+const {sender, name, metadata, density: densityProp, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const density: ChatDensity = densityProp ?? 'balanced';
+const isSystem = sender === 'system';
+
+const renderable = (v: unknown) => v != null && v !== '' && typeof v !== 'boolean';
+const avatarHtml = !isSystem && Astro.slots.has('avatar') ? (await Astro.slots.render('avatar')).trim() : '';
+const nameSlot = !isSystem && Astro.slots.has('name') ? (await Astro.slots.render('name')).trim() : null;
+const metadataSlot = !isSystem && Astro.slots.has('metadata') ? (await Astro.slots.render('metadata')).trim() : null;
+const hasAvatar = avatarHtml !== '';
+const hasName = !isSystem && (nameSlot != null ? nameSlot !== '' : renderable(name));
+const hasMetadata = !isSystem && (metadataSlot != null ? metadataSlot !== '' : renderable(metadata));
+const nameId = hasName ? uid(Astro, 'ax-chat-message-name') : undefined;
+
+// ChatMessageContext: sender always, density only when explicit (else the list stamps it).
+const stampers: Record<string, ((a: Record<string, string>) => void) | null> = {[CHAT_MESSAGE_KEY]: senderApplier(sender)};
+if (densityProp !== undefined) stampers[CHAT_DENSITY_KEY] = densityApplier(density);
+const stampSlot = async (html: string) => stamp(html, stampers);
+const childrenHtml = Astro.slots.has('default') ? await stampSlot(await Astro.slots.render('default')) : '';
+const metadataHtml = metadataSlot ? await stampSlot(metadataSlot) : metadataSlot;
+const nameHtml = nameSlot ? await stampSlot(nameSlot) : nameSlot;
+
+const {themeClass, attrs} = themeProps('chat-message', {sender, density});
+---
+<article
+  {...rest}
+  {...attrs}
+  class={cx(themeClass, className)}
+  aria-label={t('@astryx.chatMessage.messageFrom', {sender})}
+  aria-labelledby={nameId}
+  data-ax-inherit={inherits({[CHAT_DENSITY_KEY]: densityProp === undefined})}
+  data-ax-has-avatar={hasAvatar ? '' : undefined}
+>
+  {hasAvatar && <div class="ax-chat-message-avatar"><Fragment set:html={avatarHtml} /></div>}
+  <div class="ax-chat-message-column" data-ax-sender={sender}>
+    {hasName && <div id={nameId} class="ax-chat-message-name">{nameHtml != null ? <Fragment set:html={nameHtml} /> : name}</div>}
+    <div class="ax-chat-message-children" data-ax-sender={sender}><Fragment set:html={childrenHtml} /></div>
+    {hasMetadata && <div class="ax-chat-message-meta">{metadataHtml != null ? <Fragment set:html={metadataHtml} /> : metadata}</div>}
+  </div>
+</article>

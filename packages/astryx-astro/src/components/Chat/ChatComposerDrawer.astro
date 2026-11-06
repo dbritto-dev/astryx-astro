@@ -1,0 +1,82 @@
+---
+/**
+ * ChatComposerDrawer — the collapsible tray above the composer input (attachments, context
+ * chips, previews); it tucks behind the composer body. Port of @astryxdesign/core
+ * Chat/ChatComposerDrawer.tsx.
+ *
+ * With `count` it gains a disclosure toggle row (`role="button"`, `aria-expanded`,
+ * `aria-controls` → the content, `aria-label` "Expand/Collapse {label}"): collapsed it shows
+ * the summary (a neutral Badge with the count + `label`, or the `collapsedSummary` slot,
+ * presentation only), expanded a bar handle; the two crossfade in one grid cell. The content
+ * collapses with a grid-row transition and is `inert` while collapsed.
+ *
+ * Behaviour: `<ax-chat-composer-drawer>` (elements/chat-disclosure.ts). `isCollapsed` /
+ * `defaultIsCollapsed` set the initial state; the element owns it afterwards
+ * (`el.isCollapsed`); a user toggle dispatches `astryx-collapsed-change` {isCollapsed}.
+ *
+ * Theme hook: `.astryx-chat-composer-drawer[data-collapsed="collapsed"]`.
+ *
+ * @example
+ * <ChatComposer><ChatComposerDrawer slot="drawer" count={2} label="Files">…thumbnails…</ChatComposerDrawer></ChatComposer>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Badge from '../Badge/Badge.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Item count for the collapsed badge; without it the drawer cannot collapse. */
+  count?: number;
+  /** Names the items in the summary and the toggle. @default translated "Items" */
+  label?: string;
+  /** Initial collapsed state (the element owns it afterwards). */
+  isCollapsed?: boolean;
+  /** @default false */
+  defaultIsCollapsed?: boolean;
+  locale?: string;
+}
+
+const {count, label: labelProp, isCollapsed: controlled, defaultIsCollapsed = false, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.chat.composerDrawer.label');
+const isCollapsed = controlled ?? defaultIsCollapsed;
+const canCollapse = count != null;
+const collapsed = canCollapse && isCollapsed;
+const contentId = uid(Astro, 'ax-chat-drawer');
+const expandLabel = t('@astryx.chatComposerDrawer.expand', {label});
+const collapseLabel = t('@astryx.chatComposerDrawer.collapse', {label});
+const summaryHtml = Astro.slots.has('collapsedSummary') ? await Astro.slots.render('collapsedSummary') : null;
+// Astryx reflects `collapsed` from its state, so a drawer without `count` can still report it.
+const {themeClass, attrs} = themeProps('chat-composer-drawer', {collapsed: isCollapsed ? 'collapsed' : null});
+---
+<ax-chat-composer-drawer {...attrs} class={cx(themeClass, className)} {...rest}>
+  {canCollapse && (
+    <div
+      class="ax-chat-drawer-toggle ax-focus-visible"
+      role="button"
+      tabindex="0"
+      aria-expanded={isCollapsed ? 'false' : 'true'}
+      aria-controls={contentId}
+      aria-label={isCollapsed ? expandLabel : collapseLabel}
+      data-ax-expand-label={expandLabel}
+      data-ax-collapse-label={collapseLabel}
+      data-ax-chat-drawer-toggle=""
+    >
+      <div class="ax-chat-drawer-summary" aria-hidden="true" inert>
+        {summaryHtml != null ? <Fragment set:html={summaryHtml} /> : (
+          <>
+            <Badge variant="neutral" label={count} />
+            <span class="ax-chat-drawer-label">{label}</span>
+          </>
+        )}
+      </div>
+      <div class="ax-chat-drawer-handle"></div>
+    </div>
+  )}
+  <div id={contentId} class="ax-chat-drawer-grid" data-ax-collapsed={collapsed ? '' : undefined} inert={collapsed || undefined} data-ax-can-collapse={canCollapse ? '' : undefined}>
+    <div class="ax-chat-drawer-content"><slot /></div>
+  </div>
+</ax-chat-composer-drawer>
+<script>import '../../elements/chat-disclosure';</script>

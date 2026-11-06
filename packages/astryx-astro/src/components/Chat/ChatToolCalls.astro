@@ -1,0 +1,108 @@
+---
+/**
+ * ChatToolCalls — tool / function call invocations of an LLM response, from the `calls`
+ * array LLM APIs return. Port of @astryxdesign/core Chat/ChatToolCalls.tsx.
+ *
+ * One call renders inline. Several get a disclosure header (`role="button"`,
+ * `aria-expanded`, `aria-controls`): collapsed it shows the latest call and the count,
+ * expanded the summary label (`label`, else the translated "{count} tool calls") and every
+ * call; the collapsed list stays mounted but `inert` (grid-row height animation). A call with
+ * `resultDetail` is itself a disclosure row (Enter / Space / click) with its detail below.
+ *
+ * Status: pending / running show a subtle Spinner, complete / error an icon; each row carries
+ * visually hidden status text (an error with `errorMessage` says "Error: {message}" and the
+ * icon's `title` echoes the message).
+ *
+ * Behaviour: `<ax-chat-tool-calls>` (elements/chat-disclosure.ts). `isExpanded` /
+ * `defaultIsExpanded` set the initial state; the element owns it afterwards
+ * (`el.isExpanded`), and a user toggle dispatches `astryx-expanded-change` {isExpanded}
+ * (Astryx onExpandedChange). `stats` and `resultDetail` take text or Astro markup.
+ *
+ * Theme hook: `.astryx-chat-tool-calls`.
+ *
+ * @example
+ * <ChatToolCalls calls={[{name: 'read_file', target: 'Button.tsx', duration: '120ms'},
+ *                        {name: 'run_tests', status: 'running', target: 'yarn test'}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import CallRow from './_ChatToolCallRow.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import type {ChatToolCallItem, ChatToolCallStatus} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Tool call data (name, status, target, duration, node, additions, deletions, stats, errorMessage, resultDetail, key, data). */
+  calls: ChatToolCallItem[];
+  /** Summary label of an expanded group. @default translated "{count} tool calls" */
+  label?: string;
+  /** Initial expanded state (the element owns it afterwards). */
+  isExpanded?: boolean;
+  /** @default false */
+  defaultIsExpanded?: boolean;
+  locale?: string;
+}
+
+const {calls, label, isExpanded: controlled, defaultIsExpanded, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const isExpanded = controlled ?? defaultIsExpanded ?? false;
+const statusText = (call: ChatToolCallItem) => {
+  const status = call.status ?? 'complete';
+  if (status === 'error' && call.errorMessage != null) return t('@astryx.chatToolCalls.error', {message: call.errorMessage});
+  return t(`@astryx.chatToolCalls.status.${status}`);
+};
+const isGroup = calls.length > 1;
+const contentId = isGroup ? uid(Astro, 'ax-chat-tool-calls') : undefined;
+const latest = calls[calls.length - 1];
+const latestStatus: ChatToolCallStatus = latest?.status ?? 'complete';
+const STATUS_ICON: Record<ChatToolCallStatus, string> = {pending: 'clock', running: 'success', complete: 'success', error: 'error'};
+const {themeClass, attrs} = themeProps('chat-tool-calls');
+---
+{calls.length > 0 && (
+  <ax-chat-tool-calls {...attrs} class={cx(themeClass, className)} {...rest}>
+    {isGroup ? (
+      <>
+        <div
+          role="button"
+          tabindex="0"
+          aria-expanded={isExpanded ? 'true' : 'false'}
+          aria-controls={contentId}
+          class="ax-chat-tool-row ax-focus-visible"
+          data-ax-toggle=""
+          data-ax-chat-tool-toggle=""
+        >
+          <span class="ax-chat-tool-view" data-ax-view="expanded" hidden={!isExpanded || undefined}>
+            <span class="ax-chat-tool-group-icon"><Icon icon="wrench" size="sm" color="inherit" /></span>
+            <span class="ax-chat-tool-group-label">{label ?? t('@astryx.chatToolCalls.groupLabel', {count: calls.length})}</span>
+          </span>
+          <span class="ax-chat-tool-view" data-ax-view="collapsed" hidden={isExpanded || undefined}>
+            <span class="ax-chat-tool-status" data-ax-status={latestStatus}>
+              {latestStatus === 'running' || latestStatus === 'pending'
+                ? <Spinner size="sm" shade="subtle" aria-hidden="true" />
+                : <Icon icon={STATUS_ICON[latestStatus]} size="xsm" color="inherit" />}
+              <VisuallyHidden>{statusText(latest)}</VisuallyHidden>
+            </span>
+            <span class="ax-chat-tool-name">{latest.name}</span>
+            {latest.target != null && <span class="ax-chat-tool-target">{latest.target}</span>}
+          </span>
+          <span class="ax-chat-tool-count"><span class="ax-chat-tool-view" data-ax-view="collapsed" hidden={isExpanded || undefined}><Icon icon="wrench" size="xsm" color="inherit" />{calls.length}</span></span>
+          <span class="ax-chat-tool-chevron"><Icon icon="chevronDown" size="xsm" color="inherit" /></span>
+        </div>
+        <div id={contentId} class="ax-chat-tool-group-content" data-ax-expanded={isExpanded ? '' : undefined} inert={!isExpanded || undefined}>
+          <div class="ax-chat-tool-group-inner">
+            <div class="ax-chat-tool-list">
+              {calls.map((call) => <CallRow call={call} statusText={statusText(call)} hasClippedFocusRing />)}
+            </div>
+          </div>
+        </div>
+      </>
+    ) : (
+      <CallRow call={latest} statusText={statusText(latest)} />
+    )}
+  </ax-chat-tool-calls>
+)}
+<script>import '../../elements/chat-disclosure';</script>

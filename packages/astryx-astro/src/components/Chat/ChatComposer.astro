@@ -1,0 +1,148 @@
+---
+/**
+ * ChatComposer — the composer shell: drawer, header (actions + context), input, footer
+ * actions, send actions and the send / stop button, with a status bar above or below.
+ * Port of @astryxdesign/core Chat/ChatComposer.tsx (+ ChatContext composer context; behaviour
+ * in elements/chat-composer.ts, `<ax-chat-composer>`).
+ *
+ * Body: page-chat radius (`--_chat-composer-radius`, default --radius-chat) and padding
+ * (`--_chat-composer-padding`, default --spacing-3; compact --spacing-2) — buttons inside
+ * follow concentrically through `--_button-radius`. `elevation="low"` (default) is raised and
+ * deepens on hover / focus; `none` is flat with a border (drawn inside the padding). Keyboard
+ * focus in the editor adds the shared focus ring; pointer focus does not. A press on empty
+ * body space focuses the input with the caret after the draft. Disabled: dimmed and inert,
+ * except the Stop button while `isStopShown`.
+ *
+ * Composer state (Astryx ChatComposerContext) lives on the element: `value` (from the input's
+ * `astryx-change`), `isDisabled`, `isStopShown`, `canSend` (trimmed value non-empty and not
+ * disabled), `status`. The default ChatSendButton follows it.
+ *
+ * Events (bubbling, composed): `astryx-submit` {value, tokens} — the trimmed draft (Enter in
+ * the input, or the send button), then the draft clears (Astryx onSubmit); `astryx-stop` from
+ * the stop button (Astryx onStop); `astryx-change` {value} from the input (Astryx onChange).
+ * API: `value`, `isDisabled`, `isStopShown`, `canSend`, `status` ({type, message} | null),
+ * `submit(value?)`, `stop()`, `focusInput()`, `inputControl` ({focus}: a custom input
+ * registers itself, as `inputControlRef`).
+ *
+ * Status: `status={{type: 'error' | 'warning', message}}` paints a tinted bar tucked under the
+ * body (`statusPosition`). A status set later through `el.status` is announced once (errors
+ * assertively, warnings politely); one already shown when the page loads is silent.
+ *
+ * Slots: `drawer` (ChatComposerDrawer), `headerActions` (icon-only sm buttons),
+ * `headerContext` (context usage, ProgressBar), `input` (replaces ChatComposerInput),
+ * `footerActions` (md buttons), `sendActions` (left of the send button, e.g.
+ * ChatDictationButton), `sendButton` (replaces ChatSendButton). Custom inputs inside read the
+ * composer's value / placeholder / isDisabled through `Astro.locals.astryxChatComposer`.
+ *
+ * Theme hook: `.astryx-chat-composer[data-density]`; private vars `--_chat-composer-radius`,
+ * `--_chat-composer-padding`, `--_button-radius`.
+ *
+ * @example
+ * <ChatComposer placeholder="Ask anything…">
+ *   <ChatDictationButton slot="sendActions" />
+ * </ChatComposer>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import ChatComposerInput from './ChatComposerInput.astro';
+import ChatSendButton from './ChatSendButton.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import type {ChatComposerStatus, ChatDensity} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Initial draft (the element owns it afterwards: `el.value`). */
+  value?: string;
+  /** @default translated "Type a message…" */
+  placeholder?: string;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Show the stop button instead of send (a reply is streaming). @default false */
+  isStopShown?: boolean;
+  /** @default 'balanced' */
+  density?: ChatDensity;
+  /** 'low' raised (default) or 'none' flat with a border. @default 'low' */
+  elevation?: 'none' | 'low';
+  /** Status bar. */
+  status?: ChatComposerStatus | null;
+  /** @default 'bottom' */
+  statusPosition?: 'top' | 'bottom';
+  locale?: string;
+}
+
+const {
+  value = '', placeholder: placeholderProp, isDisabled = false, isStopShown = false, density = 'balanced', elevation = 'low',
+  status, statusPosition = 'bottom', locale, class: className, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const placeholder = placeholderProp ?? t('@astryx.chat.composer.placeholder');
+const canSend = value.trim().length > 0 && !isDisabled;
+const context = {value, placeholder, isDisabled, isStopShown, canSend};
+const renderSlot = async (name: string) => Astro.slots.has(name)
+  ? (await renderWithLocals(Astro, {astryxChatComposer: context}, () => Astro.slots.render(name)))
+  : null;
+const nonEmpty = (html: string | null) => html != null && html.trim() !== '';
+
+const drawerHtml = await renderSlot('drawer');
+const headerActionsHtml = await renderSlot('headerActions');
+const headerContextHtml = await renderSlot('headerContext');
+const inputHtml = await renderSlot('input');
+const footerActionsHtml = await renderSlot('footerActions');
+const sendActionsHtml = await renderSlot('sendActions');
+const sendButtonHtml = await renderSlot('sendButton');
+const hasHeader = nonEmpty(headerActionsHtml) || nonEmpty(headerContextHtml);
+const hasStatus = status != null;
+const {themeClass, attrs} = themeProps('chat-composer', {density});
+---
+<ax-chat-composer
+  {...attrs}
+  class={cx(themeClass, className)}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-stop-shown={isStopShown ? '' : undefined}
+  data-ax-status-position={statusPosition}
+  {...rest}
+>
+  <template data-ax-status-template>
+    <div class="ax-chat-composer-status" data-ax-chat-status="" data-ax-position={statusPosition}>
+      <span data-ax-status-icon="error" hidden><Icon icon="error" size="md" color="inherit" /></span>
+      <span data-ax-status-icon="warning" hidden><Icon icon="warning" size="md" color="inherit" /></span>
+      <span data-ax-status-message></span>
+    </div>
+  </template>
+  {hasStatus && statusPosition === 'top' && (
+    <div class="ax-chat-composer-status" data-ax-chat-status="" data-ax-position="top" data-ax-type={status.type}>
+      <span data-ax-status-icon="error" hidden={status.type !== 'error' || undefined}><Icon icon="error" size="md" color="inherit" /></span>
+      <span data-ax-status-icon="warning" hidden={status.type !== 'warning' || undefined}><Icon icon="warning" size="md" color="inherit" /></span>
+      <span data-ax-status-message>{status.message}</span>
+    </div>
+  )}
+  {drawerHtml != null && <Fragment set:html={drawerHtml} />}
+  <div class="ax-chat-composer-body" data-ax-chat-body="" data-ax-elevation={elevation} data-ax-density={density}>
+    {hasHeader && (
+      <div class="ax-chat-composer-header">
+        <div class="ax-chat-composer-header-start">{headerActionsHtml != null && <Fragment set:html={headerActionsHtml} />}</div>
+        <div class="ax-chat-composer-header-end">{headerContextHtml != null && <Fragment set:html={headerContextHtml} />}</div>
+      </div>
+    )}
+    <div class="ax-chat-composer-input-area">
+      {nonEmpty(inputHtml) ? <Fragment set:html={inputHtml} /> : <ChatComposerInput __composer={context} locale={locale} />}
+    </div>
+    <div class="ax-chat-composer-footer">
+      <div class="ax-chat-composer-footer-start">{footerActionsHtml != null && <Fragment set:html={footerActionsHtml} />}</div>
+      <div class="ax-chat-composer-footer-end">
+        {sendActionsHtml != null && <Fragment set:html={sendActionsHtml} />}
+        {nonEmpty(sendButtonHtml) ? <Fragment set:html={sendButtonHtml} /> : <ChatSendButton __composer={context} locale={locale} />}
+      </div>
+    </div>
+  </div>
+  {hasStatus && statusPosition === 'bottom' && (
+    <div class="ax-chat-composer-status" data-ax-chat-status="" data-ax-position="bottom" data-ax-type={status.type}>
+      <span data-ax-status-icon="error" hidden={status.type !== 'error' || undefined}><Icon icon="error" size="md" color="inherit" /></span>
+      <span data-ax-status-icon="warning" hidden={status.type !== 'warning' || undefined}><Icon icon="warning" size="md" color="inherit" /></span>
+      <span data-ax-status-message>{status.message}</span>
+    </div>
+  )}
+</ax-chat-composer>
+<script>import '../../elements/chat-composer';</script>

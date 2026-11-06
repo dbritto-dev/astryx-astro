@@ -1,0 +1,85 @@
+---
+/**
+ * ChatMessageMetadata — a message's metadata row: timestamp · footer · status.
+ * Port of @astryxdesign/core Chat/ChatMessageMetadata.tsx.
+ *
+ * Renders nothing when neither the timestamp nor the footer renders and no status is set.
+ * The row reverses for a user message: the sender comes from the enclosing ChatMessage
+ * (cascade key `chat-message`, see chatCascade.ts), else 'assistant'. The status shows an
+ * icon + translated label, `title` = the label, `aria-label` "Message {status}"; `sending`
+ * pulses (not under reduced motion), `error` uses the error text color.
+ *
+ * `timestamp` / `footer` take text props or markup slots (a Timestamp, reaction buttons).
+ *
+ * Theme hook: `.astryx-chat-message-metadata`.
+ *
+ * @example
+ * <ChatMessageMetadata timestamp="2:30 PM" status="read" />
+ * <ChatMessageMetadata><Timestamp slot="timestamp" value="2026-03-15T14:30:00Z" format="time" /></ChatMessageMetadata>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import {CHAT_MESSAGE_KEY} from './chatCascade';
+import type {ChatMessageStatus} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Timestamp text (or the `timestamp` slot, e.g. a Timestamp). */
+  timestamp?: string | number;
+  /** Footer text (or the `footer` slot: model info, ratings, reactions). */
+  footer?: string | number;
+  /** Delivery status: icon + label. */
+  status?: ChatMessageStatus;
+  locale?: string;
+}
+
+const STATUS_CONFIG: Record<ChatMessageStatus, {icon: string; key: string}> = {
+  sending: {icon: 'clock', key: '@astryx.chat.status.sending'},
+  sent: {icon: 'check', key: '@astryx.chat.status.sent'},
+  delivered: {icon: 'checkDouble', key: '@astryx.chat.status.delivered'},
+  read: {icon: 'checkDouble', key: '@astryx.chat.status.read'},
+  error: {icon: 'error', key: '@astryx.chat.status.failed'},
+};
+
+const {timestamp, footer, status, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+
+// isRenderable: null/undefined/booleans/'' render nothing; 0 renders.
+const renderable = (v: unknown) => v != null && v !== '' && typeof v !== 'boolean';
+const timestampHtml = Astro.slots.has('timestamp') ? (await Astro.slots.render('timestamp')).trim() : null;
+const footerHtml = Astro.slots.has('footer') ? (await Astro.slots.render('footer')).trim() : null;
+const hasTimestamp = timestampHtml != null ? timestampHtml !== '' : renderable(timestamp);
+const hasFooter = footerHtml != null ? footerHtml !== '' : renderable(footer);
+const config = status != null ? STATUS_CONFIG[status] : null;
+const statusLabel = config ? t(config.key) : '';
+const hasContent = hasTimestamp || hasFooter || config != null;
+const {themeClass, attrs} = themeProps('chat-message-metadata');
+---
+{hasContent && (
+  <div
+    {...attrs}
+    class={cx(themeClass, className)}
+    data-ax-sender="assistant"
+    data-ax-inherit={inherits({[CHAT_MESSAGE_KEY]: true})}
+    {...rest}
+  >
+    {hasTimestamp && <span>{timestampHtml != null ? <Fragment set:html={timestampHtml} /> : timestamp}</span>}
+    {hasTimestamp && (hasFooter || config != null) && <span>·</span>}
+    {hasFooter && (footerHtml != null ? <Fragment set:html={footerHtml} /> : footer)}
+    {hasFooter && config != null && <span>·</span>}
+    {config != null && (
+      <span
+        class="ax-chat-meta-status"
+        data-ax-status={status}
+        title={statusLabel}
+        aria-label={t('@astryx.chat.messageAriaLabel', {status: statusLabel.toLowerCase()})}
+      >
+        <Icon icon={config.icon} size="xsm" color="inherit" />
+        <span>{statusLabel}</span>
+      </span>
+    )}
+  </div>
+)}

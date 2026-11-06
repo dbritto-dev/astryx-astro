@@ -1,0 +1,77 @@
+---
+/**
+ * Private: one tool call row (ChatToolCalls.tsx CallRow). A call with `resultDetail` is a
+ * disclosure (`role="button"`, `aria-expanded`; `aria-controls` names the detail only while
+ * it is shown, as in Astryx) wrapped with its detail; `<ax-chat-tool-calls>` toggles it.
+ */
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import {uid} from '../../lib/uid';
+import type {ChatToolCallItem, ChatToolCallStatus} from './types';
+
+interface Props {
+  call: ChatToolCallItem;
+  /** Translated status text (visually hidden). */
+  statusText: string;
+  /** The row sits inside the clipped group list: inset focus ring. */
+  hasClippedFocusRing?: boolean;
+}
+
+const {call, statusText, hasClippedFocusRing = false} = Astro.props;
+const status: ChatToolCallStatus = call.status ?? 'complete';
+const hasDetail = call.resultDetail != null;
+const detailId = hasDetail ? uid(Astro, 'ax-chat-tool-detail') : undefined;
+const STATUS_ICON: Record<ChatToolCallStatus, string> = {pending: 'clock', running: 'success', complete: 'success', error: 'error'};
+const isBusy = status === 'running' || status === 'pending';
+---
+{hasDetail ? (
+  <div data-ax-chat-tool-call="">
+    <div
+      role="button"
+      tabindex="0"
+      aria-expanded="false"
+      data-ax-detail={detailId}
+      data-ax-clickable=""
+      data-ax-focus-inset={hasClippedFocusRing ? '' : undefined}
+      class="ax-chat-tool-row ax-focus-visible"
+    >
+      <span class="ax-chat-tool-status" data-ax-status={status} title={status === 'error' ? call.errorMessage : undefined}>
+        {isBusy ? <Spinner size="sm" shade="subtle" aria-hidden="true" /> : <Icon icon={STATUS_ICON[status]} size="xsm" color="inherit" />}
+        <VisuallyHidden>{statusText}</VisuallyHidden>
+      </span>
+      <span class="ax-chat-tool-name">{call.name}</span>
+      {call.node != null && <Badge label={call.node} variant="neutral" class="ax-chat-tool-node" />}
+      {call.target != null && <span class="ax-chat-tool-target">{call.target}</span>}
+      {(call.additions != null || call.deletions != null || call.stats != null) && (
+        <span class="ax-chat-tool-stats">
+          {call.additions != null && <span class="ax-chat-tool-additions">+{call.additions}</span>}
+          {call.deletions != null && <span class="ax-chat-tool-deletions">-{call.deletions}</span>}
+          {call.stats}
+        </span>
+      )}
+      {call.duration != null && status === 'complete' && <span class="ax-chat-tool-duration">{call.duration}</span>}
+      <span class="ax-chat-tool-detail-chevron"><Icon icon="chevronDown" size="xsm" color="inherit" /></span>
+    </div>
+    <div id={detailId} class="ax-chat-tool-detail" hidden>{call.resultDetail}</div>
+  </div>
+) : (
+  <div class="ax-chat-tool-row ax-focus-visible">
+    <span class="ax-chat-tool-status" data-ax-status={status} title={status === 'error' ? call.errorMessage : undefined}>
+      {isBusy ? <Spinner size="sm" shade="subtle" aria-hidden="true" /> : <Icon icon={STATUS_ICON[status]} size="xsm" color="inherit" />}
+      <VisuallyHidden>{statusText}</VisuallyHidden>
+    </span>
+    <span class="ax-chat-tool-name">{call.name}</span>
+    {call.node != null && <Badge label={call.node} variant="neutral" class="ax-chat-tool-node" />}
+    {call.target != null && <span class="ax-chat-tool-target">{call.target}</span>}
+    {(call.additions != null || call.deletions != null || call.stats != null) && (
+      <span class="ax-chat-tool-stats">
+        {call.additions != null && <span class="ax-chat-tool-additions">+{call.additions}</span>}
+        {call.deletions != null && <span class="ax-chat-tool-deletions">-{call.deletions}</span>}
+        {call.stats}
+      </span>
+    )}
+    {call.duration != null && status === 'complete' && <span class="ax-chat-tool-duration">{call.duration}</span>}
+  </div>
+)}

@@ -1,0 +1,46 @@
+---
+/**
+ * ChatSystemMessage — a centered, muted notice in a chat thread (conversation started, joins,
+ * date separators). Port of @astryxdesign/core Chat/ChatSystemMessage.tsx.
+ *
+ * Not a sender message: no avatar, bubble or alignment. It carries no live role — a notice
+ * added to a ChatMessageList is announced by the list's log (spec:AST-086 FR4).
+ * `variant="divider"` renders a labelled Divider (date separators); the `icon` is rendered
+ * only by the default variant, as in Astryx.
+ *
+ * Theme hook: `.astryx-chat-system-message[data-variant]`.
+ *
+ * @example
+ * <ChatSystemMessage>Conversation started</ChatSystemMessage>
+ * <ChatSystemMessage variant="divider">Today</ChatSystemMessage>
+ * <ChatSystemMessage><Icon slot="icon" icon="info" size="sm" />Ada joined</ChatSystemMessage>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Divider from '../Divider/Divider.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Chat.css';
+
+export type ChatSystemMessageVariant = 'default' | 'divider';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** 'default' centered text; 'divider' text between horizontal rules. @default 'default' */
+  variant?: ChatSystemMessageVariant;
+}
+
+const {variant = 'default', class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const {themeClass, attrs} = themeProps('chat-system-message', {variant});
+const iconHtml = Astro.slots.has('icon') ? (await Astro.slots.render('icon')).trim() : '';
+const childrenHtml = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+---
+{variant === 'divider' ? (
+  <div {...attrs} class={cx(themeClass, className)} {...rest}>
+    <Divider><Fragment slot="label" set:html={childrenHtml} /></Divider>
+  </div>
+) : (
+  <div {...attrs} class={cx(themeClass, className)} {...rest}>
+    <span class="ax-chat-system-content">
+      {iconHtml !== '' && <span class="ax-chat-system-icon"><Fragment set:html={iconHtml} /></span>}
+      <Fragment set:html={childrenHtml} />
+    </span>
+  </div>
+)}
