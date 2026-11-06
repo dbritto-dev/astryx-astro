@@ -1,0 +1,85 @@
+---
+/**
+ * LayoutPanel — side panel for Layout's `start` / `end` slots (navigation, inspectors).
+ * Port of @astryxdesign/core Layout/LayoutPanel.tsx (+ useScrollRegionProps).
+ *
+ * Its area (start/end) and which slots the Layout has are stamped by Layout
+ * (`data-layout-area`, `data-layout-slots`). A start panel's divider sits on its end edge,
+ * an end panel's on its start edge; without a divider the panel collapses the spacing on
+ * the side facing the content. Provides its own padding and scroll.
+ *
+ * Resizable: put a ResizeHandle beside the panel (after a start panel, before an end panel
+ * with `isReversed`). The handle sizes the panel, holds it collapsed (width 0, inert,
+ * aria-hidden; focus inside moves to the handle) and persists it. Pass the same
+ * configuration as `resizable` here so the server renders the region's initial size.
+ * With a ResizeHandle `hasDivider`, leave this panel's `hasDivider` false (no double line).
+ *
+ * @example
+ * <LayoutPanel slot="start" resizable={nav} role="navigation" label="Main">…</LayoutPanel>
+ * <ResizeHandle slot="start" resizable={nav} hasDivider label="Resize navigation" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {readServerResizableState, type ResizableConfig} from '../Resizable/resizableModel';
+import './Layout.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /**
+   * Themed border on the edge facing the content. Without it the spacing toward the content
+   * collapses. Leave false next to a ResizeHandle with `hasDivider`.
+   * @default false
+   */
+  hasDivider?: boolean;
+  /** Internal padding (spacing step); overrides the container's inset. `0` is full bleed. */
+  padding?: SpacingStep;
+  /** Scroll overflow. @default true */
+  isScrollable?: boolean;
+  /** Accessible label for the landmark; also names the scrolling region while it scrolls. */
+  label?: string;
+  /** Landmark role ('navigation', 'complementary') for top-level layouts only. */
+  role?: HTMLAttributes<'div'>['role'];
+  /** Width (number = px). Ignored when `resizable` is given. */
+  width?: SizeValue;
+  /**
+   * The resize region's configuration (the same object passed to the ResizeHandle beside
+   * this panel). The server renders the region's initial size; the handle drives it after.
+   */
+  resizable?: ResizableConfig;
+  /** Locale for the default scroll-region name. */
+  locale?: string;
+}
+
+const {
+  hasDivider = false, isScrollable = true, label, padding, role, width, resizable, locale,
+  class: className, style, ...rest
+} = Astro.props;
+
+const region = resizable ? readServerResizableState(resizable) : null;
+const effectiveWidth = region ? region.size : width;
+const isZeroWidth = effectiveWidth === 0;
+const isConcealed = region?.isCollapsed ?? false;
+const scrollRegion = isScrollable && !isZeroWidth && role == null;
+const t = translator(Astro, locale);
+const {themeClass, attrs} = themeProps('layout-panel');
+---
+<div
+  role={role}
+  aria-label={label}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-ax-inherit="layout"
+  data-padding={padding}
+  data-scrollable={isScrollable ? '' : undefined}
+  data-divider={hasDivider ? '' : undefined}
+  data-zero-width={isZeroWidth ? '' : undefined}
+  data-ax-scroll-region={scrollRegion ? (label ?? t('@astryx.scrollRegion.label')) : undefined}
+  style={mergeStyles({'--_ax-pad': spacing(padding), width: cssSize(effectiveWidth)}, style as StyleValue)}
+  {...rest}
+  inert={isConcealed || undefined}
+  aria-hidden={isConcealed ? 'true' : undefined}
+  data-collapsed={isConcealed ? '' : undefined}
+><slot /></div>
+{scrollRegion && <script>import '../../behaviors/scrollRegion';</script>}

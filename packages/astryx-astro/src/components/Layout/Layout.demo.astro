@@ -1,0 +1,85 @@
+---
+import Layout from './Layout.astro';
+import LayoutHeader from './LayoutHeader.astro';
+import LayoutContent from './LayoutContent.astro';
+import LayoutPanel from './LayoutPanel.astro';
+import LayoutFooter from './LayoutFooter.astro';
+import Card from '../Card/Card.astro';
+import Section from '../Section/Section.astro';
+const title = 'margin:0;font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const body = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const nav = 'display:grid;gap:var(--spacing-1);margin:0;padding:0;list-style:none;font-size:var(--font-size-sm)';
+const lines = (n: number, label = 'Row') => Array.from({length: n}, (_, i) => `${label} ${i + 1}`);
+---
+<Card height={300}>
+  <Layout>
+    <LayoutHeader slot="header" hasDivider><p style={title}>Header, content, footer</p></LayoutHeader>
+    <LayoutContent>
+      {lines(10, 'Scrollable content row').map((l) => <p style={body}>{l}</p>)}
+    </LayoutContent>
+    <LayoutFooter slot="footer" hasDivider><p style={`${body};margin:0`}>Footer: status or actions</p></LayoutFooter>
+  </Layout>
+</Card>
+
+<Card height={300}>
+  <Layout defaultHasDividers>
+    <LayoutHeader slot="header" role="banner" label="Workspace"><p style={title}>Both panels, defaultHasDividers</p></LayoutHeader>
+    <LayoutPanel slot="start" width={160} hasDivider role="navigation" label="Sections">
+      <ul style={nav}>{lines(12, 'Nav item').map((l) => <li>{l}</li>)}</ul>
+    </LayoutPanel>
+    <LayoutContent role="main" label="Document">
+      {lines(14, 'Document paragraph').map((l) => <p style={body}>{l}</p>)}
+    </LayoutContent>
+    <LayoutPanel slot="end" width={180} hasDivider role="complementary" label="Details">
+      <p style={body}>Inspector panel with a divider on its start edge.</p>
+    </LayoutPanel>
+    <LayoutFooter slot="footer" hasDivider={false}><p style={`${body};margin:0`}>A footer that opts out of the default divider</p></LayoutFooter>
+  </Layout>
+</Card>
+
+<Card height={240}>
+  <Layout>
+    <LayoutHeader slot="header"><p style={title}>No dividers: spacing collapses</p></LayoutHeader>
+    <LayoutPanel slot="start" width={140} isScrollable={false}>
+      <p style={body}>Start panel without a divider merges with the content.</p>
+    </LayoutPanel>
+    <LayoutContent>
+      {lines(8, 'Content').map((l) => <p style={body}>{l}</p>)}
+    </LayoutContent>
+  </Layout>
+</Card>
+
+<Card height={260} variant="muted">
+  <Layout contentWidth={420} padding={6}>
+    <LayoutHeader slot="header" hasDivider height={56}><p style={title}>contentWidth 420, padding 6</p></LayoutHeader>
+    <LayoutContent>
+      {lines(8, 'Centered lane paragraph; the scrollbar stays at the outer edge').map((l) => <p style={body}>{l}</p>)}
+    </LayoutContent>
+    <LayoutFooter slot="footer" hasDivider padding={2}><p style={`${body};margin:0`}>Footer padding 2</p></LayoutFooter>
+  </Layout>
+</Card>
+
+<Card>
+  <Layout height="auto">
+    <LayoutHeader slot="header" hasDivider paddingBlockEnd={0}>
+      <p style={title}>height="auto"</p>
+      <p style={`${body};margin:var(--spacing-2) 0 0;border-bottom:2px solid var(--color-accent);display:inline-block`}>paddingBlockEnd 0 docks a tab underline</p>
+    </LayoutHeader>
+    <LayoutPanel slot="start" width={160} hasDivider padding={2} isScrollable={false}>
+      <p style={body}>Panel padding 2</p>
+    </LayoutPanel>
+    <LayoutContent isScrollable={false}>
+      <p style={body}>The layout grows with its content; the page scrolls.</p>
+      <Section variant="muted" dividers={['top', 'bottom']}><p style={`${body};margin:0`}>A Section inside LayoutContent bleeds to the region's edges.</p></Section>
+      <p style={`${body};margin-top:var(--spacing-3)`}>Content after the section.</p>
+    </LayoutContent>
+  </Layout>
+</Card>
+
+<Card height={200} padding={0}>
+  <Layout>
+    <LayoutContent padding={0} slot="content">
+      <div style="height:100%;display:grid;place-items:center;background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)">LayoutContent padding 0 (full bleed) in the content slot</div>
+    </LayoutContent>
+  </Layout>
+</Card>

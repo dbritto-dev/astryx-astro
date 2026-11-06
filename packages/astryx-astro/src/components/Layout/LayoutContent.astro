@@ -1,0 +1,52 @@
+---
+/**
+ * LayoutContent — the scrollable main region of Layout.
+ * Port of @astryxdesign/core Layout/LayoutContent.tsx (+ useScrollRegionProps).
+ *
+ * Takes outer padding on edges where Layout has no adjacent slot and inner padding toward
+ * a header/footer/panel (stamped by Layout as `data-layout-slots`), and republishes
+ * --container-padding-* for bleed children. While it overflows (and has no `role`) it is
+ * exposed as role="group" named by `label` or the translated "Content".
+ * Provides its own padding and scroll: `padding={0}` for edge-to-edge content.
+ *
+ * @example
+ * <LayoutContent role="main" label="Messages">…</LayoutContent>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import './Layout.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Internal padding (spacing step); overrides the container's inset. `0` is full bleed. */
+  padding?: SpacingStep;
+  /** Scroll overflow. Set false for auto-height layouts that need sticky children. @default true */
+  isScrollable?: boolean;
+  /** Accessible label for the landmark; also names the scrolling region while it scrolls. */
+  label?: string;
+  /** Landmark role; 'main' only for the page's primary content. */
+  role?: HTMLAttributes<'div'>['role'];
+  /** Locale for the default scroll-region name. */
+  locale?: string;
+}
+
+const {padding, isScrollable = true, label, role, locale, class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('layout-content');
+const t = translator(Astro, locale);
+const scrollRegion = isScrollable && role == null;
+---
+<div
+  role={role}
+  aria-label={label}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-ax-inherit="layout"
+  data-padding={padding}
+  data-scrollable={isScrollable ? '' : undefined}
+  data-ax-scroll-region={scrollRegion ? (label ?? t('@astryx.scrollRegion.label')) : undefined}
+  style={mergeStyles({'--_ax-pad': spacing(padding)}, style as StyleValue)}
+  {...rest}
+><slot /></div>
+{scrollRegion && <script>import '../../behaviors/scrollRegion';</script>}

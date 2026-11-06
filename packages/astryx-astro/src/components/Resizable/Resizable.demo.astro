@@ -1,0 +1,85 @@
+---
+import ResizeHandle from './ResizeHandle.astro';
+import Card from '../Card/Card.astro';
+import Layout from '../Layout/Layout.astro';
+import LayoutHeader from '../Layout/LayoutHeader.astro';
+import LayoutPanel from '../Layout/LayoutPanel.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import type {ResizableConfig} from './resizableModel';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const body = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const title = 'margin:0;font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const pane = 'box-sizing:border-box;flex-shrink:0;overflow:auto;padding:var(--spacing-3);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const nav: ResizableConfig = {defaultSize: 200, minSize: 140, maxSize: 320, collapsible: true, autoSaveId: 'docs-resizable-files'};
+const inspector: ResizableConfig = {defaultSize: 180, minSize: 120, maxSize: 280};
+const preview: ResizableConfig = {defaultSize: 220, minSize: 160, maxSize: 360};
+const terminal: ResizableConfig = {defaultSize: 90, minSize: 48, maxSize: 160, snaps: [48, 90, 130, 160]};
+---
+<div>
+  <p style={cap}>Layout panels: a collapsible, persisted start panel (Enter / double-click toggles) and a reversed end handle</p>
+  <Card height={280}>
+    <Layout>
+      <LayoutHeader slot="header" hasDivider><p style={title}>Project</p></LayoutHeader>
+      <LayoutPanel slot="start" resizable={nav} id="rz-nav-pane" role="navigation" label="Files">
+        {Array.from({length: 10}, (_, i) => <p style={body}>file-{i + 1}.astro</p>)}
+      </LayoutPanel>
+      <ResizeHandle slot="start" id="rz-nav" resizable={nav} hasDivider label="Resize file list" />
+      <LayoutContent>
+        {Array.from({length: 10}, (_, i) => <p style={body}>Editor line {i + 1}</p>)}
+      </LayoutContent>
+      <ResizeHandle slot="end" id="rz-inspector" resizable={inspector} isReversed hasDivider isAlwaysVisible={false} label="Resize inspector" />
+      <LayoutPanel slot="end" resizable={inspector} label="Inspector"><p style={body}>Hover or focus the handle to reveal its pill.</p></LayoutPanel>
+    </Layout>
+  </Card>
+</div>
+<div>
+  <p style={cap}>Any element, sized by the handle (no divider; pill placement start / end / center)</p>
+  <div style="display:flex;height:120px;border:1px solid var(--color-border);border-radius:var(--radius-element);overflow:hidden">
+    <div style={`${pane};width:220px;background:var(--color-background-muted)`}>Invoice preview</div>
+    <ResizeHandle id="rz-preview" resizable={preview} label="Resize invoice preview" />
+    <div style={`${pane};flex:1;min-width:0`}>Line items, payments and notes.</div>
+  </div>
+  <div style="display:flex;gap:var(--spacing-6);height:60px;margin-top:var(--spacing-3)">
+    {(['start', 'end', 'center'] as const).map((p) => (
+      <div style="display:flex;flex:1;border:1px solid var(--color-border);border-radius:var(--radius-element)">
+        <div style={`${pane};width:80px`}>{p}</div>
+        <ResizeHandle resizable={{defaultSize: 80, minSize: 40, maxSize: 160}} pillPlacement={p} hasDivider label={`Resize (${p})`} />
+        <div style="flex:1"></div>
+      </div>
+    ))}
+  </div>
+</div>
+<div>
+  <p style={cap}>Vertical with snap points (arrow keys move between snaps), and a disabled handle</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--spacing-4)">
+    <div style="display:flex;flex-direction:column;height:220px;border:1px solid var(--color-border);border-radius:var(--radius-element);overflow:hidden">
+      <div style={`${pane};flex:1;min-height:0`}>Editor</div>
+      <ResizeHandle id="rz-terminal" direction="vertical" isReversed resizable={terminal} hasDivider controls="rz-terminal-pane" label="Resize terminal" />
+      <div id="rz-terminal-pane" style={`${pane};height:90px;background:var(--color-background-muted);font-family:var(--font-family-code, monospace)`}>$ pnpm build</div>
+    </div>
+    <div style="display:flex;height:220px;border:1px solid var(--color-border);border-radius:var(--radius-element);overflow:hidden">
+      <div style={`${pane};width:140px`}>Locked layout</div>
+      <ResizeHandle isDisabled resizable={{defaultSize: 140}} hasDivider label="Resize (disabled)" />
+      <div style={`${pane};flex:1`}>The disabled handle stays focusable and announces aria-disabled.</div>
+    </div>
+  </div>
+</div>
+<div>
+  <p style={cap}>Overlay handle inside a clipped panel, and custom handle content</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--spacing-4)">
+    <div style="display:flex;height:120px;border:1px solid var(--color-border);border-radius:var(--radius-element)">
+      <div id="rz-overlay-pane" style={`${pane};position:relative;overflow:clip;width:200px;background:var(--color-background-muted)`}>
+        Overlay mode: the handle sits inside this pane's edge.
+        <ResizeHandle id="rz-overlay" position="overlay" resizable={{defaultSize: 200, minSize: 120, maxSize: 320}} label="Resize sidebar" />
+      </div>
+      <div style={`${pane};flex:1`}>Content</div>
+    </div>
+    <div style="display:flex;height:120px;border:1px solid var(--color-border);border-radius:var(--radius-element)">
+      <div style={`${pane};width:160px`}>Custom grip</div>
+      <ResizeHandle resizable={{defaultSize: 160, minSize: 100, maxSize: 280}} hasDivider label="Resize with custom grip">
+        <span style="position:absolute;z-index:2;padding:2px;border-radius:var(--radius-inner);background:var(--color-background-surface);border:1px solid var(--color-border);font-size:10px;line-height:1;color:var(--color-text-secondary);pointer-events:none">⋮</span>
+      </ResizeHandle>
+      <div style={`${pane};flex:1`}>Content</div>
+    </div>
+  </div>
+</div>

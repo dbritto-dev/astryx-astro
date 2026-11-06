@@ -1,0 +1,51 @@
+---
+import OverflowList from './OverflowList.astro';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1-5) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);white-space:nowrap';
+const more = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1-5) var(--spacing-2);border:0;border-radius:var(--radius-element);background:var(--color-accent-muted);color:var(--color-text-accent);white-space:nowrap';
+const tag = 'font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-2);border-radius:var(--radius-full);background:var(--color-background-muted);color:var(--color-text-primary)';
+const tabs = ['Overview', 'Activity', 'Settings', 'Members', 'Billing', 'Integrations', 'Security', 'Audit log'];
+const tags = ['design', 'frontend', 'astro', 'css', 'tokens', 'theming', 'a11y', 'layout', 'web components', 'performance', 'docs', 'testing'];
+const frame = 'resize:horizontal;overflow:hidden;padding:var(--spacing-2);border:1px dashed var(--color-border);border-radius:var(--radius-element)';
+---
+<div>
+  <p style={cap}>Collapse from the end with a "+N" indicator (drag the corner to resize)</p>
+  <div style={`${frame};width:420px;max-width:100%`} id="ol-frame">
+    <OverflowList id="ol-end" gap={2}>
+      {tabs.map((t) => <button type="button" style={btn}>{t}</button>)}
+      <button type="button" slot="overflow" style={more} aria-label="More tabs">+<span data-overflow-count></span></button>
+    </OverflowList>
+  </div>
+</div>
+<div>
+  <p style={cap}>collapseFrom="start" (breadcrumb-style), minVisibleItems 1</p>
+  <OverflowList collapseFrom="start" minVisibleItems={1} gap={1} style="max-width:340px">
+    {['Home', 'Projects', 'Design system', 'Components', 'Layout', 'OverflowList'].map((c, i, all) => (
+      <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">{c}{i < all.length - 1 ? ' /' : ''}</span>
+    ))}
+    <span slot="overflow" style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">… (<span data-overflow-count></span>) /</span>
+  </OverflowList>
+</div>
+<div>
+  <p style={cap}>maxRows 2 — wraps, then collapses the rest</p>
+  <OverflowList maxRows={2} gap={1.5} style="max-width:360px">
+    {tags.map((t) => <span style={tag}>{t}</span>)}
+    <span slot="overflow" style={`${tag};background:var(--color-accent-muted);color:var(--color-text-accent)`}>+<span data-overflow-count></span> more</span>
+  </OverflowList>
+</div>
+<div>
+  <p style={cap}>maxVisibleItems 3 even when everything fits</p>
+  <OverflowList maxVisibleItems={3} gap={2}>
+    {tabs.slice(0, 5).map((t) => <button type="button" style={btn}>{t}</button>)}
+    <button type="button" slot="overflow" style={more}>+<span data-overflow-count></span></button>
+  </OverflowList>
+</div>
+<div>
+  <p style={cap}>behavior="observeParent": content-sized until it overflows its parent</p>
+  <div style="display:flex;align-items:center;gap:var(--spacing-2);max-width:380px;overflow:hidden">
+    <OverflowList behavior="observeParent" gap={2}>
+      {tabs.slice(0, 6).map((t) => <button type="button" style={btn}>{t}</button>)}
+      <button type="button" slot="overflow" style={more}>+<span data-overflow-count></span></button>
+    </OverflowList>
+  </div>
+</div>

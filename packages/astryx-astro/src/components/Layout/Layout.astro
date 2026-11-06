@@ -1,0 +1,126 @@
+---
+/**
+ * Layout — five-slot layout primitive: header, start, content, end, footer.
+ * Port of @astryxdesign/core Layout/Layout.tsx (LayoutSlotsContext, LayoutAreaContext,
+ * LayoutDividerContext become slot stamping, see src/lib/cascade.ts).
+ *
+ * Slots: `header`, `start`, `end`, `footer`, and `content` (or the default slot; `content`
+ * wins when both are given). Missing slots render no wrapper. Regions take their inset from
+ * slot presence: Layout stamps `data-layout-slots` (and `data-layout-area` in start/end)
+ * onto the LayoutContent / LayoutPanel elements in its slots — the nearest Layout wins.
+ * `defaultHasDividers` stamps `data-divider` onto LayoutHeader / LayoutFooter that leave
+ * `hasDivider` unset; without it the nearest enclosing Layout that sets it decides.
+ *
+ * Landmarks are explicit only (pass `role` to the region). LayoutContent / LayoutPanel own
+ * scrolling. Layout.css also ships `.ax-layout-root-reset` (Astryx layoutReset) for layout
+ * roots such as AppShell, so content inside lays out as at a page root.
+ *
+ * @example
+ * <Card height={320}>
+ *   <Layout>
+ *     <LayoutHeader slot="header" hasDivider>Title</LayoutHeader>
+ *     <LayoutPanel slot="start" width={200} hasDivider>Nav</LayoutPanel>
+ *     <LayoutContent>Body</LayoutContent>
+ *     <LayoutFooter slot="footer" hasDivider>Actions</LayoutFooter>
+ *   </Layout>
+ * </Card>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {stamp} from '../../lib/cascade';
+import './Layout.css';
+
+export type LayoutHeight = 'fill' | 'auto';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /**
+   * `fill`: fills the container height and the content scrolls inside (default);
+   * `auto`: grows with its content and the page scrolls.
+   * @default 'fill'
+   */
+  height?: LayoutHeight;
+  /**
+   * Maximum width of the aligned content in every slot (dividers stay full-bleed). Numbers
+   * are px, strings are CSS (e.g. '60ch'). Percentages, intrinsic widths and bare var()
+   * keep the constrained composition. Common widths: 640 (forms), 960 (content pages).
+   */
+  contentWidth?: SizeValue;
+  /** Padding at this Layout's outer edges (its own regions only; nested Layouts don't inherit it). */
+  padding?: SpacingStep;
+  /** Default `hasDivider` for LayoutHeader / LayoutFooter children that don't set it. */
+  defaultHasDividers?: boolean;
+}
+
+const {height = 'fill', contentWidth, padding, defaultHasDividers, class: className, ...rest} = Astro.props;
+
+/** Internal alignment subtracts contentWidth in CSS; intrinsic values and bare vars cannot. */
+function supportsInternalContentWidthAlignment(width: SizeValue | undefined): boolean {
+  if (width == null || typeof width === 'number') return true;
+  const value = width.trim().toLowerCase();
+  if (value.includes('%')) return false;
+  return value === '0' || /^-?(?:\d+(?:\.\d+)?|\.\d+)[a-z]+$/.test(value) || /^(?:calc|min|max|clamp)\(/.test(value);
+}
+
+const contentName = Astro.slots.has('content') ? 'content' : 'default';
+const hasHeader = Astro.slots.has('header');
+const hasFooter = Astro.slots.has('footer');
+const hasStart = Astro.slots.has('start');
+const hasEnd = Astro.slots.has('end');
+const hasContent = Astro.slots.has(contentName);
+const hasBothPanels = hasStart && hasEnd;
+const hasSinglePanel = hasStart !== hasEnd;
+const usesInternal = contentWidth != null && supportsInternalContentWidthAlignment(contentWidth);
+
+const slots = [hasHeader && 'header', hasStart && 'start', hasEnd && 'end', hasFooter && 'footer'].filter(Boolean).join(' ');
+
+async function region(name: string, area?: 'start' | 'end') {
+  const html = await Astro.slots.render(name);
+  return stamp(html, {
+    layout: (a) => {
+      a['data-layout-slots'] = slots;
+      if (area) a['data-layout-area'] = area;
+    },
+    ...(defaultHasDividers != null
+      ? {'layout-divider': (a: Record<string, string>) => { if (defaultHasDividers) a['data-divider'] = ''; }}
+      : {}),
+  });
+}
+
+const headerHtml = hasHeader ? await region('header') : '';
+const startHtml = hasStart ? await region('start', 'start') : '';
+const contentHtml = hasContent ? await region(contentName) : '';
+const endHtml = hasEnd ? await region('end', 'end') : '';
+const footerHtml = hasFooter ? await region('footer') : '';
+
+const middleMode = contentWidth != null && (!usesInternal || hasBothPanels)
+  ? 'constrained'
+  : usesInternal && !hasBothPanels
+    ? (hasSinglePanel ? (hasStart ? 'internal-start' : 'internal-end') : 'internal')
+    : undefined;
+
+const {themeClass, attrs} = themeProps('layout', {height});
+const own = spacing(padding);
+---
+<div {...rest} class={cx(themeClass, className)} {...attrs}>
+  <div
+    class="ax-layout-inner"
+    style={mergeStyles({
+      '--layout-padding-own-outer-x': own,
+      '--layout-padding-own-outer-y': own,
+      '--layout-content-width': cssSize(contentWidth),
+      '--layout-alignment-width': usesInternal ? cssSize(contentWidth) : undefined,
+    } as StyleValue)}
+  >
+    {hasHeader && <Fragment set:html={headerHtml} />}
+    <div class="ax-layout-middle" data-content-width={middleMode}>
+      {hasStart && <Fragment set:html={startHtml} />}
+      <div class="ax-layout-main" data-content-width={usesInternal && !hasStart && !hasEnd ? 'internal' : undefined}>
+        {hasContent && <Fragment set:html={contentHtml} />}
+      </div>
+      {hasEnd && <Fragment set:html={endHtml} />}
+    </div>
+    {hasFooter && <Fragment set:html={footerHtml} />}
+  </div>
+</div>

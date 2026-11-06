@@ -1,0 +1,36 @@
+---
+import AspectRatio from './AspectRatio.astro';
+const landscape = `data:image/svg+xml,${encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc4fa"/><stop offset="1" stop-color="#e8f4fd"/></linearGradient></defs><rect width="400" height="300" fill="url(#s)"/><circle cx="300" cy="80" r="36" fill="#ffd166"/><path d="M0 230 L110 120 L200 210 L270 150 L400 260 L400 300 L0 300Z" fill="#3a7d44"/><path d="M0 260 L150 190 L260 250 L400 210 L400 300 L0 300Z" fill="#2d6a4f"/></svg>',
+)}`;
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const tile = 'background:var(--color-background-muted);color:var(--color-text-secondary);font-size:var(--font-size-sm)';
+---
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--spacing-4)">
+  <div>
+    <p style={cap}>16 / 9, fit cover</p>
+    <AspectRatio ratio={16 / 9} fit="cover" style="border-radius:var(--radius-element)"><img src={landscape} alt="Mountains under a sun" /></AspectRatio>
+  </div>
+  <div>
+    <p style={cap}>16 / 9, fit contain (letterboxed)</p>
+    <AspectRatio ratio={16 / 9} fit="contain" style={`border-radius:var(--radius-element);${tile}`}><img src={landscape} alt="Mountains under a sun" /></AspectRatio>
+  </div>
+  <div>
+    <p style={cap}>1, shape ellipse, fit cover</p>
+    <AspectRatio ratio={1} shape="ellipse" fit="cover" style="max-width:160px"><img src={landscape} alt="Avatar" /></AspectRatio>
+  </div>
+  <div>
+    <p style={cap}>4 / 3, fit center (natural size)</p>
+    <AspectRatio ratio={4 / 3} fit="center" style={`border-radius:var(--radius-element);${tile}`}>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="9" cy="10" r="2" /><path d="m21 17-5-5-8 8" /></svg>
+    </AspectRatio>
+  </div>
+  <div>
+    <p style={cap}>2 / 1 ellipse, unstyled child</p>
+    <AspectRatio ratio={2} shape="ellipse"><div style="width:100%;height:100%;background:linear-gradient(135deg,var(--color-accent),var(--color-accent-muted))"></div></AspectRatio>
+  </div>
+  <div>
+    <p style={cap}>3 / 1 hero (overridable from CSS)</p>
+    <AspectRatio ratio={3} fit="cover" shape="rectangle" style="border-radius:var(--radius-element)"><img src={landscape} alt="" /></AspectRatio>
+  </div>
+</div>

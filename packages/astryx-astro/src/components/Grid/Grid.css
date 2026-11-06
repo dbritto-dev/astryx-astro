@@ -1,0 +1,68 @@
+/* Port of @astryxdesign/core Grid/Grid.tsx and Grid/GridSpan.tsx (StyleX styles). */
+@layer reset, astryx-base, astryx-theme;
+
+/* Per-instance track lists, set inline (see Grid.astro). */
+@property --_ax-grid-columns { syntax: "*"; inherits: false; }
+@property --_ax-grid-auto-rows { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  .astryx-grid {
+    display: grid;
+    grid-template-columns: var(--_ax-grid-columns, 1fr);
+    grid-auto-rows: var(--_ax-grid-auto-rows, auto);
+  }
+
+  .astryx-grid[data-gap="0"] { gap: var(--spacing-0); }
+  .astryx-grid[data-gap="0.5"] { gap: var(--spacing-0-5); }
+  .astryx-grid[data-gap="1"] { gap: var(--spacing-1); }
+  .astryx-grid[data-gap="1.5"] { gap: var(--spacing-1-5); }
+  .astryx-grid[data-gap="2"] { gap: var(--spacing-2); }
+  .astryx-grid[data-gap="3"] { gap: var(--spacing-3); }
+  .astryx-grid[data-gap="4"] { gap: var(--spacing-4); }
+  .astryx-grid[data-gap="5"] { gap: var(--spacing-5); }
+  .astryx-grid[data-gap="6"] { gap: var(--spacing-6); }
+  .astryx-grid[data-gap="8"] { gap: var(--spacing-8); }
+  .astryx-grid[data-gap="10"] { gap: var(--spacing-10); }
+
+  .astryx-grid[data-row-gap="0"] { row-gap: var(--spacing-0); }
+  .astryx-grid[data-row-gap="0.5"] { row-gap: var(--spacing-0-5); }
+  .astryx-grid[data-row-gap="1"] { row-gap: var(--spacing-1); }
+  .astryx-grid[data-row-gap="1.5"] { row-gap: var(--spacing-1-5); }
+  .astryx-grid[data-row-gap="2"] { row-gap: var(--spacing-2); }
+  .astryx-grid[data-row-gap="3"] { row-gap: var(--spacing-3); }
+  .astryx-grid[data-row-gap="4"] { row-gap: var(--spacing-4); }
+  .astryx-grid[data-row-gap="5"] { row-gap: var(--spacing-5); }
+  .astryx-grid[data-row-gap="6"] { row-gap: var(--spacing-6); }
+  .astryx-grid[data-row-gap="8"] { row-gap: var(--spacing-8); }
+  .astryx-grid[data-row-gap="10"] { row-gap: var(--spacing-10); }
+
+  .astryx-grid[data-column-gap="0"] { column-gap: var(--spacing-0); }
+  .astryx-grid[data-column-gap="0.5"] { column-gap: var(--spacing-0-5); }
+  .astryx-grid[data-column-gap="1"] { column-gap: var(--spacing-1); }
+  .astryx-grid[data-column-gap="1.5"] { column-gap: var(--spacing-1-5); }
+  .astryx-grid[data-column-gap="2"] { column-gap: var(--spacing-2); }
+  .astryx-grid[data-column-gap="3"] { column-gap: var(--spacing-3); }
+  .astryx-grid[data-column-gap="4"] { column-gap: var(--spacing-4); }
+  .astryx-grid[data-column-gap="5"] { column-gap: var(--spacing-5); }
+  .astryx-grid[data-column-gap="6"] { column-gap: var(--spacing-6); }
+  .astryx-grid[data-column-gap="8"] { column-gap: var(--spacing-8); }
+  .astryx-grid[data-column-gap="10"] { column-gap: var(--spacing-10); }
+
+  .astryx-grid[data-align="start"] { align-items: start; }
+  .astryx-grid[data-align="center"] { align-items: center; }
+  .astryx-grid[data-align="end"] { align-items: end; }
+  .astryx-grid[data-align="stretch"] { align-items: stretch; }
+
+  .astryx-grid[data-justify="start"] { justify-items: start; }
+  .astryx-grid[data-justify="center"] { justify-items: center; }
+  .astryx-grid[data-justify="end"] { justify-items: end; }
+  .astryx-grid[data-justify="stretch"] { justify-items: stretch; }
+
+  /* GridSpan */
+  .astryx-grid-span {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    height: 100%;
+  }
+}

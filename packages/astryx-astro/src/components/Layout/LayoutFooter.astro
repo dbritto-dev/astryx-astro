@@ -1,0 +1,53 @@
+---
+/**
+ * LayoutFooter — bottom bar for Layout (action bars, pagination, status bars).
+ * Port of @astryxdesign/core Layout/LayoutFooter.tsx. Place it in Layout's `footer` slot.
+ *
+ * Without a divider the preceding LayoutContent drops its bottom padding. Provides its own
+ * padding: use `padding={0}` when the content manages its own.
+ *
+ * @example
+ * <LayoutFooter slot="footer" hasDivider>…actions…</LayoutFooter>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import './Layout.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /**
+   * Themed border at the top edge. Unset falls back to the parent Layout's
+   * `defaultHasDividers`, then `false`.
+   * @default false
+   */
+  hasDivider?: boolean;
+  /** Height (number = px). */
+  height?: SizeValue;
+  /** Internal padding (spacing step); overrides the container's inset. */
+  padding?: SpacingStep;
+  /** Accessible label for the landmark (needed when several share a role). */
+  label?: string;
+  /** Landmark role; 'contentinfo' only for site-wide footers. */
+  role?: HTMLAttributes<'div'>['role'];
+}
+
+const {hasDivider, height, label, padding, role, class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('layout-footer');
+---
+<div
+  role={role}
+  aria-label={label}
+  data-divider={hasDivider ? '' : undefined}
+  data-ax-inherit={hasDivider === undefined ? 'layout-divider' : undefined}
+  class={cx(themeClass, className)}
+  {...attrs}
+  style={mergeStyles({height: cssSize(height)}, style as StyleValue)}
+  {...rest}
+>
+  <div
+    class="ax-layout-footer-inner"
+    data-padding={padding}
+    style={mergeStyles({'--_ax-pad': spacing(padding)})}
+  ><slot /></div>
+</div>

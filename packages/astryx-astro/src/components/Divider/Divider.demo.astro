@@ -1,0 +1,36 @@
+---
+import Divider from './Divider.astro';
+import Card from '../Card/Card.astro';
+const cap = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-3)">
+  <p style={cap}>Subtle (default)</p>
+  <Divider />
+  <p style={cap}>Strong</p>
+  <Divider variant="strong" />
+  <Divider label="or" />
+  <Divider label="Continue with" variant="strong" />
+  <Divider label={0} />
+</div>
+<div style="display:flex;align-items:center;gap:var(--spacing-3);height:40px">
+  <span>Edit</span>
+  <Divider orientation="vertical" />
+  <span>Share</span>
+  <Divider orientation="vertical" variant="strong" />
+  <span>Delete</span>
+  <Divider orientation="vertical" label="or" />
+  <span>Archive</span>
+</div>
+<Card maxWidth={420}>
+  <p style="margin:0 0 var(--spacing-3)">Card content above a full-bleed divider.</p>
+  <Divider isFullBleed />
+  <p style="margin:var(--spacing-3) 0 0">It escapes the card's padding to touch both edges; the default one does not:</p>
+  <div style="margin-top:var(--spacing-3)"><Divider /></div>
+</Card>
+<Card maxWidth={420} padding={6}>
+  <div style="display:flex;height:64px;align-items:stretch;gap:var(--spacing-3)">
+    <span>Start</span>
+    <Divider orientation="vertical" isFullBleed aria-label="Section break" />
+    <span>Vertical full bleed reaches the card's top and bottom edges.</span>
+  </div>
+</Card>

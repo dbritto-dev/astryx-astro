@@ -1,0 +1,29 @@
+/* Port of @astryxdesign/core FormLayout/FormLayout.tsx (StyleX styles). */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-form-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4);
+  }
+  .astryx-form-layout[data-direction="horizontal"] {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+  }
+  .astryx-form-layout[data-direction="horizontal-labels"] {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--spacing-3) var(--spacing-4);
+    align-items: start;
+  }
+  @media (max-width: 480px) {
+    .astryx-form-layout[data-direction="horizontal-labels"] {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-4);
+      align-items: stretch;
+    }
+  }
+}

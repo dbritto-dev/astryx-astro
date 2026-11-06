@@ -1,0 +1,53 @@
+---
+/**
+ * FormLayout — spatial layout for form fields (a `<div>`, not a `<form>`).
+ * Port of @astryxdesign/core FormLayout/FormLayout.tsx + FormLayoutContext.ts.
+ *
+ * FormLayoutContext becomes slot stamping (src/lib/cascade.ts). FormLayout always provides
+ * both keys, so an inner FormLayout shadows an outer one (an inner one without
+ * `defaultOptionality` resets it). Consumers (Field, FieldLabel, inputs) opt in with
+ * `data-ax-inherit`:
+ *   - `form-direction`   → stamped `data-form-direction="vertical|horizontal|horizontal-labels"`
+ *                          (Field / field box read it; a field outside any FormLayout is vertical)
+ *   - `form-optionality` → stamped `data-form-optionality="optional|required"` when set
+ *                          (FieldLabel hides the indicator that restates the default)
+ *   - `form-required`    → stamped `aria-required="true"` under `defaultOptionality="required"`
+ *                          (useResolvedRequired: opt in only when neither isRequired nor
+ *                          isOptional is explicit; never the native `required` attribute)
+ * Layer roots end the cascade with seal().
+ *
+ * @example
+ * <FormLayout direction="horizontal-labels" defaultOptionality="required">…fields…</FormLayout>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {stamp} from '../../lib/cascade';
+import './FormLayout.css';
+
+export type FormLayoutDirection = 'vertical' | 'horizontal' | 'horizontal-labels';
+export type FormOptionality = 'optional' | 'required';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /**
+   * `vertical` stacks fields (default); `horizontal` gives each child one `1fr` grid track;
+   * `horizontal-labels` puts labels beside inputs and collapses to vertical at ≤480px.
+   * @default 'vertical'
+   */
+  direction?: FormLayoutDirection;
+  /**
+   * Which state the form treats as default, so only the exception shows an
+   * optional/required indicator; also resolves `aria-required` for unmarked fields.
+   */
+  defaultOptionality?: FormOptionality;
+}
+
+const {direction = 'vertical', defaultOptionality, class: className, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('form-layout', {direction});
+
+const html = await stamp(await Astro.slots.render('default'), {
+  'form-direction': (a) => { a['data-form-direction'] = direction; },
+  'form-optionality': defaultOptionality ? (a) => { a['data-form-optionality'] = defaultOptionality; } : null,
+  'form-required': defaultOptionality === 'required' ? (a) => { a['aria-required'] = 'true'; } : null,
+});
+---
+<div {...rest} class={cx(themeClass, className)} {...attrs}><Fragment set:html={html} /></div>

@@ -1,0 +1,55 @@
+---
+import Card from './Card.astro';
+import Grid from '../Grid/Grid.astro';
+import Layout from '../Layout/Layout.astro';
+import LayoutHeader from '../Layout/LayoutHeader.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import LayoutFooter from '../Layout/LayoutFooter.astro';
+import Divider from '../Divider/Divider.astro';
+const variants = ['default', 'transparent', 'muted', 'blue', 'cyan', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'] as const;
+const title = 'margin:0;font-size:var(--text-heading-5-size, 1rem);font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const body = 'margin:var(--spacing-1) 0 0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<Grid columns={{minWidth: 150}} gap={3}>
+  {variants.map((v) => (
+    <Card variant={v}>
+      <p style={title}>{v}</p>
+      <p style={body}>variant="{v}"</p>
+    </Card>
+  ))}
+</Grid>
+<Grid columns={4} gap={4}>
+  {(['none', 'low', 'med', 'high'] as const).map((e) => (
+    <Card elevation={e}>
+      <p style={title}>elevation</p>
+      <p style={body}>{e}</p>
+    </Card>
+  ))}
+</Grid>
+<Grid columns={{minWidth: 140}} gap={3} align="start">
+  <Card padding={0}><p style={`${body};margin:0`}>padding 0</p></Card>
+  <Card padding={2}><p style={`${body};margin:0`}>padding 2</p></Card>
+  <Card><p style={`${body};margin:0`}>theme padding</p></Card>
+  <Card padding={6}><p style={`${body};margin:0`}>padding 6</p></Card>
+  <Card padding={10} variant="muted"><p style={`${body};margin:0`}>padding 10</p></Card>
+</Grid>
+<div style="display:flex;gap:var(--spacing-4);flex-wrap:wrap;align-items:flex-start">
+  <Card width={240} height={140}>
+    <p style={title}>Fixed height scrolls</p>
+    {Array.from({length: 8}, (_, i) => <p style={body}>Line {i + 1} of a long card body.</p>)}
+  </Card>
+  <Card width={320} height={220} padding={4}>
+    <Layout>
+      <LayoutHeader slot="header" hasDivider><p style={title}>Card with Layout</p></LayoutHeader>
+      <LayoutContent>
+        {Array.from({length: 6}, (_, i) => <p style={body}>Scrollable content row {i + 1}.</p>)}
+      </LayoutContent>
+      <LayoutFooter slot="footer" hasDivider><p style={`${body};margin:0`}>Footer actions</p></LayoutFooter>
+    </Layout>
+  </Card>
+  <Card maxWidth={280} minHeight={140} variant="blue">
+    <p style={title}>Full-bleed child</p>
+    <div style="margin-block:var(--spacing-3)"><Divider isFullBleed /></div>
+    <p style={body}>maxWidth 280, minHeight 140</p>
+  </Card>
+</div>

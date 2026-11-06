@@ -1,0 +1,132 @@
+---
+/**
+ * ResizeHandle — a window-splitter separator that resizes the pane beside it.
+ * Port of @astryxdesign/core Resizable/ResizeHandle.tsx, useResizable.ts, createResizable.ts,
+ * resizeGesture.ts, resizableModel.ts and separatorAttributes.ts; behaviour in
+ * src/elements/resizable.ts (<ax-resizable>, the handle root).
+ *
+ * Astryx's hook state (useResizable) has no server-side equivalent, so the handle owns its
+ * region: pass the region's configuration as `resizable` (the same options useResizable
+ * takes; reuse the object on a LayoutPanel's `resizable` so it renders the initial size).
+ * The handle sizes its pane — the element before it (after it with `isReversed`; the parent
+ * of an `overlay` handle; or the element whose id is `controls`) — via inline width (height
+ * when vertical), holds it
+ * collapsed (size 0, `inert`, `aria-hidden`, focus moves to the handle) and persists it under
+ * `autoSaveId` in localStorage (`astryx-resizable:<id>`, the React format).
+ *
+ * Input (WAI-ARIA window splitter): pointer drag with pointer capture; ArrowLeft/Right
+ * (horizontal) or ArrowUp/Down step 10px, 50px with Shift (RTL and `isReversed` aware;
+ * with snaps they move to the adjacent snap point, two with Shift); Home → minimum;
+ * End → configured maximum; Enter and double-click toggle collapse when `collapsible`.
+ * A collapsed pane answers only the grow arrow. ARIA: role="separator", aria-orientation,
+ * aria-valuenow / -min / -max (an unbounded region reports the space it could fill),
+ * aria-valuetext "Collapsed" while collapsed, aria-disabled.
+ *
+ * Element API: `size`, `isCollapsed` (settable), `collapse()`, `expand()`, `resize(px)`.
+ * Events: `astryx-size-change` (detail {size}), `astryx-collapse-change` (detail {isCollapsed}).
+ *
+ * Deferred touch extras: none in Astryx's handle beyond Pointer Events, which this ports.
+ *
+ * @example
+ * ---
+ * const nav = {defaultSize: 240, minSize: 180, maxSize: 400, collapsible: true, autoSaveId: 'nav'};
+ * ---
+ * <Layout>
+ *   <LayoutPanel slot="start" resizable={nav}>…</LayoutPanel>
+ *   <ResizeHandle slot="start" resizable={nav} hasDivider label="Resize navigation" />
+ *   <LayoutContent>…</LayoutContent>
+ * </Layout>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {readServerResizableState, separatorAttributes, type ResizableConfig} from './resizableModel';
+import './Resizable.css';
+
+type PillPlacement = 'start' | 'end' | 'center' | 'auto';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'style'> {
+  /** Layout direction — the cursor, the drag axis and the pill orientation. @default 'horizontal' */
+  direction?: 'horizontal' | 'vertical';
+  /** `inline` sits in flex flow between siblings; `overlay` is absolutely positioned inside the pane. @default 'inline' */
+  position?: 'inline' | 'overlay';
+  /** Reverse the drag: the handle sits before the pane it resizes (an end/bottom pane). @default false */
+  isReversed?: boolean;
+  /** Not interactive (keeps its tab stop, announces aria-disabled). @default false */
+  isDisabled?: boolean;
+  /** Draw a 1px divider line; the line is the handle, with a wider invisible grab zone. Ignored in overlay mode. @default false */
+  hasDivider?: boolean;
+  /** Show the grip pill at rest; false reveals it only on hover/focus. @default true */
+  isAlwaysVisible?: boolean;
+  /**
+   * Which side of the line the pill sits on (the grab zone stays centred): `auto` = the pane
+   * side, flipping while collapsed; `start`, `end`, `center`.
+   * @default 'auto'
+   */
+  pillPlacement?: PillPlacement;
+  /** Accessible label. @default 'Resize handle' (translated) */
+  label?: string;
+  /** The region this handle resizes (useResizable's options). Without it the handle is inert. */
+  resizable?: ResizableConfig;
+  /** id of the pane to resize, when it is not the adjacent sibling (also aria-controls). */
+  controls?: string;
+  /** Value text announced while collapsed. @default 'Collapsed' (translated) */
+  collapsedLabel?: string;
+  locale?: string;
+}
+
+const {
+  direction = 'horizontal', position = 'inline', isReversed = false, isDisabled = false, hasDivider = false,
+  isAlwaysVisible = true, pillPlacement = 'auto', label: labelProp, resizable, controls, collapsedLabel: collapsedProp,
+  locale, class: className, ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.resizable.handle.label');
+const collapsedLabel = collapsedProp ?? t('@astryx.resizable.collapsed');
+const region = resizable ? readServerResizableState({...resizable}) : null;
+const isCollapsed = region?.isCollapsed ?? false;
+
+function resolveEffectiveSide(placement: PillPlacement): 'start' | 'end' | 'center' {
+  if (placement !== 'auto') return placement;
+  const panelSide = isReversed ? 'end' : 'start';
+  if (isCollapsed) return panelSide === 'start' ? 'end' : 'start';
+  return panelSide;
+}
+
+const aria = separatorAttributes(direction, isDisabled, region
+  ? {size: region.size, minPx: region.minPx, maxPx: region.effectiveMaxPx, isCollapsed, collapsedText: collapsedLabel}
+  : undefined);
+const paneLength = !region || isCollapsed || region.size <= 0 ? undefined : region.size;
+const isOverlay = position === 'overlay';
+const hitLength = paneLength != null && !isOverlay
+  ? `${direction === 'horizontal' ? 'width' : 'height'}:min(var(--spacing-4), ${paneLength}px)`
+  : undefined;
+const hasCustomContent = Astro.slots.has('default');
+const {themeClass, attrs} = themeProps('resize-handle', {direction});
+const {attrs: pillAttrs, themeClass: pillClass} = themeProps('resize-handle-pill');
+---
+<ax-resizable
+  role="separator"
+  {...aria}
+  tabindex="0"
+  aria-label={label}
+  aria-controls={controls}
+  class={cx(themeClass, 'ax-focus-visible', className)}
+  {...attrs}
+  data-position={position}
+  data-divider={hasDivider ? '' : undefined}
+  data-always-visible={isAlwaysVisible ? '' : undefined}
+  data-pill-placement={pillPlacement}
+  data-pill-side={resolveEffectiveSide(pillPlacement)}
+  data-reversed={isReversed ? '' : undefined}
+  data-pane-length={paneLength != null ? '' : undefined}
+  data-collapsed-label={collapsedLabel}
+  data-config={resizable ? JSON.stringify(resizable) : undefined}
+  data-controls={controls}
+  {...rest}
+>
+  <div class="ax-resize-handle-hit" style={hitLength}></div>
+  {hasCustomContent ? <slot /> : <div class={pillClass} {...pillAttrs}></div>}
+</ax-resizable>
+<script>import '../../elements/resizable';</script>

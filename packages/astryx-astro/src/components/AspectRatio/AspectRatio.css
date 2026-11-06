@@ -1,0 +1,38 @@
+/* Port of @astryxdesign/core AspectRatio/AspectRatio.tsx (StyleX styles). */
+@layer reset, astryx-base, astryx-theme;
+
+/* The ratio is a class-level declaration fed by this private property, never an inline
+   `aspect-ratio`, so unlayered consumer rules (including @media/@container) can override it. */
+@property --_ax-ratio { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  .astryx-aspect-ratio {
+    position: relative;
+    width: 100%;
+    overflow: clip;
+    min-height: 0;
+    flex-shrink: 0;
+    aspect-ratio: var(--_ax-ratio);
+  }
+  /* 50% follows the box on both axes: a circle at 1:1, an oval otherwise. */
+  .astryx-aspect-ratio[data-shape="ellipse"] { border-radius: 50%; }
+
+  .ax-aspect-ratio-child {
+    position: absolute;
+    top: 0;
+    inset-inline-start: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .ax-aspect-ratio-child[data-astryx-aspect-ratio-override="center"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ax-aspect-ratio-child:is([data-astryx-aspect-ratio-override="cover"], [data-astryx-aspect-ratio-override="contain"]) > * {
+    width: 100%;
+    height: 100%;
+  }
+  .ax-aspect-ratio-child[data-astryx-aspect-ratio-override="cover"] > :is(img, video) { object-fit: cover; }
+  .ax-aspect-ratio-child[data-astryx-aspect-ratio-override="contain"] > :is(img, video) { object-fit: contain; }
+}

@@ -1,0 +1,63 @@
+---
+/**
+ * Card — bordered, themed container for discrete, self-contained items.
+ * Port of @astryxdesign/core Card/Card.tsx (+ Layout/container.stylex.ts).
+ *
+ * Publishes its padding to descendants (--container-padding-*, --layout-padding-*), so
+ * Layout regions, Section, Divider `isFullBleed` and other bleed consumers line up with it.
+ * Without `padding` the card takes the theme's card padding (--astryx-card-padding*).
+ *
+ * @example
+ * <Card width={400}><Layout>…</Layout></Card>
+ * <Card variant="blue" elevation="low" padding={6}>Tinted</Card>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {Elevation, SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import './Card.css';
+
+export type CardVariant =
+  | 'default' | 'transparent' | 'muted'
+  | 'blue' | 'cyan' | 'gray' | 'green' | 'orange' | 'pink' | 'purple' | 'red' | 'teal' | 'yellow'
+  | (string & {});
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Preferred width (number = px); the card still shrinks to its flex/grid track. */
+  width?: SizeValue;
+  /** Height (number = px). A fixed height makes the content scroll. */
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  minHeight?: SizeValue;
+  /**
+   * Internal padding (spacing step). Omit to use the theme's card padding; passing a step
+   * overrides the theme. @default the theme's card padding (spacing step 4 with no theme)
+   */
+  padding?: SpacingStep;
+  /**
+   * Background variant. Only `default` draws a visible border.
+   * @default 'default'
+   */
+  variant?: CardVariant;
+  /** Resting shadow depth. @default 'none' */
+  elevation?: Elevation;
+}
+
+const {
+  width, height, maxWidth, minHeight, padding, variant = 'default', elevation = 'none',
+  class: className, style, ...rest
+} = Astro.props;
+const hasFixedHeight = height != null && height !== 'auto';
+const {themeClass, attrs} = themeProps('card', {variant, elevation});
+---
+<div
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-scrollable={hasFixedHeight ? '' : undefined}
+  style={mergeStyles(
+    {'--_ax-pad': spacing(padding)},
+    {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)},
+    style as StyleValue,
+  )}
+  {...rest}
+><slot /></div>
