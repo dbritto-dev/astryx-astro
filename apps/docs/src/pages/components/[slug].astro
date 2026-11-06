@@ -1,6 +1,6 @@
 ---
 import Docs from '../../layouts/Docs.astro';
-import {components, demoByName, propsSource, slug, subComponentsOf, type ManifestEntry} from '../../lib/catalog';
+import {apiSources, components, demoByName, slug, subComponentsOf, type ManifestEntry} from '../../lib/catalog';
 
 export function getStaticPaths() {
   return components.map((c) => ({params: {slug: slug(c.name)}, props: {entry: c}}));
@@ -9,7 +9,7 @@ export function getStaticPaths() {
 const {entry} = Astro.props as {entry: ManifestEntry};
 const Demo = demoByName.get(entry.name) as any;
 const subs = subComponentsOf(entry.name);
-const api = [entry, ...subs].map((e) => ({name: e.name, source: propsSource(e.name)})).filter((a) => a.source);
+const api = apiSources(entry.dir, entry.name);
 const hooks = [entry, ...subs].flatMap((e) => e.theming);
 ---
 <Docs title={entry.displayName} current={entry.name}>

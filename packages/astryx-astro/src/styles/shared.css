@@ -15,6 +15,7 @@
 @property --_ax-pie { syntax: "*"; inherits: false; }
 @property --_ax-pbs { syntax: "*"; inherits: false; }
 @property --_ax-pbe { syntax: "*"; inherits: false; }
+@property --_ax-pad { syntax: "*"; inherits: false; }
 @property --astryx-press-alpha { syntax: "<number>"; inherits: false; initial-value: 0; }
 
 @layer astryx-base {
@@ -112,5 +113,12 @@
     --container-padding-inline-end: 0px;
     --container-padding-block-start: 0px;
     --container-padding-block-end: 0px;
+    --layout-padding-outer-x: initial;
+    --layout-padding-outer-y: initial;
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    --layout-padding-inner-x: initial;
+    --layout-padding-inner-y: initial;
+    --_section-padding-propagated: initial;
   }
 }

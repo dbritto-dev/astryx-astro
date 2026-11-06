@@ -29,12 +29,15 @@ const nameFrom = (path: string) => path.split('/').pop()!.replace(/\.(demo\.)?as
 
 export const demoByName = new Map(Object.entries(demos).map(([path, mod]) => [nameFrom(path), mod.default]));
 
-/** `interface Props { … }` block of a component's frontmatter, for the API section. */
-export function propsSource(name: string): string | null {
-  const entry = Object.entries(sources).find(([path]) => nameFrom(path) === name && !path.endsWith('.demo.astro'));
-  if (!entry) return null;
-  const match = entry[1].match(/export interface Props[^{]*\{[\s\S]*?\n\}/);
-  return match ? match[0] : null;
+const propsBlock = (src: string) => src.match(/export (?:interface Props[^{]*\{[\s\S]*?\n\}|type Props = [^\n]+)/)?.[0] ?? null;
+
+/** `interface Props { … }` of every public component in a directory, main component first. */
+export function apiSources(dir: string, main: string): {name: string; source: string}[] {
+  return Object.entries(sources)
+    .filter(([path]) => path.split('/').at(-2) === dir && !path.endsWith('.demo.astro') && !nameFrom(path).startsWith('_'))
+    .map(([path, src]) => ({name: nameFrom(path), source: propsBlock(src)}))
+    .filter((a): a is {name: string; source: string} => a.source !== null)
+    .sort((a, b) => (a.name === main ? -1 : b.name === main ? 1 : a.name.localeCompare(b.name)));
 }
 
 export const components: ManifestEntry[] = (manifest.components as ManifestEntry[]).filter((c) => !c.subComponentOf);
