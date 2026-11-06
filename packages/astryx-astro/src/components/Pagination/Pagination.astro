@@ -1,0 +1,384 @@
+---
+/**
+ * Pagination — controls for stepping through pages of content. Port of @astryxdesign/core
+ * Pagination/Pagination.tsx (generatePageRange in ./pageRange.ts) with Button, Icon,
+ * NumberInput, Selector and Text, hooks/useAnnounce.ts (runtime/announce.ts),
+ * hooks/useListFocus.ts (runtime/roving.ts) and utils/focusReturn.ts.
+ * Behaviour: src/elements/pagination.ts (`<ax-pagination>`).
+ *
+ * Root `<ax-pagination role="navigation" class="astryx-pagination" data-variant data-size>`
+ * (Astryx's `<nav>` landmark on the element that owns the state), named by `label` (default
+ * translated "Pagination"); renders nothing when `totalItems` or the page count is ≤ 0.
+ * Optional page-size Selector (`pageSizeOptions`, 80px), then the controls: first/last («/»,
+ * `input` variant by default, `compact` with `hasFirstLast`, only with a known page count),
+ * previous/next (ghost icon-only Buttons with a tooltip while usable, chevrons mirrored in RTL,
+ * `step` pages per press with "Go back/forward N pages" names — ICU plurals) and between them
+ * the `variant`:
+ *   pages    page-number Buttons ("Go to page N", `aria-current="page"` + neutral fill on the
+ *            current one) with aria-hidden ellipses (`siblingCount`, generatePageRange)
+ *   count    "X–Y of Z" (needs `totalItems`)          compact  "Page X of Y"
+ *   dots     an APG radio group of dots (`role="radiogroup"` "Page indicators", radios "Page N",
+ *            one Tab stop, ←/→ wrap + Home/End, selection follows focus; a press commits on
+ *            release, not on press)
+ *   input    "Page [ n ] / N": a NumberInput (hidden label "Go to page", integers clamped to
+ *            1…N, commit on Enter / blur; disabled while the page count is unknown)
+ *   none     prev/next only
+ * Data shape: `totalItems` (+ `pageSize`, wins), `totalPages`, or `hasMore` (cursor paging:
+ * no last page, no page numbers).
+ *
+ * Two modes:
+ *  - Buttons (default): the element owns the page after SSR. A user change dispatches
+ *    `astryx-change` `{page}` (bubbles, composed, cancelable: `preventDefault()` keeps the page —
+ *    Astryx `onChange`), then re-renders the controls in place (keyed page buttons, so the
+ *    pressed one keeps focus) and announces "Page X of Y" politely (navigation-10; never on
+ *    load). The page-size Selector dispatches `astryx-page-size-change` `{pageSize}`
+ *    (cancelable — Astryx `onPageSizeChange`) and then resets to page 1 (an `astryx-change`).
+ *    Element API: `page`, `pageSize`, `totalItems`, `totalPages`, `hasMore` (get/set; setting
+ *    re-renders without events), `goTo(page)` (a user-style change with events).
+ *  - Links (port extension, `href={(page) => url}` server function): first/prev/next/last,
+ *    page numbers and dots are real links (`safeHref`), the current page `aria-current="page"`;
+ *    navigation needs no JS. The `input` variant commits through `astryx-change` and then
+ *    navigates to the same URL scheme (when `href` maps the page number into the URL
+ *    verbatim); the page-size Selector only reports `astryx-page-size-change`.
+ *
+ * Inner controls' own events (NumberInput / Selector `astryx-change`) stop at the root.
+ * Not available: `onChange` / `changeAction` / `onPageSizeChange` (events instead; no React
+ * transition, so no optimistic in-flight page). The extensible variant map (module
+ * augmentation) has no Astro equivalent.
+ *
+ * @example
+ * <Pagination page={1} totalItems={200} pageSize={20} />
+ * <Pagination page={3} totalPages={12} variant="input" href={(p) => `?page=${p}`} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import NumberInput from '../NumberInput/NumberInput.astro';
+import Selector from '../Selector/Selector.astro';
+import Text from '../Text/Text.astro';
+import NavButton from './_PaginationNavButton.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {safeHref} from '../../lib/safeUrl';
+import {messageTemplate, placeholder} from '../Field/clientMessages';
+import {
+  computeTotalPages,
+  generatePageRange,
+  hasNextPage,
+  hasPreviousPage,
+  isEmptyPaging,
+  itemRange,
+  normalizePageSize,
+  normalizeStep,
+  type PagingState,
+} from './pageRange';
+import './Pagination.css';
+
+export {generatePageRange} from './pageRange';
+export type PaginationVariant = 'pages' | 'count' | 'compact' | 'dots' | 'input' | 'none';
+export type PaginationSize = 'sm' | 'md';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** Current page (1-based; initial state in buttons mode). */
+  page: number;
+  /** Total number of items (derives the page count with `pageSize`; wins over totalPages). */
+  totalItems?: number;
+  /** Total number of pages, when the item count is unknown. */
+  totalPages?: number;
+  /** More pages exist after this one (cursor paging, total unknown). */
+  hasMore?: boolean;
+  /** Items per page (coerced to a positive integer). @default 10 */
+  pageSize?: number;
+  /** Shows a page-size Selector with these options. */
+  pageSizeOptions?: number[];
+  /** What sits between prev/next. @default 'pages' */
+  variant?: PaginationVariant;
+  /** The noun before the `input` variant's box. @default translated "Page" */
+  pageLabel?: string;
+  /** First/last buttons: `input` shows them unless false, `compact` only when true. */
+  hasFirstLast?: boolean;
+  /** Pages prev/next advance per press (clamped; < 1 or non-integer → 1). @default 1 */
+  step?: number;
+  /** Page buttons on each side of the current page (`pages`). @default 1 */
+  siblingCount?: number;
+  /** @default 'md' */
+  size?: PaginationSize;
+  /** Disables every control. @default false */
+  isDisabled?: boolean;
+  /** Accessible name of the navigation landmark. @default translated "Pagination" */
+  label?: string;
+  /** Links mode (port extension): the URL of a page, called on the server. */
+  href?: (page: number) => string | URL;
+  'data-testid'?: string;
+  /** Locale of the labels, announcements and number formatting. */
+  locale?: string;
+}
+
+const {
+  page: pageProp,
+  totalItems,
+  totalPages: totalPagesProp,
+  hasMore,
+  pageSize: pageSizeProp = 10,
+  pageSizeOptions,
+  variant = 'pages',
+  pageLabel,
+  hasFirstLast: hasFirstLastProp,
+  step: stepProp = 1,
+  siblingCount = 1,
+  size = 'md',
+  isDisabled = false,
+  label: labelProp,
+  href,
+  'data-testid': testId,
+  locale: localeProp,
+  class: className,
+  slot: _slot,
+  role: _role,
+  ...rest
+} = Astro.props as Props & {slot?: string; role?: string};
+
+const t = translator(Astro, localeProp);
+const locale = resolveLocale(Astro, localeProp);
+const label = labelProp ?? t('@astryx.pagination.label');
+const firstLabel = t('@astryx.pagination.first');
+const lastLabel = t('@astryx.pagination.last');
+const pageIndicatorsLabel = t('@astryx.pagination.pageIndicators');
+const itemsPerPageLabel = t('@astryx.pagination.itemsPerPage');
+const goToPageLabel = t('@astryx.pagination.goToPageInput');
+const inputLabelText = pageLabel ?? t('@astryx.pagination.pageLabel');
+
+const pageSize = normalizePageSize(pageSizeProp);
+const step = normalizeStep(stepProp);
+const previousLabel = step > 1 ? t('@astryx.pagination.previousBy', {step}) : t('@astryx.pagination.previous');
+const nextLabel = step > 1 ? t('@astryx.pagination.nextBy', {step}) : t('@astryx.pagination.next');
+const computedTotalPages = computeTotalPages(totalPagesProp, totalItems, pageSize);
+const isEmpty = isEmptyPaging(totalItems, computedTotalPages);
+const page = Number.isFinite(pageProp) ? pageProp : 1;
+const state: PagingState = {page, totalPages: computedTotalPages, totalItems, hasMore, pageSize};
+const hasPrevious = hasPreviousPage(state);
+const hasNext = hasNextPage(state);
+const {from: rangeStart, to: rangeEnd} = itemRange(state);
+const isLinks = typeof href === 'function';
+const urlOf = (p: number) => (isLinks ? safeHref(href!(p)) : undefined);
+const buttonSize: PaginationSize = size === 'sm' ? 'sm' : 'md';
+const isSm = size === 'sm';
+const iconSize = isSm ? 'sm' : 'md';
+const hasFirstLast = variant === 'input' ? (hasFirstLastProp ?? true) : variant === 'compact' && hasFirstLastProp === true;
+const showFirstLast = hasFirstLast && computedTotalPages != null;
+const clamp = (target: number) => {
+  const lower = Math.max(target, 1);
+  return computedTotalPages != null ? Math.min(lower, computedTotalPages) : lower;
+};
+
+// Strings the element fills in on the client (elements never translate): ICU messages with
+// their numeric arguments left as placeholders (formatted with Intl in the same locale).
+const messages = {
+  goToPage: messageTemplate(t, locale, '@astryx.pagination.goToPage', {}, ['page']),
+  pageOfTotal: messageTemplate(t, locale, '@astryx.pagination.pageOfTotal', {}, ['current', 'total']),
+  pageAnnounce: messageTemplate(t, locale, '@astryx.pagination.pageAnnounce', {}, ['current']),
+  count: messageTemplate(t, locale, '@astryx.pagination.count', {}, ['from', 'to', 'total']),
+  ofTotalPages: messageTemplate(t, locale, '@astryx.pagination.ofTotalPages', {}, ['total']),
+};
+// Links mode + input: the URL scheme with the page number as a placeholder, when `href` puts the
+// number into the URL as written (else the input only reports `astryx-change`).
+const SENTINEL = 987654321;
+const hrefTemplate = isLinks && variant === 'input' ? (() => {
+  const url = safeHref(href!(SENTINEL));
+  return url != null && url.includes(String(SENTINEL)) ? url.split(String(SENTINEL)).join(placeholder('page')) : undefined;
+})() : undefined;
+
+const pageRange = variant === 'pages' && computedTotalPages != null ? generatePageRange(page, computedTotalPages, siblingCount) : [];
+const showsCount = variant === 'count' && totalItems != null;
+const showsCompact = variant === 'compact' && computedTotalPages != null;
+const showsDots = variant === 'dots' && computedTotalPages != null;
+const isInputDisabled = isDisabled || computedTotalPages == null;
+const dotCount = showsDots ? computedTotalPages! : 0;
+
+const {themeClass, attrs: themeAttrs} = themeProps('pagination', {variant, size});
+const dot = (active: boolean) => themeProps('pagination-dot', {active: active ? 'active' : null, size});
+const inputLabel = themeProps('pagination-input-label', {size});
+const inputTotal = themeProps('pagination-input-total', {size});
+const n = placeholder('n');
+---
+{!isEmpty && (
+<ax-pagination
+  {...rest}
+  role="navigation"
+  aria-label={label}
+  data-testid={testId}
+  class={cx(themeClass, className as string | undefined)}
+  {...themeAttrs}
+  data-ax-mode={isLinks ? 'links' : 'buttons'}
+  data-ax-page={page}
+  data-ax-page-size={pageSize}
+  data-ax-total-items={totalItems}
+  data-ax-total-pages={totalPagesProp}
+  data-ax-has-more={hasMore == null ? undefined : String(hasMore)}
+  data-ax-step={step}
+  data-ax-siblings={siblingCount}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-locale={locale}
+  data-ax-messages={JSON.stringify(messages)}
+  data-ax-href-template={hrefTemplate}
+>
+  {pageSizeOptions != null && pageSizeOptions.length > 0 && (
+    <div class="ax-pagination-page-size">
+      <Selector
+        label={itemsPerPageLabel}
+        isLabelHidden
+        options={pageSizeOptions.map((opt) => String(opt))}
+        value={String(pageSize)}
+        size={buttonSize}
+        isDisabled={isDisabled}
+        width={80}
+        locale={localeProp}
+      />
+    </div>
+  )}
+  <div class="ax-pagination-controls">
+    {hasFirstLast && (
+      <NavButton kind="first" label={firstLabel} icon="chevronsLeft" size={buttonSize} iconSize={iconSize}
+        isEnabled={!isDisabled && hasPrevious} href={urlOf(1)} isLinks={isLinks} isHidden={!showFirstLast}
+        class={variant === 'compact' ? 'ax-pagination-compact-first' : undefined} />
+    )}
+    <NavButton kind="previous" label={previousLabel} icon="chevronLeft" size={buttonSize} iconSize={iconSize}
+      isEnabled={!isDisabled && hasPrevious} href={urlOf(clamp(page - step))} isLinks={isLinks} />
+
+    {variant === 'pages' && pageRange.map((item, index) => item === '...' ? (
+      <span aria-hidden="true" class="ax-pagination-ellipsis" data-ax-pagination-item="" data-ax-key={`ellipsis-${pageRange[index - 1]}-${pageRange[index + 1]}`}>…</span>
+    ) : (
+      <Button
+        label={t('@astryx.pagination.goToPage', {page: item})}
+        aria-label={t('@astryx.pagination.goToPage', {page: item})}
+        variant="ghost"
+        size={buttonSize}
+        isDisabled={isDisabled}
+        href={isLinks && !isDisabled ? urlOf(item) : undefined}
+        aria-current={item === page ? 'page' : undefined}
+        data-ax-active-page={item === page ? '' : undefined}
+        data-ax-pagination-item=""
+        data-ax-key={String(item)}
+        data-page={item}
+      >{item}</Button>
+    ))}
+
+    {variant === 'count' && (
+      <span class="ax-pagination-info" hidden={!showsCount || undefined}>
+        <Text type="body" size="sm" color="secondary" data-ax-pagination-text="">{showsCount ? t('@astryx.pagination.count', {from: rangeStart, to: rangeEnd, total: totalItems}) : ''}</Text>
+      </span>
+    )}
+    {variant === 'compact' && (
+      <span class="ax-pagination-info" hidden={!showsCompact || undefined}>
+        <Text type="body" size="sm" color="secondary" data-ax-pagination-text="">{showsCompact ? t('@astryx.pagination.pageOfTotal', {current: page, total: computedTotalPages}) : ''}</Text>
+      </span>
+    )}
+
+    {variant === 'dots' && (isLinks ? (
+      <div class="ax-pagination-dots" role="group" aria-label={pageIndicatorsLabel} hidden={!showsDots || undefined}>
+        {Array.from({length: dotCount}, (_, i) => {
+          const p = i + 1;
+          const active = p === page;
+          const d = dot(active);
+          const url = isDisabled ? undefined : urlOf(p);
+          return (
+            <a
+              href={url}
+              aria-label={t('@astryx.pagination.pageAnnounce', {current: p})}
+              aria-current={active ? 'page' : undefined}
+              aria-disabled={isDisabled ? 'true' : undefined}
+              data-page={p}
+              class={cx(d.themeClass, 'ax-focus-visible')}
+              {...d.attrs}
+            ></a>
+          );
+        })}
+      </div>
+    ) : (
+      <div
+        class="ax-pagination-dots"
+        role="radiogroup"
+        aria-label={pageIndicatorsLabel}
+        hidden={!showsDots || undefined}
+        data-astryx-roving="horizontal"
+        data-astryx-roving-items="button"
+      >
+        {Array.from({length: dotCount}, (_, i) => {
+          const p = i + 1;
+          const active = p === page;
+          const d = dot(active);
+          return (
+            <button
+              type="button"
+              role="radio"
+              data-page={p}
+              aria-label={t('@astryx.pagination.pageAnnounce', {current: p})}
+              aria-checked={active ? 'true' : 'false'}
+              tabindex={active ? 0 : -1}
+              aria-disabled={isDisabled ? 'true' : undefined}
+              class={cx(d.themeClass, 'ax-focus-visible')}
+              {...d.attrs}
+            ></button>
+          );
+        })}
+      </div>
+    ))}
+
+    {variant === 'input' && (
+      <span class="ax-pagination-input-group">
+        <span aria-hidden="true" class={inputLabel.themeClass} {...inputLabel.attrs}>{inputLabelText}</span>
+        <NumberInput
+          label={goToPageLabel}
+          isLabelHidden
+          value={page}
+          min={1}
+          max={computedTotalPages ?? undefined}
+          isIntegerOnly
+          size={size}
+          width={isSm ? 'var(--size-element-sm)' : 'var(--size-element-md)'}
+          isDisabled={isInputDisabled}
+          data-testid={testId != null ? `${testId}-input` : undefined}
+          locale={localeProp}
+        />
+        <span class={inputTotal.themeClass} {...inputTotal.attrs} hidden={computedTotalPages == null || undefined}>{computedTotalPages != null ? t('@astryx.pagination.ofTotalPages', {total: computedTotalPages}) : ''}</span>
+      </span>
+    )}
+
+    <NavButton kind="next" label={nextLabel} icon="chevronRight" size={buttonSize} iconSize={iconSize}
+      isEnabled={!isDisabled && hasNext} href={urlOf(clamp(page + step))} isLinks={isLinks} />
+    {hasFirstLast && (
+      <NavButton kind="last" label={lastLabel} icon="chevronsRight" size={buttonSize} iconSize={iconSize}
+        isEnabled={!isDisabled && hasNext && computedTotalPages != null} href={computedTotalPages != null ? urlOf(computedTotalPages) : undefined}
+        isLinks={isLinks} isHidden={!showFirstLast} class={variant === 'compact' ? 'ax-pagination-compact-last' : undefined} />
+    )}
+  </div>
+  {!isLinks && variant === 'pages' && (
+    <template data-ax-page-template><Button
+      label={messages.goToPage}
+      aria-label={messages.goToPage}
+      variant="ghost"
+      size={buttonSize}
+      isDisabled={isDisabled}
+      data-ax-pagination-item=""
+      data-ax-key={n}
+      data-page={n}
+    >{n}</Button></template>
+  )}
+  {!isLinks && variant === 'pages' && (
+    <template data-ax-ellipsis-template><span aria-hidden="true" class="ax-pagination-ellipsis" data-ax-pagination-item="">…</span></template>
+  )}
+  {!isLinks && variant === 'dots' && (
+    <template data-ax-dot-template><button
+      type="button"
+      role="radio"
+      data-page={n}
+      aria-label={messages.pageAnnounce.split(placeholder('current')).join(placeholder('page'))}
+      aria-checked="false"
+      tabindex="-1"
+      aria-disabled={isDisabled ? 'true' : undefined}
+      class={cx(dot(false).themeClass, 'ax-focus-visible')}
+      {...dot(false).attrs}
+    ></button></template>
+  )}
+</ax-pagination>
+)}
+{!isEmpty && <script>import '../../elements/pagination';</script>}

@@ -1,0 +1,147 @@
+---
+import TabList from './TabList.astro';
+import Tab from './Tab.astro';
+import TabMenu from './TabMenu.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Card from '../Card/Card.astro';
+import Button from '../Button/Button.astro';
+import Toolbar from '../Toolbar/Toolbar.astro';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const moreOptions = [
+  {value: 'settings', label: 'Settings', icon: 'wrench'},
+  {value: 'integrations', label: 'Integrations'},
+  {value: 'billing', label: 'Billing'},
+];
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-6)">
+  <section>
+    <p style={caption}>Navigation pattern (default): Tab in, then ← → ↑ ↓ Home End; click / Enter / Space selects. The event log shows astryx-change.</p>
+    <TabList value="overview" aria-label="Project" id="tl-nav">
+      <Tab value="overview" label="Overview" />
+      <Tab value="activity" label="Activity"><Badge slot="endContent" label="3" /></Tab>
+      <Tab value="members" label="Members" />
+      <Tab value="archive" label="Archive" aria-disabled="true" />
+      <TabMenu label="More" options={moreOptions} id="tl-nav-more" />
+    </TabList>
+    <output id="tl-log" style={caption}>value: overview</output>
+  </section>
+
+  <section>
+    <p style={caption}>Sizes sm / md / lg, with hasDivider</p>
+    <div style="display:grid;gap:var(--spacing-3)">
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <TabList value="general" size={size} hasDivider aria-label={`Settings (${size})`} id={`tl-${size}`}>
+          <Tab value="general" label="General" />
+          <Tab value="security" label="Security" />
+          <Tab value="notifications" label="Notifications" />
+        </TabList>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Icons: icon / selectedIcon, icon-only (isLabelHidden), endContent text</p>
+    <TabList value="inbox" aria-label="Mail" id="tl-icons">
+      <Tab value="inbox" label="Inbox" icon="menu" selectedIcon="check" endContent="12" />
+      <Tab value="search" label="Search" icon="search" />
+      <Tab value="calendar" label="Calendar" icon="calendar" isLabelHidden />
+      <Tab value="clock" label="Recent" isLabelHidden><Icon slot="icon" icon="clock" size="sm" /></Tab>
+    </TabList>
+  </section>
+
+  <section>
+    <p style={caption}>Tabs pattern (role="tablist"): role=tab, aria-selected, aria-controls → panels the page swaps on astryx-change</p>
+    <TabList value="details" role="tablist" aria-label="Order" layout="fill" hasDivider id="tl-tabs">
+      <Tab value="details" label="Details" panelId="tl-panel-details" id="tl-tab-details" />
+      <Tab value="shipping" label="Shipping" panelId="tl-panel-shipping" id="tl-tab-shipping" />
+      <Tab value="returns" label="Returns" panelId="tl-panel-returns" id="tl-tab-returns" />
+    </TabList>
+    <div role="tabpanel" id="tl-panel-details" aria-labelledby="tl-tab-details" style="padding:var(--spacing-3) 0">Order #1042 — 3 items.</div>
+    <div role="tabpanel" id="tl-panel-shipping" aria-labelledby="tl-tab-shipping" style="padding:var(--spacing-3) 0" hidden>Ships in 2–3 days.</div>
+    <div role="tabpanel" id="tl-panel-returns" aria-labelledby="tl-tab-returns" style="padding:var(--spacing-3) 0" hidden>Free returns within 30 days.</div>
+  </section>
+
+  <section>
+    <p style={caption}>Link tabs (href): the current tab is aria-current="true"; a disabled link has no href; a TabMenu option is selected</p>
+    <TabList value="billing" aria-label="Account" id="tl-links">
+      <Tab value="profile" label="Profile" href="#profile" />
+      <Tab value="team" label="Team" href="#team" />
+      <Tab value="audit" label="Audit log" href="#audit" aria-disabled="true" />
+      <TabMenu label="More" options={moreOptions} />
+    </TabList>
+  </section>
+
+  <section>
+    <p style={caption}>Overflow: a narrow strip scrolls with edge fades and scroll buttons; the selected tab stays in view</p>
+    <div style="max-width:300px;border:1px dashed var(--color-border);padding:var(--spacing-2)" id="tl-narrow-box">
+      <TabList value="reports" aria-label="Workspace" id="tl-narrow">
+        <Tab value="home" label="Home" />
+        <Tab value="projects" label="Projects" />
+        <Tab value="issues" label="Issues" />
+        <Tab value="reports" label="Reports" />
+        <Tab value="insights" label="Insights" />
+        <Tab value="wiki" label="Wiki" />
+        <Tab value="settings" label="Settings" />
+      </TabList>
+    </div>
+    <p style={caption}>overflow="visible": no overflow handling, tabs spill out</p>
+    <div style="max-width:300px;border:1px dashed var(--color-border);padding:var(--spacing-2);overflow:hidden">
+      <TabList value="home" overflow="visible" aria-label="Workspace (visible)" id="tl-visible">
+        <Tab value="home" label="Home" />
+        <Tab value="projects" label="Projects" />
+        <Tab value="issues" label="Issues" />
+        <Tab value="reports" label="Reports" />
+        <Tab value="insights" label="Insights" />
+      </TabList>
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>isFullBleed in a padded Card: the divider spans the card, the edge labels sit on its content inset</p>
+    <Card maxWidth={480}>
+      <TabList value="all" isFullBleed hasDivider aria-label="Filter" id="tl-bleed">
+        <Tab value="all" label="All" />
+        <Tab value="open" label="Open" />
+        <Tab value="closed" label="Closed" />
+      </TabList>
+      <p style="margin:var(--spacing-3) 0 0">Card content lines up with the first tab's label.</p>
+    </Card>
+  </section>
+
+  <section>
+    <p style={caption}>Inside a Toolbar (size sm provider, bottom divider): the tabs follow the toolbar size, the indicator sits on its rail</p>
+    <Toolbar label="Board" size="sm" dividers={['bottom']}>
+      <TabList slot="startContent" value="board" aria-label="Views" id="tl-toolbar">
+        <Tab value="board" label="Board" />
+        <Tab value="list" label="List" />
+        <Tab value="timeline" label="Timeline" />
+      </TabList>
+      <Button slot="endContent" label="New issue" variant="primary" />
+    </Toolbar>
+  </section>
+
+  <section dir="rtl">
+    <p style={caption}>RTL: arrows follow the reading direction; scroll buttons and fades mirror</p>
+    <div style="max-width:260px">
+      <TabList value="b" aria-label="תצוגה" id="tl-rtl">
+        <Tab value="a" label="ראשי" />
+        <Tab value="b" label="פעילות" />
+        <Tab value="c" label="חברים" />
+        <Tab value="d" label="הגדרות" />
+        <Tab value="e" label="ארכיון" />
+      </TabList>
+    </div>
+  </section>
+</div>
+<script>
+  const log = document.getElementById('tl-log');
+  document.getElementById('tl-nav')?.addEventListener('astryx-change', (e) => {
+    if (log) log.textContent = `value: ${(e as CustomEvent<{value: string}>).detail.value}`;
+  });
+  // The tabs pattern: Astryx associates panels through panelId; the page swaps them.
+  document.getElementById('tl-tabs')?.addEventListener('astryx-change', (e) => {
+    const value = (e as CustomEvent<{value: string}>).detail.value;
+    for (const panel of document.querySelectorAll<HTMLElement>('[id^="tl-panel-"]')) panel.hidden = panel.id !== `tl-panel-${value}`;
+  });
+</script>

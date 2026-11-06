@@ -1,0 +1,167 @@
+---
+/**
+ * TabList — a tab strip: a navigation landmark of Tabs (links or buttons) by default, or the
+ * WAI-ARIA tabs pattern where `role="tablist"` asks for it. Port of @astryxdesign/core
+ * TabList/TabList.tsx and TabListContext.ts, with hooks/useListFocus.ts (runtime/roving.ts),
+ * hooks/useKeyboardHint.tsx (runtime/keyboardHint.ts), hooks/useScrollOverflow.ts,
+ * hooks/isRtlElement.ts, SizeContext/SizeContext.ts and Layout/edgeCompensation.stylex.ts.
+ * Behaviour: src/elements/tab-list.ts (`<ax-tab-list>`).
+ *
+ * - Root `<ax-tab-list class="astryx-tab-list" data-size>`: `role="navigation"` named by
+ *   `aria-label` (default translated "Tabs") — the `<nav>` landmark of Astryx on the element
+ *   that owns the state — or, under `role="tablist"`, a plain wrapper whose inner strip
+ *   (`.astryx-tab-strip`) carries `role="tablist"` and the name. Any other `role` passes through
+ *   to the root unchanged, as in Astryx.
+ * - One Tab stop (roving tabindex over `[data-tab-value],[data-tab-menu]`, bounded by
+ *   `.astryx-tab-list, [popover]`): ←/→ (RTL-aware) and, under the navigation pattern, ↑/↓
+ *   too (APG allowance; a tablist reports horizontal and leaves ↑/↓ to the page), Home/End,
+ *   wrap, disabled tabs skipped. Activation is manual: click / Enter / Space selects.
+ * - Keyboard hint ("← → to navigate", aria-hidden) on the first keyboard entry.
+ * - `overflow`: `auto` (= `scroll`) scrolls the strip horizontally with edge fades and, for
+ *   pointers that hover, start/end scroll buttons (`.astryx-tab-scroll-button`, aria-hidden,
+ *   never focusable); the selected tab is kept in view on mount, on selection, and when the
+ *   strip resizes; a focused stop is revealed past the fade. `visible` turns it off.
+ * - Size: explicit `size` > a size provider above (cascade key `size`) > 'md'; published to
+ *   the tabs as `--_ax-tab-height` / `--_ax-tab-icon-size`.
+ * - `hasDivider` (rail + reserved gap, `--_tab-indicator-bottom` drops the indicator onto it),
+ *   `layout="fill"`, `isFullBleed` (contract #14: cancels `--container-padding-inline-*` and
+ *   pads the strip back by what the edge stop's own padding does not supply).
+ * - Edge compensation (contract #15): the root and every Tab carry `data-astryx-edge-comp`.
+ *
+ * SSR renders the selection from `value`; the element owns it afterwards (`el.value`, settable:
+ * a programmatic change fires nothing). Event `astryx-change` `{value}` (bubbles, composed,
+ * cancelable) on every tab click and TabMenu pick — Astryx `onChange`; `preventDefault()` keeps
+ * the current selection (a link tab still navigates, as Astryx's onChange cannot stop it).
+ *
+ * Panels: Astryx associates panels only through each Tab's `panelId` (`aria-controls`); the
+ * consumer renders the panels (`role="tabpanel"`, `aria-labelledby` the tab's `id`) and swaps
+ * them on `astryx-change` — see the demo.
+ *
+ * Deferred (touch scope): usePressFeedback's coarse-pointer press paint (coarse pointers keep
+ * the `:active` paint) and press-drag-release in TabMenu (useMenuPress).
+ *
+ * @example
+ * <TabList value="home" aria-label="Sections">
+ *   <Tab value="home" label="Home" />
+ *   <Tab value="settings" label="Settings" />
+ *   <TabMenu label="More" options={[{value: 'analytics', label: 'Analytics'}]} />
+ * </TabList>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Layer from '../Layer/Layer.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {devWarn} from '../../lib/devWarning';
+import {TAB_LIST_LOCAL, TAB_STOP_SELECTOR, type TabListContextValue, type TabListLayout, type TabListSize} from './tabListContext';
+import '../Layer/Layer.css';
+import './TabList.css';
+
+export type {TabListSize, TabListLayout, TabListPattern} from './tabListContext';
+/** `auto` lets the component choose (today: `scroll`); `visible` turns overflow handling off. */
+export type TabListOverflow = 'auto' | 'scroll' | 'visible';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** The selected tab value (initial state; the element owns it afterwards). */
+  value: string;
+  /** Height of the tab hover targets (sm 28 / md 32 / lg 36px). @default the nearest size provider, else 'md' */
+  size?: TabListSize;
+  /** `hug`: each tab hugs its content; `fill`: tabs stretch equally. @default 'hug' */
+  layout?: TabListLayout;
+  /** Bottom divider rail under the strip. @default false */
+  hasDivider?: boolean;
+  /** Bleed out to the padded container's inline content edges. @default false */
+  isFullBleed?: boolean;
+  /** `"tablist"` asks for the WAI-ARIA tabs pattern; unset = navigation landmark; other values pass through. */
+  role?: string;
+  /** What happens when the tabs are wider than the strip. @default 'auto' */
+  overflow?: TabListOverflow;
+  /** Accessible name. @default translated "Tabs" */
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
+  /** Locale of the default name and the keyboard hint. */
+  locale?: string;
+}
+
+const {
+  value,
+  size: sizeProp,
+  layout = 'hug',
+  hasDivider = false,
+  isFullBleed = false,
+  role,
+  overflow = 'auto',
+  locale,
+  class: className,
+  'aria-label': ariaLabelProp,
+  'aria-labelledby': ariaLabelledBy,
+  // Astryx owns these: the strip never reports an orientation, and the root is always
+  // edge-compensatable.
+  'aria-orientation': _ariaOrientation,
+  'data-astryx-edge-comp': _edgeComp,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {'aria-orientation'?: string; 'data-astryx-edge-comp'?: string; slot?: string};
+
+const t = translator(Astro, locale);
+const ariaLabel = ariaLabelProp ?? t('@astryx.tabList.label');
+const size: TabListSize = sizeProp ?? 'md';
+const hasScroll = overflow !== 'visible';
+const isTabList = role === 'tablist';
+const pattern = isTabList ? 'tabs' : 'nav';
+const context: TabListContextValue = {value, layout, pattern};
+const html = await renderWithLocals(Astro, {[TAB_LIST_LOCAL]: context}, () => Astro.slots.render('default'));
+if (isTabList && /\sdata-tab-menu(?:=|\s|>)/.test(html)) {
+  devWarn('TabList', 'role="tablist" owns only tabs, but the strip contains a TabMenu. Render menus and other controls outside the strip, or drop the role for the navigation pattern.');
+}
+
+const {themeClass, attrs} = themeProps('tab-list', {size});
+const strip = themeProps('tab-strip');
+const scrollButton = themeProps('tab-scroll-button');
+---
+<ax-tab-list
+  {...rest}
+  role={isTabList ? undefined : (role ?? 'navigation')}
+  aria-label={isTabList ? undefined : ariaLabel}
+  aria-labelledby={isTabList ? undefined : ariaLabelledBy}
+  data-astryx-edge-comp=""
+  class={cx(themeClass, className as string | undefined)}
+  {...attrs}
+  data-ax-inherit={inherits({size: sizeProp === undefined})}
+  data-ax-layout={layout === 'fill' ? 'fill' : undefined}
+  data-ax-divider={hasDivider ? '' : undefined}
+  data-ax-full-bleed={isFullBleed ? '' : undefined}
+  data-ax-pattern={pattern}
+  data-ax-value={value}
+  data-astryx-roving={isTabList ? 'horizontal' : 'both'}
+  data-astryx-roving-items={TAB_STOP_SELECTOR}
+  data-astryx-roving-boundary=".astryx-tab-list, [popover]"
+><div
+    role={isTabList ? 'tablist' : undefined}
+    aria-label={isTabList ? ariaLabel : undefined}
+    aria-labelledby={isTabList ? ariaLabelledBy : undefined}
+    class={strip.themeClass}
+    {...strip.attrs}
+    data-ax-scroll={hasScroll ? '' : undefined}
+    data-ax-full-bleed={isFullBleed ? '' : undefined}
+  ><Fragment set:html={html} /></div>{hasScroll && (['start', 'end'] as const).map((side) => (
+    <button
+      type="button"
+      aria-hidden="true"
+      tabindex="-1"
+      hidden
+      class={cx(scrollButton.themeClass, 'ax-focus-visible')}
+      {...scrollButton.attrs}
+      data-ax-side={side}
+    ><Icon icon={side === 'start' ? 'chevronLeft' : 'chevronRight'} size="sm" color="inherit" class="ax-mirror-rtl" /></button>
+  ))}<Layer class="ax-keyboard-hint" placement="below" alignment="start" offset="var(--spacing-2)" data-ax-keyboard-hint="">
+    <span aria-hidden="true"><span class="ax-keyboard-hint-keys"><Kbd keys="left" locale={locale} /><Kbd keys="right" locale={locale} /></span><span class="ax-keyboard-hint-label">{t('@astryx.keyboardHint.toNavigate')}</span></span>
+  </Layer></ax-tab-list>
+<script>
+  import '../../elements/tab-list';
+  import '../../elements/runtime/roving';
+  import '../../elements/runtime/disabledInteraction';
+</script>

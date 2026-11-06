@@ -1,0 +1,76 @@
+---
+import Pagination from './Pagination.astro';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-3);overflow-x:auto;padding-block:var(--spacing-1)';
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-6)">
+  <section>
+    <p style={caption}>variant="pages" (default): page numbers with ellipses — click to page, the log shows astryx-change</p>
+    <div style={row}>
+      <Pagination page={5} totalItems={200} pageSize={10} id="pg-pages" />
+      <Pagination page={1} totalPages={10} id="pg-start" />
+      <Pagination page={10} totalPages={10} siblingCount={2} id="pg-end" />
+      <Pagination page={2} totalPages={5} size="sm" id="pg-sm" />
+    </div>
+    <output id="pg-log" style={caption}>page: 5</output>
+  </section>
+
+  <section>
+    <p style={caption}>count with a page-size Selector, compact (with and without first/last), none, cursor paging (hasMore)</p>
+    <div style={row}>
+      <Pagination page={1} totalItems={137} pageSize={25} pageSizeOptions={[10, 25, 50, 100]} variant="count" id="pg-count" />
+      <Pagination page={3} totalPages={12} variant="compact" id="pg-compact" />
+      <Pagination page={3} totalPages={12} variant="compact" hasFirstLast id="pg-compact-fl" />
+      <Pagination page={2} totalPages={8} variant="none" id="pg-none" />
+      <Pagination page={1} hasMore variant="none" label="Results" id="pg-cursor" />
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>dots: a radio group (Tab in, ← → Home End move the page; a click picks), sm and md</p>
+    <div style={row}>
+      <Pagination page={2} totalPages={6} variant="dots" id="pg-dots" />
+      <Pagination page={1} totalPages={4} variant="dots" size="sm" id="pg-dots-sm" />
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>input: "Page [ n ] / N" with first/last; type a page and press Enter (clamped to 1…N); a custom pageLabel; step={5}</p>
+    <div style={row}>
+      <Pagination page={4} totalPages={20} variant="input" id="pg-input" />
+      <Pagination page={7} totalPages={40} variant="input" pageLabel="Row" step={5} size="sm" id="pg-input-sm" />
+      <Pagination page={1} hasMore variant="input" id="pg-input-cursor" />
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Links mode (href function): every page is a real link; the current page is aria-current="page"</p>
+    <div style={row}>
+      <Pagination page={4} totalPages={9} href={(p) => `?page=${p}#pg-links`} id="pg-links" />
+      <Pagination page={2} totalPages={5} variant="dots" href={(p) => `?page=${p}#pg-links-dots`} id="pg-links-dots" />
+      <Pagination page={3} totalPages={30} variant="input" href={(p) => `?page=${p}#pg-links-input`} id="pg-links-input" />
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Disabled, and a translated instance (es-ES)</p>
+    <div style={row}>
+      <Pagination page={3} totalPages={7} isDisabled id="pg-disabled" />
+      <Pagination page={3} totalPages={7} variant="dots" isDisabled id="pg-dots-disabled" />
+      <Pagination page={2} totalItems={1234} pageSize={20} variant="count" locale="es-ES" id="pg-es" />
+    </div>
+  </section>
+
+  <section dir="rtl">
+    <p style={caption}>RTL: chevrons mirror</p>
+    <Pagination page={3} totalPages={6} variant="input" locale="ar-SA" id="pg-rtl" />
+  </section>
+</div>
+<script>
+  const log = document.getElementById('pg-log');
+  for (const id of ['pg-pages', 'pg-start', 'pg-end', 'pg-sm']) {
+    document.getElementById(id)?.addEventListener('astryx-change', (e) => {
+      if (log) log.textContent = `page: ${(e as CustomEvent<{page: number}>).detail.page}`;
+    });
+  }
+</script>

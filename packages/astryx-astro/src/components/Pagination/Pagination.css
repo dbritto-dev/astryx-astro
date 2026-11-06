@@ -1,0 +1,114 @@
+/*
+ * Port of @astryxdesign/core Pagination/Pagination.tsx (styles). Rule order follows the
+ * stylex.create() order: root, controls, compactFirst/Last, ellipsis (+sm), infoText, dots,
+ * dot (+sm, active, disabled), activePage, input group / label / total (+sm), page-size row.
+ *
+ * Styles Astryx passes to Button through `xstyle` (activePage, compactFirst/Last) are written
+ * one class more specific than Button's own rules (`.astryx-pagination .astryx-button[…]`),
+ * never by stylesheet order. `.astryx-button[hidden]` keeps first/last hidden while the page
+ * count is unknown (Button's display would otherwise win over the UA rule).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-4);
+  }
+  /* A data set that became empty on the client (Astryx renders nothing). */
+  .astryx-pagination[hidden] { display: none; }
+  .ax-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+  .astryx-pagination .astryx-button.ax-pagination-compact-first { margin-inline-end: calc(-1 * var(--spacing-1)); }
+  .astryx-pagination .astryx-button.ax-pagination-compact-last { margin-inline-start: calc(-1 * var(--spacing-1)); }
+  .astryx-pagination .astryx-button[hidden] { display: none; }
+
+  .ax-pagination-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--size-element-md);
+    height: var(--size-element-md);
+    color: var(--color-text-secondary);
+    font-size: var(--text-label-size);
+    user-select: none;
+  }
+  .astryx-pagination[data-size="sm"] .ax-pagination-ellipsis {
+    min-width: var(--size-element-sm);
+    height: var(--size-element-sm);
+    font-size: var(--text-supporting-size);
+  }
+
+  .ax-pagination-info {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .ax-pagination-info[hidden],
+  .ax-pagination-dots[hidden] { display: none; }
+
+  .ax-pagination-dots {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+  .astryx-pagination-dot {
+    width: var(--spacing-2);
+    height: var(--spacing-2);
+    border-width: 0;
+    border-style: none;
+    padding: 0;
+    border-radius: 50%;
+    background-color: var(--color-neutral);
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-pagination-dot:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-pagination-dot[data-size="sm"] {
+    width: var(--spacing-1-5);
+    height: var(--spacing-1-5);
+  }
+  .astryx-pagination-dot[data-active="active"] { background-color: var(--color-accent); }
+  .astryx-pagination-dot[aria-disabled="true"] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .astryx-pagination .astryx-button[data-ax-active-page] {
+    background-color: var(--color-neutral);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .ax-pagination-input-group {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    white-space: nowrap;
+  }
+  .astryx-pagination-input-label {
+    color: var(--color-text-secondary);
+    font-size: var(--text-label-size);
+    user-select: none;
+  }
+  .astryx-pagination-input-label[data-size="sm"] { font-size: var(--text-supporting-size); }
+  .astryx-pagination-input-total {
+    color: var(--color-text-secondary);
+    font-size: var(--text-label-size);
+    user-select: none;
+  }
+  .astryx-pagination-input-total[data-size="sm"] { font-size: var(--text-supporting-size); }
+  .astryx-pagination-input-total[hidden] { display: none; }
+
+  .ax-pagination-page-size {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+}
