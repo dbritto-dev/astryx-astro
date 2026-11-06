@@ -205,6 +205,9 @@ const ids = {
   search: r.ids.make('search'),
   readOnly: r.ids.make('readonly'),
 };
+// Astryx useSize(sizeProp): the rows (in the layer) take the box's effective size. While it is
+// inherited they follow the box's `size` stamp (lib/cascade followers), so SSR matches.
+const sizeFrom = sizeProp === undefined ? ids.box : undefined;
 const itemId = (index: number) => `${ids.listbox}-item-${index}`;
 
 const selectable = getSelectableOptions(options);
@@ -393,11 +396,11 @@ const MARKS = [
               <div role="group" aria-label={row.title} data-ax-section="">
                 {row.title && <div aria-hidden="true" class="astryx-selector-section-heading">{row.title}</div>}
                 {row.options.map(({option, index}) => (
-                  <SelectorOptionRow option={option} id={itemId(index)} isSelected={option.value === value} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
+                  <SelectorOptionRow option={option} id={itemId(index)} isSelected={option.value === value} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
                 ))}
               </div>
             ) : (
-              <SelectorOptionRow option={row.option} id={itemId(row.index)} isSelected={row.option.value === value} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
+              <SelectorOptionRow option={row.option} id={itemId(row.index)} isSelected={row.option.value === value} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
             ))}
             <div role="presentation" class="astryx-selector-empty-state" data-ax-empty="options" hidden={selectable.length > 0 || isLoading || undefined}>
               {emptyHtml ? <Fragment set:html={emptyHtml} /> : emptyText}

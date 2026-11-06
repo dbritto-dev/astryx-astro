@@ -213,6 +213,8 @@ const ids = {
   search: r.ids.make('search'),
   readOnly: r.ids.make('readonly'),
 };
+// Astryx useSize(sizeProp): the rows (in the layer) follow the box's inherited size stamp.
+const sizeFrom = sizeProp === undefined ? ids.box : undefined;
 const itemId = (index: number) => `${ids.listbox}-item-${index}`;
 
 const selectable = getSelectableOptions(options);
@@ -340,7 +342,7 @@ const messages = {
         <template data-ax-badge-template><Badge label="" variant="neutral" /></template>
         {canCreate && (
           <template data-ax-option-template>
-            <OptionRow option={{value: '', label: ''}} id="" isSelected={false} size={size} indicatorPosition={indicatorPosition} />
+            <OptionRow option={{value: '', label: ''}} id="" isSelected={false} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} />
           </template>
         )}
       </Fragment>
@@ -393,7 +395,7 @@ const messages = {
             <div id={ids.listbox} role="listbox" aria-multiselectable="true" aria-labelledby={r.id} class="ax-multi-selector-listbox">
               {canCreate && (
                 <div role="option" id={`${ids.listbox}-create`} aria-selected="false" data-value="" data-ax-create-row="" data-ax-fixed=""
-                  class="astryx-multi-selector-option" data-size={size} hidden><span class="ax-multi-selector-label" data-ax-create-label></span></div>
+                  class="astryx-multi-selector-option" data-size={size} data-ax-inherit-from={sizeFrom} hidden><span class="ax-multi-selector-label" data-ax-create-label></span></div>
               )}
               {hasSelectAll && (
                 <OptionRow
@@ -404,6 +406,7 @@ const messages = {
                   isSelectAll
                   partialLabel={messages.partial}
                   size={size}
+                  sizeFrom={sizeFrom}
                   indicatorPosition={indicatorPosition}
                   hidden={selectable.length === 0}
                 />
@@ -414,11 +417,11 @@ const messages = {
                 <div role="group" aria-label={row.title} data-ax-section="">
                   {row.title && <div aria-hidden="true" class="astryx-multi-selector-section-heading">{row.title}</div>}
                   {row.options.map(({option, index}) => (
-                    <OptionRow option={option} id={itemId(index)} order={index} isSelected={valueSet.has(option.value)} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
+                    <OptionRow option={option} id={itemId(index)} order={index} isSelected={valueSet.has(option.value)} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
                   ))}
                 </div>
               ) : (
-                <OptionRow option={row.option} id={itemId(row.index)} order={row.index} isSelected={valueSet.has(row.option.value)} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
+                <OptionRow option={row.option} id={itemId(row.index)} order={row.index} isSelected={valueSet.has(row.option.value)} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
               ))}
               <div role="presentation" class="astryx-multi-selector-empty-state" data-ax-empty="options" hidden={selectable.length > 0 || isLoading || undefined}>
                 {emptyHtml ? <Fragment set:html={emptyHtml} /> : emptyText}

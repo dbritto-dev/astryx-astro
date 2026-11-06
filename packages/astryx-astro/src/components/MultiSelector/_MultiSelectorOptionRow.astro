@@ -28,14 +28,18 @@ export interface Props {
   indicatorPosition: 'start' | 'end';
   content?: unknown;
   hidden?: boolean;
+  /** The MultiSelector box's id while its size is inherited: a size provider's stamp reaches the row (and its checkbox, lg → md) too. */
+  sizeFrom?: string;
 }
 
-const {option, id, order, isSelected, markState, isSelectAll = false, partialLabel, size, indicatorPosition, content, hidden = false} = Astro.props;
+const {option, id, order, isSelected, markState, isSelectAll = false, partialLabel, size, indicatorPosition, content, hidden = false, sizeFrom} = Astro.props;
 const isDisabled = !!option.disabled;
 const state = markState ?? (isSelected ? 'checked' : 'unchecked');
 const checkboxSize = size === 'lg' ? 'md' : size;
 const mark = `${state}${isDisabled ? '-disabled' : ''}`;
 const checkboxValue = state === 'indeterminate' ? 'indeterminate' : state === 'checked';
+// The checkbox's parts follow the inherited size too (CheckboxInput has no lg: lg → md).
+const followCheckbox = sizeFrom ? {'data-ax-inherit-from': sizeFrom, 'data-ax-inherit-map': 'lg=md', 'data-ax-inherit-deep': ''} : {};
 ---
 <div
   role="option"
@@ -52,12 +56,13 @@ const checkboxValue = state === 'indeterminate' ? 'indeterminate' : state === 'c
   data-ax-mark-state={mark}
   class="astryx-multi-selector-option"
   data-size={size}
+  data-ax-inherit-from={sizeFrom}
   data-select-all={isSelectAll ? 'select-all' : undefined}
   data-selected={isSelected ? 'selected' : undefined}
   data-disabled={isDisabled ? 'disabled' : undefined}
   hidden={hidden || undefined}
 >
-  {indicatorPosition === 'start' && <div class="ax-multi-selector-check" inert data-ax-mark-slot><CheckboxInput label="" isLabelHidden value={checkboxValue} isDisabled={isDisabled} size={checkboxSize} /></div>}
+  {indicatorPosition === 'start' && <div class="ax-multi-selector-check" inert data-ax-mark-slot {...followCheckbox}><CheckboxInput label="" isLabelHidden value={checkboxValue} isDisabled={isDisabled} size={checkboxSize} /></div>}
   {content != null && !isSelectAll ? content : <span class="ax-multi-selector-label">{option.label}</span>}
-  {indicatorPosition === 'end' && <div class="ax-multi-selector-check ax-multi-selector-check-end" inert data-ax-mark-slot><CheckboxInput label="" isLabelHidden value={checkboxValue} isDisabled={isDisabled} size={checkboxSize} /></div>}
+  {indicatorPosition === 'end' && <div class="ax-multi-selector-check ax-multi-selector-check-end" inert data-ax-mark-slot {...followCheckbox}><CheckboxInput label="" isLabelHidden value={checkboxValue} isDisabled={isDisabled} size={checkboxSize} /></div>}
 </div>

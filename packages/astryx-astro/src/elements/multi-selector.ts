@@ -311,6 +311,13 @@ export class MultiSelectorElement extends ListboxSelectElement {
     this.#isSorted = selectedFirst;
   }
 
+  /** Rows take the box's size; their checkboxes the CheckboxInput size (Astryx: lg → md). */
+  protected override syncRowSize(size: string) {
+    super.syncRowSize(size);
+    const checkbox = size === 'lg' ? 'md' : size;
+    for (const el of this.listbox?.querySelectorAll<HTMLElement>('[data-ax-mark-slot] [data-size]') ?? []) el.setAttribute('data-size', checkbox);
+  }
+
   /** The row's inert CheckboxInput takes the state in place (an option's disabled state is fixed). */
   protected override setMark(option: HTMLElement, state: string) {
     if (option.getAttribute('data-ax-mark-state') === state) return;

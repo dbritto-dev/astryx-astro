@@ -109,9 +109,10 @@ export abstract class ListboxSelectElement extends Base {
     this.search = this.layer?.querySelector<HTMLInputElement>('[data-ax-panel-search] input') ?? null;
     const cleanup: Array<() => void> = [];
 
-    // Option rows take the box's effective size (a size provider stamps only the box).
+    // Option rows take the box's effective size. The server already stamps it through
+    // (cascade followers); this keeps rows right when the box's size changes after render.
     const size = this.getAttribute('data-size');
-    if (size && this.listbox) for (const row of this.listbox.querySelectorAll<HTMLElement>('[data-size]')) row.setAttribute('data-size', size);
+    if (size) this.syncRowSize(size);
 
     if (this.listbox && this.layer) {
       const combo = createCombobox({
@@ -447,6 +448,11 @@ export abstract class ListboxSelectElement extends Base {
 
   /** Re-run the empty state (after the list changed). */
   protected refreshEmpty() { this.#syncEmpty(); }
+
+  /** Give the option rows the box's size (only the rows: their marks keep their own sizes). */
+  protected syncRowSize(size: string) {
+    for (const row of this.listbox?.querySelectorAll<HTMLElement>('[role="option"][data-size]') ?? []) row.setAttribute('data-size', size);
+  }
 
   /** Clone a server-rendered `<template>` found inside this element. */
   protected templateContent(selector: string): DocumentFragment | null {

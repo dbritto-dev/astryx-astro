@@ -17,9 +17,11 @@ export interface Props {
   indicatorPosition: 'start' | 'end';
   /** Caller-rendered content (`renderOption`'s result), else the default SelectorOption. */
   content?: unknown;
+  /** The Selector box's id while its size is inherited: a size provider's stamp reaches the row too. */
+  sizeFrom?: string;
 }
 
-const {option, id, isSelected, size, indicatorPosition, content} = Astro.props;
+const {option, id, isSelected, size, indicatorPosition, content, sizeFrom} = Astro.props;
 const isDisabled = !!option.disabled;
 const markState = `${isSelected ? 'checked' : 'unchecked'}${isDisabled ? '-disabled' : ''}`;
 ---
@@ -33,6 +35,7 @@ const markState = `${isSelected ? 'checked' : 'unchecked'}${isDisabled ? '-disab
   data-ax-mark-state={markState}
   class="astryx-selector-option-row"
   data-size={size}
+  data-ax-inherit-from={sizeFrom}
   data-selected={isSelected ? 'selected' : undefined}
   data-disabled={isDisabled ? 'disabled' : undefined}
 >

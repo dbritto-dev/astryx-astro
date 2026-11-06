@@ -19,38 +19,18 @@
  *    `disabled`; a link member renders `<button type="button">` (disabled links are an
  *    anti-pattern: Button's `renderAsLink = href != null && !isTrueDisabled`).
  */
-import {ELEMENT_NODE, parse, render, type ElementNode} from 'ultrahtml';
-
-const ATTR = 'data-ax-inherit';
-const LAYER_ROOT = 'data-astryx-layer-root';
+import type {ElementNode} from 'ultrahtml';
+import {stamp} from '../../lib/cascade';
 
 type Attrs = Record<string, string>;
 export type NodeApply = ((attrs: Attrs, node: ElementNode) => void) | null;
 
-/** `stamp()` (lib/cascade.ts) that stops at layer roots. `null` appliers consume the key. */
-export async function stampOutsideLayers(html: string, map: Record<string, NodeApply>): Promise<string> {
-  if (!html || !html.includes(ATTR)) return html;
-  const ast = parse(html);
-  const visit = (node: ElementNode) => {
-    for (const child of (node.children ?? []) as ElementNode[]) {
-      if (child.type !== ELEMENT_NODE) continue;
-      const attrs = child.attributes as Attrs;
-      if (LAYER_ROOT in attrs) continue;
-      const marker = attrs[ATTR];
-      if (marker) {
-        const remaining: string[] = [];
-        for (const key of marker.split(/\s+/)) {
-          if (key in map) map[key]?.(attrs, child);
-          else remaining.push(key);
-        }
-        if (remaining.length) attrs[ATTR] = remaining.join(' ');
-        else delete attrs[ATTR];
-      }
-      visit(child);
-    }
-  };
-  visit(ast as ElementNode);
-  return render(ast);
+/**
+ * `stamp()` (lib/cascade.ts, which stops at layer roots and runs followers) with node
+ * appliers. `null` appliers consume the key.
+ */
+export function stampOutsideLayers(html: string, map: Record<string, NodeApply>): Promise<string> {
+  return stamp(html, Object.fromEntries(Object.entries(map).map(([key, fn]) => [key, fn ? (attrs: Attrs, _tag: string, node: ElementNode) => fn(attrs, node) : null])));
 }
 
 /** Adapt `(attrs, tag)` stampers (e.g. `buttonSizeStampers()`) to node appliers. */
