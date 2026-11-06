@@ -6,6 +6,7 @@
   "type": "module",
   "files": [
     "src",
+    "AGENTS.md",
     "LICENSE",
     "NOTICE"
   ],
@@ -24,7 +25,12 @@
     "astryx"
   ],
   "scripts": {
-    "tokens": "node scripts/build-tokens.mjs"
+    "tokens": "node scripts/build-tokens.mjs",
+    "manifest": "node scripts/build-manifest.mjs",
+    "index": "node scripts/build-index.mjs",
+    "conformance": "node scripts/conformance.mjs",
+    "generate": "node scripts/build-tokens.mjs && node scripts/build-manifest.mjs && node scripts/build-index.mjs",
+    "check:generated": "node scripts/build-tokens.mjs --check && node scripts/build-manifest.mjs --check && node scripts/build-index.mjs --check"
   },
   "peerDependencies": {
     "astro": ">=5"
@@ -42,6 +48,7 @@
     "astro": "^7.4.7"
   },
   "dependencies": {
-    "intl-messageformat": "^12.1.4"
+    "intl-messageformat": "^12.1.4",
+    "ultrahtml": "^1.7.0"
   }
 }

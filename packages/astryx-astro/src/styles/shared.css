@@ -1,2 +1,116 @@
-/* Shared primitives — filled in from the architecture map. */
+/*
+ * Shared primitives (private, `ax-` prefixed utility classes and attributes).
+ * Ports of @astryxdesign/core utils/focusOutline.stylex.ts, utils/interactionOverlay.stylex.ts,
+ * utils/rtlStyles, hooks/useScrollLock, utils/hitArea.
+ *
+ * Components opt in by adding a class next to their `astryx-*` class, e.g.
+ *   <button class="astryx-button ax-focus-visible ax-overlay-bg">
+ * Component CSS overrides these with a more specific selector (class + attribute), never by
+ * relying on stylesheet order.
+ */
 @layer reset, astryx-base, astryx-theme;
+
+/* Per-instance private values set inline; never inherited (see lib/padding.ts). */
+@property --_ax-pis { syntax: "*"; inherits: false; }
+@property --_ax-pie { syntax: "*"; inherits: false; }
+@property --_ax-pbs { syntax: "*"; inherits: false; }
+@property --_ax-pbe { syntax: "*"; inherits: false; }
+@property --astryx-press-alpha { syntax: "<number>"; inherits: false; initial-value: 0; }
+
+@layer astryx-base {
+  /* ── Focus ring ──────────────────────────────────────────────────────────
+   * One ring definition from --focus-outline-* longhands so variants can recolor. */
+  .ax-focus-visible,
+  .ax-focus-within,
+  .ax-focus-within-first-child,
+  .ax-focus-within-combobox { outline-width: 0; outline-style: none; outline-offset: 0; }
+
+  .ax-focus-visible:focus-visible,
+  .ax-focus-within:has(:focus-visible),
+  .ax-focus-within-first-child:has(> :first-child:focus-visible),
+  .ax-focus-within-combobox:has(> [role="combobox"]:focus-visible) {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  .ax-focus-suppressed,
+  .ax-focus-suppressed:focus-visible { outline-width: 0; outline-style: none; outline-offset: 0; }
+
+  /* A focus owner publishes its ring to a painting ancestor (focusWithinOrPublished). */
+  .ax-focus-publish { --_focus-outline: none; --_focus-outline-offset: 0; }
+  .ax-focus-publish:focus-visible {
+    --_focus-outline: var(--focus-outline-width) var(--focus-outline-style) var(--focus-outline-color);
+    --_focus-outline-offset: var(--focus-outline-offset);
+  }
+  .ax-focus-within-or-published { outline: var(--_focus-outline, none); outline-offset: var(--_focus-outline-offset, 0); }
+  .ax-focus-within-or-published:has(:focus-visible) {
+    outline: var(--focus-outline-width) var(--focus-outline-style) var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  /* ── Interaction overlay (hover / pressed paint) ─────────────────────────
+   * Enabled guard: :where(:not(:disabled,[aria-disabled="true"])). Hover only under
+   * (hover: hover). Astryx's coarse-pointer press controller (data-astryx-press) is not
+   * ported yet, so coarse pointers keep the native :active paint. */
+  .ax-overlay-bg { background-color: transparent; }
+  .ax-overlay-bg:where(:not(:disabled, [aria-disabled="true"])):active { background-color: var(--color-overlay-pressed); }
+  @media (hover: hover) {
+    .ax-overlay-bg:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-overlay-hover); }
+    .ax-overlay-bg:where(:not(:disabled, [aria-disabled="true"])):hover:active { background-color: var(--color-overlay-pressed); }
+  }
+
+  .ax-overlay-image:where(:not(:disabled, [aria-disabled="true"])):active {
+    background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed));
+  }
+  @media (hover: hover) {
+    .ax-overlay-image:where(:not(:disabled, [aria-disabled="true"])):hover {
+      background-image: linear-gradient(var(--color-overlay-hover), var(--color-overlay-hover));
+    }
+    .ax-overlay-image:where(:not(:disabled, [aria-disabled="true"])):hover:active {
+      background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed));
+    }
+  }
+
+  .ax-overlay-image-neutral { background-image: linear-gradient(var(--color-neutral), var(--color-neutral)); }
+  .ax-overlay-image-neutral:where(:not(:disabled, [aria-disabled="true"])):active {
+    background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed)), linear-gradient(var(--color-neutral), var(--color-neutral));
+  }
+  @media (hover: hover) {
+    .ax-overlay-image-neutral:where(:not(:disabled, [aria-disabled="true"])):hover {
+      background-image: linear-gradient(var(--color-overlay-hover), var(--color-overlay-hover)), linear-gradient(var(--color-neutral), var(--color-neutral));
+    }
+    .ax-overlay-image-neutral:where(:not(:disabled, [aria-disabled="true"])):hover:active {
+      background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed)), linear-gradient(var(--color-neutral), var(--color-neutral));
+    }
+  }
+
+  /* Pressed-only paint (selection rows that keep their own hover treatment). */
+  .ax-overlay-pressed-bg:where(:not(:disabled, [aria-disabled="true"])):active { background-color: var(--color-overlay-pressed); }
+
+  /* ── Directional art mirrors once in RTL ───────────────────────────────── */
+  .ax-mirror-rtl:dir(rtl) { transform: scaleX(-1); }
+
+  /* ── 44px hit area for small controls under coarse pointers ───────────── */
+  @media (pointer: coarse) {
+    .ax-hit-area { position: relative; }
+    .ax-hit-area::before {
+      content: "";
+      position: absolute;
+      inset: var(--astryx-hit-inset-block, min(0px, calc((100% - 44px) / 2))) var(--astryx-hit-inset-inline, min(0px, calc((100% - 44px) / 2)));
+    }
+  }
+
+  /* ── Page scroll lock behind modal surfaces (useScrollLock) ───────────── */
+  :root:has(dialog[data-ax-scroll-lock]:modal),
+  :root:has([data-ax-scroll-lock][data-ax-open]) { overflow: hidden; scrollbar-gutter: stable; }
+
+  /* ── Layer root boundary: overlays reset inherited container padding ──── */
+  [data-astryx-layer-root] {
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+  }
+}
