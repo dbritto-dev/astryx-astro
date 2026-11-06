@@ -97,8 +97,9 @@ const {
   locale,
   class: className,
   style,
+  slot: _slot,
   ...props
-} = Astro.props;
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const t = translator(Astro, locale);
 const numericSize = resolveSize(size);

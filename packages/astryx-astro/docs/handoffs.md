@@ -334,3 +334,24 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - `presentation`/`nativePicker` accepted but always render the popover (sheet/wheels deferred).
 - Flaky under heavy load (animation timing): lightbox, segmented-control tests — the runner
   retries once and reports FLAKY.
+
+## Menus (`runtime/menu.ts`)
+
+- `<ax-menu data-ax-menu-kind="dropdown|submenu|context">` is the layer; `createMenuLevel(menu, …)`
+  runs one level's keys/typeahead/activation/hover focus; `createMenuHover` ports useMenuHover
+  (delays, click guard, reopen suppression, safe triangle); `moveRegionsTab`,
+  `MENU_ITEM_SELECTOR` and role constants. Markup contract in the file header and runtime README.
+- Events: `astryx-open-change` on each `<ax-menu>`; `astryx-select` {event} on the row;
+  `astryx-change` on checkbox rows {value: boolean} and radio groups {value: string}, cancelable.
+- Cascade keys: `dropdown-menu-size`, `dropdown-menu-control-size`, `dropdown-menu-flyout`,
+  `dropdown-menu-radio-group`.
+- Item makes a link root only when `as` is a component (as in Astryx); menus use `_MenuLink.astro`.
+
+## Slot gotchas (all components)
+
+- Astro passes a named-slot assignment to a component as a `slot` prop. Destructure it out
+  (`slot: _slot, ...rest`) before spreading `rest` onto your root. Conformance now fails on any
+  leaked `slot` attribute.
+- `{cond && <X slot="a" />}` registers slot `a` even when `cond` is false, so
+  `Astro.slots.has('a')` is true with empty content. Check the rendered HTML (or trim it) before
+  preferring a slot over a prop.

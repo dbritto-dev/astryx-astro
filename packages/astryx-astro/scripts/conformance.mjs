@@ -41,6 +41,10 @@ for (const c of top) {
   if (!demo) { console.log(`✗ ${c.name}: demo section missing`); failures++; continue; }
   const family = [c, ...manifest.components.filter((s) => s.subComponentOf === c.name)];
   const problems = [];
+  // Light DOM never uses `slot` attributes; one in the output is a leaked named-slot prop.
+  for (const el of demo.querySelectorAll('[slot]')) {
+    if (el.tagName !== 'TEMPLATE') problems.push(`leaked slot="${el.getAttribute('slot')}" on <${el.tagName.toLowerCase()} class="${el.getAttribute('class') ?? ''}">`);
+  }
   for (const entry of family) {
     for (const target of entry.theming) {
       const els = demo.querySelectorAll(`.${target.className}`);

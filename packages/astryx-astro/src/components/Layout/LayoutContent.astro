@@ -32,7 +32,7 @@ export interface Props extends HTMLAttributes<'div'> {
   locale?: string;
 }
 
-const {padding, isScrollable = true, label, role, locale, class: className, style, ...rest} = Astro.props;
+const {padding, isScrollable = true, label, role, locale, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass, attrs} = themeProps('layout-content');
 const t = translator(Astro, locale);
 const scrollRegion = isScrollable && role == null;

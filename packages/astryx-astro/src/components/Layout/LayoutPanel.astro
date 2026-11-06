@@ -54,8 +54,8 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const {
   hasDivider = false, isScrollable = true, label, padding, role, width, resizable, locale,
-  class: className, style, ...rest
-} = Astro.props;
+  class: className, style, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const region = resizable ? readServerResizableState(resizable) : null;
 const effectiveWidth = region ? region.size : width;

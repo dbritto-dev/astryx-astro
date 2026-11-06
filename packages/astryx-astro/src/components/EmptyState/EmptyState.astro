@@ -38,7 +38,7 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'title'> {
   isCompact?: boolean;
 }
 
-const {title, description, icon, headingLevel = 3, isCompact = false, class: className, style, ...rest} = Astro.props;
+const {title, description, icon, headingLevel = 3, isCompact = false, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const HeadingTag = `h${headingLevel}` as 'h3';
 const variant = isCompact ? 'compact' : null;
 const {themeClass, attrs} = themeProps('empty-state', {variant});

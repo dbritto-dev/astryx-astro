@@ -177,8 +177,10 @@ const {
   style,
   __cascadeKeys: cascadeKeys = DEFAULT_BUTTON_CASCADE_KEYS,
   __inherit: extraInherit,
+  // Astro passes a named-slot assignment as a `slot` prop; never render it (light DOM).
+  slot: _slot,
   ...rest
-} = Astro.props as Props & InternalProps;
+} = Astro.props as Props & InternalProps & {slot?: string};
 
 const t = translator(Astro, locale);
 const size: ButtonSize = sizeProp ?? 'md';
