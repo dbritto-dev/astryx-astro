@@ -1,0 +1,294 @@
+/*
+ * Port of @astryxdesign/core Slider/Slider.tsx (styles) with utils/rtlStyles.ts centerInline and
+ * utils/focusOutline.stylex.ts (focusVisible, gated on keyboard input). Rule order follows
+ * stylex.props(): row; control → orientation → disabled; travel; track → orientation; fill
+ * clip → orientation; mover → range; fill → orientation → single/range; marks; thumb →
+ * orientation → hover → pressed → keyboard ring → disabled → coarse hit target.
+ *
+ * Every part sits in the travel box, a size container filling the control's padding box, so
+ * padding on the control (a theme rule, `controlStyle`) moves no part. The fill travels by
+ * `translate` in container units (cqi / cqb) exactly as in Astryx. Deviation: the thumbs are
+ * placed by `inset-inline-start` / `bottom` in the same units (Astryx: `translate`) so CSS anchor
+ * positioning — which reads the layout box — keeps the value tooltip on the thumb.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_slider-progress { syntax: "*"; inherits: false; }
+@property --_slider-fill-start { syntax: "*"; inherits: false; }
+@property --_slider-fill-end { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── row (.astryx-slider) ────────────────────────────────────────────── */
+  .astryx-slider {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  /* ── control (trackContainer) ────────────────────────────────────────── */
+  .astryx-slider-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    isolation: isolate;
+  }
+  @media (pointer: coarse) {
+    .astryx-slider-control { touch-action: manipulation; }
+  }
+  .astryx-slider-control[data-orientation="horizontal"] {
+    height: 20px;
+    width: 100%;
+    cursor: pointer;
+  }
+  .astryx-slider-control[data-orientation="vertical"] {
+    width: 20px;
+    height: 160px;
+    flex-direction: column;
+    justify-content: center;
+    cursor: pointer;
+  }
+  @media (pointer: coarse) {
+    .astryx-slider-control[data-orientation="horizontal"] { min-block-size: 24px; }
+    .astryx-slider-control[data-orientation="vertical"] { min-inline-size: 24px; }
+  }
+  .astryx-slider-control:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-slider-control[data-disabled] {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .ax-slider-travel {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+  }
+
+  /* ── track ───────────────────────────────────────────────────────────── */
+  .astryx-slider-track {
+    position: absolute;
+    background-color: var(--color-track);
+    border-radius: var(--radius-full);
+  }
+  .astryx-slider-track[data-orientation="horizontal"] {
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    height: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .astryx-slider-track[data-orientation="vertical"] {
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    left: 50%;
+    transform: translate(-50%, 0px);
+  }
+
+  /* ── fill: a full-length bar moved into place inside two clips ───────── */
+  .ax-slider-fill-clip {
+    position: absolute;
+    overflow: hidden;
+    border-radius: var(--radius-full);
+    pointer-events: none;
+  }
+  .ax-slider-fill-clip[data-orientation="horizontal"] {
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    height: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  .ax-slider-fill-clip[data-orientation="vertical"] {
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    left: 50%;
+    transform: translate(-50%, 0px);
+  }
+  .ax-slider-fill-mover {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .ax-slider-fill-mover[data-ax-range][data-orientation="horizontal"] {
+    translate: calc(10px + var(--_slider-fill-start) * (100cqi - 20px)) 0;
+    border-start-start-radius: var(--radius-full);
+    border-end-start-radius: var(--radius-full);
+  }
+  .ax-slider-fill-mover[data-ax-range][data-orientation="horizontal"]:dir(rtl) {
+    translate: calc(-10px - var(--_slider-fill-start) * (100cqi - 20px)) 0;
+  }
+  .ax-slider-fill-mover[data-ax-range][data-orientation="vertical"] {
+    translate: 0 calc(-10px - var(--_slider-fill-start) * (100cqb - 20px));
+    border-end-start-radius: var(--radius-full);
+    border-end-end-radius: var(--radius-full);
+  }
+  .ax-slider-fill {
+    position: absolute;
+    inset: 0;
+    background-color: var(--color-accent);
+  }
+  .ax-slider-fill[data-orientation="horizontal"] {
+    border-start-end-radius: var(--radius-full);
+    border-end-end-radius: var(--radius-full);
+  }
+  .ax-slider-fill[data-orientation="vertical"] {
+    border-start-start-radius: var(--radius-full);
+    border-start-end-radius: var(--radius-full);
+  }
+  /* single: from the track's start to the thumb's centre */
+  .ax-slider-fill:not([data-ax-range])[data-orientation="horizontal"] {
+    translate: calc(10px + var(--_slider-fill-end) * (100cqi - 20px) - 100cqi) 0;
+  }
+  .ax-slider-fill:not([data-ax-range])[data-orientation="horizontal"]:dir(rtl) {
+    translate: calc(100cqi - 10px - var(--_slider-fill-end) * (100cqi - 20px)) 0;
+  }
+  .ax-slider-fill:not([data-ax-range])[data-orientation="vertical"] {
+    translate: 0 calc(100cqb - 10px - var(--_slider-fill-end) * (100cqb - 20px));
+  }
+  /* range: from the lower thumb's centre (where the mover sits) to the upper's */
+  .ax-slider-fill[data-ax-range][data-orientation="horizontal"] {
+    translate: calc((var(--_slider-fill-end) - var(--_slider-fill-start)) * (100cqi - 20px) - 100cqi) 0;
+  }
+  .ax-slider-fill[data-ax-range][data-orientation="horizontal"]:dir(rtl) {
+    translate: calc(100cqi - (var(--_slider-fill-end) - var(--_slider-fill-start)) * (100cqi - 20px)) 0;
+  }
+  .ax-slider-fill[data-ax-range][data-orientation="vertical"] {
+    translate: 0 calc(100cqb - (var(--_slider-fill-end) - var(--_slider-fill-start)) * (100cqb - 20px));
+  }
+
+  /* ── marks ───────────────────────────────────────────────────────────── */
+  .ax-slider-marks { position: absolute; }
+  .ax-slider-marks[data-orientation="horizontal"] {
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    top: 50%;
+  }
+  .ax-slider-marks[data-orientation="vertical"] {
+    top: 0;
+    bottom: 0;
+    inset-inline-start: 50%;
+  }
+  .ax-slider-mark {
+    position: absolute;
+    background-color: var(--color-track);
+    border-radius: var(--radius-full);
+  }
+  .ax-slider-mark[data-ax-filled] { background-color: var(--color-accent); }
+  .ax-slider-mark[data-orientation="horizontal"] {
+    width: 2px;
+    height: 8px;
+    transform: translate(-50%, -50%);
+  }
+  .ax-slider-mark[data-orientation="horizontal"]:dir(rtl) { transform: translate(50%, -50%); }
+  .ax-slider-mark[data-orientation="vertical"] {
+    height: 2px;
+    width: 8px;
+    transform: translate(-50%, 50%);
+  }
+  .ax-slider-mark-label {
+    position: absolute;
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .ax-slider-mark-label[data-orientation="horizontal"] {
+    transform: translateX(-50%);
+    top: 14px;
+  }
+  .ax-slider-mark-label[data-orientation="horizontal"]:dir(rtl) { transform: translateX(50%); }
+  .ax-slider-mark-label[data-orientation="vertical"] {
+    transform: translateY(50%);
+    inset-inline-start: 14px;
+  }
+
+  /* ── thumbs ──────────────────────────────────────────────────────────── */
+  .astryx-slider-thumb {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-accent);
+    transition-property: background-color, box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    outline: none;
+    cursor: grab;
+    z-index: 1;
+  }
+  .astryx-slider-thumb:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-slider-thumb[data-orientation="horizontal"] {
+    top: calc(50% - 10px);
+    inset-inline-start: calc(var(--_slider-progress) * (100cqi - 20px));
+  }
+  .astryx-slider-thumb[data-orientation="vertical"] {
+    bottom: calc(var(--_slider-progress) * (100cqb - 20px));
+    inset-inline-start: calc(50% - 10px);
+  }
+  @media (hover: hover) {
+    .astryx-slider-thumb:not([data-disabled]):hover:where(:not(:disabled, [aria-disabled="true"])) {
+      background-color: color-mix(in srgb, var(--color-accent), var(--color-tint-hover) 15%);
+    }
+  }
+  /* Pressed for as long as the thumb is dragged (a press on the track never activates it). */
+  .astryx-slider-thumb[data-ax-pressed]:not([data-disabled]) {
+    background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed));
+  }
+  /* The ring only after keyboard input: a mouse press focuses the thumb from script, which
+   * Chromium reports as :focus-visible. A focused disabled thumb still shows it. */
+  .astryx-slider-thumb[data-ax-keyboard-focus]:focus-visible {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+  .astryx-slider-thumb[data-disabled] {
+    background-color: var(--color-background-muted);
+    cursor: default;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-slider-thumb { transition-duration: 0s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-slider-thumb { transition-duration: 0s; }
+
+  /* A finger's target: the thumb's own ::before grows 14px each way (UISlider's 48pt). Range
+   * thumbs stop at half the gap on the side facing each other, so a finger takes the nearer. */
+  @media (pointer: coarse) {
+    .astryx-slider-thumb:not([data-disabled]) {
+      --_ax-hit-facing: calc(-1 * clamp(0px, (var(--_slider-spread, 1) * (100cqi - 20px) - 20px) / 2, 14px));
+    }
+    .astryx-slider-thumb[data-orientation="vertical"]:not([data-disabled]) {
+      --_ax-hit-facing: calc(-1 * clamp(0px, (var(--_slider-spread, 1) * (100cqb - 20px) - 20px) / 2, 14px));
+    }
+    .astryx-slider-thumb:not([data-disabled])::before {
+      content: "";
+      position: absolute;
+      inset: -14px;
+    }
+    [data-ax-range] > .ax-slider-travel > .astryx-slider-thumb[data-orientation="horizontal"][data-ax-thumb="0"]:not([data-disabled])::before { inset-inline-end: var(--_ax-hit-facing); }
+    [data-ax-range] > .ax-slider-travel > .astryx-slider-thumb[data-orientation="horizontal"][data-ax-thumb="1"]:not([data-disabled])::before { inset-inline-start: var(--_ax-hit-facing); }
+    [data-ax-range] > .ax-slider-travel > .astryx-slider-thumb[data-orientation="vertical"][data-ax-thumb="0"]:not([data-disabled])::before { top: var(--_ax-hit-facing); }
+    [data-ax-range] > .ax-slider-travel > .astryx-slider-thumb[data-orientation="vertical"][data-ax-thumb="1"]:not([data-disabled])::before { bottom: var(--_ax-hit-facing); }
+    /* A drag on a thumb is ours along the travel; the cross axis still scrolls the page. */
+    .astryx-slider-thumb[data-orientation="horizontal"]:not([data-disabled]) { touch-action: pan-y; }
+    .astryx-slider-thumb[data-orientation="vertical"]:not([data-disabled]) { touch-action: pan-x; }
+  }
+
+  /* ── text display ────────────────────────────────────────────────────── */
+  .ax-slider-text {
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Inherited required (FormLayout defaultOptionality="required"): the span the thumbs point at
+   * draws its text only once the form stamped it (generated content joins the description). */
+  .ax-slider-required[aria-required="true"]::before { content: attr(data-ax-label); }
+}

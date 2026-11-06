@@ -1,0 +1,99 @@
+---
+import Switch, {type SwitchSize} from './Switch.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: SwitchSize[] = ['sm', 'md'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Two-factor authentication is required for admins',
+  warning: 'Public links can be shared outside your team',
+  success: 'Backups are on',
+};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-4);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Size × state</h3>
+    <div style={grid} data-test="matrix">
+      {sizes.map((size) => [false, true].map((on) => (
+        <Switch label={`${on ? 'On' : 'Off'} (${size})`} size={size} value={on} data-test={`${on ? 'on' : 'off'}-${size}`} />
+      )))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Label position and spacing</h3>
+    <div style="display:grid;gap:var(--spacing-3);max-width:360px">
+      <Switch label="Label at the end (default)" value={true} />
+      <Switch label="Label at the start" labelPosition="start" value={true} data-test="label-start" />
+      <Switch label="Spread across the row" labelSpacing="spread" value={false} data-test="spread" />
+      <Switch label="Start + spread" labelPosition="start" labelSpacing="spread" value={true} size="sm" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Description, label tooltip, label icon, optional / required, hidden label</h3>
+    <div style={grid}>
+      <Switch label="Dark mode" description="Use a darker color scheme" value={false} data-test="described" />
+      <Switch label="Auto-save" labelTooltip="Saves a draft every 30 seconds" value={true} />
+      <Switch label="Verified only" labelIcon="success" value={true} />
+      <Switch label="Weekly digest" isOptional value={false} />
+      <Switch label="Two-factor" isRequired value={false} data-test="required" />
+      <Switch label="Airplane mode" isLabelHidden value={false} data-test="hidden-label" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size (detached message)</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <Switch label={`${type} ${size}`} size={size} value={type !== 'error'} status={{type, message: messages[type]}} data-test={`status-${type}-${size}`} />
+      )))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, loading</h3>
+    <div style={grid}>
+      <Switch label="Disabled off" value={false} isDisabled htmlName="disabled" data-test="disabled" />
+      <Switch label="Disabled on" value={true} isDisabled size="sm" />
+      <Switch label="Disabled with reason" value={true} isDisabled disabledMessage="Turned off org-wide" data-test="disabled-message" />
+      <Switch label="Loading" value={false} isLoading data-test="loading" />
+      <Switch label="Loading (on, sm)" value={true} isLoading size="sm" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a FormLayout (optional by default) and a native form</h3>
+    <form data-test="form" novalidate style="display:grid;gap:var(--spacing-3);max-width:420px">
+      <FormLayout defaultOptionality="optional">
+        <Switch label="Email alerts" htmlName="alerts" value={true} data-test="form-alerts" />
+        <Switch label="SMS alerts" htmlName="sms" value={false} data-test="form-sms" />
+        <Switch label="Accept policy" htmlName="policy" value={false} isRequired data-test="form-policy" />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h3 style={cap}>Right to left</h3>
+    <div dir="rtl" style={grid}>
+      <Switch label="الوضع الليلي" value={true} data-test="rtl-on" />
+      <Switch label="الإشعارات" value={false} />
+    </div>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+    });
+  });
+</script>

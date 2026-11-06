@@ -1,0 +1,279 @@
+---
+/**
+ * Slider — pick a number, or a range with two thumbs, by dragging, clicking the track or with
+ * the keyboard; with marks, a value tooltip or text, and form participation. Port of
+ * @astryxdesign/core Slider/Slider.tsx with Field/fieldParts.ts (FR10 routing),
+ * hooks/useResolvedRequired.ts, utils/inputAria.ts, utils/primaryClick.ts and
+ * utils/disabledInteraction.ts. Behaviour: src/elements/slider.ts; math: ./sliderMath.ts.
+ *
+ * Markup as in Astryx: Field (group label — a `<label>` cannot name a `role="slider"` div)
+ * around `<ax-slider class="astryx-slider">` (the row; also holds the text value), the control
+ * `.astryx-slider-control` (the pointer surface and the control box for `controlClass/Style`;
+ * `role="group"` named by the label in range mode), a travel box (container units), the track
+ * `.astryx-slider-track`, the clipped fill, the marks and the thumbs
+ * `.astryx-slider-thumb[role="slider"]` — every theme target carries `data-orientation` (and
+ * `data-disabled`). Thumb progress is the private `--_slider-progress` (0–1), the fill's ends
+ * `--_slider-fill-start` / `--_slider-fill-end`.
+ *
+ * Field-composed (contract #8): base props go to the single thumb (`id`, `aria-*`, `data-*` …),
+ * or to the `role="group"` control in range mode; `containerClass/Style` → the Field box.
+ *
+ * - Single (`value={50}`) or range (`value={[20, 80]}`, thumbs named "Minimum value" /
+ *   "Maximum value"); range thumbs never cross (`minStepsBetweenThumbs` keeps a gap; each thumb's
+ *   aria-valuemin/max follow the other thumb).
+ * - Keyboard (APG): ←/→ (mirrored under RTL) and ↑/↓ by `step`, PageUp/PageDown by 10 steps,
+ *   Home/End to the bounds. Pointer: a mouse press on the track moves the nearest thumb and
+ *   drags; a press on a thumb drags it from where it was grabbed (any pointer); a finger's or
+ *   pen's tap on the track sets the value on lift; a mark (or its label) snaps to its value.
+ *   Two coincident range thumbs separate toward the first movement.
+ * - `valueDisplay`: `tooltip` (default; per thumb, on hover / keyboard focus and while dragged,
+ *   through the tooltip attachment contract), `text` (beside the control) or `none`.
+ * - Formatting: `formatValue` (a server function: values on the step grid are pre-formatted into
+ *   the markup, up to 2000 steps, so the browser shows the same strings) or the port extension
+ *   `formatOptions` (Intl.NumberFormat in `locale`); either also sets aria-valuetext. Without
+ *   them the value prints as `String(value)`, as Astryx does.
+ * - `htmlName`: hidden inputs carry the value (two in range mode); a disabled slider submits
+ *   nothing; a form reset restores the initial value.
+ * - `isDisabled` keeps the thumbs' tab stops (`aria-disabled`); `disabledMessage` shows the reason
+ *   as a tooltip on the control (replacing the value tooltip) and describes the thumbs.
+ * - Required (`isRequired`, or a FormLayout `defaultOptionality="required"`): the thumbs point
+ *   at a visually hidden "Required" (aria-required is not valid on role="slider").
+ * - Focus ring on a thumb only after keyboard input (a mouse press focuses without it).
+ *
+ * Events (on `<ax-slider>`, bubbling): `astryx-change` `{value}` whenever the value changes
+ * (number, or `[start, end]`; Astryx onChange), `astryx-change-end` `{value}` when a drag ends and
+ * after each handled key (Astryx onChangeEnd).
+ * Element API: `el.value` (get/set, number or [start, end]).
+ * Deviations: thumbs travel by `inset-inline-start` / `bottom` in container units (Astryx: a
+ * `translate`, plus a separate layout-placed anchor box for the tooltip) so the value tooltip
+ * anchors on the thumb itself. Not available: `onChange` / `onChangeEnd` callbacks.
+ * Deferred touch extras (AGENTS.md scope): UISlider tracking (lift, coast, haptics, release
+ * springs — a finger drags the thumb directly) and the hit targets' layout measurement (each
+ * thumb's coarse-pointer target is a CSS `::before`, kept apart in range mode).
+ *
+ * @example
+ * <Slider label="Volume" value={50} />
+ * <Slider label="Price" value={[20, 80]} minStepsBetweenThumbs={5} htmlName="price" valueDisplay="text" />
+ * <Slider label="Opacity" value={0.5} min={0} max={1} step={0.05} formatOptions={{style: 'percent'}} />
+ */
+import Field from '../Field/Field.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles} from '../../lib/style';
+import {translator, resolveLocale} from '../../lib/i18n';
+import {joinAriaIDs, routeFieldProps, type FieldComposedProps} from '../Field/fieldProps';
+import {clamp, getPercent, insetPosition, snapToStep} from './sliderMath';
+import './Slider.css';
+
+export type SliderOrientation = 'horizontal' | 'vertical';
+export type SliderValueDisplay = 'tooltip' | 'text' | 'none';
+export interface SliderMark {
+  value: number;
+  label?: string;
+}
+
+export interface Props extends Omit<FieldComposedProps, 'statusVariant' | 'formDirection'> {
+  /** Current value: a number (single thumb) or `[start, end]` (range) — the initial state. @default min */
+  value?: number | [number, number];
+  /** @default 0 */
+  min?: number;
+  /** @default 100 */
+  max?: number;
+  /** Step increment (the grid is anchored at `min`). @default 1 */
+  step?: number;
+  /** @default 'horizontal' */
+  orientation?: SliderOrientation;
+  /** Server-side formatter for display and aria-valuetext (pre-formatted for the browser). */
+  formatValue?: (value: number) => string;
+  /** Port extension: Intl.NumberFormat options for display and aria-valuetext, in `locale`. */
+  formatOptions?: Intl.NumberFormatOptions;
+  /** How the current value is shown. @default 'tooltip' */
+  valueDisplay?: SliderValueDisplay;
+  /** Tick marks at values, with optional labels. */
+  marks?: SliderMark[];
+  /** Range mode: minimum number of steps between the thumbs. @default 0 */
+  minStepsBetweenThumbs?: number;
+  /** Form field name: hidden inputs carry the value (two in range mode). */
+  htmlName?: string;
+  /** Why the slider is disabled (with `isDisabled`): tooltip + focusable thumbs. */
+  disabledMessage?: string;
+  'data-testid'?: string;
+  [attr: `data-${string}`]: unknown;
+}
+
+const {
+  value,
+  min = 0,
+  max = 100,
+  step = 1,
+  orientation = 'horizontal',
+  formatValue,
+  formatOptions,
+  valueDisplay = 'tooltip',
+  marks,
+  minStepsBetweenThumbs: minStepsProp,
+  htmlName,
+  disabledMessage,
+  ...props
+} = Astro.props;
+
+const {statusVariant: _ignoredVariant, ...routed} = props as Props & {statusVariant?: unknown};
+const r = routeFieldProps('Slider', {...(routed as FieldComposedProps & Record<string, unknown>), statusVariant: 'detached'});
+const {isDisabled, status} = r;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const isRange = Array.isArray(value);
+const minStepsBetweenThumbs = isRange ? (minStepsProp ?? 0) : 0;
+const isHorizontal = orientation === 'horizontal';
+const values: number[] = (isRange ? value : [value ?? min]).map((v) => clamp(v, min, max));
+const labelID = r.ids.fieldLabel;
+const descriptionID = r.field.descriptionID;
+const statusMessageID = r.statusMessageId;
+const requiredID = r.ids.make('required');
+
+// Required (useResolvedRequired): explicit → a visible-to-AT "Required"; neither flag → the
+// same span enrols in FormLayout's `form-required` key and draws its text only once stamped.
+const explicitRequired = !!r.field.isRequired && !r.field.isOptional;
+const inheritsRequired = !r.field.isRequired && !r.field.isOptional;
+const conveysRequired = explicitRequired || inheritsRequired;
+
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+const disabledTip = showsDisabledMessage ? attachTooltip() : null;
+const useValueTooltip = valueDisplay === 'tooltip' && !showsDisabledMessage;
+const tips = values.map(() => (useValueTooltip ? attachTooltip() : null));
+const sharedDescribedBy = joinAriaIDs(descriptionID, statusMessageID, conveysRequired ? requiredID : undefined, disabledTip?.id);
+
+// Formatting: a server function is evaluated for every value the browser can produce on the
+// grid (plus the bounds and the initial values); Intl options travel as JSON.
+let numberFormat: Intl.NumberFormat | null = null;
+if (formatOptions) {
+  try { numberFormat = new Intl.NumberFormat(locale, formatOptions); } catch { numberFormat = null; }
+}
+const display = (v: number) => (formatValue ? formatValue(v) : numberFormat ? numberFormat.format(v) : String(v));
+const hasValueText = !!formatValue || !!numberFormat;
+let formatTable: Record<string, string> | undefined;
+if (formatValue) {
+  const count = step > 0 ? Math.floor((max - min) / step + 1e-9) : 0;
+  if (count <= 2000) {
+    formatTable = {};
+    for (let i = 0; i <= count; i++) {
+      const v = snapToStep(min + i * step, min, step);
+      formatTable[String(v)] = formatValue(v);
+    }
+    for (const v of [min, max, ...values]) formatTable[String(v)] = formatValue(v);
+  } else if (import.meta.env?.DEV) {
+    console.warn('[astryx-astro] Slider: formatValue covers at most 2000 steps in the browser; values past it print with formatOptions or String().');
+  }
+}
+
+const native = r.native as Record<string, unknown>;
+const callerLabelledBy = (props as {'aria-labelledby'?: string})['aria-labelledby'];
+const callerDescribedBy = (props as {'aria-describedby'?: string})['aria-describedby'];
+const minGap = minStepsBetweenThumbs * step;
+const percentOf = (v: number) => getPercent(v, min, max);
+const fillStart = isRange ? percentOf(values[0]) / 100 : 0;
+const fillEnd = percentOf(values[isRange ? 1 : 0]) / 100;
+const fillStyle = `--_slider-fill-start:${fillStart};--_slider-fill-end:${fillEnd}`;
+const spread = isRange && max > min ? (values[1] - values[0]) / (max - min) : 1;
+
+const root = themeProps('slider', {orientation, disabled: isDisabled ? 'disabled' : null});
+const control = themeProps('slider-control', {orientation, disabled: isDisabled ? 'disabled' : null});
+const track = themeProps('slider-track', {orientation});
+const thumbTheme = themeProps('slider-thumb', {orientation, disabled: isDisabled ? 'disabled' : null});
+const tooltipPlacement = isHorizontal ? 'above' : 'start';
+const isFilledMark = (v: number) => (isRange ? v >= values[0] && v <= values[1] : v <= values[0]);
+const textValue = isRange ? `${display(values[0])} – ${display(values[1])}` : display(values[0]);
+---
+<Field {...r.field} labelID={labelID} isGroupLabel statusVariant="detached">
+  <ax-slider
+    class={root.themeClass}
+    {...root.attrs}
+    data-ax-min={min}
+    data-ax-max={max}
+    data-ax-step={step}
+    data-ax-min-steps={minStepsBetweenThumbs || undefined}
+    data-ax-range={isRange ? '' : undefined}
+    data-ax-initial={JSON.stringify(values)}
+    data-ax-locale={formatOptions ? locale : undefined}
+    data-ax-format-options={numberFormat ? JSON.stringify(formatOptions) : undefined}
+    data-ax-format-table={formatTable ? JSON.stringify(formatTable) : undefined}
+    data-ax-valuetext={hasValueText ? '' : undefined}
+  >
+    {htmlName != null && !isDisabled && values.map((v, i) => (
+      <input type="hidden" name={htmlName} value={String(v)} data-ax-slider-input={i === 0 ? 'start' : 'end'} />
+    ))}
+    <div
+      {...(isRange ? native : {})}
+      class={cx(control.themeClass, r.control.class)}
+      style={mergeStyles(r.control.style, isRange ? `--_slider-spread:${spread}` : undefined)}
+      {...control.attrs}
+      role={isRange ? 'group' : undefined}
+      aria-labelledby={isRange ? joinAriaIDs(labelID, callerLabelledBy) : undefined}
+      aria-describedby={isRange ? callerDescribedBy : undefined}
+      data-ax-tooltip={disabledTip?.id}
+      data-ax-range={isRange ? '' : undefined}
+    >
+      <div class="ax-slider-travel">
+        <div class={track.themeClass} {...track.attrs} aria-hidden="true"></div>
+        <div class="ax-slider-fill-clip" data-orientation={orientation} aria-hidden="true">
+          <div class="ax-slider-fill-mover" data-orientation={orientation} data-ax-range={isRange ? '' : undefined} style={fillStyle}>
+            <div class="ax-slider-fill" data-orientation={orientation} data-ax-range={isRange ? '' : undefined} style={fillStyle}></div>
+          </div>
+        </div>
+        {marks && (
+          <div class="ax-slider-marks" data-orientation={orientation} aria-hidden="true">
+            {marks.map((mark) => {
+              const pos = insetPosition(percentOf(mark.value));
+              const at = isHorizontal ? `inset-inline-start:${pos}` : `bottom:${pos}`;
+              return (
+                <div>
+                  <div class="ax-slider-mark" data-orientation={orientation} data-testid="slider-mark" data-mark-value={mark.value} data-ax-filled={isFilledMark(mark.value) ? '' : undefined} style={at}></div>
+                  {mark.label && <span class="ax-slider-mark-label" data-orientation={orientation} data-testid="slider-mark-label" data-mark-value={mark.value} style={at}>{mark.label}</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {values.map((v, i) => {
+          const tip = tips[i];
+          const ariaValueMin = isRange && i === 1 ? clamp(values[0] + minGap, min, max) : min;
+          const ariaValueMax = isRange && i === 0 ? clamp(values[1] - minGap, min, max) : max;
+          const thumbAttrs: Record<string, unknown> = {
+            ...(!isRange ? native : {}),
+            id: !isRange ? r.id : undefined,
+            role: 'slider',
+            tabindex: '0',
+            class: thumbTheme.themeClass,
+            ...thumbTheme.attrs,
+            'aria-valuemin': ariaValueMin,
+            'aria-valuemax': ariaValueMax,
+            'aria-valuenow': v,
+            'aria-valuetext': hasValueText ? display(v) : undefined,
+            'aria-orientation': orientation,
+            'aria-disabled': isDisabled ? 'true' : undefined,
+            'aria-invalid': status?.type === 'error' ? 'true' : undefined,
+            'aria-label': isRange ? t(i === 0 ? '@astryx.slider.minimumThumb' : '@astryx.slider.maximumThumb') : undefined,
+            'aria-labelledby': !isRange ? joinAriaIDs(labelID, callerLabelledBy) : undefined,
+            'aria-describedby': joinAriaIDs(!isRange ? callerDescribedBy : undefined, sharedDescribedBy, tip?.id),
+            'data-ax-tooltip': tip?.id,
+            'data-ax-thumb': i,
+            style: `--_slider-progress:${percentOf(v) / 100}`,
+          };
+          return (
+            <Fragment>
+              <div {...thumbAttrs}></div>
+              {tip && <Tooltip {...tip.layer} content={display(v)} placement={tooltipPlacement} delay={0} focusTrigger="always" />}
+            </Fragment>
+          );
+        })}
+      </div>
+    </div>
+    {valueDisplay === 'text' && <span class="ax-slider-text" data-ax-slider-text>{textValue}</span>}
+  </ax-slider>
+  {explicitRequired && <VisuallyHidden id={requiredID}>{t('@astryx.field.required')}</VisuallyHidden>}
+  {inheritsRequired && <span id={requiredID} class="ax-visually-hidden ax-slider-required" data-ax-inherit="form-required" data-ax-label={t('@astryx.field.required')}></span>}
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/slider';</script>

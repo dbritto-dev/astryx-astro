@@ -1,0 +1,42 @@
+---
+/**
+ * Internal: the indicator slot of CheckboxInput and RadioListItem — the element that holds
+ * ONLY the resolved indicator (Astryx `indicatorSlot`, `display: contents`), so the owner's
+ * focus ring (`ax-indicator-ring`, Indicator.css) has one unambiguous target whatever a
+ * theme renders there.
+ *
+ * Client state: the native input owns checked/indeterminate after load, so the indicator
+ * must follow it in the browser (src/elements/indicator-state.ts):
+ *  - the built-in CheckboxIndicator / RadioIndicator are morphed in place (their state is
+ *    `data-checked` plus, for the radio, the dot), so their colour transitions still run;
+ *  - a theme replacement (registerIndicatorTheme) is rendered once per reachable state into
+ *    inert `<template data-ax-indicator-state>` siblings, and the live element is morphed to
+ *    the matching one (attributes + children; replaced when its tag differs).
+ * Busy content (the default slot, e.g. a Spinner) is drawn in every state, as Astryx does.
+ */
+import Indicator from '../Indicator/Indicator.astro';
+import {defaultIndicators, getIndicator, type IndicatorSize, type IndicatorState} from '../Indicator/indicatorRegistry';
+import './indicatorSlot.css';
+
+export interface Props {
+  name: 'checkbox' | 'radio';
+  state: IndicatorState;
+  /** Every state the control can reach in the browser (templates for replacements). */
+  states: IndicatorState[];
+  size: IndicatorSize;
+  isDisabled: boolean;
+}
+
+const {name, state, states, size, isDisabled} = Astro.props;
+const resolved = getIndicator(name, Astro);
+const isDefault = resolved === defaultIndicators[name];
+const busy = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+---
+<span class="ax-indicator-ring ax-indicator-slot" data-ax-indicator-slot={isDefault ? name : 'templates'}>{busy
+  ? <Indicator name={name} state={state} size={size} isDisabled={isDisabled}><Fragment set:html={busy} /></Indicator>
+  : <Indicator name={name} state={state} size={size} isDisabled={isDisabled} />}</span>
+{!isDefault && states.map((s) => (
+  <template data-ax-indicator-state={s}>{busy
+    ? <Indicator name={name} state={s} size={size} isDisabled={isDisabled}><Fragment set:html={busy} /></Indicator>
+    : <Indicator name={name} state={s} size={size} isDisabled={isDisabled} />}</template>
+))}
