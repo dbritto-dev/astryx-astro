@@ -1,0 +1,90 @@
+---
+/**
+ * TopNavItem — a link in TopNav's start content: hover overlay, selected state, optional icon,
+ * icon-only form. Port of @astryxdesign/core TopNav/TopNavItem.tsx (+ NavItem styles in drawer
+ * mode). Theme target: `.astryx-top-nav-item[data-selected="selected"]` (`[data-mode="drawer"]`
+ * in the AppShell drawer).
+ *
+ * The anchor goes through LinkProvider (`as` overrides it) and the safe-URL check. `isSelected`
+ * sets `aria-current="page"`. `isDisabled` renders a plain `<a>` with no href / target
+ * (`aria-disabled`, out of the tab order; the router component is skipped). `isIconOnly` hides
+ * the text: `label` becomes the `aria-label` (pass an `icon`). The default slot replaces the
+ * visible label.
+ *
+ * In the AppShell drawer (TopNav drawer mode) the item renders as a SideNavItem-style row
+ * (`size` sets its height) and closes the drawer when activated (`data-ax-navigate`).
+ * Deferred (touch extra): the press controller (`data-astryx-press`).
+ *
+ * @example
+ * <TopNavItem label="Home" href="/" isSelected />
+ * <TopNavItem label="Settings" href="/settings" icon="wrench" isIconOnly />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import NavLink from '../NavItem/_NavLink.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {LinkComponentType} from '../LinkProvider/linkComponent';
+import {cx, themeProps} from '../../lib/themeProps';
+import {topNavMode} from '../AppShell/appShellContext';
+import '../NavItem/NavItem.css';
+import './TopNav.css';
+
+export interface Props extends HTMLAttributes<'a'> {
+  /** Accessible label; the visible text unless `isIconOnly` (then the aria-label). */
+  label: string;
+  href?: string | URL;
+  target?: string;
+  rel?: string;
+  download?: string | boolean;
+  referrerpolicy?: HTMLAttributes<'a'>['referrerpolicy'];
+  /** Link component (overrides LinkProvider). */
+  as?: LinkComponentType;
+  /** @default false */
+  isSelected?: boolean;
+  /** No href, no tab stop, announced disabled. @default false */
+  isDisabled?: boolean;
+  /** Square, icon only; `label` becomes the aria-label. @default false */
+  isIconOnly?: boolean;
+  /** Icon before the label: a name, SVG string or Astro component (or the `icon` slot). */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Row height in the mobile drawer (no effect in the bar). @default 'md' */
+  size?: 'sm' | 'md' | 'lg';
+  'data-testid'?: string;
+}
+
+const {
+  label, href, target, as, isSelected = false, isDisabled = false, isIconOnly = false, icon, size = 'md',
+  class: className, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: unknown};
+const isDrawer = topNavMode(Astro) === 'drawer';
+const iconHtml = Astro.slots.has('icon') ? (await Astro.slots.render('icon')).trim() : '';
+const childHtml = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+const {themeClass, attrs} = themeProps('top-nav-item', {mode: isDrawer ? 'drawer' : null, selected: isSelected ? 'selected' : null});
+const common = {
+  ...rest,
+  'aria-label': isIconOnly ? label : undefined,
+  'aria-current': isSelected ? 'page' : undefined,
+  'aria-disabled': isDisabled ? 'true' : undefined,
+  tabindex: isDisabled ? -1 : undefined,
+  class: cx(themeClass, isDrawer && 'ax-nav-item', 'ax-overlay-bg ax-focus-visible', className as string | undefined),
+  ...attrs,
+  'data-ax-nav-size': isDrawer ? size : undefined,
+  'data-ax-nav-disabled': isDisabled ? '' : undefined,
+  'data-ax-icon-only': isIconOnly ? '' : undefined,
+  'data-ax-navigate': isDrawer ? '' : undefined,
+  'data-ax-disabled-interaction': isDisabled ? '' : undefined,
+};
+const hasIcon = iconHtml !== '' || (icon != null && icon !== '');
+---
+{isDisabled ? (
+  <a {...common}>
+    {hasIcon && (iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon!} size="sm" color="inherit" />)}
+    {!isIconOnly && (childHtml !== '' ? <Fragment set:html={childHtml} /> : label)}
+  </a>
+) : (
+  <NavLink {...common} href={href} target={target} as={as}>
+    {hasIcon && (iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon!} size="sm" color="inherit" />)}
+    {!isIconOnly && (childHtml !== '' ? <Fragment set:html={childHtml} /> : label)}
+  </NavLink>
+)}
+{isDisabled && <script>import '../../elements/runtime/disabledInteraction';</script>}

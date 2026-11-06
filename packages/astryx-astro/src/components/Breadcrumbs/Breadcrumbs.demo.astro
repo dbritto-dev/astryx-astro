@@ -1,0 +1,65 @@
+---
+import Breadcrumbs from './Breadcrumbs.astro';
+import BreadcrumbItem from './BreadcrumbItem.astro';
+import Icon from '../Icon/Icon.astro';
+import DropdownMenuItem from '../DropdownMenu/DropdownMenuItem.astro';
+import DropdownMenuDivider from '../DropdownMenu/DropdownMenuDivider.astro';
+import {homeIcon} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const projects = [
+  {label: 'Apollo', href: '#apollo'},
+  {label: 'Gemini', href: '#gemini'},
+  {type: 'divider' as const},
+  {label: 'All projects', href: '#projects'},
+];
+---
+<div>
+  <p style={label}>Default: links, the last item is the current page automatically (aria-current="page")</p>
+  <Breadcrumbs id="crumbs-auto">
+    <BreadcrumbItem href="#home" startIcon={homeIcon}>Home</BreadcrumbItem>
+    <BreadcrumbItem href="#projects">Projects</BreadcrumbItem>
+    <BreadcrumbItem href="#apollo">Apollo</BreadcrumbItem>
+  </Breadcrumbs>
+</div>
+<div>
+  <p style={label}>Overflow menu (a crumb with `menu`): Enter, Space or ↓ open it on the first row; explicit isCurrent; a button crumb</p>
+  <Breadcrumbs id="crumbs-menu" label="Project trail">
+    <BreadcrumbItem href="#home">Home</BreadcrumbItem>
+    <BreadcrumbItem menu={projects} id="crumbs-menu-item">Projects</BreadcrumbItem>
+    <BreadcrumbItem interactiveRole="button" id="crumbs-button">Apollo</BreadcrumbItem>
+    <BreadcrumbItem isCurrent>Settings</BreadcrumbItem>
+  </Breadcrumbs>
+</div>
+<div>
+  <p style={label}>Supporting variant (sm menu rows), a current crumb with a composed sibling menu, a chevron separator mirrored in RTL</p>
+  <Breadcrumbs variant="supporting" id="crumbs-supporting">
+    <Icon slot="separator" icon="chevronRight" size="xsm" color="inherit" class="ax-mirror-rtl" />
+    <BreadcrumbItem href="#org">Acme</BreadcrumbItem>
+    <BreadcrumbItem href="#team">Platform</BreadcrumbItem>
+    <BreadcrumbItem isCurrent id="crumbs-current-menu">
+      Billing
+      <Fragment slot="menu">
+        <DropdownMenuItem label="Overview" href="#overview" />
+        <DropdownMenuItem label="Invoices" href="#invoices" />
+        <DropdownMenuDivider />
+        <DropdownMenuItem label="Export" />
+      </Fragment>
+    </BreadcrumbItem>
+  </Breadcrumbs>
+</div>
+<div>
+  <p style={label}>Custom text separator (›, mirrored by the bidi algorithm), <code>{'isCurrent={false}'}</code> opts the last item out, and a right-to-left trail</p>
+  <Breadcrumbs separator="›" id="crumbs-angle">
+    <BreadcrumbItem href="#a">Docs</BreadcrumbItem>
+    <BreadcrumbItem href="#b">Guides</BreadcrumbItem>
+    <BreadcrumbItem href="#c" isCurrent={false}>Theming</BreadcrumbItem>
+  </Breadcrumbs>
+  <div dir="rtl" style="margin-top:var(--spacing-3)">
+    <Breadcrumbs id="crumbs-rtl" label="مسار التنقل">
+      <BreadcrumbItem href="#home">الرئيسية</BreadcrumbItem>
+      <BreadcrumbItem href="#projects">المشاريع</BreadcrumbItem>
+      <BreadcrumbItem>أبولو</BreadcrumbItem>
+    </Breadcrumbs>
+  </div>
+</div>

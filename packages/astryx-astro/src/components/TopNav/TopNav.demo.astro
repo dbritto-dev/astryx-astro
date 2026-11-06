@@ -1,0 +1,88 @@
+---
+import TopNav from './TopNav.astro';
+import TopNavHeading from './TopNavHeading.astro';
+import TopNavItem from './TopNavItem.astro';
+import TopNavMenu from './TopNavMenu.astro';
+import TopNavMegaMenu from './TopNavMegaMenu.astro';
+import TopNavMegaMenuItem from './TopNavMegaMenuItem.astro';
+import TopNavMegaMenuFeaturedCard from './TopNavMegaMenuFeaturedCard.astro';
+import NavIcon from '../NavIcon/NavIcon.astro';
+import NavHeadingMenu from '../NavMenu/NavHeadingMenu.astro';
+import NavHeadingMenuItem from '../NavMenu/NavHeadingMenuItem.astro';
+import TextInput from '../TextInput/TextInput.astro';
+import {bellIcon, boltIcon, chartIcon, chatIcon, featuredImage, gearIcon, layersIcon, logoMark, usersIcon} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const frame = 'min-width:0;overflow-x:auto;border:1px solid var(--color-border);border-radius:var(--radius-container);background:var(--color-background-surface)';
+// Standalone bars keep their content width and scroll in the frame on a narrow screen (inside an
+// AppShell the bar turns into the mobile bar instead).
+const fit = 'min-width:max-content';
+const solutions = [
+  {title: 'Analytics', description: 'Track and analyze user behavior', icon: chartIcon, href: '#analytics'},
+  {title: 'Messaging', description: 'Real-time communication tools', icon: chatIcon, href: '#messaging'},
+  {title: 'Automation', description: 'Workflows without code', icon: boltIcon, href: '#automation'},
+];
+---
+<div style="min-width:0">
+  <p style={label}>
+    The bar: a heading with a product menu, items (selected, disabled, icon only), a hover menu and a mega menu,
+    end content (an icon-only item). Hover a menu to open it (a click right after pins it), or Tab to it and press Enter / Space;
+    ↑/↓ and typeahead move through the rows, Escape closes and refocuses the trigger.
+  </p>
+  <div style={frame}>
+    <TopNav label="Main navigation" id="top-nav-main" style={fit}>
+      <TopNavHeading slot="heading" heading="Acme Cloud" headingHref="#home" superheading="Acme Suite" superheadingHref="#suite" id="top-nav-heading">
+        <NavIcon slot="logo" icon={logoMark} />
+        <NavHeadingMenu slot="menu">
+          <NavHeadingMenuItem label="Acme Cloud" description="Current product" href="#cloud" />
+          <NavHeadingMenuItem label="Acme Analytics" href="#analytics" />
+        </NavHeadingMenu>
+      </TopNavHeading>
+      <TopNavItem label="Overview" href="#overview" isSelected id="top-nav-overview" />
+      <TopNavMenu label="Solutions" items={solutions} id="top-nav-solutions" />
+      <TopNavMegaMenu label="Platform" id="top-nav-platform">
+        <Fragment slot="items">
+          <TopNavMegaMenuItem title="Compute" description="Serverless functions and containers" icon={layersIcon} href="#compute" id="top-nav-mega-first" />
+          <TopNavMegaMenuItem title="Data" description="Postgres, KV and blob storage" icon={chartIcon} href="#data" />
+          <TopNavMegaMenuItem title="Teams" description="Roles, SSO and audit logs" icon={usersIcon} href="#teams" />
+          <TopNavMegaMenuItem title="Changelog" description="What shipped this week" icon={boltIcon} />
+        </Fragment>
+        <TopNavMegaMenuFeaturedCard slot="featured" title="What's new in v4" description="AI-assisted analytics and real-time collaboration." image={featuredImage} linkLabel="Read the announcement" linkHref="#blog" />
+      </TopNavMegaMenu>
+      <TopNavItem label="Billing" href="#billing" isDisabled id="top-nav-disabled" />
+      <TopNavItem label="Docs" href="#docs" icon={gearIcon} id="top-nav-with-icon" />
+      <Fragment slot="endContent">
+        <TopNavItem label="Notifications" href="#notifications" icon={bellIcon} isIconOnly id="top-nav-icon-only" />
+      </Fragment>
+    </TopNav>
+  </div>
+</div>
+<div>
+  <p style={label}>`centerContent`: a three-column grid keeps the centre truly centred; the menu aligns to its slot</p>
+  <div style={frame}>
+    <TopNav label="Search navigation" id="top-nav-center" style={fit}>
+      <TopNavHeading slot="heading" heading="Docs"><NavIcon slot="logo" icon="wrench" /></TopNavHeading>
+      <Fragment slot="centerContent">
+        <TextInput label="Search" isLabelHidden placeholder="Search docs" size="sm" />
+      </Fragment>
+      <Fragment slot="endContent">
+        <TopNavMenu label="Resources" items={[{title: 'Guides', description: 'Step-by-step tutorials', href: '#guides'}, {title: 'API reference', href: '#api'}]} />
+      </Fragment>
+    </TopNav>
+  </div>
+</div>
+<div>
+  <p style={label}>Headings: logo only (linked), whole-heading link, static with sub-heading, and a right-to-left bar</p>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4);align-items:center">
+    <TopNavHeading headingHref="#home" logoLabel="Acme home"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>
+    <TopNavHeading heading="Acme" headingHref="#home"><NavIcon slot="logo" icon={boltIcon} /></TopNavHeading>
+    <TopNavHeading heading="Billing" subheading="Acme Inc." />
+  </div>
+  <div dir="rtl" style={`${frame};margin-top:var(--spacing-3)`}>
+    <TopNav label="التنقل العلوي" id="top-nav-rtl" style={fit}>
+      <TopNavHeading slot="heading" heading="أكمي"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>
+      <TopNavItem label="نظرة عامة" href="#o" isSelected />
+      <TopNavMenu label="الحلول" items={[{title: 'التحليلات', href: '#a'}, {title: 'الرسائل', href: '#m'}]} id="top-nav-rtl-menu" />
+    </TopNav>
+  </div>
+</div>

@@ -1,0 +1,111 @@
+---
+import AppShell from './AppShell.astro';
+import TopNav from '../TopNav/TopNav.astro';
+import TopNavHeading from '../TopNav/TopNavHeading.astro';
+import TopNavItem from '../TopNav/TopNavItem.astro';
+import TopNavMenu from '../TopNav/TopNavMenu.astro';
+import SideNav from '../SideNav/SideNav.astro';
+import SideNavHeading from '../SideNav/SideNavHeading.astro';
+import SideNavItem from '../SideNav/SideNavItem.astro';
+import SideNavSection from '../SideNav/SideNavSection.astro';
+import NavIcon from '../NavIcon/NavIcon.astro';
+import Breadcrumbs from '../Breadcrumbs/Breadcrumbs.astro';
+import BreadcrumbItem from '../Breadcrumbs/BreadcrumbItem.astro';
+import Banner from '../Banner/Banner.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import Text from '../Text/Text.astro';
+import Heading from '../Text/Heading.astro';
+import Card from '../Card/Card.astro';
+import {bellIcon, chartIcon, chatIcon, folderIcon, helpIcon, homeIcon, homeIconSolid, inboxIcon, logoMark, usersIcon} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const frame = (h: number) => `height:${h}px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;transform:translateZ(0)`;
+const solutions = [
+  {title: 'Analytics', description: 'Track and analyze user behavior', icon: chartIcon, href: '#analytics'},
+  {title: 'Messaging', description: 'Real-time communication tools', icon: chatIcon, href: '#messaging'},
+];
+const cards = ['Requests', 'Errors', 'Latency', 'Deploys'];
+---
+<div>
+  <p style={label}>
+    A full shell in a frame (the shell normally fills the viewport; here <code>style="height:100%"</code>): TopNav header,
+    collapsible SideNav rail, scrolling main. <strong>Mobile mode:</strong> make your browser window narrower than 768px (the
+    <code>md</code> width point) — the rail leaves, the TopNav becomes the mobile bar with a menu button, and the drawer lists the
+    TopNav items, a divider and the SideNav. The main content below keeps its element and scroll position across the switch;
+    picking a row in the drawer closes it.
+  </p>
+  <div style={frame(560)}>
+    <AppShell style="height:100%" contentPadding={4} id="app-shell-demo" data-testid="app-shell-demo">
+      <TopNav slot="topNav" label="Main navigation">
+        <TopNavHeading slot="heading" heading="Acme Cloud" headingHref="#home"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>
+        <TopNavItem label="Overview" href="#overview" isSelected id="app-shell-overview" />
+        <TopNavItem label="Deployments" href="#deployments" />
+        <TopNavMenu label="Solutions" items={solutions} />
+        <Fragment slot="endContent">
+          <IconButton label="Notifications" icon={bellIcon} variant="ghost" />
+          <Button label="Deploy" variant="primary" size="sm" />
+        </Fragment>
+      </TopNav>
+      <SideNav slot="sideNav" collapsible>
+        <SideNavSection title="Workspace">
+          <SideNavItem label="Home" icon={homeIcon} selectedIcon={homeIconSolid} href="#home" isSelected id="app-shell-side-home" />
+          <SideNavItem label="Inbox" icon={inboxIcon} href="#inbox" id="app-shell-side-inbox" />
+          <SideNavItem label="Projects" icon={folderIcon}>
+            <SideNavItem label="Apollo" href="#apollo" />
+            <SideNavItem label="Gemini" href="#gemini" />
+          </SideNavItem>
+          <SideNavItem label="People" icon={usersIcon} href="#people" />
+        </SideNavSection>
+        <Fragment slot="footerIcons"><IconButton label="Help" icon={helpIcon} variant="ghost" /></Fragment>
+      </SideNav>
+      <div id="app-shell-main-content" style="display:flex;flex-direction:column;gap:var(--spacing-4)">
+        <Breadcrumbs><BreadcrumbItem href="#home">Home</BreadcrumbItem><BreadcrumbItem href="#projects">Projects</BreadcrumbItem><BreadcrumbItem>Apollo</BreadcrumbItem></Breadcrumbs>
+        <Heading level={1}>Apollo</Heading>
+        <Text type="body" color="secondary">Scroll this area: main is the shell's scroller and joins the Tab order while it overflows.</Text>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--spacing-3)">
+          {cards.map((c) => <Card padding={4}><Text type="label">{c}</Text><Heading level={3}>—</Heading></Card>)}
+        </div>
+        {Array.from({length: 12}, (_, i) => <Text type="body">Activity {i + 1}: deploy #{1200 + i} finished on web-0{(i % 4) + 1}.</Text>)}
+      </div>
+    </AppShell>
+  </div>
+</div>
+<div>
+  <p style={label}>Variants (wash, surface, section) with a banner, and a TopNav-only shell; mobile disabled on the section one (<code>{'mobileNav={false}'}</code>)</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:var(--spacing-4)">
+    {(['wash', 'surface'] as const).map((variant) => (
+      <div style={frame(260)}>
+        <AppShell style="height:100%" variant={variant} contentPadding={4}>
+          <TopNav slot="topNav"><TopNavHeading slot="heading" heading={variant} /><TopNavItem label="Home" href="#h" isSelected /><TopNavItem label="Docs" href="#d" /></TopNav>
+          <SideNav slot="sideNav"><SideNavItem label="Home" icon={homeIcon} href="#h" isSelected /><SideNavItem label="Inbox" icon={inboxIcon} href="#i" /></SideNav>
+          <Text type="body">variant="{variant}"</Text>
+        </AppShell>
+      </div>
+    ))}
+    <div style={frame(260)}>
+      <AppShell style="height:100%" variant="section" contentPadding={4} mobileNav={false}>
+        <Fragment slot="banner"><Banner status="info" title="Scheduled maintenance Sunday 02:00 UTC" /></Fragment>
+        <TopNav slot="topNav"><TopNavHeading slot="heading" heading="section" /><TopNavItem label="Home" href="#h" isSelected /></TopNav>
+        <SideNav slot="sideNav"><SideNavItem label="Home" icon={homeIcon} href="#h" isSelected /></SideNav>
+        <Text type="body">variant="section", a banner above the top nav</Text>
+      </AppShell>
+    </div>
+    <div style={frame(260)}>
+      <AppShell style="height:100%" contentPadding={4}>
+        <TopNav slot="topNav"><TopNavHeading slot="heading" heading="TopNav only" /><TopNavItem label="Home" href="#h" isSelected /><TopNavItem label="Pricing" href="#p" /></TopNav>
+        <Text type="body">Below the breakpoint the items move to the drawer.</Text>
+      </AppShell>
+    </div>
+  </div>
+</div>
+<div>
+  <p style={label}>height="auto": the shell grows with its content (the page scrolls), the header and rail stick (<code>--_app-shell-header-height</code>)</p>
+  <div style={`${frame(300)};overflow:auto`}>
+    <AppShell height="auto" style="min-height:0" contentPadding={4} variant="surface" mobileNav={{breakpoint: 'sm'}}>
+      <TopNav slot="topNav"><TopNavHeading slot="heading" heading="Auto height" /></TopNav>
+      <SideNav slot="sideNav"><SideNavItem label="Home" icon={homeIcon} href="#h" isSelected /><SideNavItem label="Inbox" icon={inboxIcon} href="#i" /></SideNav>
+      {Array.from({length: 14}, (_, i) => <Text type="body" display="block">Row {i + 1}</Text>)}
+    </AppShell>
+  </div>
+</div>

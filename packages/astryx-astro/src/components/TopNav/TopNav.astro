@@ -1,0 +1,115 @@
+---
+/**
+ * TopNav — the application's top navigation bar: `heading` at the start, `startContent` items
+ * after it, optional `centerContent` truly centred (the bar switches to a 1fr auto 1fr grid),
+ * `endContent` at the end. Port of @astryxdesign/core TopNav/TopNav.tsx (+ TopNavContext,
+ * TopNavRenderContext, TopNavMobileContentContext). Theme target: `.astryx-top-nav`
+ * (`[data-mode="mobile-bar"]` while an AppShell is mobile).
+ *
+ * `<nav aria-label>` (default translated 'Top navigation'). Slots: `heading` (TopNavHeading),
+ * `startContent` (or the default slot, Astryx `children` alias; `startContent` wins),
+ * `centerContent`, `endContent`. Items learn their slot (TopNavSlotContext → subtree locals) so
+ * a TopNavMenu / TopNavMegaMenu aligns its popover to it.
+ *
+ * Inside AppShell (its `topNav` slot) the bar is responsive with no re-render: below the shell's
+ * breakpoint it becomes the mobile bar — heading, end content and the MobileNavToggle (when the
+ * drawer has anything: own start/center items or the SideNav) — and the start / center items move
+ * to the drawer, where AppShell renders this TopNav again in drawer mode: a MobileNav headed by
+ * `heading` listing the items vertically (TopNavItem / Menu / MegaMenu draw as nav rows and
+ * collapsible sections), a Divider, then the SideNav's items.
+ *
+ * @example
+ * <TopNav label="Main navigation">
+ *   <TopNavHeading slot="heading" heading="My App" headingHref="/" />
+ *   <TopNavItem label="Home" href="/" isSelected />
+ *   <TopNavItem label="Projects" href="/projects" />
+ *   <Button slot="endContent" label="Search" variant="ghost" />
+ * </TopNav>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import MobileNav from '../MobileNav/MobileNav.astro';
+import MobileNavToggle from '../MobileNav/MobileNavToggle.astro';
+import Divider from '../Divider/Divider.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {appShellContext, topNavMode, TOP_NAV_MOBILE_CONTENT_LOCAL} from '../AppShell/appShellContext';
+import {TOP_NAV_ID_LOCAL, TOP_NAV_SLOT_LOCAL, type TopNavSlot} from './topNavContext';
+import '../NavItem/NavItem.css';
+import './TopNav.css';
+
+export interface Props extends HTMLAttributes<'nav'> {
+  /** Accessible label of the navigation landmark. @default translated 'Top navigation' */
+  label?: string;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {label: labelProp, locale, id: idProp, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.topNav.landmarkLabel');
+const mode = topNavMode(Astro);
+const shell = appShellContext(Astro);
+const navId = (idProp as string | undefined) ?? uid(Astro, 'ax-top-nav');
+const mobileContent = (Astro.locals as Record<string, unknown>)[TOP_NAV_MOBILE_CONTENT_LOCAL];
+const mobileContentHtml = typeof mobileContent === 'string' ? mobileContent : '';
+const hasMobileContent = mobileContent === true || mobileContentHtml.trim() !== '';
+
+const render = async (name: string, slotName: TopNavSlot) =>
+  Astro.slots.has(name)
+    ? (await renderWithLocals(Astro, {[TOP_NAV_SLOT_LOCAL]: slotName, [TOP_NAV_ID_LOCAL]: navId}, () => Astro.slots.render(name))).trim()
+    : '';
+const startName = Astro.slots.has('startContent') ? 'startContent' : 'default';
+const startHtml = await render(startName, 'start');
+const centerHtml = await render('centerContent', 'center');
+const headingHtml = Astro.slots.has('heading') ? (await Astro.slots.render('heading')).trim() : '';
+const hasStart = startHtml !== '';
+const hasCenter = centerHtml !== '';
+const hasCollapsible = hasStart || hasCenter;
+const hasDrawerContent = hasCollapsible || hasMobileContent;
+// In drawer mode only the drawer renders; elsewhere the end slot.
+const endHtml = mode === 'drawer' ? '' : await render('endContent', 'end');
+const isMobileBar = mode === 'mobile-bar' && hasDrawerContent;
+const showToggle = isMobileBar && (shell?.hasAutoToggle ?? false);
+const hasEnd = endHtml !== '' || showToggle;
+const {themeClass, attrs} = themeProps('top-nav', {mode: isMobileBar && shell?.isMobile ? 'mobile-bar' : null});
+---
+{mode === 'drawer' ? (
+  hasDrawerContent && (
+    headingHtml !== '' ? (
+      <MobileNav locale={locale}>
+        <Fragment slot="header" set:html={headingHtml} />
+        {hasCollapsible && <div class="ax-top-nav-drawer-items"><Fragment set:html={startHtml} /><Fragment set:html={centerHtml} /></div>}
+        {hasCollapsible && hasMobileContent && <Divider class="ax-top-nav-drawer-divider" />}
+        {hasMobileContent && <div class="ax-top-nav-drawer-extra"><Fragment set:html={mobileContentHtml} /></div>}
+      </MobileNav>
+    ) : (
+      <MobileNav locale={locale}>
+        {hasCollapsible && <div class="ax-top-nav-drawer-items"><Fragment set:html={startHtml} /><Fragment set:html={centerHtml} /></div>}
+        {hasCollapsible && hasMobileContent && <Divider class="ax-top-nav-drawer-divider" />}
+        {hasMobileContent && <div class="ax-top-nav-drawer-extra"><Fragment set:html={mobileContentHtml} /></div>}
+      </MobileNav>
+    )
+  )
+) : (
+  <nav
+    {...rest}
+    id={navId}
+    role="navigation"
+    aria-label={label}
+    class={cx(themeClass, className)}
+    {...attrs}
+    data-ax-layout={hasCenter ? 'grid' : 'flex'}
+    data-ax-mobile-bar={isMobileBar ? '' : undefined}
+  >
+    <div class="ax-top-nav-left">
+      {headingHtml !== '' && <div class="ax-top-nav-heading-slot"><Fragment set:html={headingHtml} /></div>}
+      {hasStart && <div class="ax-top-nav-start"><Fragment set:html={startHtml} /></div>}
+    </div>
+    {hasCenter && <div class="ax-top-nav-center"><Fragment set:html={centerHtml} /></div>}
+    {hasCenter
+      ? <div class="ax-top-nav-right"><Fragment set:html={endHtml} />{showToggle && <MobileNavToggle locale={locale} />}</div>
+      : hasEnd && <div class="ax-top-nav-end"><Fragment set:html={endHtml} />{showToggle && <MobileNavToggle locale={locale} />}</div>}
+  </nav>
+)}

@@ -1,0 +1,146 @@
+/*
+ * Port of @astryxdesign/core AppShell/AppShell.tsx (styles.root, variant*, rootFill/Auto,
+ * skipLink, mainFocusTarget, mainElevatedCorner, mainScrollRegionInset, elevatedBackdrop,
+ * contentWrapper, elevatedContentWrapper, contentBg*, navArea*, banner, autoMobileTopBar,
+ * headerSticky, headerSafeAreaTop/Sides, headerStickyBelowTopInset, mainSafeAreaEnd,
+ * sideNavSticky, panelAutoFill). The layout reset is `.ax-layout-root-reset` (Layout.css).
+ *
+ * Responsive presentation: everything that differs below the breakpoint keys on
+ * `.astryx-app-shell[data-astryx-shell-mobile="true"]` (see elements/app-shell.ts); the DOM is the
+ * same on both sides, so main keeps its element.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-app-shell-host { display: contents; }
+
+  .astryx-app-shell {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: clip;
+  }
+  .astryx-app-shell[data-variant="wash"] { background-color: var(--color-background-body); }
+  .astryx-app-shell[data-variant="surface"] { background-color: var(--color-background-surface); }
+  .astryx-app-shell[data-variant="section"] { background-color: var(--color-background-surface); }
+  .astryx-app-shell[data-variant="elevated"] { background-color: var(--color-background-body); }
+  .astryx-app-shell[data-ax-height="fill"] { height: 100dvh; }
+  .astryx-app-shell[data-ax-height="auto"] { min-height: 100dvh; }
+
+  /* skipLink: visually hidden until focused. */
+  .ax-app-shell-skip {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding-block: 0;
+    padding-inline: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+    top: 0;
+    inset-inline-start: 0;
+    background-color: var(--color-background-surface);
+    color: var(--color-text-accent);
+    z-index: 9999;
+    text-decoration: none;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--text-body-size);
+  }
+  .ax-app-shell-skip:focus {
+    position: fixed;
+    width: auto;
+    height: auto;
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-4);
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    top: var(--spacing-2);
+    inset-inline-start: var(--spacing-2);
+  }
+
+  /* nav areas */
+  .astryx-app-shell-header[data-ax-area="wash"],
+  .ax-app-shell-banner[data-ax-area="wash"],
+  .astryx-app-shell-sidenav[data-ax-area="wash"] { background-color: var(--color-background-body); }
+  .astryx-app-shell-header[data-ax-area="surface"],
+  .ax-app-shell-banner[data-ax-area="surface"],
+  .astryx-app-shell-sidenav[data-ax-area="surface"] { background-color: var(--color-background-surface); }
+  .ax-app-shell-banner { flex-shrink: 0; }
+
+  /* header: safe-area insets, sticky in `auto` */
+  .astryx-app-shell-header {
+    padding-block-start: env(safe-area-inset-top, 0px);
+    padding-inline-start: env(safe-area-inset-left, 0px);
+    padding-inline-end: env(safe-area-inset-right, 0px);
+  }
+  .astryx-app-shell-header:dir(rtl) {
+    padding-inline-start: env(safe-area-inset-right, 0px);
+    padding-inline-end: env(safe-area-inset-left, 0px);
+  }
+  .astryx-app-shell-header[data-ax-sticky] { position: sticky; top: 0; z-index: 1; }
+  .astryx-app-shell-header.ax-app-shell-phone-bar[data-ax-below-header] { padding-block-start: 0; }
+  .astryx-app-shell-header.ax-app-shell-phone-bar[data-ax-below-header][data-ax-sticky] { top: env(safe-area-inset-top, 0px); }
+
+  /* The phone bar (no TopNav): SideNav heading + footer icons + the toggle, mobile only. */
+  .ax-app-shell-topbar {
+    display: flex;
+    align-items: center;
+    height: var(--spacing-12);
+    padding-inline: var(--spacing-2);
+  }
+  .astryx-app-shell:not([data-astryx-shell-mobile="true"]) .ax-app-shell-phone-bar { display: none; }
+
+  /* sideNavSticky / panelAutoFill (`auto`): the rail sticks below the header. */
+  .ax-app-shell-sidenav-sticky {
+    flex-shrink: 0;
+    overflow: clip;
+    position: sticky;
+    top: var(--_app-shell-header-height, 0px);
+    height: calc(100dvh - var(--_app-shell-header-height, 0px));
+    display: flex;
+    flex-direction: column;
+  }
+  .astryx-app-shell-sidenav.ax-app-shell-panel-auto { flex: 1; overflow: auto; }
+  /* The inline rail leaves below the breakpoint (it is in the drawer then). */
+  .astryx-app-shell[data-astryx-shell-mobile="true"] :is(.astryx-app-shell-sidenav, .ax-app-shell-sidenav-sticky) { display: none; }
+
+  /* content wrapper: no box, except the elevated desktop surface. */
+  .ax-app-shell-content { display: contents; }
+  .astryx-app-shell:not([data-astryx-shell-mobile="true"]) .ax-app-shell-content[data-ax-elevated] {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+  }
+  .ax-app-shell-elevated-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: var(--color-background-surface);
+    border-start-start-radius: var(--radius-page);
+    pointer-events: none;
+  }
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .ax-app-shell-elevated-backdrop { display: none; }
+
+  /* main: content background per variant */
+  .ax-app-shell-main[data-ax-content-area="surface"] { background-color: var(--color-background-surface); }
+  .ax-app-shell-main[data-ax-content-area="wash"] { background-color: var(--color-background-body); }
+  .ax-app-shell-main[data-ax-content-area="elevated-split"] { background-color: transparent; isolation: isolate; }
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .ax-app-shell-main[data-ax-content-area="elevated-split"] { background-color: var(--color-background-surface); isolation: auto; }
+  /* mainFocusTarget: focusable for the skip link, no ring for programmatic focus. */
+  .ax-app-shell-main:focus { outline: none; }
+  /* A Tab press onto an overflowing main: the standard ring, inset so the shell's clip keeps it. */
+  .ax-app-shell-main[data-ax-tab-focus]:focus-visible {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: calc(-1 * var(--focus-outline-width));
+  }
+  .astryx-app-shell:not([data-astryx-shell-mobile="true"]) .ax-app-shell-main[data-ax-elevated-corner][data-ax-tab-focus]:focus-visible { border-start-start-radius: var(--radius-page); }
+  /* mainSafeAreaEnd: the home indicator inset on top of the published padding. */
+  .astryx-layout-content.ax-app-shell-main { padding-block-end: calc(var(--container-padding-block-end, 0px) + env(safe-area-inset-bottom, 0px)); }
+}

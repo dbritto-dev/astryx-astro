@@ -1,0 +1,71 @@
+---
+/**
+ * SideNavCollapseButton — the toggle that collapses a SideNav to its icon rail and back.
+ * Port of @astryxdesign/core SideNav/SideNavCollapseButton.tsx. A ghost icon-only Button with a
+ * chevron that points toward the rail edge (mirrored in RTL, turned while collapsed).
+ *
+ * Inside a collapsible SideNav (header, topContent, footer, footerIcons) it toggles that nav.
+ * Outside it (a TopNav, the content) pass the nav's id as `controls`, and `collapsible` with the
+ * nav's initial `isCollapsed` (Astryx: the same controlled config handed to both). Renders nothing
+ * inside a SideNav that is not collapsible, and hides while an AppShell is mobile (the nav is in
+ * the drawer then). The label follows the state (translated Collapse / Expand sidebar) unless
+ * `label` is given; the default slot replaces the chevron. Size: the container's (`sm` in the
+ * SideNav footer row), else `md`.
+ *
+ * @example
+ * <SideNavCollapseButton controls="app-nav" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {sideNavContext, type SideNavContextValue} from './sideNavContext';
+import './SideNav.css';
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'type'> {
+  /** Id of the SideNav to toggle, when the button is rendered outside it. */
+  controls?: string;
+  /** The nav's initial state, for a button outside it (Astryx's controlled `collapsible`). */
+  collapsible?: {isCollapsed?: boolean};
+  /** Text button label (default: the translated state label, icon only). */
+  label?: string;
+  size?: 'sm' | 'md' | 'lg';
+  locale?: string;
+  'data-testid'?: string;
+}
+
+interface Internal {
+  /** @internal SideNav passes its state to its own footer button. */
+  __state?: SideNavContextValue;
+}
+
+const {controls, collapsible, label, size, locale, class: className, __state, slot: _slot, ...rest} = Astro.props as Props & Internal & {slot?: unknown};
+const t = translator(Astro, locale);
+const inside = __state ?? sideNavContext(Astro);
+const isOutside = controls != null;
+const isCollapsible = isOutside || inside.isCollapsible;
+const isCollapsed = isOutside ? (collapsible?.isCollapsed ?? false) : inside.isCollapsed;
+const expandLabel = t('@astryx.sideNavCollapseButton.expandSidebar');
+const collapseLabel = t('@astryx.sideNavCollapseButton.collapseSidebar');
+const iconHtml = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+const buttonProps = {
+  ...rest,
+  variant: 'ghost' as const,
+  size,
+  label: label ?? (isCollapsed ? expandLabel : collapseLabel),
+  isIconOnly: true,
+  class: cx('ax-side-nav-collapse-button', className as string | undefined),
+  'data-ax-side-nav-toggle': controls ?? '',
+  'data-ax-label-expand': label ? undefined : expandLabel,
+  'data-ax-label-collapse': label ? undefined : collapseLabel,
+  'data-ax-collapsed': String(isCollapsed),
+  locale,
+};
+---
+{isCollapsible && (
+  iconHtml !== ''
+    ? <Button {...buttonProps}><Fragment slot="icon" set:html={iconHtml} /></Button>
+    : <Button {...buttonProps}><Fragment slot="icon"><span class="ax-side-nav-chevron-mirror ax-mirror-rtl"><Icon icon="chevronLeft" size="sm" color="inherit" class="ax-side-nav-chevron" /></span></Fragment></Button>
+)}
+{isOutside && <script>import '../../elements/side-nav';</script>}

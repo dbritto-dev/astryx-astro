@@ -1,0 +1,353 @@
+/*
+ * Port of @astryxdesign/core SideNav/SideNav.tsx (root, rootCollapsed, stickyTop(Collapsed),
+ * scrollable*, stickyBottom(Collapsed), footerRow(Collapsed), drawerFooter*, resizable*, topbar*),
+ * SideNavItem.tsx (root, itemCollapsed*, label, endContent, actions, childrenCollapsible /
+ * Collapsed / Inner, expandChevron(Expanded), expandToggle, splitAction, popoverSurface,
+ * popoverGap, popoverHeader, indentStyles), SideNavSection.tsx, SideNavHeading.tsx (rootCollapsed,
+ * linkBesideEndContent) and SideNavCollapseButton.tsx (chevronMirror, chevron, chevronCollapsed).
+ *
+ * The rail: a collapsible SideNav renders both presentations of the parts that change shape;
+ * `data-ax-collapsed` on the nav (elements/side-nav.ts) shows one. `data-ax-rail` on a row or a
+ * heading: `leaf` (the same control, icon only), `split` (an expanded part and a rail part),
+ * `hide` (gone from the rail). Flyout content lives in a layer and is never restyled.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-nav-depth { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ax-side-nav adds no box. */
+  .ax-side-nav-host { display: contents; }
+
+  /* ── SideNav ────────────────────────────────────────────────────────── */
+  .astryx-side-nav {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 260px;
+    background-color: inherit;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  /* rootCollapsed (max-width, so a resizable nav's inline width yields to the rail). */
+  .astryx-side-nav[data-ax-collapsed="true"] { width: var(--spacing-12); max-width: var(--spacing-12); }
+
+  .ax-side-nav-top {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: inherit;
+    padding-block-start: var(--spacing-2);
+    padding-block-end: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    gap: var(--spacing-2);
+  }
+  .astryx-side-nav[data-ax-collapsed="true"] > .ax-side-nav-top { align-items: center; }
+
+  .ax-side-nav-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-inline: var(--spacing-2);
+    padding-block-start: var(--spacing-2);
+    padding-block-end: var(--spacing-2);
+  }
+  .ax-side-nav-scroll[data-ax-has-top] { padding-block-start: var(--spacing-1); }
+  .ax-side-nav-scroll[data-ax-has-bottom] { padding-block-end: var(--spacing-1); }
+  .astryx-side-nav[data-ax-collapsed="true"] > .ax-side-nav-scroll {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .ax-side-nav-bottom {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    margin-top: auto;
+    position: sticky;
+    bottom: 0;
+    background-color: inherit;
+    gap: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    padding-block-start: var(--spacing-1);
+    padding-block-end: var(--spacing-2);
+  }
+  .astryx-side-nav[data-ax-collapsed="true"] > .ax-side-nav-bottom { padding-block-start: 0; align-items: center; }
+  .ax-side-nav-footer-row { display: flex; align-items: center; gap: var(--spacing-1); }
+  .astryx-side-nav[data-ax-collapsed="true"] .ax-side-nav-footer-row { flex-direction: column-reverse; }
+
+  /* Drawer: the footer at the bottom of the drawer content. */
+  .ax-side-nav-drawer-footer {
+    display: flex;
+    flex-direction: column;
+    margin-block-start: auto;
+    gap: var(--spacing-2);
+    padding-block-start: var(--spacing-2);
+  }
+  .ax-side-nav-drawer-footer-icons { display: flex; align-items: center; gap: var(--spacing-1); }
+
+  /* Resizable: the nav and the overlay handle (its ring stays inside the clip). */
+  .ax-side-nav-resizable {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    height: 100%;
+    overflow: clip;
+  }
+  .ax-side-nav-resizable > .ax-side-nav-resize-handle:focus-visible { outline-offset: calc(0px - var(--focus-outline-width)); }
+  .ax-side-nav-resizable:has(> .astryx-side-nav[data-ax-collapsed="true"]) > .ax-side-nav-resize-handle { display: none; }
+
+  /* Topbar (AppShell phone bar without a TopNav) */
+  .astryx-side-nav[data-mode="topbar"] {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+    width: 100%;
+    background-color: inherit;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .ax-side-nav-topbar-icons {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin-inline-start: auto;
+  }
+
+  /* ── SideNavItem ────────────────────────────────────────────────────── */
+  .ax-side-nav-item-root { display: flex; flex-direction: column; width: 100%; }
+
+  /* Nesting indent: one --spacing-6 step per level inside the row (navItemStyles base padding). */
+  .astryx-side-nav-item.ax-nav-item[data-ax-nav-size] { padding-inline-start: calc(var(--spacing-2) + var(--_ax-nav-depth, 0) * var(--spacing-6)); }
+  .astryx-side-nav-item.ax-nav-item[data-ax-nav-size="sm"] { padding-inline-start: calc(var(--spacing-1) + var(--_ax-nav-depth, 0) * var(--spacing-6)); }
+
+  .ax-side-nav-item-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-side-nav-item-end { flex-shrink: 0; display: flex; align-items: center; }
+  /* Row controls opt back into pointer events under a disabled row's pointer-events: none. */
+  .ax-side-nav-item-actions {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    pointer-events: auto;
+  }
+
+  /* The nested group: clips only for the 0fr collapse animation (a permanent clip cuts rings). */
+  .ax-side-nav-group {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: visible;
+    transition-property: grid-template-rows, overflow;
+    transition-behavior: allow-discrete;
+    transition-duration: var(--duration-medium), 0s;
+    transition-delay: 0s, var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-side-nav-group { transition-duration: 0s, 0s; transition-delay: 0s, 0s; }
+  }
+  .ax-side-nav-group[data-ax-collapsed] {
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition-delay: 0s, 0s;
+  }
+  .ax-side-nav-group-inner { min-height: 0; }
+
+  /* expandChevron: a 24px box, the glyph on the row's inherited size. */
+  .astryx-icon.ax-side-nav-expand-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-6);
+    height: var(--spacing-6);
+    font-size: inherit;
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    flex-shrink: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-icon.ax-side-nav-expand-chevron { transition-duration: 0s; }
+  }
+  [aria-expanded="true"] > .astryx-icon.ax-side-nav-expand-chevron { transform: rotate(180deg); }
+
+  /* expandToggle: boxed like an sm icon Button. */
+  .ax-side-nav-expand-toggle {
+    width: var(--size-element-sm);
+    height: var(--size-element-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    color: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-element);
+  }
+  .ax-side-nav-expand-toggle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* splitAction: the primary control of a row with more than one control. */
+  .ax-side-nav-split-action {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    gap: var(--spacing-2);
+    flex: 1;
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+    padding: 0;
+    padding-inline-start: calc(var(--_ax-nav-depth, 0) * var(--spacing-6));
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+  .ax-side-nav-split-action:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* The flyout of a rail parent (usePopover paints the panel; no second surface here). */
+  .ax-side-nav-flyout.astryx-popover {
+    border-radius: var(--radius-container);
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-1);
+    min-width: 180px;
+  }
+  .ax-side-nav-flyout-header {
+    padding-inline: var(--spacing-2);
+    padding-block: var(--spacing-1);
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    line-height: var(--text-supporting-leading);
+  }
+
+  /* ── The rail ───────────────────────────────────────────────────────── */
+  .ax-side-nav-expanded-part,
+  .ax-side-nav-rail-part { display: contents; }
+  .astryx-side-nav:not([data-ax-collapsed="true"]) .ax-side-nav-rail-part { display: none; }
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail="split"] > .ax-side-nav-expanded-part,
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail="hide"] { display: none; }
+  /* itemCollapsed (+ sm / lg widths) */
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail="leaf"] > .astryx-side-nav-item.ax-nav-item,
+  .astryx-side-nav-item.ax-nav-item.ax-side-nav-rail-control[data-ax-nav-size] {
+    justify-content: center;
+    width: var(--size-element-md);
+    padding-inline: 0;
+  }
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail="leaf"] > .astryx-side-nav-item.ax-nav-item[data-ax-nav-size="sm"],
+  .astryx-side-nav-item.ax-nav-item.ax-side-nav-rail-control[data-ax-nav-size="sm"] { width: var(--size-element-sm); }
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail="leaf"] > .astryx-side-nav-item.ax-nav-item[data-ax-nav-size="lg"],
+  .astryx-side-nav-item.ax-nav-item.ax-side-nav-rail-control[data-ax-nav-size="lg"] { width: var(--size-element-lg); }
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail="leaf"] > .astryx-side-nav-item > :is(.ax-side-nav-item-label, .ax-side-nav-item-end, .ax-side-nav-expand-chevron) { display: none; }
+  .astryx-side-nav[data-ax-collapsed="true"] [data-ax-rail] { align-items: center; }
+
+  /* ── SideNavSection ─────────────────────────────────────────────────── */
+  .astryx-side-nav-section {
+    display: flex;
+    flex-direction: column;
+    padding-block: var(--spacing-1);
+  }
+  .ax-side-nav-section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    padding-block: var(--spacing-1);
+    cursor: default;
+    user-select: none;
+  }
+  /* isHeaderHidden, and the rail: kept for assistive technology (VisuallyHidden). */
+  .ax-side-nav-section-header[data-ax-hidden],
+  .astryx-side-nav[data-ax-collapsed="true"] .ax-side-nav-section-header:not([data-astryx-layer-root] *) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .ax-side-nav-section-titles { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+  .ax-side-nav-section-title {
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-side-nav-section-subtitle {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-side-nav-section-end { flex-shrink: 0; display: flex; align-items: center; }
+  .ax-side-nav-section-items { display: flex; flex-direction: column; gap: var(--spacing-0-5); }
+
+  /* ── SideNavHeading (shared heading styles in NavMenu/NavHeading.css) ─ */
+  .ax-side-nav-heading-host { display: contents; }
+  .astryx-side-nav-heading.ax-nav-heading { color: inherit; }
+  .astryx-side-nav-heading .ax-heading-text { flex: 1; }
+  .ax-heading-link-beside-end {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    gap: var(--spacing-2);
+    flex-grow: 1;
+    min-width: 0;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-element);
+  }
+  /* rootCollapsed: the rail heading is an icon-sized nav row. */
+  .astryx-side-nav-heading.ax-nav-item.ax-side-nav-heading-rail[data-ax-nav-size] {
+    justify-content: center;
+    padding-inline: 0;
+    width: auto;
+  }
+  .ax-side-nav-heading-rail-static { justify-content: center; padding-inline: 0; }
+
+  /* ── SideNavCollapseButton ──────────────────────────────────────────── */
+  .ax-side-nav-chevron-mirror { display: flex; align-items: center; justify-content: center; }
+  .astryx-icon.ax-side-nav-chevron {
+    display: inline-flex;
+    align-items: center;
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-icon.ax-side-nav-chevron { transition-duration: 0s; }
+  }
+  [data-ax-collapsed="true"] .astryx-icon.ax-side-nav-chevron { transform: rotate(180deg); }
+  /* Collapse does not apply while an AppShell is mobile (the nav is in the drawer). */
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .astryx-button.ax-side-nav-collapse-button { display: none; }
+}

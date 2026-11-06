@@ -1,0 +1,172 @@
+---
+/**
+ * BreadcrumbItem — one step of a Breadcrumbs trail: a link (`href`), a link-styled button
+ * (`interactiveRole="button"`, Astryx `onClick`), the current page, or a menu trigger (`menu`).
+ * Port of @astryxdesign/core Breadcrumbs/BreadcrumbItem.tsx (BreadcrumbSeparator,
+ * BreadcrumbMenuTrigger). Theme targets: `.astryx-breadcrumb-item[data-variant]`,
+ * `.astryx-breadcrumb-item-menu-trigger[data-variant]`, `.astryx-breadcrumb-menu`.
+ *
+ * Each item renders its leading separator (aria-hidden, hidden on the first item). `href` goes
+ * through LinkProvider (`as` overrides it) and the safe-URL check. `isCurrent` renders the
+ * label as `<span aria-current="page">` (semibold); with `isCurrent` unset the last item of the
+ * trail becomes current when nothing else is (see Breadcrumbs); `isCurrent={false}` opts out.
+ * An item with neither `href` nor `interactiveRole` renders plain current-styled text.
+ *
+ * `menu` (Astryx: the DropdownMenu item API): a `DropdownMenuOption[]` array, or DropdownMenuItem /
+ * CheckboxItem / RadioGroup / Group / Divider / SubMenu children in the `menu` slot. The item
+ * becomes a link-styled `<button aria-haspopup="menu" aria-expanded aria-controls>` with a
+ * chevron (keeping `aria-current` when current) and a `role="menu"` popover below it, rendered on
+ * the shared menu runtime (`<ax-menu>`, runtime/menu.ts): Enter / Space / ↓ open on the first row,
+ * ↑/↓, Home/End, typeahead, Enter/Space activate, Tab and Escape close, focus returns to the
+ * trigger. `menu` wins over `href` / `interactiveRole` (a dev warning names the ignored prop).
+ * `menuSize` defaults from the variant (supporting → sm, else md).
+ *
+ * Inside the AppShell mobile drawer a link / button crumb closes the drawer when it acts
+ * (`data-ax-navigate` → `astryx-navigate`, see MobileNav). Astryx `onClick` is the native click.
+ *
+ * Deviations (runtime/menu.ts): ↑/↓ wrap in the menu (Astryx stops at the ends) and a pointer open
+ * focuses the menu rather than its first row. Deferred (touch): press-drag-release.
+ *
+ * @example
+ * <BreadcrumbItem href="/" startIcon="home">Home</BreadcrumbItem>
+ * <BreadcrumbItem menu={[{label: 'Alpha', href: '/a'}, {label: 'Beta', href: '/b'}]}>Projects</BreadcrumbItem>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import NavLink from '../NavItem/_NavLink.astro';
+import MenuStamp from '../DropdownMenu/_MenuStamp.astro';
+import MenuItems from '../DropdownMenu/_DropdownMenuItems.astro';
+import type {DropdownMenuOption, DropdownMenuSize} from '../DropdownMenu/menuShared';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {LinkComponentType} from '../LinkProvider/linkComponent';
+import {cx, themeProps} from '../../lib/themeProps';
+import {uid} from '../../lib/uid';
+import {devWarn} from '../../lib/devWarning';
+import {clearance, placementAttrs} from '../Layer/layer';
+import {BREADCRUMBS_LOCAL, DEFAULT_SEPARATOR_HTML, type BreadcrumbsContextValue} from './breadcrumbsShared';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import '../DropdownMenu/DropdownMenu.css';
+import './Breadcrumbs.css';
+
+export interface Props extends HTMLAttributes<'li'> {
+  /** Destination; omit for the current page. Ignored with `menu`. */
+  href?: string | URL;
+  /** Link component for this crumb (overrides LinkProvider). */
+  as?: LinkComponentType;
+  /** 'button': a link-styled `<button>` without `href` (Astryx onClick-only crumb). */
+  interactiveRole?: 'button';
+  /** Marks the current page; unset = auto (last item when none is explicit); false opts out. */
+  isCurrent?: boolean;
+  /** Icon before the label: a name, SVG string or Astro component (or the `startIcon` slot). */
+  startIcon?: ExtendedIconName | AstroIconComponent;
+  /** Menu rows (DropdownMenuOption[]), or DropdownMenu item children in the `menu` slot. */
+  menu?: DropdownMenuOption[];
+  /** Menu row size. @default 'sm' for the supporting variant, else 'md' */
+  menuSize?: DropdownMenuSize;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  href, as, interactiveRole, isCurrent: isCurrentProp, startIcon, menu: menuItems, menuSize, locale,
+  class: className, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: unknown};
+
+const ctx = ((Astro.locals as Record<string, unknown>)[BREADCRUMBS_LOCAL] as BreadcrumbsContextValue | undefined)
+  ?? {variant: 'default', separatorHtml: DEFAULT_SEPARATOR_HTML};
+const variant = ctx.variant;
+const isSupporting = variant === 'supporting';
+const isCurrent = isCurrentProp === true;
+const isAutoCandidate = isCurrentProp == null;
+const menuSlot = Astro.slots.has('menu') ? (await Astro.slots.render('menu')).trim() : '';
+const hasMenu = menuItems != null || menuSlot !== '';
+const resolvedMenuSize: DropdownMenuSize = menuSize ?? (isSupporting ? 'sm' : 'md');
+if (hasMenu && href != null) devWarn('BreadcrumbItem', '`menu` and `href` are mutually exclusive; `menu` takes precedence and `href` is ignored.');
+else if (hasMenu && interactiveRole != null) devWarn('BreadcrumbItem', '`menu` and `interactiveRole` (onClick) are mutually exclusive; `menu` takes precedence.');
+
+const iconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
+const labelHtml = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+const hasIcon = iconHtml !== '' || (startIcon != null && startIcon !== '');
+
+const {themeClass, attrs} = themeProps('breadcrumb-item', {variant});
+const linkClass = cx('ax-breadcrumb-link', 'ax-focus-visible');
+const textClass = 'ax-breadcrumb-text';
+const autoMark = isAutoCandidate ? {'data-ax-crumb-content': ''} : {};
+
+// Menu trigger ids (useId) and the menu layer.
+const menuLayerId = hasMenu ? uid(Astro, 'ax-breadcrumb-menu') : '';
+const triggerId = `${menuLayerId}-trigger`;
+const menuId = `${menuLayerId}-menu`;
+const trigger = themeProps('breadcrumb-item-menu-trigger', {variant});
+const menuTheme = themeProps('breadcrumb-menu');
+const surface = themeProps('popover');
+
+const mode = hasMenu ? 'menu' : isCurrent ? 'current' : href != null ? 'link' : interactiveRole === 'button' ? 'button' : 'text';
+---
+<li
+  {...rest}
+  class={cx(themeClass, className as string | undefined)}
+  {...attrs}
+  data-ax-auto-current={isAutoCandidate ? '' : undefined}
+>
+  <span aria-hidden="true" class="ax-breadcrumb-separator"><Fragment set:html={ctx.separatorHtml} /></span>
+  {mode === 'menu' ? (
+    <Fragment>
+      <button
+        type="button"
+        id={triggerId}
+        class={cx(trigger.themeClass, linkClass, 'ax-breadcrumb-button')}
+        {...trigger.attrs}
+        popovertarget={menuLayerId}
+        aria-haspopup="menu"
+        aria-expanded="false"
+        aria-controls={menuId}
+        aria-current={isCurrent ? 'page' : undefined}
+        {...(isCurrent ? {} : autoMark)}
+      >
+        {hasIcon && <span class="ax-breadcrumb-icon">{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={startIcon!} size="sm" color="inherit" />}</span>}
+        <Fragment set:html={labelHtml} />
+        <Icon icon="chevronDown" size="xsm" color="inherit" class="ax-breadcrumb-chevron" />
+      </button>
+      <ax-menu
+        id={menuLayerId}
+        popover="auto"
+        data-ax-menu-kind="dropdown"
+        data-ax-anchor={triggerId}
+        class="ax-layer ax-layer-motion ax-breadcrumb-menu-layer"
+        data-astryx-layer-root=""
+        {...placementAttrs({placement: 'below', alignment: 'start'})}
+        data-ax-menu-size={resolvedMenuSize}
+        style={clearance('var(--spacing-1)')}
+      >
+        <div class={cx(surface.themeClass, 'ax-popover-surface')} {...surface.attrs}>
+          <div id={menuId} role="menu" tabindex="-1" aria-labelledby={triggerId} class={menuTheme.themeClass} {...menuTheme.attrs} data-ax-menu-root="" data-ax-overflow-tabbable="">
+            <MenuStamp size={resolvedMenuSize}>{menuItems ? <MenuItems items={menuItems} locale={locale} /> : <Fragment set:html={menuSlot} />}</MenuStamp>
+          </div>
+        </div>
+      </ax-menu>
+    </Fragment>
+  ) : mode === 'current' ? (
+    <span class={textClass} data-ax-current="" aria-current="page">
+      {hasIcon && <span class="ax-breadcrumb-icon">{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={startIcon!} size="sm" color="inherit" />}</span>}
+      <Fragment set:html={labelHtml} />
+    </span>
+  ) : mode === 'link' ? (
+    <NavLink href={href} as={as} class={linkClass} data-ax-navigate="" {...autoMark}>
+      {hasIcon && <span class="ax-breadcrumb-icon">{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={startIcon!} size="sm" color="inherit" />}</span>}
+      <Fragment set:html={labelHtml} />
+    </NavLink>
+  ) : mode === 'button' ? (
+    <button type="button" class={cx(linkClass, 'ax-breadcrumb-button')} data-ax-navigate="" {...autoMark}>
+      {hasIcon && <span class="ax-breadcrumb-icon">{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={startIcon!} size="sm" color="inherit" />}</span>}
+      <Fragment set:html={labelHtml} />
+    </button>
+  ) : (
+    <span class={textClass} data-ax-current="" {...autoMark}>
+      {hasIcon && <span class="ax-breadcrumb-icon">{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={startIcon!} size="sm" color="inherit" />}</span>}
+      <Fragment set:html={labelHtml} />
+    </span>
+  )}
+</li>
+{mode === 'menu' && <script>import '../../elements/runtime/menu';</script>}

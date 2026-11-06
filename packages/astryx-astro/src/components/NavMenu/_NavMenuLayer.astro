@@ -1,0 +1,94 @@
+---
+/**
+ * Internal: the `<ax-nav-menu>` layer (elements/nav-menu.ts) every hover-opened nav popover
+ * renders — TopNavMenu, TopNavMegaMenu, TopNavHeading / SideNavHeading menus and a collapsed
+ * SideNavItem's flyout. Ports usePopover's `render()` (the `.astryx-popover` surface, its role)
+ * and the hover options of useMenuHover. The content is sealed (cascades end at a layer root).
+ */
+import type {LayerAlignment, LayerPlacement} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {seal} from '../../lib/cascade';
+import {clearance, placementAttrs} from '../Layer/layer';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './NavMenu.css';
+
+interface Props {
+  id: string;
+  /** The click trigger (a native invoker with popovertarget = id). */
+  triggerId: string;
+  /** Element the layer is anchored to. @default triggerId */
+  anchorId?: string;
+  /** Element whose hover opens the menu. @default triggerId */
+  hoverAreaId?: string;
+  placement?: LayerPlacement;
+  alignment?: LayerAlignment;
+  /** Gap from the anchor (CSS length). */
+  offset?: string;
+  showDelay?: number;
+  hideDelay?: number;
+  clickGuardMs?: number;
+  /** false: no hover (click / keyboard only). */
+  hasHover?: boolean;
+  /** false: a click open focuses the first content control (usePopover autofocus). */
+  ownsFocus?: boolean;
+  /** Selector of what a click / keyboard open focuses first. */
+  focusItems?: string;
+  closeOnSelect?: boolean;
+  closeOnClick?: boolean;
+  /** Paint the popover surface. @default true */
+  hasSurface?: boolean;
+  /** The surface's role (usePopover `role`): 'dialog' names it and makes it modal. */
+  role?: 'dialog' | 'none';
+  label?: string;
+  /** The shared layer entry / exit motion (`ax-layer-motion`). @default true */
+  hasMotion?: boolean;
+  /** Extra layer class (motion / sizing variants). */
+  layerClass?: string;
+  layerStyle?: StyleValue;
+  surfaceClass?: string;
+  surfaceStyle?: StyleValue;
+}
+
+const {
+  id, triggerId, anchorId, hoverAreaId, placement = 'below', alignment = 'start', offset, showDelay, hideDelay,
+  clickGuardMs, hasHover = true, ownsFocus = true, focusItems, closeOnSelect = false, closeOnClick = false,
+  hasSurface = true, hasMotion = true, role = 'none', label, layerClass, layerStyle, surfaceClass, surfaceStyle,
+} = Astro.props;
+const surface = themeProps('popover');
+const html = await seal(Astro.slots.has('default') ? await Astro.slots.render('default') : '');
+const isDialog = role === 'dialog';
+---
+<ax-nav-menu
+  id={id}
+  popover="auto"
+  class={cx('ax-layer', hasMotion && 'ax-layer-motion', 'ax-nav-menu-layer', layerClass)}
+  data-astryx-layer-root=""
+  {...placementAttrs({placement, alignment})}
+  data-ax-anchor={anchorId ?? triggerId}
+  data-ax-trigger={triggerId}
+  data-ax-hover-area={hoverAreaId}
+  data-ax-hover={hasHover ? undefined : 'false'}
+  data-ax-show-delay={showDelay}
+  data-ax-hide-delay={hideDelay}
+  data-ax-click-guard={clickGuardMs}
+  data-ax-owns-focus={ownsFocus ? undefined : 'false'}
+  data-ax-focus-items={focusItems}
+  data-ax-close-on-select={closeOnSelect ? '' : undefined}
+  data-ax-close-on-click={closeOnClick ? '' : undefined}
+  data-ax-autofocus="false"
+  style={mergeStyles(clearance(offset), layerStyle)}
+>
+  <div
+    class={cx(surface.themeClass, 'ax-popover-surface ax-nav-menu-surface', surfaceClass)}
+    {...surface.attrs}
+    data-ax-no-surface={hasSurface ? undefined : ''}
+    role={isDialog ? 'dialog' : undefined}
+    aria-modal={isDialog ? 'true' : undefined}
+    aria-label={isDialog ? label : undefined}
+    tabindex={isDialog ? -1 : undefined}
+    style={mergeStyles(surfaceStyle)}
+  ><Fragment set:html={html} /></div>
+</ax-nav-menu>
+<script>import '../../elements/nav-menu';</script>

@@ -1,0 +1,143 @@
+---
+/**
+ * TopNavMenu — a TopNav item that opens a hover menu of rich rows (icon, title, description).
+ * Port of @astryxdesign/core TopNav/TopNavMenu.tsx (usePopover role none, useMenuHover,
+ * useListFocus with a roving tab stop, useTypeahead). Behaviour: elements/nav-menu.ts.
+ * Theme target: `.astryx-top-nav-menu` (the trigger).
+ *
+ * The trigger is a `<button>` that is the menu layer's native invoker (`aria-haspopup="true"`,
+ * `aria-expanded`, `aria-controls`). A hovering pointer opens the menu after `delay` ms and a
+ * hover-opened menu closes `hideDelay` ms after the pointer leaves (the safe triangle keeps it
+ * while the pointer heads for it); a click toggles, and a click right after a hover open pins it.
+ * Enter / Space open it and land on the first row. The popup is `role="menu"` named by `label`,
+ * below the trigger and aligned to its TopNav slot: ↑/↓ wrap, Home/End, first-character
+ * typeahead, one roving tab stop, Enter / Space activate a row, Escape closes and refocuses
+ * the trigger, a press outside light-dismisses. Rows with `href` are links (safe-URL checked,
+ * not draggable); without one a `<div role="menuitem">` (listen for `click`; Astryx `onClick`).
+ * Events: `astryx-open-change` on the `<ax-nav-menu>`.
+ *
+ * Mobile: hidden in the AppShell mobile bar; in the drawer a collapsible section (a nav row with a
+ * chevron toggling the rows, which close the drawer when activated).
+ * Deferred (touch extra): press-drag-release.
+ *
+ * @example
+ * <TopNavMenu label="Products" items={[{title: 'Analytics', description: 'Track behavior', href: '/analytics'}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import NavLink from '../NavItem/_NavLink.astro';
+import NavMenuLayer from '../NavMenu/_NavMenuLayer.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {safeHref} from '../../lib/safeUrl';
+import {uid} from '../../lib/uid';
+import {topNavMode} from '../AppShell/appShellContext';
+import {topNavSlot} from './topNavContext';
+import '../NavItem/NavItem.css';
+import './TopNav.css';
+
+/** One row of the menu (Astryx TopNavMenuItemData minus `onClick`: listen for `click`). */
+export interface TopNavMenuItemData {
+  title: string;
+  description?: string;
+  /** Icon: a name, SVG string or Astro component. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  href?: string;
+  /** Stable identity, rendered as `data-id`. */
+  id?: string;
+}
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'type'> {
+  /** The trigger's visible label (also names the menu). */
+  label: string;
+  items: TopNavMenuItemData[];
+  /** Hover delay before opening (ms). @default 150 */
+  delay?: number;
+  /** Delay before a hover-opened menu closes after the pointer leaves (ms). @default 200 */
+  hideDelay?: number;
+  'data-testid'?: string;
+}
+
+const {label, items, delay = 150, hideDelay = 200, class: className, id: idProp, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const mode = topNavMode(Astro);
+const slot = topNavSlot(Astro);
+const menuId = uid(Astro, 'ax-top-nav-menu');
+const triggerId = (idProp as string | undefined) ?? `${menuId}-trigger`;
+const {themeClass, attrs} = themeProps('top-nav-menu');
+const ROW = '[role="menuitem"]';
+---
+{mode === 'drawer' ? (
+  <div class="ax-top-nav-drawer-section">
+    <button
+      {...rest}
+      type="button"
+      id={triggerId}
+      class={cx('ax-nav-item ax-overlay-bg ax-focus-visible ax-top-nav-drawer-header', className as string | undefined)}
+      data-ax-nav-size="md"
+      aria-expanded="false"
+      aria-controls={`${menuId}-items`}
+      data-ax-nav-disclosure=""
+    >
+      {label}
+      <Icon icon="chevronDown" size="sm" color="inherit" class="ax-top-nav-chevron" />
+    </button>
+    <div id={`${menuId}-items`} class="ax-top-nav-drawer-collapse" aria-hidden="true" inert data-ax-collapsed="">
+      <div class="ax-top-nav-drawer-collapse-inner">
+        {items.map((item) => (
+          <NavLink href={item.href} class="ax-nav-item ax-overlay-bg ax-focus-visible ax-top-nav-drawer-row" data-ax-nav-size="md" data-ax-navigate="" data-id={item.id}>
+            {item.icon != null && <span class="ax-top-nav-drawer-row-icon"><Icon icon={item.icon} size="sm" color="inherit" /></span>}
+            <span class="ax-top-nav-drawer-row-text">
+              {item.title}
+              {item.description && <span class="ax-top-nav-drawer-row-description">{item.description}</span>}
+            </span>
+          </NavLink>
+        ))}
+      </div>
+    </div>
+  </div>
+) : (
+  <Fragment>
+    <button
+      {...rest}
+      type="button"
+      id={triggerId}
+      class={cx(themeClass, 'ax-focus-visible ax-top-nav-trigger', className as string | undefined)}
+      {...attrs}
+      popovertarget={menuId}
+      aria-haspopup="true"
+      aria-expanded="false"
+      aria-controls={menuId}
+    >
+      {label}
+      <Icon icon="chevronDown" size="sm" color="inherit" class="ax-top-nav-chevron" />
+    </button>
+    <NavMenuLayer id={menuId} triggerId={triggerId} placement="below" alignment={slot} offset="var(--spacing-1)" showDelay={delay} hideDelay={hideDelay} focusItems={ROW}>
+      <div
+        role="menu"
+        aria-label={label}
+        class="ax-top-nav-menu-list"
+        data-astryx-roving="vertical"
+        data-astryx-roving-items={ROW}
+        data-astryx-roving-typeahead=""
+        data-ax-nav-menu-keys=""
+      >
+        {items.map((item) => {
+          const href = item.href != null ? safeHref(item.href) : undefined;
+          const content = (
+            <Fragment>
+              <div class="ax-top-nav-menu-item-icon">{item.icon != null && <Icon icon={item.icon} size="md" color="secondary" />}</div>
+              <div class="ax-top-nav-menu-item-content">
+                <span class="ax-top-nav-menu-item-title">{item.title}</span>
+                {item.description && <span class="ax-top-nav-menu-item-description">{item.description}</span>}
+              </div>
+            </Fragment>
+          );
+          return item.href != null
+            ? <a role="menuitem" tabindex="-1" href={href} draggable="false" class="ax-top-nav-menu-item ax-focus-visible" data-id={item.id}>{content}</a>
+            : <div role="menuitem" tabindex="-1" class="ax-top-nav-menu-item ax-focus-visible" data-id={item.id}>{content}</div>;
+        })}
+      </div>
+    </NavMenuLayer>
+  </Fragment>
+)}
+<script>import '../../behaviors/navDisclosure';</script>

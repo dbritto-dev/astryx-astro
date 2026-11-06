@@ -1,0 +1,30 @@
+---
+/**
+ * NavIcon — the circular accent container that identifies an app or section in a nav header
+ * (TopNavHeading `logo`, SideNavHeading `icon`). Display only: not a button.
+ * Port of @astryxdesign/core NavIcon/NavIcon.tsx. Theme target: `.astryx-nav-icon`.
+ *
+ * `icon` takes an icon name, SVG string or Astro component (rendered as a `sm` Icon in the
+ * on-accent color), or pass markup in the `icon` slot / default slot (Astryx `icon: ReactNode`).
+ *
+ * @example
+ * <NavIcon icon="wrench" />
+ * <NavIcon><svg …/></NavIcon>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import './NavIcon.css';
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** The icon inside the circle (or the `icon` / default slot). */
+  icon?: ExtendedIconName | AstroIconComponent;
+}
+
+const {icon, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const {themeClass, attrs} = themeProps('nav-icon');
+const slotName = Astro.slots.has('icon') ? 'icon' : 'default';
+const html = Astro.slots.has(slotName) ? (await Astro.slots.render(slotName)).trim() : '';
+---
+<span {...rest} class={cx(themeClass, className)} {...attrs}>{html !== '' ? <Fragment set:html={html} /> : icon != null && <Icon icon={icon} size="sm" color="inherit" />}</span>

@@ -1,0 +1,17 @@
+---
+import NavIcon from './NavIcon.astro';
+import TopNavHeading from '../TopNav/TopNavHeading.astro';
+import {boltIcon, logoMark} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-4);align-items:center';
+---
+<div>
+  <p style={label}>A registry icon, inline SVG artwork (prop and slot), and as a TopNavHeading logo</p>
+  <div style={row}>
+    <NavIcon icon="wrench" id="nav-icon-name" />
+    <NavIcon icon={boltIcon} />
+    <NavIcon><Fragment set:html={logoMark} /></NavIcon>
+    <TopNavHeading heading="Acme Cloud" subheading="Production"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>
+  </div>
+</div>

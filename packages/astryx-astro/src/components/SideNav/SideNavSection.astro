@@ -1,0 +1,40 @@
+---
+/**
+ * SideNavSection — a titled group of SideNavItems: `role="group"` named by its title.
+ * Port of @astryxdesign/core SideNav/SideNavSection.tsx. Theme target: `.astryx-side-nav-section`.
+ *
+ * The header shows `title`, an optional `subtitle` and `endContent` (slot); `isHeaderHidden`
+ * keeps it for assistive technology only (visually hidden), as the collapsed rail does.
+ *
+ * @example
+ * <SideNavSection title="Workspace"><SideNavItem label="Projects" href="/projects" /></SideNavSection>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {uid} from '../../lib/uid';
+import './SideNav.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'title'> {
+  title: string;
+  subtitle?: string;
+  /** Header kept for screen readers only. @default false */
+  isHeaderHidden?: boolean;
+  'data-testid'?: string;
+}
+
+const {title, subtitle, isHeaderHidden = false, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const id = uid(Astro, 'ax-side-nav-section');
+const titleId = `${id}-title`;
+const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
+const {themeClass, attrs} = themeProps('side-nav-section');
+---
+<div {...rest} class={cx(themeClass, className)} {...attrs} role="group" aria-labelledby={titleId}>
+  <div class="ax-side-nav-section-header" data-ax-hidden={isHeaderHidden ? '' : undefined}>
+    <span class="ax-side-nav-section-titles">
+      <span id={titleId} class="ax-side-nav-section-title">{title}</span>
+      {subtitle && <span class="ax-side-nav-section-subtitle">{subtitle}</span>}
+    </span>
+    {endHtml !== '' && <span class="ax-side-nav-section-end"><Fragment set:html={endHtml} /></span>}
+  </div>
+  <div class="ax-side-nav-section-items"><slot /></div>
+</div>

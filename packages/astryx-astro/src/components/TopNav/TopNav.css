@@ -1,0 +1,423 @@
+/*
+ * Port of @astryxdesign/core TopNav/TopNav.tsx (base, baseFlex, baseGrid, leftSection, heading,
+ * startContent, centerContent, rightSection, endContent, mobileBar*, drawerItems, drawerDivider),
+ * TopNavItem.tsx (base, selected, iconOnly), TopNavMenu.tsx (trigger, triggerOpen, chevron,
+ * menuContainer, menuItem*, drawerStyles), TopNavMegaMenu.tsx (panelAnimation, panelViewportFit,
+ * panelContainer, panelContent, menuWrapper, featured, drawer*), TopNavMegaMenuItem.tsx and
+ * TopNavMegaMenuFeaturedCard.tsx. Rule groups follow each file's stylex.props() order.
+ *
+ * The AppShell mobile bar is the same markup restyled while the shell is mobile
+ * (`.astryx-app-shell[data-astryx-shell-mobile="true"]`, see AppShell): the start / center items
+ * leave for the drawer, the heading gives up space first, the end content and the toggle stay.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── TopNav ─────────────────────────────────────────────────────────── */
+  .astryx-top-nav {
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-2);
+    box-sizing: border-box;
+  }
+  .astryx-top-nav[data-ax-layout="flex"] { display: flex; }
+  .astryx-top-nav[data-ax-layout="grid"] { display: grid; grid-template-columns: 1fr auto 1fr; }
+  .ax-top-nav-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+  .ax-top-nav-heading-slot { display: flex; align-items: center; flex-shrink: 0; }
+  .ax-top-nav-start { display: flex; align-items: center; gap: var(--spacing-1); }
+  .ax-top-nav-center { display: flex; align-items: center; justify-content: center; gap: var(--spacing-1); }
+  .ax-top-nav-right { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing-1); }
+  .ax-top-nav-end {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+
+  /* mobileBar (inside a mobile AppShell) */
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .astryx-top-nav[data-ax-mobile-bar] {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-2);
+    box-sizing: border-box;
+  }
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .astryx-top-nav[data-ax-mobile-bar] > .ax-top-nav-left { display: contents; }
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .astryx-top-nav[data-ax-mobile-bar] :is(.ax-top-nav-start, .ax-top-nav-center) { display: none; }
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .astryx-top-nav[data-ax-mobile-bar] .ax-top-nav-heading-slot {
+    display: flex;
+    align-items: center;
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+  .astryx-app-shell[data-astryx-shell-mobile="true"] .astryx-top-nav[data-ax-mobile-bar] > :is(.ax-top-nav-end, .ax-top-nav-right) {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    flex-shrink: 0;
+    margin-inline-start: auto;
+  }
+
+  /* drawer mode: the items list vertically in the MobileNav. */
+  .ax-top-nav-drawer-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+  }
+  .astryx-divider.ax-top-nav-drawer-divider { margin-block: var(--spacing-2); }
+
+  /* ── TopNavItem (bar) ──────────────────────────────────────────────── */
+  .astryx-top-nav-item:not([data-mode="drawer"]) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-1-5);
+    padding-inline: var(--spacing-3);
+    border-radius: var(--radius-element);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-top-nav-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-top-nav-item[data-selected="selected"]:not([data-mode="drawer"]) {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold);
+    background-color: var(--color-neutral);
+  }
+  .astryx-top-nav-item[data-selected="selected"]:not([data-mode="drawer"]):active { background-color: var(--color-neutral); }
+  @media (hover: hover) {
+    .astryx-top-nav-item[data-selected="selected"]:not([data-mode="drawer"]):where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-neutral); }
+  }
+  /* navItemStyles.disabled (both modes) */
+  .astryx-top-nav-item[data-ax-nav-disabled] {
+    color: var(--color-text-disabled);
+    cursor: default;
+    pointer-events: none;
+  }
+  .astryx-top-nav-item[data-ax-icon-only]:not([data-mode="drawer"]) { padding-inline: var(--spacing-2); }
+
+  /* ── TopNavMenu / TopNavMegaMenu triggers ──────────────────────────── */
+  .ax-top-nav-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-1-5);
+    padding-inline: var(--spacing-3);
+    border-radius: var(--radius-element);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    font-family: inherit;
+  }
+  .ax-top-nav-trigger:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .ax-top-nav-trigger:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-overlay-hover); }
+  }
+  /* triggerOpen */
+  .ax-top-nav-trigger[aria-expanded="true"] {
+    color: var(--color-text-primary);
+    background-color: var(--color-overlay-hover);
+  }
+  /* chevron: held on the trigger's 1em so it tracks the label size. */
+  .astryx-icon.ax-top-nav-chevron {
+    display: inline-flex;
+    align-items: center;
+    width: 1em;
+    height: 1em;
+    font-size: inherit;
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  [aria-expanded="true"] > .astryx-icon.ax-top-nav-chevron { transform: rotate(180deg); }
+
+  /* TopNavMenu popup (menuContainer + rows) */
+  .ax-top-nav-menu-list {
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    min-width: 280px;
+    padding: var(--spacing-1);
+    box-sizing: border-box;
+    outline: none;
+  }
+  .ax-top-nav-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding-block: var(--spacing-3);
+    padding-inline: var(--spacing-3);
+    border-radius: var(--radius-element);
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+  }
+  .ax-top-nav-menu-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .ax-top-nav-menu-item:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-overlay-hover); }
+  }
+  .ax-top-nav-menu-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-element);
+    background-color: var(--color-neutral);
+    flex-shrink: 0;
+  }
+  .ax-top-nav-menu-item-content { display: flex; flex-direction: column; gap: var(--spacing-1); min-width: 0; }
+  .ax-top-nav-menu-item-title {
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+  }
+  .ax-top-nav-menu-item-description {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+  }
+
+  /* drawer sections (TopNavMenu / TopNavMegaMenu in the mobile drawer) */
+  .ax-top-nav-drawer-section { display: flex; flex-direction: column; }
+  .ax-nav-item.ax-top-nav-drawer-header {
+    justify-content: space-between;
+    border-width: 0;
+    border-style: none;
+  }
+  /* The section clips only while collapsed or animating (a permanent clip cuts the focus ring). */
+  .ax-top-nav-drawer-collapse {
+    display: grid;
+    grid-template-rows: 1fr;
+    overflow: visible;
+    transition-property: grid-template-rows, overflow;
+    transition-behavior: allow-discrete;
+    transition-duration: var(--duration-medium), 0s;
+    transition-delay: 0s, var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  .ax-top-nav-drawer-collapse[data-ax-collapsed] {
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition-delay: 0s, 0s;
+  }
+  .ax-top-nav-drawer-collapse-inner { min-height: 0; }
+  .ax-nav-item.ax-top-nav-drawer-row {
+    padding-inline-start: var(--spacing-6);
+    text-decoration: none;
+    /* Deviation: a row with a description grows instead of overflowing the 32px nav row. */
+    height: auto;
+    min-height: var(--size-element-md);
+  }
+  .ax-top-nav-drawer-row-icon { display: inline-flex; flex-shrink: 0; width: 20px; height: 20px; align-items: center; justify-content: center; }
+  .ax-top-nav-drawer-row-text { display: flex; flex-direction: column; gap: var(--spacing-0-5); }
+  .ax-top-nav-drawer-row-description {
+    font-size: var(--text-supporting-size);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-normal);
+  }
+
+  /* ── TopNavMegaMenu panel ──────────────────────────────────────────── */
+  /* panelAnimation: rises 4px and fades; no travel under reduced motion (instant with a mouse,
+   * a 200ms cross-fade on touch). */
+  .ax-mega-menu-layer {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition-property: opacity, transform, overlay, display;
+    transition-duration: var(--duration-medium-min);
+    transition-timing-function: var(--ease-standard);
+    transition-behavior: allow-discrete;
+  }
+  .ax-mega-menu-layer:popover-open { opacity: 1; transform: translateY(0); }
+  @starting-style {
+    .ax-mega-menu-layer:popover-open { opacity: 0; transform: translateY(-4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-mega-menu-layer { transform: none; transition-property: opacity, overlay, display; }
+    .ax-mega-menu-layer:popover-open { transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .ax-mega-menu-layer { transition-duration: 200ms; transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .ax-mega-menu-layer { transition-duration: 0s; }
+  }
+  /* panelViewportFit: clamped to the space below the nav; the content scrolls inside. */
+  .ax-mega-menu-layer[data-placement] {
+    display: none;
+    flex-direction: column;
+    max-height: calc(100% - var(--spacing-3));
+  }
+  .ax-mega-menu-layer[data-placement]:popover-open { display: flex; }
+  .ax-mega-menu-panel {
+    background-color: var(--color-background-popover);
+    border-top-width: var(--border-width);
+    border-top-style: solid;
+    border-top-color: var(--color-border);
+    border-radius: var(--radius-container);
+    box-shadow: var(--shadow-low);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .ax-mega-menu-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-6);
+    padding-block: var(--spacing-3);
+    padding-inline: var(--spacing-3);
+    max-width: min(960px, calc(100dvw - var(--spacing-4)));
+    box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .astryx-grid.ax-mega-menu-items { flex-grow: 2; flex-shrink: 1; flex-basis: 300px; min-width: 0; }
+  .ax-mega-menu-featured {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 200px;
+    border-radius: var(--radius-container);
+    background-color: var(--color-background-muted);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .ax-top-nav-drawer-featured {
+    margin-block-start: var(--spacing-2);
+    margin-inline-start: var(--spacing-6);
+    border-radius: var(--radius-container);
+    background-color: var(--color-background-muted);
+    overflow: hidden;
+  }
+
+  /* ── TopNavMegaMenuItem ────────────────────────────────────────────── */
+  .ax-mega-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-3);
+    padding-block: var(--spacing-3);
+    padding-inline: var(--spacing-3);
+    border-radius: var(--radius-element);
+    text-decoration: none;
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    border-width: 0;
+    border-style: none;
+    color: inherit;
+    font-family: inherit;
+    text-align: start;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  .ax-mega-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-mega-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-element);
+    background-color: var(--color-neutral);
+    flex-shrink: 0;
+    color: var(--color-icon-secondary);
+  }
+  .ax-mega-item-content { display: flex; flex-direction: column; gap: var(--spacing-1); min-width: 0; }
+  .ax-mega-item-title {
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+  }
+  .ax-mega-item-description {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+  }
+  .ax-nav-item.ax-mega-item-drawer {
+    padding-inline-start: var(--spacing-6);
+    align-items: flex-start;
+    text-decoration: none;
+    /* Deviation: grows with its description instead of overflowing the 32px nav row. */
+    height: auto;
+    min-height: var(--size-element-md);
+    padding-block: var(--spacing-1);
+  }
+  .ax-mega-item-drawer-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-element);
+    background-color: var(--color-neutral);
+    flex-shrink: 0;
+    color: var(--color-icon-secondary);
+    margin-block-start: var(--spacing-0-5);
+  }
+  .ax-mega-item-drawer-content { display: flex; flex-direction: column; gap: var(--spacing-0-5); min-width: 0; }
+  .ax-mega-item-drawer-description {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-normal);
+  }
+
+  /* ── TopNavMegaMenuFeaturedCard ────────────────────────────────────── */
+  .astryx-top-nav-mega-menu-featured-card { display: flex; flex-direction: column; }
+  .ax-featured-image { width: 100%; height: 140px; object-fit: cover; display: block; }
+  .ax-featured-body { display: flex; flex-direction: column; gap: var(--spacing-2); padding: var(--spacing-4); }
+  .ax-featured-title {
+    font-size: var(--text-label-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-label-leading);
+    color: var(--color-text-primary);
+  }
+  .ax-featured-description {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+  }
+  .ax-featured-link {
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-accent);
+    text-decoration: none;
+  }
+  .ax-featured-arrow { display: inline-block; }
+}

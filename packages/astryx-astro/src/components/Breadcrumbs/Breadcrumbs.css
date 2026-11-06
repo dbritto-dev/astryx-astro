@@ -1,0 +1,110 @@
+/*
+ * Port of @astryxdesign/core Breadcrumbs/Breadcrumbs.tsx (navStyles, listStyles) and
+ * Breadcrumbs/BreadcrumbItem.tsx (itemStyles, menuStyles). Rule order follows stylex.props():
+ * root, size; link, buttonReset, link color; contentWrapper, current, current color.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-breadcrumbs { display: block; }
+  .ax-breadcrumbs-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: var(--spacing-1);
+  }
+
+  /* itemStyles.root + size */
+  .astryx-breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin: 0;
+    --separator-display: flex;
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+  }
+  .astryx-breadcrumb-item:first-child { --separator-display: none; }
+  .astryx-breadcrumb-item[data-variant="supporting"] {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+  }
+
+  /* separator (decorative; the default slash mirrors under RTL through ax-mirror-rtl) */
+  .ax-breadcrumb-separator {
+    display: var(--separator-display);
+    align-items: center;
+    color: var(--color-text-secondary);
+    padding-block: var(--spacing-1);
+    user-select: none;
+  }
+  .ax-breadcrumb-slash { display: inline-block; }
+
+  /* link / button / menu trigger */
+  .ax-breadcrumb-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding-block: var(--spacing-1);
+    text-decoration: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+  }
+  .ax-breadcrumb-link:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .ax-breadcrumb-link:where(:not(:disabled, [aria-disabled="true"])):hover { text-decoration: underline; }
+  }
+  .ax-breadcrumb-button {
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    padding-inline: 0;
+    margin: 0;
+    font: inherit;
+  }
+
+  /* contentWrapper + current (also a crumb with no destination) */
+  .ax-breadcrumb-text {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+  }
+  .astryx-breadcrumb-item[data-variant="supporting"] .ax-breadcrumb-text { color: var(--color-text-secondary); }
+
+  .ax-breadcrumb-icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  /* The chevron reads as part of the label: sized off supporting text (Icon xsm at the default scale). */
+  .astryx-icon.ax-breadcrumb-chevron {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    width: var(--text-supporting-size);
+    height: var(--text-supporting-size);
+    font-size: var(--text-supporting-size);
+  }
+
+  /* menuStyles.menu + popover */
+  .ax-breadcrumb-menu-layer { min-width: 160px; }
+  .astryx-breadcrumb-menu {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    max-height: min(300px, var(--_ax-max-block-size, 100dvh));
+    overflow-y: auto;
+    --_dropdown-menu-radius: var(--radius-container);
+    --_dropdown-menu-padding: var(--spacing-1);
+    padding: var(--spacing-1);
+    border-radius: var(--_dropdown-menu-radius);
+    user-select: none;
+    outline: none;
+  }
+}
