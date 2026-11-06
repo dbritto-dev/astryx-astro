@@ -68,3 +68,19 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
 ## Stand-ins to replace when their owner lands
 
 - Popover's hidden close button is a styled stand-in → Button/IconButton.
+
+## Button family
+
+- Button renders its effective `data-size`; opts into `size` when not explicit. Its icon slot is
+  stamped `icon-size` (sm for sm/md, md for lg); while Button's own size is inherited the icons
+  stay marked `button-icon-size`. Providers (ButtonGroup, Toolbar, SizeContext …) must stamp
+  with `buttonSizeStampers(size)` from `Button/buttonCascade.ts` (both keys in one parse).
+- ToggleButton uses its own keys (`toggle-group`, `toggle-group-size`, `toggle-group-icon-size`)
+  that only ToggleButtonGroup stamps — ButtonGroup/Toolbar sizes don't reach it (as in Astryx).
+- Custom link component: request-wide `Astro.locals.astryxLinkComponent`; `as` overrides it.
+- Events: Token `astryx-remove` {event}; ToggleButton `astryx-pressed-change` {isPressed, event};
+  ToggleButtonGroup `astryx-change` {value}.
+- Group-disabled (ButtonGroup): members get native `disabled` + `data-ax-disabled`
+  (`aria-disabled` when they are tooltip triggers); link members become `<button>`; members
+  show `data-elevation="none"` and lose the press-scale effect.
+- `clickAction` / `pressedChangeAction` (server functions) are not available in Astro.
