@@ -1,0 +1,44 @@
+---
+/**
+ * CommandPaletteList — the scrollable results container. Port of @astryxdesign/core
+ * CommandPalette/CommandPaletteList.tsx.
+ *
+ * Standalone it is always a `role="listbox"` named `label` (default "Commands"). Inside
+ * CommandPalette (which renders its own list) it is a listbox only while it holds selectable
+ * results; empty and pending states keep the same styled container with no popup semantics
+ * (`<ax-command-palette>` toggles the role and name as results come and go).
+ *
+ * Theme hook: `.astryx-command-palette-list`.
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import './CommandPalette.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Accessible label of the listbox. @default translated "Commands" */
+  label?: string;
+  locale?: string;
+}
+
+/** @internal CommandPalette renders its list with these. */
+interface InternalProps {
+  /** Listbox semantics (false: an empty / pending state). @default true */
+  __hasListbox?: boolean;
+}
+
+const {label: labelProp, locale, __hasListbox = true, class: className, style, slot: _slot, ...rest} = Astro.props as Props & InternalProps & {slot?: string};
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.commandPalette.list.label');
+const {themeClass, attrs} = themeProps('command-palette-list');
+---
+<div
+  {...rest}
+  role={__hasListbox ? 'listbox' : undefined}
+  aria-label={__hasListbox ? label : undefined}
+  data-ax-list-label={label}
+  class={cx(themeClass, className as string | undefined)}
+  {...attrs}
+  style={mergeStyles(style as StyleValue)}
+><slot /></div>

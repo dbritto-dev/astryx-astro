@@ -1,0 +1,199 @@
+---
+/**
+ * CommandPalette — a modal search-and-run surface: a search field over a grouped list of
+ * commands, on the native `<dialog>` (`showModal()`). Port of @astryxdesign/core
+ * CommandPalette/CommandPalette.tsx (+ CommandPaletteContext.ts, busyStartSettle.ts,
+ * Selector/hooks.ts useCombobox, hooks/useAnnounceRenderedText.ts, hooks/useBusyAnnouncement.ts,
+ * hooks/useHotkeys.ts for the port's `hotkey` option). Behaviour: src/elements/command-palette.ts
+ * (`<ax-command-palette>`) on runtime/combobox.ts; the shell is Dialog (`<ax-dialog>`: Escape
+ * through the shared layer stack, backdrop press, focus return, scroll lock, modal outlet for
+ * toasts, announcements routed into the dialog).
+ *
+ * Markup: `<ax-command-palette>` (display: contents) → Dialog (`purpose="info"`, named `label`)
+ * → Layout: LayoutHeader (the `input` slot, default `<CommandPaletteInput />`), LayoutContent
+ * (`.astryx-command-palette-list`, id'd, the input's `aria-controls`), LayoutFooter (the
+ * `footer` slot, default `<CommandPaletteFooter />`).
+ *
+ * Search sources (as Typeahead): `searchSource={createStaticSource(items)}` (server-rendered,
+ * filtered in the browser), `el.searchSource = {search(query), bootstrap(), cancel?}`, or the
+ * `astryx-query` event (`preventDefault()`, then `respond(items)`; `signal` aborts superseded
+ * queries). Opening runs the empty-query bootstrap; each keystroke searches at once, narrowing
+ * the previous results by label while a slow answer is pending (useOptimistic). Results group by
+ * `auxiliaryData.group` (groups in first-seen order, ungrouped last).
+ *
+ * States: no query and nothing to show → `emptyBootstrapText`; a settled query with no results →
+ * `emptySearchText` (announced as rendered); a first query still pending → an empty line (the
+ * input's delayed Spinner and one "Loading" announcement speak for it). A settled query announces
+ * "N results". The list is a listbox only while it holds results.
+ *
+ * Keyboard (input): ↓/↑ move the highlight (clamped; from none, the first), PageUp/PageDown
+ * first/last, Enter runs the highlighted command (never submits), Tab drops the highlight, Home/End
+ * and Space stay with the text, Escape closes through the layer stack (an inline preview closes
+ * itself). Pointer: hover highlights without scrolling, a click runs the command.
+ *
+ * Port options: `hotkey` (e.g. `"mod+k"`; `mod` = ⌘ on Apple, Ctrl elsewhere) opens the palette
+ * from anywhere through one shared window keydown listener (Astryx useHotkeys: skipped while
+ * typing in a field unless `isHotkeyAllowedInInputs`, IME-safe); `isOpen` opens it on load.
+ * Open it from a button with `attachDialog({id})` (Dialog/attach.ts) and `id={dlg.id}` here, or
+ * call `el.show()`.
+ *
+ * Events (bubbling, composed): `astryx-select` `{value, item}` on `<ax-command-palette>` when a
+ * command runs (Astryx `onValueChange` / item `onSelect`); the palette then closes;
+ * `astryx-open-change` `{isOpen, reason}` from the dialog host (Astryx `onOpenChange`);
+ * `astryx-query` (above). Element API: `show()`, `hide()`, `open()`, `close()`, `toggle()`,
+ * `isOpen`, `value` (picker mode: the selected command, `aria-selected`), `query`,
+ * `searchSource`, `renderItem(item, isSelected) → Node | string` (client rows; server rows use
+ * the `renderItem` prop).
+ *
+ * Theme hooks: `.astryx-dialog` (the shell), `.astryx-command-palette-input`, `-list`, `-item`,
+ * `-group`, `-group-heading`, `-empty`, `-footer`.
+ * Deferred (touch extra): the coarse-pointer press controller on items.
+ *
+ * @example
+ * ---
+ * const dlg = attachDialog({id: 'palette'});
+ * ---
+ * <button {...dlg.trigger}>Commands</button>
+ * <CommandPalette id={dlg.id} hotkey="mod+k" searchSource={createStaticSource(commands)} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Dialog from '../Dialog/Dialog.astro';
+import Layout from '../Layout/Layout.astro';
+import LayoutHeader from '../Layout/LayoutHeader.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import LayoutFooter from '../Layout/LayoutFooter.astro';
+import CommandPaletteInput from './CommandPaletteInput.astro';
+import CommandPaletteList from './CommandPaletteList.astro';
+import CommandPaletteItem from './CommandPaletteItem.astro';
+import CommandPaletteGroup from './CommandPaletteGroup.astro';
+import CommandPaletteEmpty from './CommandPaletteEmpty.astro';
+import CommandPaletteFooter from './CommandPaletteFooter.astro';
+import {groupItems} from '../../lib/groupItems';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {uid} from '../../lib/uid';
+import {pluralTemplates} from '../Field/clientMessages';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {StaticSearchSource} from '../Typeahead/createStaticSource';
+import {COMMAND_PALETTE_LOCALS_KEY, type CommandPaletteContext} from './context';
+import './CommandPalette.css';
+
+export {createStaticSource} from '../Typeahead/createStaticSource';
+export type {SearchableItem} from '../../lib/searchableItem';
+
+export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open'> {
+  /** Initial open state (opened on load; the element owns it afterwards). @default false */
+  isOpen?: boolean;
+  /** Render in flow without modal behaviour (documentation previews only; no auto focus). @default false */
+  isInline?: boolean;
+  /** A static source (`createStaticSource(items)`), server-rendered; or set `el.searchSource` / answer `astryx-query`. */
+  searchSource?: StaticSearchSource;
+  /** Server-side row content (Astryx `renderItem(item, isSelected)`); default the item's label. */
+  renderItem?: (item: SearchableItem, isSelected: boolean) => unknown;
+  /** Shown (and announced) when a query found nothing, or the `emptySearchText` slot. @default "No results" */
+  emptySearchText?: string;
+  /** Shown with no query when there is nothing to list, or the `emptyBootstrapText` slot. @default "Type to search" */
+  emptyBootstrapText?: string;
+  /** Selected command (picker mode): marked `aria-selected` and highlighted when the palette opens. */
+  value?: string;
+  /** Accessible name of the dialog. @default translated "Command palette" */
+  label?: string;
+  /** Dialog width (number = px). @default 640 */
+  width?: number | string;
+  /** Dialog max height (number = px). @default 480 */
+  maxHeight?: number | string;
+  /** Port extension: a global shortcut that opens the palette (useHotkeys syntax, e.g. "mod+k"). */
+  hotkey?: string;
+  /** Port extension: the hotkey also fires while typing in a field. @default false */
+  isHotkeyAllowedInInputs?: boolean;
+  /** The `<dialog>` id (invokers target it). @default generated */
+  id?: string;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  isOpen = false,
+  isInline = false,
+  searchSource,
+  renderItem,
+  emptySearchText: emptySearchProp,
+  emptyBootstrapText: emptyBootstrapProp,
+  value,
+  label: labelProp,
+  width = 640,
+  maxHeight = 480,
+  hotkey,
+  isHotkeyAllowedInInputs = false,
+  id: idProp,
+  locale: localeProp,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {slot?: string};
+
+const locale = resolveLocale(Astro, localeProp);
+const t = translator(Astro, localeProp);
+const base = uid(Astro, 'ax-command-palette');
+const dialogId = idProp ?? `${base}-dialog`;
+const listId = `${base}-list`;
+const label = labelProp ?? t('@astryx.commandPalette.label');
+const items = searchSource?.items ?? [];
+const hasListbox = items.length > 0;
+const ctx: CommandPaletteContext = {listId, isInline, hasListbox, isOpen};
+const inputHtml = Astro.slots.has('input')
+  ? (await renderWithLocals(Astro, {[COMMAND_PALETTE_LOCALS_KEY]: ctx}, () => Astro.slots.render('input'))).trim()
+  : '';
+const footerHtml = Astro.slots.has('footer') ? (await Astro.slots.render('footer')).trim() : '';
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+const emptyBootstrapHtml = Astro.slots.has('emptyBootstrapText') ? (await Astro.slots.render('emptyBootstrapText')).trim() : '';
+const groups = groupItems(items);
+const order = new Map(items.map((item, index) => [item, index]));
+const payload = (item: SearchableItem) => JSON.stringify({id: item.id, label: item.label, auxiliaryData: item.auxiliaryData});
+// Items render in display order (groups first, then ungrouped), ids by flat index.
+const flat = groups.flatMap((g) => g.items);
+const indexOf = new Map(flat.map((item, i) => [item, i]));
+---
+<ax-command-palette
+  class="ax-command-palette-host"
+  data-ax-list={listId}
+  data-ax-dialog={dialogId}
+  data-ax-inline={isInline ? '' : undefined}
+  data-ax-value={value}
+  data-ax-hotkey={hotkey}
+  data-ax-hotkey-in-inputs={isHotkeyAllowedInInputs ? '' : undefined}
+  data-ax-locale={locale}
+  data-ax-result-count={pluralTemplates(t, locale, '@astryx.commandPalette.resultCount', 'count')}
+  data-ax-loading-label={t('@astryx.commandPalette.loading')}
+>
+  <Dialog {...rest} id={dialogId} isOpen={isOpen} isInline={isInline} width={width} maxHeight={maxHeight} purpose="info" aria-label={label}>
+    <Layout defaultHasDividers class="ax-command-palette-layout">
+      <LayoutHeader slot="header" hasDivider padding={0}>
+        {inputHtml ? <Fragment set:html={inputHtml} /> : <CommandPaletteInput __ctx={ctx} locale={localeProp} />}
+      </LayoutHeader>
+      <LayoutContent padding={0}>
+        <CommandPaletteList id={listId} __hasListbox={hasListbox} locale={localeProp}>
+          {groups.map((group) => group.heading == null ? (
+            group.items.map((item) => (
+              <CommandPaletteItem id={`${listId}-item-${indexOf.get(item)}`} value={item.id} isSelected={item.id === value} data-ax-static="" data-ax-order={order.get(item)} data-ax-item={payload(item)} data-ax-label={item.label}>{renderItem ? renderItem(item, item.id === value) : item.label}</CommandPaletteItem>
+            ))
+          ) : (
+            <CommandPaletteGroup heading={group.heading} data-ax-static-group={group.heading}>
+              {group.items.map((item) => (
+                <CommandPaletteItem id={`${listId}-item-${indexOf.get(item)}`} value={item.id} isSelected={item.id === value} data-ax-static="" data-ax-order={order.get(item)} data-ax-item={payload(item)} data-ax-label={item.label}>{renderItem ? renderItem(item, item.id === value) : item.label}</CommandPaletteItem>
+              ))}
+            </CommandPaletteGroup>
+          ))}
+          <CommandPaletteEmpty data-ax-empty="bootstrap" hidden={hasListbox || undefined}>{emptyBootstrapHtml ? <Fragment set:html={emptyBootstrapHtml} /> : (emptyBootstrapProp ?? t('@astryx.commandPalette.emptyBootstrap'))}</CommandPaletteEmpty>
+          <CommandPaletteEmpty data-ax-empty="search" hidden>{emptySearchHtml ? <Fragment set:html={emptySearchHtml} /> : (emptySearchProp ?? t('@astryx.commandPalette.emptySearch'))}</CommandPaletteEmpty>
+          <CommandPaletteEmpty data-ax-empty="pending" aria-hidden="true" hidden>{' '}</CommandPaletteEmpty>
+        </CommandPaletteList>
+      </LayoutContent>
+      <LayoutFooter slot="footer" hasDivider padding={0}>
+        {footerHtml ? <Fragment set:html={footerHtml} /> : <CommandPaletteFooter locale={localeProp} />}
+      </LayoutFooter>
+    </Layout>
+  </Dialog>
+  <template data-ax-item-template><CommandPaletteItem value=""></CommandPaletteItem></template>
+  <template data-ax-group-template><CommandPaletteGroup heading=""></CommandPaletteGroup></template>
+</ax-command-palette>
+<script>import '../../elements/command-palette';</script>

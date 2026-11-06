@@ -1,0 +1,177 @@
+/*
+ * Port of @astryxdesign/core CommandPalette/CommandPaletteInput.tsx, CommandPaletteList.tsx,
+ * CommandPaletteItem.tsx, CommandPaletteGroup.tsx, CommandPaletteEmpty.tsx and
+ * CommandPaletteFooter.tsx (StyleX styles). The dialog shell is Dialog (Dialog.css) with a
+ * Layout (header / content / footer, dividers, no padding).
+ *
+ * StyleX precedence → source order at equal specificity: an item's interaction overlay
+ * (`ax-overlay-bg`) is replaced, hover and press included, by the highlighted fill, which the
+ * selected fill replaces in turn (the later style wins the whole property).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── CommandPaletteInput ──────────────────────────────────────────────── */
+  .astryx-command-palette-input {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-inline: var(--spacing-4);
+    padding-block: var(--spacing-3);
+    flex-shrink: 0;
+  }
+  .ax-command-palette-icon {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+  }
+  .ax-command-palette-end {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    flex-shrink: 0;
+  }
+  .ax-command-palette-end[hidden],
+  .ax-command-palette-spinner[hidden] { display: none; }
+  /* Delayed spinner: appears only when a search is still pending after 150ms. */
+  .ax-command-palette-spinner {
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: 1ms;
+    transition-delay: 150ms;
+  }
+  @starting-style {
+    .ax-command-palette-spinner { opacity: 0; }
+  }
+  .ax-command-palette-native {
+    flex: 1;
+    min-width: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    padding: 0;
+  }
+  .ax-command-palette-native::placeholder { color: var(--color-text-secondary); }
+  @media (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      .ax-command-palette-native { font-size: max(1rem, var(--text-body-size)); }
+    }
+  }
+
+  /* ── CommandPaletteList ───────────────────────────────────────────────── */
+  .astryx-command-palette-list {
+    overflow-y: auto;
+    max-height: 100%;
+    padding: var(--spacing-1);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+  }
+
+  /* ── CommandPaletteItem ───────────────────────────────────────────────── */
+  .astryx-command-palette-item {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding-inline: var(--spacing-3);
+    padding-block: var(--spacing-2);
+    border-radius: var(--radius-inner);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    cursor: pointer;
+    text-align: start;
+    outline: none;
+    user-select: none;
+  }
+  .astryx-command-palette-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-command-palette-item[hidden] { display: none; }
+  .astryx-command-palette-item[data-highlighted],
+  .astryx-command-palette-item[data-highlighted]:hover,
+  .astryx-command-palette-item[data-highlighted]:active {
+    background-color: var(--color-overlay-hover);
+  }
+  .astryx-command-palette-item[data-selected],
+  .astryx-command-palette-item[data-selected]:hover,
+  .astryx-command-palette-item[data-selected]:active {
+    background-color: var(--color-accent-muted);
+  }
+  .astryx-command-palette-item[data-disabled] {
+    opacity: 0.5;
+    cursor: default;
+  }
+  @media (forced-colors: active) {
+    .astryx-command-palette-item[data-highlighted] { outline: var(--border-width) solid Highlight; }
+  }
+
+  /* ── CommandPaletteGroup ──────────────────────────────────────────────── */
+  .astryx-command-palette-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    padding-block: var(--spacing-1);
+  }
+  .astryx-command-palette-group[hidden] { display: none; }
+  .astryx-command-palette-group-heading {
+    padding-inline: var(--spacing-3);
+    padding-block: var(--spacing-1);
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    user-select: none;
+  }
+
+  /* ── CommandPaletteEmpty ──────────────────────────────────────────────── */
+  .astryx-command-palette-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-block: var(--spacing-8);
+    padding-inline: var(--spacing-4);
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    text-align: center;
+    /* An unbroken token echoed into the message wraps instead of widening the line. */
+    overflow-wrap: anywhere;
+    /* Text inside keeps `anywhere` too (Text FR3). */
+    --_astryx-text-overflow-wrap: anywhere;
+  }
+  .astryx-command-palette-empty[hidden] { display: none; }
+
+  /* ── CommandPaletteFooter ─────────────────────────────────────────────── */
+  .astryx-command-palette-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-4);
+    padding-inline: var(--spacing-4);
+    padding-block: var(--spacing-2);
+    flex-shrink: 0;
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+  }
+  .ax-command-palette-hint {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+
+  /* The palette's Layout fills the dialog's height cap; the list scrolls inside it. */
+  .ax-command-palette-layout { min-height: 0; }
+}

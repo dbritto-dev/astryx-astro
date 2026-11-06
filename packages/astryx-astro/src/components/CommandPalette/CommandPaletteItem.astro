@@ -1,0 +1,52 @@
+---
+/**
+ * CommandPaletteItem — one selectable command (`role="option"`, `data-value`). Port of
+ * @astryxdesign/core CommandPalette/CommandPaletteItem.tsx (+ utils/interactionOverlay).
+ *
+ * Content is the default slot: non-interactive presentation only (labels, icons,
+ * descriptions, Kbd shortcuts) — options cannot hold buttons or links.
+ * Inside CommandPalette the palette owns identity (index ids), highlight
+ * (`aria-activedescendant` + `data-highlighted`), selection (`aria-selected`,
+ * `data-selected`) and activation. Standalone, `isHighlighted` / `isSelected` set the visual
+ * state and a click dispatches `astryx-select` `{value}` on the item (Astryx `onSelect`); there is
+ * no composite keyboard model.
+ *
+ * Theme hook: `.astryx-command-palette-item[data-highlighted][data-selected][data-disabled]`.
+ * Deferred (touch extra): the coarse-pointer press controller.
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './CommandPalette.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Unique value for identification and selection. */
+  value: string;
+  /** Visually highlighted (keyboard focus). @default false */
+  isHighlighted?: boolean;
+  /** Selected (picker mode). @default false */
+  isSelected?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+}
+
+const {value, isHighlighted = false, isSelected = false, isDisabled = false, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const {themeClass, attrs} = themeProps('command-palette-item', {
+  highlighted: isHighlighted ? 'highlighted' : null,
+  selected: isSelected ? 'selected' : null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+---
+<div
+  {...rest}
+  role="option"
+  aria-selected={isSelected ? 'true' : 'false'}
+  aria-disabled={isDisabled ? 'true' : undefined}
+  data-value={value}
+  data-ax-command-palette-item=""
+  data-ax-highlighted={isHighlighted ? '' : undefined}
+  class={cx(themeClass, !isDisabled && 'ax-overlay-bg', className as string | undefined)}
+  {...attrs}
+  style={mergeStyles(style as StyleValue)}
+><slot /></div>
+<script>import '../../elements/command-palette';</script>

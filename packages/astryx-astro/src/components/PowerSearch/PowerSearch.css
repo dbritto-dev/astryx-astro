@@ -1,0 +1,79 @@
+/*
+ * Port of @astryxdesign/core PowerSearch/PowerSearch.tsx (tokenValueStyles, popoverLayerStyles,
+ * resultCountStyles), PowerSearch/PowerSearchToken.tsx (tokenValueStyles) and
+ * PowerSearch/PowerSearchEditPopover.tsx (styles: container, content, chipRow, chipRowWrapped,
+ * footer, fieldSelector, operatorSelector, valueEditor, valueEditorFullWidth) +
+ * PowerSearchValueEditor.tsx (the date + time HStack). The field itself is Tokenizer's.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-power-search { display: block; }
+
+  /* tokenValueStyles: a token's value reads bold after its "Field: operator" label */
+  .ax-power-search-token-value { font-weight: var(--font-weight-bold); }
+
+  /* resultCountStyles */
+  .ax-power-search-result-count {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+  .ax-power-search-result-count[hidden] { display: none; }
+
+  /* popoverLayerStyles: as wide as the field, with a floor for comfortable editing that the
+     layer runtime's viewport cap clamps (AST-059 FR7). */
+  .ax-layer.ax-power-search-layer {
+    width: anchor-size(width);
+    min-width: min(400px, var(--_ax-max-inline-size, calc(100vw - 2 * var(--spacing-4))));
+  }
+  .ax-layer.ax-power-search-layer[data-astryx-rect] { width: var(--_ax-anchor-width, auto); }
+  .ax-power-search-surface { width: 100%; }
+
+  /* ── The editor (PowerSearchEditPopover styles) ───────────────────────── */
+  .ax-power-search-editor {
+    display: block;
+    overflow: hidden;
+    container-type: inline-size;
+  }
+  .ax-power-search-editor-content { padding: var(--spacing-4); }
+  .ax-power-search-chip-row {
+    display: flex;
+    gap: var(--spacing-2);
+    flex-wrap: nowrap;
+  }
+  /* Below the 400px floor the row wraps (a container query: the width the popover got). */
+  @container (max-width: 399px) {
+    .ax-power-search-chip-row { flex-wrap: wrap; }
+  }
+  /* A date-and-time value is two inputs wide: the row wraps and the value takes a line. */
+  .ax-power-search-chip-row[data-ax-wrapped] { flex-wrap: wrap; }
+  .ax-power-search-field-cell { flex-grow: 1; flex-shrink: 1; min-width: 0; }
+  .ax-power-search-operator-cell { flex-grow: 1; flex-shrink: 0; max-width: 100%; }
+  .ax-power-search-value-cell { flex-grow: 2; min-width: 0; }
+  .ax-power-search-value-cell[data-ax-full] { flex-basis: 100%; }
+  .ax-power-search-operator-cell[hidden],
+  .ax-power-search-value-cell[hidden],
+  .ax-power-search-editor-footer[hidden],
+  .ax-power-search-footer-start[hidden] { display: none; }
+  .ax-power-search-editor-footer {
+    padding: var(--spacing-3);
+    padding-top: 0;
+  }
+  .ax-power-search-footer-row {
+    display: flex;
+    gap: var(--spacing-2);
+    justify-content: space-between;
+  }
+  .ax-power-search-footer-actions {
+    display: flex;
+    gap: var(--spacing-2);
+    margin-inline-start: auto;
+  }
+  .ax-power-search-date-time {
+    display: flex;
+    gap: var(--spacing-2);
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,89 @@
+---
+/**
+ * CommandPaletteInput — the palette's search row: a search icon, the query field and an end
+ * lane (the delayed busy Spinner, then `endContent`). Port of @astryxdesign/core
+ * CommandPalette/CommandPaletteInput.tsx (+ Field/textEntryTraits.ts, focusOutline).
+ *
+ * Inside CommandPalette (rendered by default, or passed in its `input` slot) the field is the
+ * palette's `role="combobox"` (`aria-autocomplete="list"`, `aria-controls` / `aria-expanded`
+ * only while the list holds results, `aria-activedescendant` for the highlighted command) and
+ * `<ax-command-palette>` drives it; it takes focus when the palette opens (`data-autofocus`,
+ * not in an inline preview). Standalone it is a `role="searchbox"` (a `combobox` when you pass
+ * popup attributes such as `aria-controls`) — listen for native `input` events.
+ * The focus ring shows only after keyboard input (text fields match :focus-visible on pointer
+ * focus in Chromium). Placeholder text never names the field: `label` does.
+ *
+ * Theme hook: `.astryx-command-palette-input`.
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {textEntryTraitAttributes} from '../Field/fieldProps';
+import {COMMAND_PALETTE_LOCALS_KEY, type CommandPaletteContext} from './context';
+import './CommandPalette.css';
+
+export interface Props extends Omit<HTMLAttributes<'input'>, 'value'> {
+  /** Initial query (Astryx `value`; the palette owns it inside CommandPalette). */
+  value?: string;
+  /** @default translated "Search…" */
+  placeholder?: string;
+  /** Accessible name of the field. @default translated "Search commands" */
+  label?: string;
+  /** Focus the field when shown (the palette's open, or page load standalone). @default true */
+  hasAutoFocus?: boolean;
+  locale?: string;
+}
+
+const {
+  value,
+  placeholder: placeholderProp,
+  label,
+  hasAutoFocus = true,
+  locale,
+  class: className,
+  style,
+  slot: _slot,
+  role: roleProp,
+  __ctx,
+  ...rest
+} = Astro.props as Props & {slot?: string; __ctx?: CommandPaletteContext};
+const t = translator(Astro, locale);
+const ctx = __ctx ?? (Astro.locals as Record<string, unknown>)[COMMAND_PALETTE_LOCALS_KEY] as CommandPaletteContext | null | undefined ?? null;
+const placeholder = placeholderProp ?? t('@astryx.commandPalette.input.placeholder');
+const accessibleLabel = (rest['aria-label'] as string | undefined) ?? label ?? t('@astryx.commandPalette.input.label');
+const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
+// Standalone: a caller that sets popup attributes owns a combobox; else a searchbox.
+const ownsPopup = !ctx && (roleProp === 'combobox' || 'aria-expanded' in rest || 'aria-autocomplete' in rest || 'aria-controls' in rest
+  || 'aria-owns' in rest || 'aria-activedescendant' in rest || (rest['aria-haspopup'] != null && String(rest['aria-haspopup']) !== 'false'));
+const role = ctx ? 'combobox' : roleProp ?? (ownsPopup ? 'combobox' : 'searchbox');
+const autoFocus = hasAutoFocus && ctx?.isInline !== true;
+const {themeClass, attrs} = themeProps('command-palette-input');
+---
+<div class={cx(themeClass, className as string | undefined)} {...attrs} style={mergeStyles(style as StyleValue)}>
+  <span class="ax-command-palette-icon"><Icon icon="search" size="sm" color="inherit" /></span>
+  <input
+    {...rest}
+    type="text"
+    class="ax-command-palette-native ax-focus-suppressed"
+    {...textEntryTraitAttributes({enterKeyHint: 'search', hasAutoCorrect: false})}
+    autocomplete="off"
+    role={role}
+    aria-expanded={ctx ? String(ctx.hasListbox && ctx.isOpen) : (rest['aria-expanded'] ?? (ownsPopup ? 'true' : undefined))}
+    aria-autocomplete={ctx ? 'list' : (rest['aria-autocomplete'] ?? (ownsPopup ? 'list' : undefined))}
+    aria-controls={ctx ? (ctx.hasListbox ? ctx.listId : undefined) : rest['aria-controls']}
+    aria-label={accessibleLabel}
+    placeholder={placeholder}
+    value={value}
+    autofocus={!ctx && autoFocus ? true : undefined}
+    data-autofocus={autoFocus ? '' : undefined}
+    data-ax-command-palette-input=""
+  />
+  <span class="ax-command-palette-end" data-ax-end hidden={!endHtml || undefined}>
+    {ctx && <span class="ax-command-palette-icon ax-command-palette-spinner" data-ax-busy hidden><Spinner size="sm" aria-hidden="true" /></span>}
+    {endHtml && <Fragment set:html={endHtml} />}
+  </span>
+</div>
+{!ctx && <script>import '../../elements/command-palette';</script>}

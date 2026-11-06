@@ -1,0 +1,33 @@
+---
+/**
+ * CommandPaletteFooter — the palette's footer: keyboard hints (↑ ↓ Navigate, ↵ Select,
+ * Esc Close, as Kbd) or your own content (the default slot inherits the supporting / secondary
+ * text treatment). Port of @astryxdesign/core CommandPalette/CommandPaletteFooter.tsx.
+ *
+ * Theme hook: `.astryx-command-palette-footer`.
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Kbd from '../Kbd/Kbd.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import './CommandPalette.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  locale?: string;
+}
+
+const {locale, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const custom = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+const {themeClass, attrs} = themeProps('command-palette-footer');
+---
+<div class={cx(themeClass, className as string | undefined)} {...attrs} style={mergeStyles(style as StyleValue)} {...rest}>
+  {custom ? <Fragment set:html={custom} /> : (
+    <>
+      <span class="ax-command-palette-hint"><Kbd keys="up" locale={locale} /><Kbd keys="down" locale={locale} />{t('@astryx.commandPalette.footer.navigate')}</span>
+      <span class="ax-command-palette-hint"><Kbd keys="enter" locale={locale} />{t('@astryx.commandPalette.footer.select')}</span>
+      <span class="ax-command-palette-hint"><Kbd keys="escape" locale={locale} />{t('@astryx.commandPalette.footer.close')}</span>
+    </>
+  )}
+</div>

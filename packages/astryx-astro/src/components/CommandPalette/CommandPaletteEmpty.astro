@@ -1,0 +1,22 @@
+---
+/**
+ * CommandPaletteEmpty — the empty state of the results area. Port of @astryxdesign/core
+ * CommandPalette/CommandPaletteEmpty.tsx. CommandPalette renders it for `emptyBootstrapText`
+ * (no query, nothing to show) and `emptySearchText` (a settled query found nothing; announced as
+ * rendered). An unbroken token in the message wraps anywhere (`overflow-wrap: anywhere`, and
+ * `--_astryx-text-overflow-wrap: anywhere` for Text inside). Render actionable content outside
+ * listbox/option semantics.
+ *
+ * Theme hook: `.astryx-command-palette-empty`.
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './CommandPalette.css';
+
+export interface Props extends HTMLAttributes<'div'> {}
+
+const {class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const {themeClass, attrs} = themeProps('command-palette-empty');
+---
+<div class={cx(themeClass, className as string | undefined)} {...attrs} style={mergeStyles(style as StyleValue)} {...rest}><slot /></div>

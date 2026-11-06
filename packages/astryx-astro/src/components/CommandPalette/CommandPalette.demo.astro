@@ -1,0 +1,138 @@
+---
+import CommandPalette, {createStaticSource, type SearchableItem} from './CommandPalette.astro';
+import CommandPaletteInput from './CommandPaletteInput.astro';
+import CommandPaletteList from './CommandPaletteList.astro';
+import CommandPaletteGroup from './CommandPaletteGroup.astro';
+import CommandPaletteItem from './CommandPaletteItem.astro';
+import CommandPaletteEmpty from './CommandPaletteEmpty.astro';
+import CommandPaletteFooter from './CommandPaletteFooter.astro';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import {attachDialog} from '../Dialog/attach';
+
+type Command = SearchableItem<{group?: string; icon?: string; shortcut?: string}>;
+const commands: Command[] = [
+  {id: 'new-file', label: 'New file', auxiliaryData: {group: 'Actions', icon: 'upload', shortcut: 'mod+n'}},
+  {id: 'search', label: 'Search files', auxiliaryData: {group: 'Actions', icon: 'search', shortcut: 'mod+p'}},
+  {id: 'copy-link', label: 'Copy link', auxiliaryData: {group: 'Actions', icon: 'copy', shortcut: 'mod+shift+c'}},
+  {id: 'home', label: 'Go to dashboard', auxiliaryData: {group: 'Navigation', icon: 'chevronRight'}},
+  {id: 'calendar', label: 'Open calendar', auxiliaryData: {group: 'Navigation', icon: 'calendar'}},
+  {id: 'settings', label: 'Settings', auxiliaryData: {group: 'Navigation', icon: 'wrench', shortcut: 'mod+,'}},
+  {id: 'theme', label: 'Toggle dark mode', auxiliaryData: {group: 'Preferences', icon: 'eyeSlash'}},
+  {id: 'help', label: 'Help and feedback', auxiliaryData: {icon: 'info'}},
+];
+const themes: SearchableItem[] = ['Neutral', 'Butter', 'Chocolate', 'Gothic', 'Matcha', 'Stone', 'Y2K'].map((label) => ({id: label.toLowerCase(), label}));
+const main = attachDialog({id: 'cp-main'});
+const asyncPalette = attachDialog({id: 'cp-async'});
+const picker = attachDialog({id: 'cp-picker'});
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const out = 'font-size:var(--text-supporting-size);color:var(--color-text-secondary)';
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Modal palette (button or the mod+K hotkey), grouped commands with shortcuts</h3>
+    <div style={row}>
+      <Button {...main.trigger} id="cp-open" label="Open command palette" variant="secondary" />
+      <Kbd keys="mod+k" />
+      <output id="cp-main-output" style={out}>Nothing run yet</output>
+    </div>
+    <CommandPalette
+      id={main.id}
+      hotkey="mod+k"
+      searchSource={createStaticSource(commands)}
+      data-testid="cp-main"
+      renderItem={(item) => {
+        const aux = item.auxiliaryData as Command['auxiliaryData'];
+        return (
+          <>
+            {aux?.icon && <Icon icon={aux.icon} size="sm" color="secondary" />}
+            <span style="flex:1">{item.label}</span>
+            {aux?.shortcut && <Kbd keys={aux.shortcut} />}
+          </>
+        );
+      }}
+      emptySearchText="No commands match"
+    />
+  </section>
+
+  <section>
+    <h3 style={cap}>Asynchronous source (the page answers astryx-query after 400 ms)</h3>
+    <div style={row}>
+      <Button {...asyncPalette.trigger} id="cp-async-open" label="Search people" variant="secondary" />
+      <output id="cp-async-output" style={out}></output>
+    </div>
+    <CommandPalette id={asyncPalette.id} label="People search" width={520} data-demo-async="400">
+      <CommandPaletteInput slot="input" placeholder="Search people…" label="Search people" />
+      <Fragment slot="emptyBootstrapText">Start typing a name</Fragment>
+      <CommandPaletteFooter slot="footer">Results come from a simulated server.</CommandPaletteFooter>
+    </CommandPalette>
+  </section>
+
+  <section>
+    <h3 style={cap}>Picker mode (value)</h3>
+    <div style={row}>
+      <Button {...picker.trigger} id="cp-picker-open" label="Choose theme" variant="secondary" />
+      <output id="cp-picker-output" style={out}>matcha</output>
+    </div>
+    <CommandPalette id={picker.id} label="Theme picker" value="matcha" searchSource={createStaticSource(themes)} maxHeight={360}
+      renderItem={(item, isSelected) => (
+        <>
+          <span style="flex:1">{item.label}</span>
+          {isSelected && <Icon icon="check" size="sm" color="primary" />}
+        </>
+      )} />
+  </section>
+
+  <section>
+    <h3 style={cap}>Inline preview (documentation only: no modal, no auto focus)</h3>
+    <CommandPalette id="cp-inline" isInline isOpen width="min(640px, 100%)" searchSource={createStaticSource(commands.slice(0, 5))} maxHeight={320}
+      emptySearchText="Nothing matched https://example.com/a/very/long/path/without/any/break/opportunity/for/the/browser/to/use">
+      <Fragment slot="footer"><CommandPaletteFooter>Inline previews close with Escape locally.</CommandPaletteFooter></Fragment>
+    </CommandPalette>
+  </section>
+
+  <section>
+    <h3 style={cap}>Standalone composition</h3>
+    <div style="display:grid;gap:var(--spacing-2);max-width:420px;border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container)">
+      <CommandPaletteInput id="cp-standalone-input" placeholder="Filter…" label="Filter commands" hasAutoFocus={false}>
+        <Kbd slot="endContent" keys="escape" />
+      </CommandPaletteInput>
+      <CommandPaletteList id="cp-standalone-list" label="Quick actions">
+        <CommandPaletteGroup heading="Recent">
+          <CommandPaletteItem value="open" isHighlighted>Open project</CommandPaletteItem>
+          <CommandPaletteItem value="share" isSelected>Share</CommandPaletteItem>
+          <CommandPaletteItem value="archive" isDisabled>Archive (unavailable)</CommandPaletteItem>
+        </CommandPaletteGroup>
+        <CommandPaletteItem value="log-out">Log out</CommandPaletteItem>
+      </CommandPaletteList>
+      <CommandPaletteEmpty>No recent commands</CommandPaletteEmpty>
+      <CommandPaletteFooter />
+    </div>
+  </section>
+</div>
+<script>
+  // Demo backend for the async palette and the output lines.
+  const PEOPLE = ['Ada Lovelace', 'Alan Kay', 'Barbara Liskov', 'Dieter Rams', 'Grace Hopper', 'Katherine Johnson', 'Margaret Hamilton', 'Susan Kare'];
+  document.addEventListener('astryx-query', (event) => {
+    const host = event.target as HTMLElement;
+    if (!host.matches('ax-command-palette') || !host.querySelector('dialog[data-demo-async]')) return;
+    const {query, kind, respond, signal} = (event as CustomEvent).detail;
+    event.preventDefault();
+    if (kind === 'bootstrap') { respond([]); return; }
+    const timer = setTimeout(() => respond(PEOPLE.filter((p) => p.toLowerCase().includes(query.toLowerCase()))
+      .map((label) => ({id: label.toLowerCase().replace(/\s+/g, '-'), label, auxiliaryData: {group: label < 'H' ? 'A–G' : 'H–Z'}}))), 400);
+    signal.addEventListener('abort', () => clearTimeout(timer));
+  });
+  const show = (dialogId: string, outId: string) => {
+    const host = document.getElementById(dialogId)?.closest('ax-command-palette');
+    host?.addEventListener('astryx-select', (e) => {
+      const out = document.getElementById(outId);
+      if (out) out.textContent = `Ran: ${(e as CustomEvent).detail.item.label} (${(e as CustomEvent).detail.value})`;
+    });
+  };
+  show('cp-main', 'cp-main-output');
+  show('cp-async', 'cp-async-output');
+  show('cp-picker', 'cp-picker-output');
+</script>

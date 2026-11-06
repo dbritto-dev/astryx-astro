@@ -1,0 +1,125 @@
+---
+import PowerSearch from './PowerSearch.astro';
+import PowerSearchToken from './PowerSearchToken.astro';
+import PowerSearchFilterEditor from './PowerSearchFilterEditor.astro';
+import Button from '../Button/Button.astro';
+import {createStaticSource} from '../Typeahead/createStaticSource';
+import {createPowerSearchConfig, type PowerSearchConfig, type PowerSearchFilter} from './powerSearchModel';
+import {ISSUES, ISSUE_FIELDS} from './demoData';
+
+// Fields from definitions (default operators per type), plus hand-written ones.
+const {config: base} = createPowerSearchConfig(ISSUE_FIELDS, 'IssueSearch');
+const people = ['Ada Lovelace', 'Grace Hopper', 'Margaret Hamilton', 'Alan Kay', 'Susan Kare'].map((label) => ({id: label.toLowerCase().replace(/\s+/g, '-'), label}));
+const config: PowerSearchConfig = {
+  name: 'IssueSearch',
+  contentSearchFieldKey: 'title',
+  fields: [
+    ...base.fields.map((field) => ({
+      ...field,
+      group: field.key === 'created' ? 'Dates' : field.key === 'archived' ? 'Flags' : undefined,
+      description: field.key === 'title' ? 'Words in the issue title' : field.key === 'status' ? 'Where the issue is in its workflow' : undefined,
+      typeaheadAliases: field.key === 'status' ? ['state'] : undefined,
+    })),
+    {
+      key: 'assignee', label: 'Assignee', icon: 'search', description: 'People the issue is assigned to',
+      operators: [{key: 'is_any_of', i18nKey: '@astryx.powersearch.operator.isAnyOf', value: {type: 'entity_list', searchSource: createStaticSource(people)}}],
+    },
+    {
+      key: 'reporter', label: 'Reporter',
+      operators: [{key: 'is', i18nKey: '@astryx.powersearch.operator.is', value: {type: 'string', searchSource: createStaticSource(people)}}],
+    },
+    {
+      key: 'component', label: 'Component', description: 'Suggestions answered by the page (astryx-query)',
+      operators: [{key: 'is', label: 'is', value: {type: 'string', hasSearchSource: true}}],
+    },
+    {key: 'priority', label: 'Priority', group: 'Numbers', operators: [
+      {key: 'is', label: 'is', value: {type: 'integer', minValue: 1, maxValue: 5}},
+      {key: 'at_least', label: 'is at least', value: {type: 'integer', minValue: 1, maxValue: 5}},
+    ]},
+    {key: 'updated', label: 'Updated', group: 'Dates', operators: [{key: 'within', label: 'within', value: {type: 'date_relative', isFutureAllowed: false}}]},
+    {key: 'due', label: 'Due', group: 'Dates', operators: [{key: 'at', label: 'at', value: {type: 'date_absolute', isDateOnly: false}}]},
+    {key: 'standup', label: 'Standup time', group: 'Dates', operators: [{key: 'is', label: 'is', value: {type: 'time'}}]},
+    {key: 'tags', label: 'Tags', operators: [{key: 'is_any_of', i18nKey: '@astryx.powersearch.operator.isAnyOf', value: {type: 'string_list'}}]},
+    {key: 'team', label: 'Team', operators: [{key: 'is', label: 'is', value: {type: 'enum', values: [{value: 'core', label: 'Core'}, {value: 'web', label: 'Web'}]}}]},
+  ],
+};
+const initial: PowerSearchFilter[] = [
+  {field: 'status', operator: 'is', value: {type: 'enum', value: 'open'}},
+  {field: 'labels', operator: 'is_any_of', value: {type: 'enum_list', value: ['bug', 'ui']}},
+  {field: 'team', operator: 'is', value: {type: 'enum', value: 'core'}, isReadOnly: true},
+];
+const simple = createPowerSearchConfig([
+  {key: 'name', type: 'string', label: 'Name'},
+  {key: 'age', type: 'number', label: 'Age'},
+  {key: 'active', type: 'boolean', label: 'Active'},
+] as const).config;
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Issue search: fields, operators, values, content search, read-only filter, result count</h3>
+    <PowerSearch id="ps-main" config={config} filters={initial} resultCount={ISSUES.filter((i) => i.status === 'open' && i.team === 'core' && i.labels.some((l) => l === 'bug' || l === 'ui')).length}
+      timezoneID="UTC" startIcon="search" data-testid="ps-main-input">
+      <Button slot="endContent" label="Save view" variant="ghost" size="sm" />
+    </PowerSearch>
+    <ul id="ps-main-results" style="margin:var(--spacing-3) 0 0;padding-inline-start:var(--spacing-5);font-size:var(--text-supporting-size);color:var(--color-text-secondary)"></ul>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes, states, overflow</h3>
+    <div style={grid}>
+      <PowerSearch id="ps-sm" size="sm" config={simple} filters={[{field: 'age', operator: 'greater_than', value: {type: 'float', value: 30}}]} label="Small search" />
+      <PowerSearch id="ps-lg" size="lg" config={simple} placeholder="Filter people…" isLabelHidden={false} label="Large, visible label" />
+      <PowerSearch id="ps-readonly" config={simple} isReadOnly filters={[{field: 'name', operator: 'contains', value: {type: 'string', value: 'ada'}}]} label="Read-only" />
+      <PowerSearch id="ps-disabled" config={simple} isDisabled disabledMessage="Sign in to filter" filters={[{field: 'active', operator: 'is_true', value: {type: 'empty'}}]} label="Disabled" />
+      <PowerSearch config={simple} status={{type: 'error', message: 'Add at least one filter'}} label="With status" />
+      <PowerSearch id="ps-overflow" config={config} tokenOverflowBehavior="unfocusedInline" filters={initial} resultCount="Many results" label="Folded" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>PowerSearchToken and PowerSearchFilterEditor on their own</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-2);margin-block-end:var(--spacing-3)">
+      <PowerSearchToken config={config} filter={initial[0]} isClickable isRemovable />
+      <PowerSearchToken config={config} filter={{field: 'created', operator: 'after', value: {type: 'date_absolute', unixSeconds: 1767225600}}} timezoneID="UTC" />
+      <PowerSearchToken config={config} filter={{field: 'tags', operator: 'is_any_of', value: {type: 'string_list', value: ['frontend', 'accessibility', 'performance', 'documentation']}}} maxLength={30} size="sm" />
+      <PowerSearchToken config={config} filter={initial[2]} isDisabled />
+    </div>
+    <div style="max-width:520px;border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container)">
+      <PowerSearchFilterEditor id="ps-editor" config={config} filter={{field: 'priority', operator: 'is', value: {type: 'integer', value: 2}}} mode="edit" saveButtonLabel="Save filter" />
+    </div>
+    <output id="ps-editor-output" style="display:block;margin-block-start:var(--spacing-2);font-size:var(--text-supporting-size);color:var(--color-text-secondary)"></output>
+  </section>
+</div>
+<script>
+  import {createPowerSearchConfig} from './powerSearchModel';
+  import {ISSUES, ISSUE_FIELDS} from './demoData';
+
+  const {applyFilters} = createPowerSearchConfig(ISSUE_FIELDS);
+  const root = document.getElementById('ps-main') as (HTMLElement & {resultCount: number | null; filters: unknown[]}) | null;
+  const list = document.getElementById('ps-main-results');
+  const show = (filters: unknown[]) => {
+    const rows = applyFilters(filters as never, ISSUES as never[]) as typeof ISSUES;
+    if (root) root.resultCount = rows.length;
+    if (list) list.innerHTML = rows.slice(0, 5).map((r) => `<li>${r.title} — ${r.status}</li>`).join('');
+  };
+  root?.addEventListener('astryx-change', (e) => {
+    if (e.target === root) show((e as CustomEvent).detail.filters);
+  });
+  if (root) show(root.filters);
+  // The Component field's value suggestions come from the page.
+  const COMPONENTS = ['Button', 'Dialog', 'PowerSearch', 'Selector', 'Tokenizer', 'Typeahead'];
+  document.addEventListener('astryx-query', (event) => {
+    const host = event.target as HTMLElement;
+    if (!host.closest('ax-power-search-editor') || !host.matches('ax-typeahead')) return;
+    const {query, respond, signal} = (event as CustomEvent).detail;
+    event.preventDefault();
+    const timer = setTimeout(() => respond(COMPONENTS.filter((c) => c.toLowerCase().includes(query.toLowerCase())).map((label) => ({id: label, label}))), 200);
+    signal.addEventListener('abort', () => clearTimeout(timer));
+  });
+  const editor = document.getElementById('ps-editor');
+  const out = document.getElementById('ps-editor-output');
+  editor?.addEventListener('astryx-save', (e) => { if (out) out.textContent = `astryx-save ${JSON.stringify((e as CustomEvent).detail.filter)}`; });
+  editor?.addEventListener('astryx-cancel', () => { if (out) out.textContent = 'astryx-cancel'; });
+</script>

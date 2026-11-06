@@ -1,0 +1,80 @@
+---
+/**
+ * PowerSearchToken — the default token pill of a PowerSearch filter: "Field: operator" as the
+ * label and the formatted value, bold, as the token's end content. Port of @astryxdesign/core
+ * PowerSearch/PowerSearchToken.tsx (formatFilterValue, resolveOperatorLabel). Use it as the base
+ * of a custom filter token; PowerSearch renders its own built-in variant.
+ *
+ * `isClickable` (Astryx `onClick`) makes the token a button (listen for `click` on its
+ * `.ax-token-action`), `isRemovable` (Astryx `onRemove`) adds the ✕ (`astryx-remove`).
+ *
+ * @example
+ * <PowerSearchToken config={config} filter={{field: 'status', operator: 'is', value: {type: 'enum', value: 'open'}}} isRemovable />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Token from '../Token/Token.astro';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {
+  createInternalConfig,
+  formatFilterValue,
+  resolveOperatorLabel,
+  withResolvedLabels,
+  type PowerSearchConfig,
+  type PowerSearchField,
+  type PowerSearchFilter,
+  type PowerSearchOperator,
+} from './powerSearchModel';
+import './PowerSearch.css';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'color'> {
+  config: PowerSearchConfig;
+  filter: PowerSearchFilter;
+  /** @default the config's field */
+  field?: PowerSearchField;
+  /** @default the config's operator */
+  operator?: PowerSearchOperator;
+  /** Max display length of the value. @default 40 */
+  maxLength?: number;
+  /** A clickable token (Astryx onClick). @default false */
+  isClickable?: boolean;
+  /** The remove button (Astryx onRemove). @default false */
+  isRemovable?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** IANA zone date values read in (see PowerSearch). */
+  timezoneID?: string;
+  /** @default 'md' */
+  size?: 'sm' | 'md' | 'lg';
+  locale?: string;
+}
+
+const {
+  config: configProp, filter, field: fieldProp, operator: operatorProp, maxLength = 40, isClickable = false,
+  isRemovable = false, isDisabled = false, timezoneID, size = 'md', locale: localeProp, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, localeProp);
+const locale = resolveLocale(Astro, localeProp);
+const config = createInternalConfig(withResolvedLabels(configProp, t));
+const field = fieldProp ?? config.getField(filter.field);
+const operator = operatorProp ?? config.getOperator(filter.field, filter.operator);
+const fieldLabel = field?.label ?? filter.field;
+const resolvedOperator = operator ? resolveOperatorLabel(operator, t) : '';
+const tokenLabel = `${fieldLabel}${resolvedOperator ? `: ${resolvedOperator}` : ''}`;
+const plural = (key: string) => (count: number) => t(key, {count});
+const value = operator
+  ? formatFilterValue(operator.value, filter.value, Math.max(maxLength - fieldLabel.length - resolvedOperator.length, 10), {
+      locale,
+      timezoneID,
+      calendar: (Astro.locals as {astryxCalendar?: never}).astryxCalendar,
+      messages: {
+        itemsCount: plural('@astryx.powersearch.valueEditor.itemsCount'),
+        entitiesCount: plural('@astryx.powersearch.valueEditor.entitiesCount'),
+        filtersCount: plural('@astryx.powersearch.valueEditor.filtersCount'),
+        dateRange: t('@astryx.powersearch.valueEditor.dateRange'),
+      },
+    })
+  : '';
+---
+<Token {...rest} label={tokenLabel} size={size} interactiveRole={isClickable ? 'button' : undefined} isRemovable={isRemovable} isDisabled={isDisabled} locale={localeProp}>
+  {value && <Fragment slot="endContent"><span class="ax-power-search-token-value">{value}</span></Fragment>}
+</Token>

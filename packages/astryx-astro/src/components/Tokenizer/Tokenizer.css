@@ -1,0 +1,168 @@
+/*
+ * Port of @astryxdesign/core Tokenizer/Tokenizer.tsx (styles, sizeStyles, endSectionSizeStyles,
+ * truncatedSizeStyles, layerPlaceholderSizeStyles), Tokenizer/useEndLaneReserve.ts
+ * (reserveStyles) and Field/inputDisabledFocus.ts (nestedRing). The bordered box is the shared
+ * `.ax-input` (Field/Field.css: inputWrapperStyles base, disabled, status border/hover/focus);
+ * the input is BaseTypeahead's (`.ax-typeahead-input`, Typeahead/Typeahead.css) with the
+ * Tokenizer's inputXStyle overrides. Rule groups follow the React stylex.props() order; selectors
+ * carry `[data-size]` to out-rank `.ax-input`'s base declarations.
+ *
+ * `--_tokenizer-end-lane-reserve` (inherits) is published on the box by the element when the
+ * absolutely positioned end lane has a width: `calc(var(--spacing-2) + <lane width>px)`.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── styles.wrapper ─────────────────────────────────────────────────────── */
+  .astryx-tokenizer[data-size] {
+    position: relative;
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+    height: auto;
+  }
+  .astryx-tokenizer[data-size]:not([data-disabled]) { cursor: text; }
+  .astryx-tokenizer[data-size]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* wrapperWithTokens: concentric token radius; every row stops short of the end lane */
+  .astryx-tokenizer[data-size][data-ax-has-tokens] {
+    padding-block: calc(var(--spacing-1) - 1px);
+    padding-inline: calc(var(--spacing-1) - 1px);
+    padding-inline-end: calc(calc(var(--spacing-1) - 1px) + var(--_tokenizer-end-lane-reserve, 0px));
+    row-gap: calc(var(--spacing-1) - 1px);
+  }
+
+  /* sizeStyles (min height) / truncatedSizeStyles + truncatedWrapper (one folded row) */
+  .astryx-tokenizer[data-size="sm"] { min-height: var(--size-element-sm); }
+  .astryx-tokenizer[data-size="md"] { min-height: var(--size-element-md); }
+  .astryx-tokenizer[data-size="lg"] { min-height: var(--size-element-lg); }
+  .astryx-tokenizer[data-size="sm"][data-ax-truncated] { height: var(--size-element-sm); }
+  .astryx-tokenizer[data-size="md"][data-ax-truncated] { height: var(--size-element-md); }
+  .astryx-tokenizer[data-size="lg"][data-ax-truncated] { height: var(--size-element-lg); }
+  .astryx-tokenizer[data-size][data-ax-truncated] {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  /* layerPlaceholderSizeStyles: the unfocusedLayer field keeps one row's height */
+  .astryx-tokenizer[data-size][data-ax-placeholder-box] { flex-wrap: nowrap; overflow: hidden; }
+  .astryx-tokenizer[data-size="sm"][data-ax-placeholder-box] { height: var(--size-element-sm); }
+  .astryx-tokenizer[data-size="md"][data-ax-placeholder-box] { height: var(--size-element-md); }
+  .astryx-tokenizer[data-size="lg"][data-ax-placeholder-box] { height: var(--size-element-lg); }
+  /* The folded field shows its icon and tokens only while folded (the overlay has its own). */
+  .astryx-tokenizer[data-ax-placeholder-box]:not([data-ax-truncated]) > .ax-tokenizer-start-icon { display: none; }
+
+  /* nestedRing: a disabled field rings while its (aria-disabled) input has keyboard focus */
+  .astryx-tokenizer.ax-input[data-size][data-disabled] { border-color: var(--color-border-emphasized); box-shadow: none; }
+  .astryx-tokenizer.ax-input[data-size][data-disabled]:has(input[aria-disabled="true"]:focus-visible) {
+    border-color: var(--color-accent);
+    box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted);
+  }
+  .astryx-tokenizer.ax-input[data-size][data-disabled][data-status="warning"] { border-color: var(--color-border-warning); }
+  .astryx-tokenizer.ax-input[data-size][data-disabled][data-status="error"] { border-color: var(--color-border-error); }
+  .astryx-tokenizer.ax-input[data-size][data-disabled][data-status="success"] { border-color: var(--color-border-success); }
+  @media (forced-colors: active) {
+    .astryx-tokenizer.ax-input[data-size][data-disabled]:has(input[aria-disabled="true"]:focus-visible) { border-color: Highlight; }
+  }
+
+  /* startIconWithTokens: restore the 8px inset the token padding removed */
+  .ax-tokenizer-start-icon { display: inline-flex; flex-shrink: 0; }
+  .astryx-tokenizer[data-ax-has-tokens] > .ax-tokenizer-start-icon {
+    margin-inline-start: calc(var(--spacing-2) - var(--spacing-1) + 1px);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* styles.token: a renderToken wrapper sizes to its content, capped at the row */
+  .ax-tokenizer-token {
+    display: flex;
+    flex-shrink: 0;
+    max-width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .ax-tokenizer-token[data-ax-overflow-hidden] { display: none; }
+
+  /* styles.endSection + endSectionSizeStyles: pinned to the first row's centre */
+  .ax-tokenizer-end-lane {
+    position: absolute;
+    inset-inline-end: var(--spacing-2);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex-shrink: 0;
+    z-index: 1;
+    transform: translateY(-50%);
+  }
+  .ax-tokenizer-end-lane[data-size="sm"] { top: calc(var(--size-element-sm) / 2 - 1px); }
+  .ax-tokenizer-end-lane[data-size="md"] { top: calc(var(--size-element-md) / 2 - 1px); }
+  .ax-tokenizer-end-lane[data-size="lg"] { top: calc(var(--size-element-lg) / 2 - 1px); }
+  .ax-tokenizer-end-lane[hidden] { display: none; }
+  .astryx-spinner[data-ax-tokenizer-spinner][hidden] { display: none; }
+  /* styles.idleSpinner: mounted, unrendered, not animating; keeps its themed box */
+  .astryx-spinner[data-ax-tokenizer-spinner][data-ax-idle] {
+    visibility: hidden;
+    content-visibility: hidden;
+  }
+
+  /* ── The input (inputXStyle) ───────────────────────────────────────────── */
+  /* One of three (Astryx picks a single inputXStyle): inputAtMax while at the limit or folded,
+     else inputCompact beside tokens, else the lane reserve of an empty field. */
+  /* laneReserve: an empty Tokenizer's text stops short of the lane */
+  .astryx-tokenizer:not([data-ax-has-tokens]) .ax-tokenizer-input:not([data-ax-at-max]) {
+    padding-inline-end: var(--_tokenizer-end-lane-reserve, 0px);
+  }
+  /* inputCompact: the input follows the last token in flow */
+  .astryx-tokenizer[data-ax-has-tokens]:not([data-ax-truncated]) .ax-tokenizer-input:not([data-ax-at-max]) {
+    position: relative;
+    box-sizing: border-box;
+    z-index: 0;
+    min-width: 40px;
+    flex: 1 1 40px;
+    width: 0;
+    margin-inline-start: 0;
+    padding-inline-start: calc(var(--spacing-2) - var(--spacing-1) + 1px);
+    padding-inline-end: 0;
+  }
+  .astryx-tokenizer[data-ax-has-tokens]:not([data-ax-truncated]) .ax-tokenizer-input:not([data-ax-at-max]):placeholder-shown {
+    min-width: 0;
+    flex: 1 1 0px;
+  }
+  .astryx-tokenizer[data-ax-has-tokens]:not([data-ax-truncated]) .ax-tokenizer-input:not([data-ax-at-max]):placeholder-shown:is(:not(:focus), :read-only) {
+    margin-inline-start: calc(-1 * var(--spacing-1));
+    padding-inline-start: 0;
+  }
+  /* inputAtMax (also while folded): collapsed out of flow, still focusable */
+  .astryx-tokenizer .ax-tokenizer-input[data-ax-at-max],
+  .astryx-tokenizer[data-ax-truncated] .ax-tokenizer-input {
+    width: 0;
+    min-width: 0;
+    flex: 0 0 0;
+    padding: 0;
+    opacity: 0;
+    position: absolute;
+  }
+
+  /* styles.overflowText: "+N more" */
+  .ax-tokenizer-overflow {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: var(--text-supporting-size);
+    color: var(--color-text-secondary);
+    padding-inline: var(--spacing-1);
+  }
+  .ax-tokenizer-overflow[hidden] { display: none; }
+
+  /* styles.layerPopover: the expanded field over the folded one (unfocusedLayer) */
+  .ax-tokenizer-overlay.ax-layer {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+    top: anchor(top);
+    left: anchor(left);
+    width: anchor-size(width);
+  }
+  .ax-tokenizer-overlay > .astryx-tokenizer { width: 100%; }
+}

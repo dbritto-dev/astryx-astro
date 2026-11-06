@@ -1,0 +1,129 @@
+---
+import Tokenizer, {createStaticSource, type SearchableItem, type TokenizerSize} from './Tokenizer.astro';
+import TypeaheadItem from '../Typeahead/TypeaheadItem.astro';
+import Token from '../Token/Token.astro';
+import Badge from '../Badge/Badge.astro';
+import Button from '../Button/Button.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: TokenizerSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Pick at least one reviewer',
+  warning: 'Two reviewers are out this week',
+  success: 'Reviewers notified',
+};
+type Person = SearchableItem<{role: string; group: string; color: string}>;
+const people: Person[] = [
+  {id: 'ada', label: 'Ada Lovelace', auxiliaryData: {role: 'Engineering', group: 'Engineering', color: 'purple'}},
+  {id: 'grace', label: 'Grace Hopper', auxiliaryData: {role: 'Compilers', group: 'Engineering', color: 'blue'}},
+  {id: 'margaret', label: 'Margaret Hamilton', auxiliaryData: {role: 'Apollo software', group: 'Engineering', color: 'teal'}},
+  {id: 'katherine', label: 'Katherine Johnson', auxiliaryData: {role: 'Trajectories', group: 'Research', color: 'green'}},
+  {id: 'dieter', label: 'Dieter Rams', auxiliaryData: {role: 'Industrial design', group: 'Design', color: 'orange'}},
+  {id: 'susan', label: 'Susan Kare', auxiliaryData: {role: 'Icons', group: 'Design', color: 'pink'}},
+  {id: 'alan', label: 'Alan Kay', auxiliaryData: {role: 'Research', group: 'Research', color: 'cyan'}},
+  {id: 'barbara', label: 'Barbara Liskov', auxiliaryData: {role: 'Abstraction', group: 'Research', color: 'red'}},
+];
+const peopleSource = createStaticSource(people);
+const tags: SearchableItem[] = ['Design', 'Engineering', 'Research', 'Marketing', 'Sales', 'Support', 'Legal', 'Finance', 'Operations', 'Security']
+  .map((label) => ({id: label.toLowerCase(), label}));
+const tagSource = createStaticSource(tags);
+const many = tags.slice(0, 8);
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Static source, create, limits</h3>
+    <div style={grid}>
+      <Tokenizer id="tk-people" label="Reviewers" searchSource={peopleSource} value={[people[0], people[1]]} placeholder="Search people…" debounceMs={0} hasClear description="Selected people leave the list"
+        renderItem={(item) => <TypeaheadItem item={item} description={(item.auxiliaryData as {role: string}).role} />} />
+      <Tokenizer id="tk-tags" label="Tags" searchSource={tagSource} hasCreate placeholder="Add tags…" debounceMs={0} />
+      <Tokenizer id="tk-max" label="Up to three" searchSource={tagSource} maxEntries={3} value={tags.slice(0, 2)} debounceMs={0} hasEntriesOnFocus description="maxEntries={3}, entries on focus" />
+      <Tokenizer id="tk-min" label="Two characters" searchSource={tagSource} minQueryLength={2} hasCreate debounceMs={0} placeholder="Type 2+ characters" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Asynchronous source (the page answers astryx-query)</h3>
+    <div style={grid}>
+      <Tokenizer id="tk-async" label="Countries (async)" placeholder="Search countries…" data-demo-async="300" description="Answered after 300 ms" />
+      <Tokenizer id="tk-async-empty" label="Nothing matches" placeholder="Anything" data-demo-async="0" data-demo-empty="" debounceMs={0}>
+        <Fragment slot="emptySearchText">No records for that query — <em>try another</em></Fragment>
+      </Tokenizer>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Token overflow</h3>
+    <div style={grid}>
+      <Tokenizer id="tk-inline" label="Folded inline" searchSource={tagSource} value={many} tokenOverflowBehavior="unfocusedInline" debounceMs={0} width={280} />
+      <Tokenizer id="tk-layer" label="Folded, expands over the page" searchSource={tagSource} value={many} tokenOverflowBehavior="unfocusedLayer" debounceMs={0} width={280} />
+      <Tokenizer label="Wrapping (none)" searchSource={tagSource} value={many} debounceMs={0} width={280} hasClear />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes × status</h3>
+    <div style={grid}>
+      {sizes.map((size) => <Tokenizer label={`Size ${size}`} size={size} searchSource={tagSource} value={tags.slice(0, 2)} hasClear />)}
+      {statuses.map((type) => sizes.map((size) => (
+        <Tokenizer label={`${type} ${size}`} size={size} searchSource={peopleSource} value={size === 'md' ? [people[4]] : []} status={{type, message: messages[type]}} placeholder="Search people…" />
+      )))}
+      <Tokenizer label="Detached status" searchSource={tagSource} status={{type: 'error', message: 'Required'}} statusVariant="detached" isRequired />
+      <Tokenizer label="Tooltip status" searchSource={tagSource} status={{type: 'warning', message: 'Check the tags'}} statusVariant="tooltip" value={[tags[0]]} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Custom tokens, icons, end content, states</h3>
+    <div style={grid}>
+      <Tokenizer id="tk-custom" label="Colored tokens" searchSource={peopleSource} value={[people[2], people[5]]} debounceMs={0}
+        renderToken={(item) => <Token label={item.label} color={(item.auxiliaryData as {color: string}).color} isRemovable />} />
+      <Tokenizer label="Start icon + end content" startIcon="search" searchSource={tagSource} value={[tags[3]]} isLabelHidden placeholder="Filter…">
+        <Badge slot="endContent" label="3" />
+      </Tokenizer>
+      <Tokenizer id="tk-disabled" label="Disabled" searchSource={tagSource} value={tags.slice(0, 2)} isDisabled disabledMessage="Locked by an administrator" hasClear />
+      <Tokenizer label="Disabled (no reason)" searchSource={tagSource} value={[tags[1]]} isDisabled />
+      <Tokenizer label="Optional, label tooltip" searchSource={tagSource} isOptional labelTooltip="Used to route the request" />
+      <Tokenizer label="Auto focus off, presentation popover" searchSource={tagSource} presentation="popover" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Form participation (htmlName)</h3>
+    <form id="tk-form" style={grid}>
+      <Tokenizer id="tk-form-tags" label="Tags" searchSource={tagSource} htmlName="tag" value={[tags[0], tags[2]]} debounceMs={0} hasCreate hasClear />
+      <div style="display:flex;gap:var(--spacing-2);align-items:center">
+        <Button type="reset" label="Reset" variant="secondary" />
+        <output id="tk-form-output" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  // Demo backend: answers `astryx-query` for the async examples.
+  const COUNTRIES = ['Argentina', 'Australia', 'Austria', 'Belgium', 'Bolivia', 'Brazil', 'Canada', 'Chile', 'Colombia', 'Costa Rica', 'Denmark', 'Ecuador', 'Finland', 'France', 'Germany', 'Peru', 'Portugal', 'Spain', 'Uruguay'];
+  const toItems = (list: string[]) => list.map((label) => ({id: label.toLowerCase(), label}));
+  document.addEventListener('astryx-query', (event) => {
+    const host = event.target as HTMLElement;
+    if (!host.matches('ax-tokenizer')) return;
+    const field = host.querySelector('input[role="combobox"]');
+    if (!field?.matches('[data-demo-async]')) return;
+    const {query, respond, signal} = (event as CustomEvent).detail;
+    event.preventDefault();
+    const delay = Number(field.getAttribute('data-demo-async') ?? 300);
+    const answer = () => respond(field.hasAttribute('data-demo-empty') ? [] : toItems(COUNTRIES.filter((c) => c.toLowerCase().includes(query.toLowerCase()))));
+    if (delay === 0) answer();
+    else {
+      const timer = setTimeout(answer, delay);
+      signal.addEventListener('abort', () => clearTimeout(timer));
+    }
+  });
+  const form = document.getElementById('tk-form') as HTMLFormElement | null;
+  const out = document.getElementById('tk-form-output');
+  const show = () => { if (form && out) out.textContent = new URLSearchParams(new FormData(form) as never).toString() || '(empty)'; };
+  form?.addEventListener('astryx-change', () => setTimeout(show, 0));
+  form?.addEventListener('reset', () => setTimeout(show, 10));
+  show();
+</script>
