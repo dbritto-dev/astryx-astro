@@ -1,0 +1,126 @@
+---
+import ComplexSelector, {type ComplexSelectorSize} from './ComplexSelector.astro';
+import Button from '../Button/Button.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: ComplexSelectorSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Pick a colour',
+  warning: 'Low contrast on dark surfaces',
+  success: 'Matches the brand palette',
+};
+const colours = [
+  {id: 'red', label: 'Red', css: 'var(--color-red, #d33)'},
+  {id: 'orange', label: 'Orange', css: 'var(--color-orange, #e80)'},
+  {id: 'yellow', label: 'Yellow', css: 'var(--color-yellow, #db0)'},
+  {id: 'green', label: 'Green', css: 'var(--color-green, #2a6)'},
+  {id: 'teal', label: 'Teal', css: 'var(--color-teal, #198)'},
+  {id: 'blue', label: 'Blue', css: 'var(--color-blue, #36c)'},
+  {id: 'purple', label: 'Purple', css: 'var(--color-purple, #84c)'},
+  {id: 'pink', label: 'Pink', css: 'var(--color-pink, #d4a)'},
+];
+const fruits = ['Apple', 'Banana', 'Mango'];
+const ripeness = ['Green', 'Ripe', 'Overripe'];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const swatchGrid = 'display:grid;grid-template-columns:repeat(4,2.25rem);gap:var(--spacing-2)';
+const swatch = (css: string) => `width:2.25rem;height:2.25rem;border-radius:var(--radius-element);border:2px solid transparent;background:${css};cursor:pointer;padding:0`;
+---
+<style>
+  .demo-swatch[aria-checked="true"] { outline: 2px solid var(--color-text-primary); outline-offset: 2px; }
+  .demo-swatch:focus-visible { outline: var(--focus-outline-width) var(--focus-outline-style) var(--focus-outline-color); outline-offset: var(--focus-outline-offset); }
+  .demo-matrix { border-collapse: collapse; font-size: var(--text-label-size); }
+  .demo-matrix th { font-weight: var(--font-weight-medium); color: var(--color-text-secondary); padding: var(--spacing-1) var(--spacing-2); text-align: start; }
+  .demo-matrix button { padding: var(--spacing-1) var(--spacing-2); border-radius: var(--radius-element); border: var(--border-width) solid var(--color-border); background: var(--color-background-surface); color: var(--color-text-primary); cursor: pointer; font: inherit; }
+  .demo-matrix button[aria-pressed="true"] { background: var(--color-accent-muted); border-color: var(--color-accent); }
+</style>
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>A colour matrix (radio group content, commit + close)</h3>
+    <div style={grid}>
+      <ComplexSelector id="cs-colour" label="Accent colour" value="teal" triggerLabel="Teal" description="Choose from the brand palette">
+        <div role="radiogroup" aria-label="Accent colour" style={swatchGrid} data-astryx-roving="both" data-astryx-roving-items='[role="radio"]'>
+          {colours.map((c) => (
+            <button type="button" role="radio" class="demo-swatch" aria-checked={c.id === 'teal' ? 'true' : 'false'} aria-label={c.label} title={c.label}
+              style={swatch(c.css)} data-ax-commit={JSON.stringify(c.id)} data-ax-commit-label={c.label} data-ax-close></button>
+          ))}
+        </div>
+      </ComplexSelector>
+      <ComplexSelector id="cs-matrix" label="Fruit and ripeness" value={{fruit: 'Mango', ripeness: 'Ripe'}} triggerLabel="Mango · Ripe">
+        <table class="demo-matrix" aria-label="Fruit by ripeness">
+          <thead><tr><th scope="col">Fruit</th>{ripeness.map((r) => <th scope="col">{r}</th>)}</tr></thead>
+          <tbody>
+            {fruits.map((f) => (
+              <tr>
+                <th scope="row">{f}</th>
+                {ripeness.map((r) => (
+                  <td><button type="button" aria-pressed={f === 'Mango' && r === 'Ripe' ? 'true' : 'false'} aria-label={`${f}, ${r}`}
+                    data-ax-commit={JSON.stringify({fruit: f, ripeness: r})} data-ax-commit-label={`${f} · ${r}`}>{r.slice(0, 1)}</button></td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div style="display:flex;justify-content:flex-end;margin-top:var(--spacing-3)">
+          <Button label="Done" size="sm" variant="secondary" data-ax-close />
+        </div>
+      </ComplexSelector>
+      <ComplexSelector label="Placeholder" placeholder="Pick a colour…" startIcon="search">
+        <p style="margin:0;font-size:var(--text-label-size)">Any content: a form, a grid, a calendar.</p>
+      </ComplexSelector>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes and variants</h3>
+    <div style={grid}>
+      {sizes.map((size) => (
+        <ComplexSelector label={`Size ${size}`} size={size} triggerLabel="Teal"><p style="margin:0">Content</p></ComplexSelector>
+      ))}
+      <ComplexSelector label="Secondary" variant="secondary" triggerLabel="Blue"><p style="margin:0">Content</p></ComplexSelector>
+      <ComplexSelector label="Ghost" variant="ghost" triggerLabel="Pink"><p style="margin:0">Content</p></ComplexSelector>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <ComplexSelector label={`${type} ${size}`} size={size} status={{type, message: messages[type]}}><p style="margin:0">Content</p></ComplexSelector>
+      )))}
+      <ComplexSelector label="Tooltip status" status={{type: 'warning', message: messages.warning}} statusVariant="tooltip" triggerLabel="Yellow"><p style="margin:0">Content</p></ComplexSelector>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, loading, custom trigger, placement</h3>
+    <div style={grid}>
+      <ComplexSelector id="cs-disabled" label="Disabled" isDisabled triggerLabel="Teal"><p style="margin:0">Content</p></ComplexSelector>
+      <ComplexSelector label="Loading" isLoading triggerLabel="Saving…"><p style="margin:0">Content</p></ComplexSelector>
+      <div>
+        <p style={cap}>Custom trigger (renderTrigger)</p>
+        <ComplexSelector id="cs-custom" label="Assignee">
+          <Button slot="trigger" label="Assign" icon="search" variant="secondary" />
+          <button type="button" data-ax-commit='"ada"' data-ax-close>Ada Lovelace</button>
+        </ComplexSelector>
+      </div>
+      <ComplexSelector label="Placement end" placement="end" alignment="start" triggerLabel="Opens beside"><p style="margin:0">Beside the trigger</p></ComplexSelector>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Open by default</h3>
+    <div style="min-height:200px">
+      <ComplexSelector label="Open on load" isDefaultOpen value="green" triggerLabel="Green">
+        <div role="radiogroup" aria-label="Open on load" style={swatchGrid} data-astryx-roving="both" data-astryx-roving-items='[role="radio"]'>
+          {colours.slice(0, 4).map((c) => (
+            <button type="button" role="radio" class="demo-swatch" aria-checked={c.id === 'green' ? 'true' : 'false'} aria-label={c.label} style={swatch(c.css)}
+              data-ax-commit={JSON.stringify(c.id)} data-ax-commit-label={c.label} data-ax-close></button>
+          ))}
+        </div>
+      </ComplexSelector>
+    </div>
+  </section>
+</div>
+<script>import '../../elements/runtime/roving';</script>

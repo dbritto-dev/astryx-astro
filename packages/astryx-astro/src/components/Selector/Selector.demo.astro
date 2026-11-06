@@ -1,0 +1,144 @@
+---
+import Selector, {type SelectorSize, type SelectorOptionType, type SelectorOptionData} from './Selector.astro';
+import SelectorOption from './SelectorOption.astro';
+import Button from '../Button/Button.astro';
+import InputGroup from '../InputGroup/InputGroup.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: SelectorSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Pick a fruit to continue',
+  warning: 'Seasonal: limited stock',
+  success: 'In stock',
+};
+const fruit = ['Apple', 'Banana', 'Cherry', 'Durian', 'Elderberry', 'Fig', 'Grape'];
+const grouped: SelectorOptionType[] = [
+  {type: 'section', title: 'Citrus', options: [{value: 'lemon', label: 'Lemon'}, {value: 'lime', label: 'Lime'}, {value: 'orange', label: 'Orange'}]},
+  {type: 'divider'},
+  {type: 'section', title: 'Berries', options: [{value: 'blueberry', label: 'Blueberry'}, {value: 'raspberry', label: 'Raspberry', disabled: true}, {value: 'strawberry', label: 'Strawberry'}]},
+  {type: 'divider'},
+  {value: 'other', label: 'Something else'},
+];
+const disabledOptions: SelectorOptionType[] = [
+  {value: 'free', label: 'Free'},
+  {value: 'pro', label: 'Pro', disabled: true, description: 'Contact sales'},
+  {value: 'team', label: 'Team'},
+  {value: 'enterprise', label: 'Enterprise', disabled: true},
+];
+const countries = [
+  'Argentina', 'Australia', 'Austria', 'Belgium', 'Bolivia', 'Brazil', 'Canada', 'Chile', 'China', 'Colombia', 'Costa Rica',
+  'Denmark', 'Ecuador', 'Egypt', 'Finland', 'France', 'Germany', 'Greece', 'India', 'Ireland', 'Italy', 'Japan', 'Kenya',
+  'Mexico', 'Netherlands', 'Norway', 'Paraguay', 'Peru', 'Portugal', 'Spain', 'Sweden', 'Switzerland', 'Uruguay', 'Venezuela',
+];
+const people: SelectorOptionData[] = [
+  {value: 'ada', label: 'Ada Lovelace', description: 'Engineering', icon: 'info'},
+  {value: 'grace', label: 'Grace Hopper', description: 'Compilers', icon: 'wrench'},
+  {value: 'alan', label: 'Alan Turing', description: 'Research', icon: 'search'},
+];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Sizes</h3>
+    <div style={grid} data-test="sizes">
+      {sizes.map((size) => <Selector label={`Fruit (${size})`} size={size} options={fruit} value="Banana" />)}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Variants</h3>
+    <div style="display:flex;gap:var(--spacing-4);flex-wrap:wrap;align-items:end">
+      <Selector label="Input" options={fruit} value="Apple" />
+      <Selector label="Secondary" variant="secondary" options={fruit} value="Cherry" />
+      <Selector label="Ghost" variant="ghost" options={fruit} placeholder="Choose…" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid} data-test="statuses">
+      {statuses.map((type) => sizes.map((size) => (
+        <Selector label={`${type} ${size}`} size={size} options={fruit} value="Fig" status={{type, message: messages[type]}} />
+      )))}
+      <Selector label="Tooltip status" options={fruit} status={{type: 'warning', message: messages.warning}} statusVariant="tooltip" />
+      <Selector label="Secondary + status" variant="secondary" options={fruit} status={{type: 'error', message: messages.error}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Forms: name, clear, search, required</h3>
+    <form id="selector-form" style={grid} data-test="form">
+      <Selector id="sel-form" label="Favourite fruit" options={fruit} value="Cherry" htmlName="fruit" hasClear isRequired />
+      <Selector id="sel-search" label="Country" options={countries} hasSearch hasClear htmlName="country" placeholder="Select a country" />
+      <Selector id="sel-empty" label="Nothing yet" options={[]} hasSearch />
+      <div style="display:flex;gap:var(--spacing-2);align-items:center;grid-column:1/-1">
+        <Button type="reset" label="Reset" variant="secondary" />
+        <output id="selector-form-output" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)"></output>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h3 style={cap}>Grouped options, disabled options, long list</h3>
+    <div style={grid}>
+      <Selector id="sel-grouped" label="Grouped" options={grouped} value="lime" />
+      <Selector id="sel-disabled-options" label="Plan" options={disabledOptions} value="free" indicatorPosition="start" />
+      <Selector id="sel-long" label="Country (long list)" options={countries} value="Peru" />
+      <Selector id="sel-above" label="Placement above" options={fruit} placement="above" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Custom rendering (option / value render slots), start icon</h3>
+    <div style={grid}>
+      <Selector
+        id="sel-custom"
+        label="Owner"
+        options={people}
+        value="grace"
+        renderOption={(o) => <SelectorOption label={o.label} description={o.description} icon={o.icon} />}
+        renderValue={(o) => <SelectorOption label={o.label} icon={o.icon} layout="inline" />}
+      />
+      <Selector label="With start icon" options={fruit} startIcon="search" value="Grape" />
+      <Selector label="Option icons" options={people} value="ada" description="The selected option's icon shows in the trigger" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, read-only, loading, open</h3>
+    <div style={grid}>
+      <Selector id="sel-disabled" label="Disabled" options={fruit} value="Apple" isDisabled htmlName="disabled" />
+      <Selector id="sel-disabled-message" label="Disabled with reason" options={fruit} isDisabled disabledMessage="You need the Editor role to change this" />
+      <Selector id="sel-readonly" label="Read-only" options={fruit} value="Banana" isReadOnly htmlName="readonly" />
+      <Selector label="Loading" options={[]} isLoading placeholder="Loading options…" />
+      <Selector label="Hidden label" isLabelHidden options={fruit} placeholder="Label is visually hidden" />
+      <Selector label="Described" description="Used for the weekly order" options={fruit} isOptional />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside an InputGroup</h3>
+    <InputGroup label="Amount">
+      <Selector label="Currency" options={['USD', 'EUR', 'PEN', 'COP']} value="PEN" />
+      <Button label="Convert" variant="secondary" />
+    </InputGroup>
+  </section>
+
+  <section>
+    <h3 style={cap}>Open by default</h3>
+    <div style="min-height:240px">
+      <Selector id="sel-open" label="Open on load" options={fruit} value="Cherry" isDefaultOpen placement="below" />
+    </div>
+  </section>
+</div>
+<script>
+  // Demo: show the form data as it changes (astryx-change + reset).
+  const form = document.getElementById('selector-form') as HTMLFormElement | null;
+  const out = document.getElementById('selector-form-output');
+  const show = () => { if (form && out) out.textContent = new URLSearchParams(new FormData(form) as never).toString(); };
+  form?.addEventListener('astryx-change', show);
+  form?.addEventListener('reset', () => setTimeout(show, 0));
+  show();
+</script>

@@ -355,3 +355,30 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - `{cond && <X slot="a" />}` registers slot `a` even when `cond` is false, so
   `Astro.slots.has('a')` is true with empty content. Check the rendered HTML (or trim it) before
   preferring a slot over a prop.
+## Selectors and comboboxes (Selector, MultiSelector, ComplexSelector, Typeahead)
+
+- Listbox comboboxes build on `elements/runtime/combobox.ts` (README section): `createCombobox`
+  (options, `data-ax-highlighted` / `data-ax-keyboard`, aria-activedescendant, hover hold,
+  focus kept in the field) + `handleComboboxKey` (`kind: 'select' | 'editable'`) + the
+  `<ax-combobox-layer>` root (`popover="auto"` for a button invoker, `"manual"` +
+  `data-ax-outside-press="dismiss"` for a text input) + `keepLayerOpenFor` (`data-ax-keep-open`).
+  Tokenizer, PowerSearch, CommandPalette and the DateInput/TimeInput lists should reuse it.
+- Option model: `components/Selector/options.ts` (strings, `{value,label,description,disabled,icon}`,
+  `{type:'divider'}`, `{type:'section',title,options}`); search row: `Selector/_PanelSearchInput.astro`.
+- Render props stay server-side functions with Astryx names: Selector `renderOption` /
+  `renderValue`, MultiSelector `renderOption`, Typeahead `renderItem` (named slots cannot carry
+  render functions in Astro); client rows use `el.renderItem`.
+- Events: Selector `astryx-change` {value|null}; MultiSelector `astryx-change` {values, change?}
+  (`change = {type:'create', query}`); ComplexSelector `astryx-change` {value}; Typeahead
+  `astryx-change` {value: item|null}, `astryx-change-query` {query}, `astryx-query` (async
+  source: claim with `preventDefault()`, answer `respond(items)`, `update(items)` partial,
+  `signal`, `reject()`). `astryx-open-change` comes from each layer.
+- ComplexSelector content commits with `data-ax-commit` (+ `data-ax-commit-label`,
+  `data-ax-close`), an `astryx-commit` event, or `el.commit(value, {label, close})`; a
+  `trigger` slot replaces Astryx `renderTrigger`.
+- Typeahead sources: `searchSource={createStaticSource(items, {keywords})}` (server-rendered,
+  `components/Typeahead/createStaticSource.ts`) → `el.searchSource` (client SearchSource) →
+  `astryx-query`.
+- Stand-in: MultiSelector's decorative checkbox is `<Indicator name="checkbox">` until
+  CheckboxInput lands. Deferred: BottomSheet presentation (`presentation` kept, popover
+  rendered), MultiSelector option `action` grid rows and `renderTrigger`, touch press models.

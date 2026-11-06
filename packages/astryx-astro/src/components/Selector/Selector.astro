@@ -1,0 +1,391 @@
+---
+/**
+ * Selector — a dropdown for choosing one value from a list. Port of @astryxdesign/core
+ * Selector/Selector.tsx, Selector/hooks.ts (useCombobox, useSelectedItemOffset),
+ * Selector/useSelectorPresentation.ts, Selector/selectorPresentation.stylex.ts,
+ * Selector/{types,optionShape,selectableOptionEntries,utils}.ts (./options.ts),
+ * Field/PanelSearchInput.tsx (./_PanelSearchInput.astro), Field/inputStyles.stylex.ts,
+ * Field/inputDisabledFocus.ts, hooks/useKeyboardHighlight.ts, hooks/useFocusReturnVisibility.ts,
+ * hooks/useHighlightedOptionScroll.ts, hooks/useTypeahead.ts, hooks/useBusyAnnouncement.ts,
+ * hooks/useAnnounceRenderedText.ts, privateAttributes/focusOwner.stylex.ts.
+ * Behaviour: src/elements/selector.ts on the shared runtime/combobox.ts controller.
+ *
+ * Markup: a Field-composed control box `<ax-selector class="astryx-selector">` holding a
+ * `<button role="combobox" aria-haspopup="listbox" popovertarget>` (the value), an optional
+ * hidden `<input name>` (form value, like a native select), spinner, clear button and the
+ * status icon or chevron; its sibling `<ax-combobox-layer popover="auto">` holds the
+ * `.astryx-selector-popup` surface with an optional search row and the `role="listbox"` of
+ * `role="option"` rows (sections are `role="group"` with an aria-hidden heading; dividers are
+ * aria-hidden). With `hasSearch` the search input is the combobox (aria-activedescendant
+ * there) and the trigger keeps no role, as in Astryx. Read-only keeps the combobox role with
+ * `aria-readonly` and renders no surface.
+ *
+ * Keyboard (useCombobox + useTypeahead): ↓/↑ open (first / last option) and move (clamped,
+ * disabled skipped), Enter/Space open on the selection or pick, Home/End/PageUp/PageDown
+ * first/last, Escape closes, Tab closes and moves on, Delete/Backspace clear a closed
+ * clearable selector, printable keys type-to-select (closed: commits the match like a native
+ * select and announces it; open: moves the highlight). With `hasSearch`, keys typed on the
+ * trigger open the list and seed the query; the search row keeps Space/Home/End for its text.
+ * The active option draws the focus ring only after keyboard input; keyboard moves scroll it
+ * into view, the pointer never does. Search announces "N results"; an empty panel announces its
+ * rendered message. Without `placement` (and without search) the open list puts the selected
+ * option over the trigger, clamped to the viewport (macOS-style).
+ *
+ * Events (on `<ax-selector>`, bubbling): `astryx-change` `{value}` (`null` when cleared) for
+ * every pick, type-to-select commit and clear; `astryx-open-change` `{isOpen, reason}` from the
+ * layer. Element API: `el.value` (get/set), `el.open()`, `el.close()`, `el.toggle()`, `el.isOpen`,
+ * `el.clear()`. Form reset restores the server value.
+ *
+ * Theme hooks: `.astryx-selector[data-variant][data-size][data-status][data-disabled][data-readonly]`,
+ * `.astryx-selector-option-row[data-size][data-selected][data-disabled]`, `.astryx-selector-option`,
+ * `.astryx-selector-search`, `.astryx-selector-section-heading`, `.astryx-selector-empty-state`,
+ * `.astryx-selector-indicator-icon[data-state]`, `.astryx-selector-check`, `.astryx-selector-popup`;
+ * private var `--_field-radius`.
+ *
+ * Not available / deferred: `onChange`/`changeAction` (use the event; no optimistic value),
+ * `onClick`/`onFocus`/`onKeyDown` props (native events work on the trigger), `presentation`
+ * "bottom-sheet" | "adaptive" (BottomSheet is not ported: both render the popover), option
+ * `action` (MultiSelector renders option actions in Astryx; Selector never did), the touch
+ * press-drag-release model (useMenuPress) and the coarse-pointer press controller. A native
+ * `<select>` with `appearance: base-select` is the future (Chromium-only) path for this
+ * component; it is not used yet.
+ *
+ * @example
+ * <Selector label="Fruit" options={['Apple', 'Banana', 'Orange']} value="Banana" htmlName="fruit" />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import Divider from '../Divider/Divider.astro';
+import Indicator from '../Indicator/Indicator.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import SelectorOptionRow from './_SelectorOptionRow.astro';
+import PanelSearchInput from './_PanelSearchInput.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {clearance, placementAttrs} from '../Layer/layer';
+import {pluralTemplates} from '../Field/clientMessages';
+import {
+  GROUP_DROP,
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  type FieldComposedProps,
+  type FieldStatusPlacement,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+} from '../Field/fieldProps';
+import type {LayerPlacement} from '../../lib/types';
+import {getSelectableOptions, optionRows, type SelectorOptionData, type SelectorOptionType} from './options';
+import '../Field/Field.css';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './Selector.css';
+
+export type {SelectorOptionData, SelectorOptionType, SelectorDivider, SelectorSection} from './options';
+export type SelectorSize = InputSize;
+export type SelectorVariant = 'input' | 'secondary' | 'ghost';
+export type SelectorPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+export type SelectorStatus = InputStatus;
+
+export interface Props extends FieldComposedProps {
+  /** Strings, option objects, dividers (`{type: 'divider'}`) or sections (`{type: 'section', title, options}`). */
+  options: SelectorOptionType[];
+  /** The selected value (the element owns it afterwards; `null`/absent shows the placeholder). */
+  value?: string | null;
+  /** A clear (✕) button while a value is selected; Delete/Backspace clears too. @default false */
+  hasClear?: boolean;
+  /** A search row that filters the options. @default false */
+  hasSearch?: boolean;
+  /** @default translated "Search…" */
+  searchPlaceholder?: string;
+  /** Shown (and announced) when there are no options; or the `emptyText` slot. @default "No options" */
+  emptyText?: string;
+  /** Shown (and announced) when the query matches nothing; or the `emptySearchText` slot. @default "No results found" */
+  emptySearchText?: string;
+  /** @default translated "Select…" */
+  placeholder?: string;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: SelectorSize;
+  /** `input` bordered field, `secondary` neutral fill (navs), `ghost` borderless. @default 'input' */
+  variant?: SelectorVariant;
+  /** Value visible, focusable and submitted; no surface or clear. @default false */
+  isReadOnly?: boolean;
+  /** Form field name: a hidden input carries the value (dropped while disabled). */
+  htmlName?: string;
+  /** Why it is disabled (tooltip on hover/focus; describes the trigger). */
+  disabledMessage?: string;
+  /** Edge of the option row that carries the selection mark. @default 'end' */
+  indicatorPosition?: 'start' | 'end';
+  /** Only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  presentation?: SelectorPresentation;
+  /** Explicit placement (opts out of the selected-item overlay). */
+  placement?: LayerPlacement;
+  /** Open on load (showcases). @default false */
+  isDefaultOpen?: boolean;
+  /** Icon at the start of the trigger (beats the option's own icon), or the `startIcon` slot. */
+  startIcon?: LabelIcon;
+  /** Busy: spinner + aria-busy; empty states are not shown. @default false */
+  isLoading?: boolean;
+  /** @default 'attached' for input, 'detached' for secondary/ghost */
+  statusVariant?: FieldStatusPlacement;
+  /**
+   * Custom option content (Astryx `renderOption`): a server-side function returning markup,
+   * e.g. `renderOption={(o) => <SelectorOption label={o.label} description={o.description} />}`.
+   */
+  renderOption?: (option: SelectorOptionData & {label: string}) => unknown;
+  /** Custom content of the closed trigger for the selected option (Astryx `renderValue`). */
+  renderValue?: (option: SelectorOptionData & {label: string}) => unknown;
+  'data-testid'?: string;
+}
+
+const {
+  options = [],
+  value: valueProp = null,
+  hasClear = false,
+  hasSearch = false,
+  searchPlaceholder: searchPlaceholderProp,
+  emptyText: emptyTextProp,
+  emptySearchText: emptySearchTextProp,
+  placeholder: placeholderProp,
+  size: sizeProp,
+  variant = 'input',
+  isReadOnly = false,
+  htmlName,
+  disabledMessage,
+  indicatorPosition = 'end',
+  presentation: _presentation = 'popover',
+  placement,
+  isDefaultOpen = false,
+  startIcon,
+  isLoading = false,
+  statusVariant: statusVariantProp = 'attached',
+  renderOption,
+  renderValue,
+  ...props
+} = Astro.props;
+
+const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && statusVariantProp === 'attached' ? 'detached' : statusVariantProp;
+const r = routeFieldProps('Selector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>, {groupable: true, isReadOnly});
+const {isDisabled, status} = r;
+const isEffectivelyReadOnly = isReadOnly && !isDisabled;
+const locale = resolveLocale(Astro, r.locale);
+const t = translator(Astro, r.locale);
+const size: SelectorSize = sizeProp ?? 'md';
+const placeholder = placeholderProp ?? t('@astryx.selector.placeholder');
+const searchPlaceholder = searchPlaceholderProp ?? t('@astryx.selector.searchPlaceholder');
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const emptyHtml = await slotHtml('emptyText');
+const emptySearchHtml = await slotHtml('emptySearchText');
+const startIconHtml = await slotHtml('startIcon');
+const emptyText = emptyTextProp ?? t('@astryx.selector.empty');
+const emptySearchText = emptySearchTextProp ?? t('@astryx.selector.emptySearchResults');
+
+const ids = {
+  box: r.ids.make('box'),
+  layer: r.ids.make('layer'),
+  listbox: r.ids.make('listbox'),
+  search: r.ids.make('search'),
+  readOnly: r.ids.make('readonly'),
+};
+const itemId = (index: number) => `${ids.listbox}-item-${index}`;
+
+const selectable = getSelectableOptions(options);
+if (import.meta.env?.DEV && selectable.some((o) => o.action != null)) {
+  console.warn('[astryx-astro] Selector: an option carries `action`, which Selector does not render yet; the option is shown without it. MultiSelector renders option actions in Astryx.');
+}
+const value = valueProp ?? null;
+const selected = value == null ? undefined : selectable.find((o) => o.value === value);
+const rows = optionRows(options);
+
+// renderOption / renderValue: server-side render functions (Astryx's own props); their output
+// is markup the template renders in place.
+const hasValueSlot = renderValue != null;
+// Values the client cannot rebuild from the label alone get a server-rendered template.
+const needsValueTemplate = (o: SelectorOptionData) => hasValueSlot || (o.icon != null && !startIcon && !startIconHtml);
+
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const showStatusIcon = status != null && effectiveStatusVariant !== 'detached';
+const statusTip = status != null && effectiveStatusVariant === 'tooltip' && !!status.message ? attachTooltip() : null;
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, statusTip?.id, disabledTip?.id, isEffectivelyReadOnly ? ids.readOnly : undefined);
+const STATUS_LABEL = {warning: '@astryx.input.statusButton.warning', error: '@astryx.input.statusButton.error', success: '@astryx.input.statusButton.success'} as const;
+
+const isInteractive = !isDisabled && !isEffectivelyReadOnly;
+const showsClear = hasClear && !isDisabled && !isEffectivelyReadOnly;
+const shouldOverlaySelectedItem = placement == null && !hasSearch;
+const popoverPlacement: LayerPlacement = placement ?? 'below';
+const triggerRole = isEffectivelyReadOnly || !hasSearch ? 'combobox' : undefined;
+
+const {themeClass, attrs: themeAttrs} = themeProps('selector', {
+  variant,
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+  readonly: isEffectivelyReadOnly ? 'readonly' : null,
+});
+const boxClass = cx(
+  themeClass,
+  variant === 'input' ? 'ax-input' : 'ax-overlay-image',
+  'ax-selector-box',
+  r.control.class,
+);
+const MARKS = [
+  {key: 'checked', state: 'checked', disabled: false},
+  {key: 'unchecked', state: 'unchecked', disabled: false},
+  {key: 'checked-disabled', state: 'checked', disabled: true},
+  {key: 'unchecked-disabled', state: 'unchecked', disabled: true},
+] as const;
+---
+<Field {...r.field}>
+  <ax-selector
+    id={ids.box}
+    class={boxClass}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-layer={isEffectivelyReadOnly ? undefined : ids.layer}
+    data-ax-listbox={ids.listbox}
+    data-ax-value={value ?? undefined}
+    data-ax-placeholder={selected ? undefined : ''}
+    data-ax-has-search={hasSearch ? '' : undefined}
+    data-ax-overlay={shouldOverlaySelectedItem ? '' : undefined}
+    data-ax-locale={locale}
+    data-ax-result-count={hasSearch ? pluralTemplates(t, locale, '@astryx.selector.resultCount', 'count') : undefined}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-ax-loading={isLoading ? '' : undefined}
+  >
+    {startIconHtml ? <Fragment set:html={startIconHtml} /> : startIcon && <Icon icon={startIcon} size="sm" color="secondary" class="ax-selector-start-icon" />}
+    <span {...r.groupLabel}>{r.label}</span>
+    {isEffectivelyReadOnly && <span id={ids.readOnly} class="ax-field-sr-only">{t('@astryx.input.readOnly')}</span>}
+    <button
+      {...r.native}
+      {...r.required}
+      {...r.groupInput}
+      type="button"
+      id={r.id}
+      class="ax-selector-trigger"
+      data-astryx-focus-owner=""
+      role={triggerRole}
+      aria-haspopup={isEffectivelyReadOnly ? undefined : 'listbox'}
+      aria-expanded={isEffectivelyReadOnly ? 'false' : isDefaultOpen ? 'true' : 'false'}
+      aria-controls={isEffectivelyReadOnly ? undefined : ids.listbox}
+      aria-readonly={isEffectivelyReadOnly ? 'true' : undefined}
+      aria-disabled={isDisabled ? 'true' : undefined}
+      aria-describedby={describedBy}
+      aria-labelledby={r.labelledBy}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      popovertarget={isInteractive ? ids.layer : undefined}
+    ><span class="ax-selector-value-slot" data-ax-value-slot>{selected && hasValueSlot ? (
+      <span class="ax-selector-value">{renderValue!(selected)}</span>
+    ) : (
+      <Fragment>
+        {selected?.icon != null && !startIcon && !startIconHtml && <Icon icon={selected.icon} size="sm" color="secondary" class="ax-selector-value-icon" />}
+        <span class="ax-selector-label">{selected?.label ?? placeholder}</span>
+      </Fragment>
+    )}</span></button>
+    {htmlName != null && !isDisabled && (
+      <input type="hidden" name={htmlName} value={value ?? ''} data-ax-default-value={value ?? ''} data-ax-selector-value="" {...{[GROUP_DROP_DISABLED]: ''}} />
+    )}
+    {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    {showsClear && (
+      <InputClearButton label={t('@astryx.selector.clearLabel', {label: r.label})} isHidden={value == null} locale={r.locale} data-ax-keep-open="" {...{[GROUP_DROP_DISABLED]: ''}} />
+    )}
+    {showStatusIcon ? (statusTip ? (
+      <button type="button" class="ax-selector-status-button ax-focus-visible" aria-label={t(STATUS_LABEL[status!.type])} {...statusTip.trigger} data-ax-keep-open="" data-ax-selector-status="" {...{[GROUP_DROP]: ''}}>
+        <Icon icon={status!.type} size="sm" color={status!.type} class="ax-selector-icon" />
+      </button>
+    ) : (
+      <Icon icon={status!.type} size="sm" color={status!.type} class="ax-selector-icon" />
+    )) : !isEffectivelyReadOnly && (
+      <Icon icon="chevronDown" size="sm" color="secondary" class="astryx-selector-indicator-icon ax-selector-icon ax-selector-chevron" data-state={isDefaultOpen ? 'expanded' : 'collapsed'} />
+    )}
+    {!isEffectivelyReadOnly && (
+      <Fragment>
+        <template data-ax-placeholder-template><span class="ax-selector-label">{placeholder}</span></template>
+        {MARKS.map((m) => (
+          <template data-ax-mark={m.key}><Indicator name="check" state={m.state} size="sm" isDisabled={m.disabled} class="astryx-selector-check" /></template>
+        ))}
+        {selectable.filter(needsValueTemplate).map((o) => (
+          <template data-ax-value-template={o.value}>{hasValueSlot ? (
+            <span class="ax-selector-value">{renderValue!(o)}</span>
+          ) : (
+            <Fragment><Icon icon={o.icon} size="sm" color="secondary" class="ax-selector-value-icon" /><span class="ax-selector-label">{o.label}</span></Fragment>
+          )}</template>
+        ))}
+      </Fragment>
+    )}
+  </ax-selector>
+  {!isEffectivelyReadOnly && (
+    <ax-combobox-layer
+      id={ids.layer}
+      popover="auto"
+      class="ax-layer ax-layer-motion ax-popover-layer ax-selector-layer"
+      data-astryx-layer-root=""
+      {...placementAttrs({placement: popoverPlacement, alignment: 'start'})}
+      data-ax-anchor={ids.box}
+      data-ax-open={isDefaultOpen && isInteractive ? 'true' : undefined}
+      style={shouldOverlaySelectedItem ? undefined : clearance('var(--spacing-1)')}
+    >
+      <div class="astryx-popover astryx-selector-popup ax-focus-visible">
+        <div class={hasSearch ? 'ax-selector-search-panel' : 'ax-selector-panel'}>
+          {hasSearch && (
+            <Fragment>
+              <PanelSearchInput
+                id={ids.search}
+                label={t('@astryx.selector.searchOptions')}
+                clearLabel={t('@astryx.textInput.clearLabel', {label: t('@astryx.selector.searchOptions')})}
+                placeholder={searchPlaceholder}
+                class={cx('astryx-selector-search', variant === 'input' && 'ax-panel-search-inset')}
+                role="combobox"
+                aria-expanded={isDefaultOpen ? 'true' : 'false'}
+                aria-controls={ids.listbox}
+                aria-autocomplete="list"
+                data-ax-selector-search=""
+                locale={r.locale}
+              />
+              <Divider />
+            </Fragment>
+          )}
+          <div
+            id={ids.listbox}
+            role="listbox"
+            aria-label={r.label}
+            class={cx('ax-selector-listbox', variant === 'input' && 'ax-selector-listbox-inset')}
+          >
+            {rows.map((row) => row.kind === 'divider' ? (
+              <Divider aria-hidden="true" class="ax-selector-divider" data-ax-divider="" />
+            ) : row.kind === 'section' ? (
+              <div role="group" aria-label={row.title} data-ax-section="">
+                {row.title && <div aria-hidden="true" class="astryx-selector-section-heading">{row.title}</div>}
+                {row.options.map(({option, index}) => (
+                  <SelectorOptionRow option={option} id={itemId(index)} isSelected={option.value === value} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
+                ))}
+              </div>
+            ) : (
+              <SelectorOptionRow option={row.option} id={itemId(row.index)} isSelected={row.option.value === value} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
+            ))}
+            <div role="presentation" class="astryx-selector-empty-state" data-ax-empty="options" hidden={selectable.length > 0 || isLoading || undefined}>
+              {emptyHtml ? <Fragment set:html={emptyHtml} /> : emptyText}
+            </div>
+            {hasSearch && (
+              <div role="presentation" class="astryx-selector-empty-state" data-ax-empty="search" hidden>
+                {emptySearchHtml ? <Fragment set:html={emptySearchHtml} /> : emptySearchText}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </ax-combobox-layer>
+  )}
+  {statusTip && <Tooltip {...statusTip.layer} content={status?.message} placement="above" />}
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/selector';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

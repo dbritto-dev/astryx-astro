@@ -1,0 +1,200 @@
+/*
+ * Port of @astryxdesign/core Typeahead/Typeahead.tsx (styles, wrapperSizeStyles),
+ * Typeahead/BaseTypeahead.tsx (styles, itemSizeStyles), Typeahead/TypeaheadItem.tsx (styles)
+ * and Field/inputDisabledFocus.ts (nestedRing). The bordered box is the shared `.ax-input`
+ * (Field/Field.css: base, status border/hover, disabled). Selectors carry `[data-size]` to
+ * out-rank `.ax-input`'s base declarations.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Field wrapper (Typeahead styles.wrapper) ───────────────────────────── */
+  .astryx-typeahead[data-size] {
+    position: relative;
+    gap: var(--spacing-1);
+    padding-block: calc(var(--spacing-1) - 1px);
+    cursor: text;
+  }
+  .astryx-typeahead[data-size]:is(:disabled, [aria-disabled="true"], [data-disabled]) { cursor: default; }
+  .astryx-typeahead[data-size="sm"] { min-height: var(--size-element-sm); }
+  .astryx-typeahead[data-size="md"] { min-height: var(--size-element-md); }
+  .astryx-typeahead[data-size="lg"] { min-height: var(--size-element-lg); }
+  /* nestedRing: a disabled field rings while its (aria-disabled) input has keyboard focus */
+  .astryx-typeahead.ax-input[data-size][data-disabled] { border-color: var(--color-border-emphasized); box-shadow: none; }
+  .astryx-typeahead.ax-input[data-size][data-disabled]:has(input[aria-disabled="true"]:focus-visible) {
+    border-color: var(--color-accent);
+    box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted);
+  }
+  @media (forced-colors: active) {
+    .astryx-typeahead.ax-input[data-size][data-disabled]:has(input[aria-disabled="true"]:focus-visible) { border-color: Highlight; }
+  }
+  .astryx-typeahead > .ax-typeahead-start-icon { flex-shrink: 0; }
+
+  /* The content lane: the value may occupy it, never the end lane's space. */
+  .ax-typeahead-content-lane {
+    position: relative;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    flex: 1;
+    min-width: 0;
+  }
+  /* busy indicator + clear button, in flow at the inline end */
+  .ax-typeahead-end-lane {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    margin-inline-start: auto;
+  }
+  .ax-typeahead-end-lane[hidden] { display: none; }
+  .astryx-spinner[data-ax-typeahead-spinner][hidden] { display: none; }
+
+  /* The selected value, painted over the input (which keeps its width and place). */
+  .astryx-token.ax-typeahead-token {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: calc(-1 * (var(--spacing-1) - 1px));
+    inset-inline-end: 0;
+    width: fit-content;
+    margin-block: 0;
+    margin-inline-start: 0;
+    margin-inline-end: auto;
+  }
+  .astryx-token.ax-typeahead-token[hidden] { display: none; }
+
+  /* ── The input (BaseTypeahead styles.input) ─────────────────────────────── */
+  .ax-typeahead-input {
+    display: block;
+    flex: 1;
+    min-width: 60px;
+    border-width: 0;
+    border-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    outline: none;
+  }
+  @media (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      .ax-typeahead-input { font-size: max(1rem, var(--text-body-size)); }
+    }
+  }
+  .ax-typeahead-input::placeholder { color: var(--color-text-secondary); }
+  .ax-typeahead-input:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  /* inputHidden: invisible and inert behind the token; its width still sizes the field */
+  .ax-typeahead-input[data-ax-input-hidden] { opacity: 0; pointer-events: none; }
+
+  /* A bare BaseTypeahead adds no box; its own indicator sits in flow after the input. */
+  .ax-base-typeahead { display: contents; }
+  .ax-typeahead-loading-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: var(--spacing-1);
+  }
+  .ax-typeahead-loading-status[hidden] { display: none; }
+
+  /* ── Popup ──────────────────────────────────────────────────────────────── */
+  .ax-typeahead-layer:not([data-ax-width]) {
+    box-sizing: border-box;
+  }
+  .astryx-typeahead-dropdown {
+    box-sizing: border-box;
+    max-height: min(300px, var(--_ax-max-block-size));
+    overflow-y: auto;
+    padding: var(--spacing-1);
+  }
+  .astryx-typeahead-dropdown[data-ax-held] { max-height: var(--_ax-held-height); }
+  .ax-typeahead-group-heading {
+    padding-inline: var(--spacing-2);
+    padding-block-start: var(--spacing-2);
+    padding-block-end: var(--spacing-1);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    user-select: none;
+  }
+  .ax-typeahead-option {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-2);
+    border-radius: var(--radius-element);
+    cursor: pointer;
+    outline: none;
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    text-align: start;
+  }
+  .ax-typeahead-option:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-typeahead-option[data-size="sm"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); }
+  .ax-typeahead-option[data-size="md"] { padding-block: var(--spacing-1-5); }
+  .ax-typeahead-option[data-size="lg"] { padding-block: var(--spacing-2); }
+  .ax-typeahead-option[data-ax-highlighted] { background-color: var(--color-overlay-hover); }
+  @media (forced-colors: active) {
+    .ax-typeahead-option[data-ax-highlighted] { outline-color: Highlight; outline-style: solid; outline-width: var(--border-width); }
+  }
+  .ax-typeahead-option[aria-selected="true"] { font-weight: var(--font-weight-medium); }
+  .ax-typeahead-option[hidden] { display: none; }
+  .ax-typeahead-option-content {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .ax-typeahead-check { display: inline-flex; flex-shrink: 0; }
+  .ax-typeahead-check:empty { display: none; }
+  .astryx-typeahead-empty-state {
+    padding: var(--spacing-3);
+    text-align: center;
+    font-size: var(--text-supporting-size);
+    color: var(--color-text-secondary);
+  }
+  .astryx-typeahead-empty-state[hidden] { display: none; }
+
+  /* ── TypeaheadItem ──────────────────────────────────────────────────────── */
+  .astryx-typeahead-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-height: 0;
+  }
+  .astryx-typeahead-item.ax-typeahead-default-item { min-width: 0; width: 100%; }
+  .astryx-typeahead-item[data-ax-disabled] { opacity: 0.5; }
+  .ax-typeahead-item-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  .ax-typeahead-item-label {
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-typeahead-item-description {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Port extension (hasMatchHighlight): the query inside result labels. */
+  ::highlight(astryx-typeahead-match) {
+    background-color: var(--color-accent-muted);
+    color: var(--color-text-primary);
+  }
+}

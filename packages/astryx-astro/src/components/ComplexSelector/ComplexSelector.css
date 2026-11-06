@@ -1,0 +1,129 @@
+/*
+ * Port of @astryxdesign/core ComplexSelector/ComplexSelector.tsx (styles). The `input`
+ * variant's bordered box is `.ax-input` (Field/Field.css: inputWrapperStyles base, disabled);
+ * the keyboard ring on the box is the shared `.ax-focus-within-combobox` (focusWithinCombobox,
+ * every variant). Rule groups follow the React stylex.props() order: triggerContainer → size →
+ * focusWithinCombobox (shared.css) → secondary → ghost → overlay → disabled → ghostDisabled →
+ * disabled cursor → placeholder. Selectors carry `[data-variant]` to out-rank `.ax-input`'s base.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-complex-selector[data-variant] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    color: var(--color-text-primary);
+    cursor: pointer;
+  }
+  @media (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      .astryx-complex-selector[data-variant] { font-size: max(1rem, var(--text-label-size)); }
+    }
+  }
+  .astryx-complex-selector[data-variant]:not([data-variant="input"]) {
+    box-sizing: border-box;
+    z-index: 1;
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--color-border-emphasized);
+    --_field-radius: var(--radius-element);
+    border-radius: var(--_field-radius);
+    box-shadow: none;
+  }
+  .astryx-complex-selector[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-complex-selector[data-size="md"] { height: var(--size-element-md); }
+  .astryx-complex-selector[data-size="lg"] { height: var(--size-element-lg); }
+
+  .astryx-complex-selector[data-variant="secondary"],
+  .astryx-complex-selector[data-variant="ghost"] {
+    font-weight: var(--font-weight-medium);
+    transition-property: background-image, background-color, color, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform: scale(1);
+  }
+  .astryx-complex-selector[data-variant="secondary"] { background-color: var(--color-neutral); }
+  .astryx-complex-selector[data-variant="ghost"] { width: auto; background-color: transparent; }
+  .astryx-complex-selector[data-variant="secondary"]:active,
+  .astryx-complex-selector[data-variant="ghost"]:active { transform: scale(0.98); }
+  @media (pointer: coarse) {
+    .astryx-complex-selector[data-variant="secondary"]:active,
+    .astryx-complex-selector[data-variant="ghost"]:active { transform: scale(1); }
+  }
+
+  /* inputWrapperStyles.disabled for the borderless variants (.ax-input has its own) */
+  .astryx-complex-selector[data-variant]:not([data-variant="input"])[data-ax-disabled] { opacity: 0.5; cursor: default; }
+  .astryx-complex-selector[data-variant]:not([data-variant="input"])[data-ax-disabled] { background-image: none; transform: none; }
+  .astryx-complex-selector[data-variant]:not([data-variant="input"])[data-ax-disabled]:active { transform: none; }
+  /* A disabled input box keeps the emphasized border and no inset ring (the outline ring marks focus). */
+  .astryx-complex-selector.ax-input[data-variant][data-ax-disabled]:has(> [aria-disabled="true"]:focus-visible) {
+    border-color: var(--color-border-emphasized);
+    box-shadow: none;
+  }
+  .astryx-complex-selector[data-variant][data-ax-disabled] { cursor: default; }
+  .astryx-complex-selector[data-variant][data-ax-placeholder] { color: var(--color-text-secondary); }
+
+  .ax-complex-selector-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: inherit;
+    color: inherit;
+    cursor: pointer;
+    outline: none;
+    border-radius: var(--radius-element);
+  }
+  .ax-complex-selector-trigger:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-complex-selector-text {
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: start;
+  }
+  .ax-complex-selector-icon { flex-shrink: 0; }
+  .ax-complex-selector-chevron {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform-origin: center;
+  }
+  @media (prefers-reduced-motion: reduce) { .ax-complex-selector-chevron { transition-duration: 0s; } }
+  .ax-complex-selector-chevron[data-state="expanded"] { transform: rotate(180deg); }
+  .ax-complex-selector-status {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* caller trigger: no box of its own */
+  .ax-complex-selector-custom { display: contents; }
+
+  .ax-complex-selector-content {
+    box-sizing: border-box;
+    max-height: min(480px, var(--_ax-max-block-size));
+    overflow: auto;
+    padding: var(--spacing-3);
+  }
+}

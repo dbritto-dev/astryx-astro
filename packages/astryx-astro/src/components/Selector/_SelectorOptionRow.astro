@@ -1,0 +1,46 @@
+---
+/**
+ * One Selector option row (Selector.tsx SelectorOptionRow): `role="option"` carrying the
+ * `selector-option-row` theme target with its size and state, the option content (default
+ * SelectorOption, or the caller's `option` render slot) and the selection mark, rendered in
+ * every state so a theme that maps `check` to a radio can draw the unselected circle.
+ */
+import Indicator from '../Indicator/Indicator.astro';
+import SelectorOption from './SelectorOption.astro';
+import type {SelectorOptionData} from './options';
+
+export interface Props {
+  option: SelectorOptionData & {label: string};
+  id: string;
+  isSelected: boolean;
+  size: 'sm' | 'md' | 'lg';
+  indicatorPosition: 'start' | 'end';
+  /** Caller-rendered content (`renderOption`'s result), else the default SelectorOption. */
+  content?: unknown;
+}
+
+const {option, id, isSelected, size, indicatorPosition, content} = Astro.props;
+const isDisabled = !!option.disabled;
+const markState = `${isSelected ? 'checked' : 'unchecked'}${isDisabled ? '-disabled' : ''}`;
+---
+<div
+  role="option"
+  id={id}
+  aria-selected={isSelected ? 'true' : 'false'}
+  aria-disabled={isDisabled ? 'true' : undefined}
+  data-value={option.value}
+  data-ax-label={option.label}
+  data-ax-mark-state={markState}
+  class="astryx-selector-option-row"
+  data-size={size}
+  data-selected={isSelected ? 'selected' : undefined}
+  data-disabled={isDisabled ? 'disabled' : undefined}
+>
+  {indicatorPosition === 'start' && (
+    <span class="ax-selector-mark" data-ax-mark-slot><Indicator name="check" state={isSelected ? 'checked' : 'unchecked'} size="sm" isDisabled={isDisabled} class="astryx-selector-check" /></span>
+  )}
+  <span class="ax-selector-option-content">{content != null ? content : <SelectorOption icon={option.icon} label={option.label} description={option.description} />}</span>
+  {indicatorPosition === 'end' && (
+    <span class="ax-selector-mark" data-ax-mark-slot><Indicator name="check" state={isSelected ? 'checked' : 'unchecked'} size="sm" isDisabled={isDisabled} class="astryx-selector-check" /></span>
+  )}
+</div>

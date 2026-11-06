@@ -1,0 +1,265 @@
+---
+/**
+ * Typeahead — search-as-you-type selection of one item, with label, description, status and
+ * every field feature. Port of @astryxdesign/core Typeahead/Typeahead.tsx (field wrapper,
+ * selected-value token, edit mode, end lane) over Typeahead/BaseTypeahead.tsx (the combobox
+ * engine), Typeahead/{TypeaheadItem,createStaticSource,types,busyIndicatorLane,
+ * trailingKeyDown}.ts(x), Layer/outsidePress.ts, hooks/useHighlightedOptionScroll.ts,
+ * hooks/useAnnounceRenderedText.ts, hooks/useBusyAnnouncement.ts, utils/groupItems.ts.
+ * Behaviour: src/elements/typeahead.ts on runtime/combobox.ts.
+ *
+ * Markup: a Field-composed control box `<ax-typeahead class="astryx-typeahead">` holding the
+ * content lane (the selected value as a clickable Token painted over the
+ * `<input role="combobox" aria-autocomplete="list">`) and the end lane (busy Spinner, clear
+ * button); its sibling `<ax-combobox-layer popover="manual">` holds the
+ * `role="listbox"` (`.astryx-typeahead-dropdown`). Focus never leaves the input:
+ * `aria-activedescendant` names the active result, a press in the list keeps focus, and a
+ * press that starts AND ends outside the field closes the list (as does focus leaving it).
+ *
+ * Search sources (Astryx `searchSource`):
+ *  - static, server-rendered: `searchSource={createStaticSource(items, {keywords})}` — the
+ *    items render into the page and the element filters them (label/keyword substring);
+ *  - client: `el.searchSource = {search(query, context), bootstrap(), cancel?()}` (the same
+ *    interface; `context.update(items)` shows partial lists that later lists only append to);
+ *  - event: the element dispatches `astryx-query` (bubbling, cancelable) with
+ *    `detail = {query, kind: 'search' | 'bootstrap', signal, respond(items), update(items),
+ *    reject(error?)}`. A listener that `preventDefault()`s it owns the answer: call
+ *    `respond(items)` (sync or later); `update(items)` shows a partial list first; `signal`
+ *    aborts when a newer query supersedes it or the list closes. Unclaimed queries fall back
+ *    to the static items.
+ * The query is debounced (`debounceMs`, default 150); below `minQueryLength` nothing is
+ * searched and the list stays closed; at most `maxMenuItems` results show, grouped by
+ * `auxiliaryData.group` (ungrouped first). While a search runs the end lane shows a named
+ * Spinner (`role="img"`, "Loading") and "Loading" is announced once; a settled query
+ * announces "N results", or its rendered empty message (`emptySearchText`).
+ *
+ * Keyboard (BaseTypeahead): ↓ opens (search/bootstrap); open: ↓/↑ wrap, Home/End first/last,
+ * Enter picks (never submits the form), Escape closes (then, in edit mode, restores the
+ * token), Tab closes. IME composition keys are never commands. Edit mode: pressing the token
+ * puts its label in the input (selected) to search again; blur or Escape restores it.
+ *
+ * Events (on `<ax-typeahead>`, bubbling): `astryx-change` `{value}` (the item, or `null`
+ * when cleared); `astryx-change-query` `{query}` (Astryx `onChangeQuery`); `astryx-query`
+ * (above); `astryx-open-change` `{isOpen, reason}` from the layer. Element API: `el.value`
+ * (get/set item), `el.query`, `el.searchSource`, `el.renderItem = (item) => Node | string`
+ * (client rows; server rows use the `renderItem` prop), `el.open()`, `el.close()`, `el.clear()`.
+ *
+ * Theme hooks: `.astryx-typeahead[data-size][data-status]`, `.astryx-typeahead-dropdown`,
+ * `.astryx-typeahead-empty-state`, `.astryx-typeahead-item`.
+ * Port extensions: `htmlName` (a hidden input carries the selected item's id),
+ * `hasMatchHighlight` (marks the query inside result labels with the CSS Custom Highlight API,
+ * `::highlight(astryx-typeahead-match)`; off by default, as Astryx draws none).
+ * Not available: `onChange`/`onChangeQuery`/`onOpenChange`/`onKeyDown` callbacks (events),
+ * item `element`/`action` nodes. Deferred: the coarse-pointer press controller, keyboard riding.
+ *
+ * @example
+ * <Typeahead label="Fruit" searchSource={createStaticSource(fruits)} placeholder="Search fruit…" />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Token from '../Token/Token.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import TypeaheadPopup from './_TypeaheadPopup.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {joinAriaIDs} from '../Field/fieldProps';
+import {pluralTemplates} from '../Field/clientMessages';
+import {
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+} from '../Field/fieldProps';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {StaticSearchSource} from './createStaticSource';
+import '../Field/Field.css';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './Typeahead.css';
+
+export {createStaticSource} from './createStaticSource';
+export type {SearchableItem, SearchSource, SearchContext, StaticSearchSource} from './createStaticSource';
+export type TypeaheadSize = InputSize;
+export type TypeaheadStatus = InputStatus;
+
+export interface Props extends FieldComposedProps {
+  /** A static source (`createStaticSource(items)`), server-rendered; or set `el.searchSource` / answer `astryx-query` on the client. */
+  searchSource?: StaticSearchSource;
+  /** The selected item (`null` = none; the element owns it afterwards). */
+  value?: SearchableItem | null;
+  /** Server-side result content (Astryx `renderItem`), e.g. `(item) => <TypeaheadItem item={item} />`. */
+  renderItem?: (item: SearchableItem) => unknown;
+  /** @default translated "Search…" */
+  placeholder?: string;
+  /** Show results on focus before typing (the source's bootstrap). @default false */
+  hasEntriesOnFocus?: boolean;
+  /** Clear button while a value is selected. @default true */
+  hasClear?: boolean;
+  /** Why it is disabled (tooltip on hover/focus; describes the input). */
+  disabledMessage?: string;
+  /** @default 10 */
+  maxMenuItems?: number;
+  /** Shorter queries are not searched (grapheme count). @default 1 */
+  minQueryLength?: number;
+  /** Shown/announced when a query matched nothing, or the `emptySearchText` slot. @default "No results found" */
+  emptySearchText?: string;
+  /** @default false */
+  hasAutoFocus?: boolean;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: TypeaheadSize;
+  /** Debounce before searching (0 for synchronous sources). @default 150 */
+  debounceMs?: number;
+  /** Icon at the start (or the `startIcon` slot). */
+  startIcon?: LabelIcon;
+  /** Port extension: form field name; a hidden input carries the selected item's id. */
+  htmlName?: string;
+  /** Port extension: mark the query inside result labels. @default false */
+  hasMatchHighlight?: boolean;
+  'data-testid'?: string;
+}
+
+const {
+  searchSource,
+  value: valueProp = null,
+  renderItem,
+  placeholder: placeholderProp,
+  hasEntriesOnFocus = false,
+  hasClear = true,
+  disabledMessage,
+  maxMenuItems = 10,
+  minQueryLength = 1,
+  emptySearchText: emptySearchTextProp,
+  hasAutoFocus = false,
+  size: sizeProp,
+  debounceMs = 150,
+  startIcon,
+  htmlName,
+  hasMatchHighlight = false,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('Typeahead', props as Props & Record<string, unknown>, {groupable: true});
+const {isDisabled, status} = r;
+const locale = resolveLocale(Astro, r.locale);
+const t = translator(Astro, r.locale);
+const size: TypeaheadSize = sizeProp ?? 'md';
+const placeholder = placeholderProp ?? t('@astryx.typeahead.searchPlaceholder');
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+const startIconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
+const value = valueProp ?? null;
+
+const ids = {
+  box: r.ids.make('box'),
+  layer: r.ids.make('layer'),
+  listbox: r.ids.make('listbox'),
+  token: r.ids.make('token'),
+  tokenValue: r.ids.make('token-value'),
+};
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, disabledTip?.id);
+// The token's button is the field's Tab stop while a value shows: named like the input plus the value.
+const inputLabelledBy = r.labelledBy;
+const tokenLabelledBy = joinAriaIDs(inputLabelledBy ?? r.ids.fieldLabel, ids.tokenValue);
+const showToken = value != null;
+const showsClear = hasClear && !isDisabled;
+const {themeClass, attrs: themeAttrs} = themeProps('typeahead', {size, status: status?.type ?? null});
+---
+<Field {...r.field} labelID={r.ids.fieldLabel}>
+  <ax-typeahead
+    id={ids.box}
+    class={cx(themeClass, 'ax-input', 'ax-typeahead-box', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-disabled={isDisabled ? 'disabled' : undefined}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-layer={ids.layer}
+    data-ax-listbox={ids.listbox}
+    data-ax-value={value ? JSON.stringify({id: value.id, label: value.label, auxiliaryData: value.auxiliaryData}) : undefined}
+    data-ax-debounce={debounceMs}
+    data-ax-min-query={minQueryLength}
+    data-ax-max-items={maxMenuItems}
+    data-ax-entries-on-focus={hasEntriesOnFocus ? '' : undefined}
+    data-ax-match-highlight={hasMatchHighlight ? '' : undefined}
+    data-ax-locale={locale}
+    data-ax-result-count={pluralTemplates(t, locale, '@astryx.typeahead.resultCount', 'count')}
+    data-ax-loading-label={t('@astryx.typeahead.loading')}
+    data-ax-placeholder-text={placeholder}
+    data-ax-tooltip={disabledTip?.id}
+  >
+    {startIconHtml ? <Fragment set:html={startIconHtml} /> : startIcon && <Icon icon={startIcon} size="sm" color="secondary" class="ax-typeahead-start-icon" />}
+    <span {...r.groupLabel}>{r.label}</span>
+    <div class="ax-typeahead-content-lane">
+      <span id={ids.tokenValue} hidden data-ax-token-value>{value?.label}</span>
+      <Token
+        id={ids.token}
+        class="ax-typeahead-token"
+        label={value?.label ?? ''}
+        size={size}
+        interactiveRole="button"
+        isDisabled={isDisabled}
+        aria-labelledby={tokenLabelledBy}
+        aria-describedby={describedBy}
+        hidden={!showToken || undefined}
+        data-ax-typeahead-token=""
+        locale={r.locale}
+      />
+      <input
+        {...r.native}
+        {...r.required}
+        {...r.groupInput}
+        id={r.id}
+        type="text"
+        role="combobox"
+        class="ax-typeahead-input"
+        aria-expanded="false"
+        aria-controls={ids.listbox}
+        aria-autocomplete="list"
+        aria-describedby={describedBy}
+        aria-labelledby={inputLabelledBy}
+        aria-invalid={status?.type === 'error' ? 'true' : undefined}
+        aria-disabled={isDisabled ? 'true' : undefined}
+        readonly={isDisabled || undefined}
+        tabindex={showToken ? -1 : undefined}
+        placeholder={showToken ? undefined : placeholder}
+        autocomplete="off"
+        enterkeyhint="search"
+        autocorrect="off"
+        autofocus={hasAutoFocus || undefined}
+        data-autofocus={hasAutoFocus ? '' : undefined}
+        data-ax-input-hidden={showToken ? '' : undefined}
+        data-ax-typeahead-input=""
+      />
+    </div>
+    <div class="ax-typeahead-end-lane" data-ax-end-lane hidden={!(showsClear && showToken) || undefined}>
+      <Spinner size="sm" role="img" aria-label={t('@astryx.typeahead.loading')} hidden data-ax-typeahead-spinner="" />
+      {showsClear && (
+        <InputClearButton label={t('@astryx.typeahead.clearSelection')} isHidden={!showToken} locale={r.locale} {...{[GROUP_DROP_DISABLED]: ''}} />
+      )}
+    </div>
+    {htmlName != null && !isDisabled && (
+      <input type="hidden" name={htmlName} value={value?.id ?? ''} data-ax-default-value={value?.id ?? ''} data-ax-typeahead-value="" {...{[GROUP_DROP_DISABLED]: ''}} />
+    )}
+  </ax-typeahead>
+  <TypeaheadPopup
+    layerId={ids.layer}
+    listboxId={ids.listbox}
+    anchorId={ids.box}
+    label={t('@astryx.typeahead.searchResults')}
+    size={size}
+    source={searchSource}
+    value={value}
+    renderItem={renderItem}
+    emptyText={emptySearchTextProp ?? t('@astryx.typeahead.emptySearchResults')}
+    emptyHtml={emptySearchHtml}
+  />
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/typeahead';</script>
