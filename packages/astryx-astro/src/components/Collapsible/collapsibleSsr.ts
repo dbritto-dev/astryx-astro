@@ -26,15 +26,7 @@ export const DENSITY_KEY = 'collapsible-density';
 export const DIVIDED_KEY = 'collapsible-divided';
 export const CHEVRON_KEY = 'collapsible-chevron-position';
 
-const fallbackLocals: Record<string, unknown> = {};
-
-/** Unique id per render (React useId); deterministic for a given page. */
-export function uid(astro: {locals?: unknown}, prefix: string): string {
-  const locals = (astro.locals ?? fallbackLocals) as Record<string, unknown>;
-  const n = ((locals.__astryxUid as number | undefined) ?? 0) + 1;
-  locals.__astryxUid = n;
-  return `${prefix}-${n}`;
-}
+export {uid} from '../../lib/uid';
 
 const hasClass = (node: ElementNode, name: string) => ` ${node.attributes.class ?? ''} `.includes(` ${name} `);
 

@@ -30,34 +30,18 @@
 type Modality = 'keyboard' | 'pointer';
 type GroupType = 'single' | 'multiple';
 
-const isTextEntry = (el: Element) =>
-  el instanceof HTMLInputElement ||
-  el instanceof HTMLTextAreaElement ||
-  el instanceof HTMLSelectElement ||
-  (el instanceof HTMLElement && el.isContentEditable);
+import {focusForLastInput as runtimeFocusForLastInput, getModality, trackModality} from './runtime/modality';
 
-/**
- * The last input, read without a document listener: a focused control drawing its
- * `:focus-visible` ring (text fields excepted, they always match) means keyboard.
- */
+trackModality();
+
+/** The shared runtime's last input; a screen-reader (virtual) activation counts as keyboard here. */
 function inferModality(): Modality {
-  const active = document.activeElement;
-  if (active == null || active === document.body || isTextEntry(active)) return 'pointer';
-  try {
-    return active.matches(':focus-visible') ? 'keyboard' : 'pointer';
-  } catch {
-    return 'pointer';
-  }
+  return getModality() === 'pointer' ? 'pointer' : 'keyboard';
 }
 
-/** focusReturn.ts focusForLastInput: after pointer input the moved focus draws no ring. */
+/** focusReturn.ts focusForLastInput, via the shared modality runtime. */
 function focusForLastInput(element: HTMLElement, modality: Modality): void {
-  if (isTextEntry(element) || modality !== 'pointer') {
-    element.focus();
-    return;
-  }
-  if (element.matches(':focus-visible')) element.blur();
-  element.focus({focusVisible: false} as FocusOptions);
+  runtimeFocusForLastInput(element, undefined, modality);
 }
 
 /** focusReturn.ts isFocusLost: nothing focused, or focus still inside `surface`. */

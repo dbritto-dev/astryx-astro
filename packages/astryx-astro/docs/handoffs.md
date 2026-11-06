@@ -103,3 +103,28 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
 - AvatarGroup renders `data-astryx-roving="horizontal"` (items `[data-avatar-item]`) → wire runtime roving.
 - Thumbnail remove button native stand-in → IconButton.
 - Inline handler-string `onClick`/`onRemove` props on Avatar/Thumbnail → events per AGENTS.md.
+
+## Collapsible
+
+- Keys: `collapsible-group` (item root with `data-value`; nearest group writes open state onto
+  the item's trigger + content), `collapsible-density` (root, trigger, content),
+  `collapsible-divided` (root), `collapsible-chevron-position` (trigger, only when the item
+  sets none). Each Collapsible resets the presentation keys around its own content.
+- Events: `astryx-open-change` {isOpen} (standalone items), `astryx-change` {value} (group); user
+  input only. Closed content uses `hidden="until-found"` (find-in-page opens it).
+
+## Shared libraries (`src/lib/`, each folder has a README)
+
+- `uid(Astro, prefix)` (`lib/uid.ts`) — per-request id counter, the useId stand-in. Use it for
+  every generated id.
+- `lib/date/` — PlainDate, calendar systems, date/time parsing + formatting, Unicode digits,
+  `formatInstant`, `formatRelativeTime`, `formatTooltipLines`, Timestamp helpers.
+- `lib/codeblock/` — tokenizer, grammars (incl. 9 opt-in languages), `highlightRanges`, token
+  mapping (`TOKEN_TYPES`, `highlightName`, `tokenClassName`, `SYNTAX_TOKEN_DEFAULTS`,
+  `highlightRuleCss()`). The CodeBlock porter writes the `::highlight(astryx-*)` and
+  `.astryx-token-*` rules in `astryx-base`.
+- `lib/markdown/` — parser, AST, URL policy, heading projection, streaming, plugins, remark
+  adapter, `parseOutlineFromMarkdown`. Its README lists what the renderer must provide.
+- `lib/characters.ts`, `lib/accessibleName.ts`, `lib/groupItems.ts`, `lib/devWarning.ts`,
+  `lib/searchableItem.ts`.
+- Lib tests run as plain node scripts; `tools/tests/lib-loader.mjs` resolves extensionless TS imports.
