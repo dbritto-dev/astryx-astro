@@ -1,0 +1,116 @@
+---
+/**
+ * MetadataList — a read-only labeled list of key-value metadata as semantic `<dl>` /
+ * `<dt>` / `<dd>`, in one or more columns or a wrapping row, with optional "Show more"
+ * collapsing. Port of @astryxdesign/core MetadataList/MetadataList.tsx and
+ * MetadataList/MetadataListContext.tsx.
+ *
+ * Labels default to `{position: 'top'}` (stacked) for multi-column lists and
+ * `{position: 'start'}` (side by side) for a single column; `label.width` sets the label
+ * column. `orientation="horizontal"` flows stacked items in a wrapping row and ignores
+ * `columns`, `label` and `maxNumOfItems`.
+ *
+ * Context replacement: the list post-processes its rendered items (metadataListItems.ts):
+ * it unwraps each MetadataListItem into a bare dt/dd pair for side-by-side labels, and
+ * hides items past `maxNumOfItems`. The "Show more" / "Show less" button (aria-controls →
+ * the <dl>, aria-expanded) reveals them in the browser (behaviors/metadataListToggle.ts).
+ *
+ * @example
+ * <MetadataList columns="multi" title="Details">
+ *   <MetadataListItem label="Name">MetadataList</MetadataListItem>
+ *   <MetadataListItem label="Status">Active</MetadataListItem>
+ * </MetadataList>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {layoutItems} from './metadataListItems';
+import './MetadataList.css';
+
+export type MetadataListColumns = 'multi' | 'single' | number;
+export interface MetadataListLabelConfig {
+  position?: 'start' | 'top';
+  /** Label column width (px number or CSS string), for side-by-side labels. */
+  width?: number | string;
+}
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'title'> {
+  /** 'single', 'multi' (auto-fill ≥280px columns) or a fixed number. @default 'single' */
+  columns?: MetadataListColumns;
+  /** Label position/width. @default {position: 'start'} (single column) / {position: 'top'} (multi-column) */
+  label?: MetadataListLabelConfig;
+  /** Collapse after this many items, with a Show more / Show less toggle. */
+  maxNumOfItems?: number;
+  /** @default 'vertical' */
+  orientation?: 'vertical' | 'horizontal';
+  /** Title above the list (or use the `title` slot). */
+  title?: string;
+  'data-testid'?: string;
+  /** Toggle text (port extension). @default translated "Show more" */
+  showMoreLabel?: string;
+  /** Toggle text (port extension). @default translated "Show less" */
+  showLessLabel?: string;
+  /** Locale for the toggle text. */
+  locale?: string;
+}
+
+const {
+  columns = 'single',
+  label,
+  maxNumOfItems,
+  orientation = 'vertical',
+  title,
+  'data-testid': testId,
+  showMoreLabel,
+  showLessLabel,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const isMultiColumn = columns === 'multi' || (typeof columns === 'number' && columns > 1);
+const labelConfig: MetadataListLabelConfig = {...label, position: label?.position ?? (isMultiColumn ? 'top' : 'start')};
+const isHorizontal = orientation === 'horizontal';
+const isStacked = isHorizontal || labelConfig.position === 'top';
+const effectiveMax = isHorizontal ? undefined : maxNumOfItems;
+
+const layout = isHorizontal
+  ? 'horizontal'
+  : labelConfig.position === 'top'
+    ? (columns === 'single' || columns === 1 ? 'stacked-single' : 'stacked-multi')
+    : (columns === 'single' || columns === 1 ? 'single' : 'multi');
+
+let gridTemplate: string | undefined;
+if (!isHorizontal) {
+  if (typeof columns === 'number' && columns > 1) {
+    gridTemplate = labelConfig.position === 'top' ? `repeat(${columns}, 1fr)` : `repeat(${columns}, auto minmax(0, 1fr))`;
+  } else if (labelConfig.position !== 'top' && labelConfig.width != null) {
+    const width = typeof labelConfig.width === 'number' ? `${labelConfig.width}px` : labelConfig.width;
+    gridTemplate = `${width} minmax(0, 1fr)`;
+  }
+}
+
+const items = layoutItems(await Astro.slots.render('default'), {inline: !isStacked, max: effectiveMax});
+const contentId = `ax-metadata-list-${Math.random().toString(36).slice(2, 10)}`;
+const showMore = showMoreLabel ?? t('@astryx.metadataList.showMore');
+const showLess = showLessLabel ?? t('@astryx.metadataList.showLess');
+const hasTitle = Astro.slots.has('title') || (title != null && title !== '');
+const {themeClass, attrs} = themeProps('metadata-list', {columns: String(columns), orientation});
+---
+<div {...rest} data-testid={testId} {...attrs} class={cx(themeClass, className)} style={mergeStyles(style as StyleValue)}>{hasTitle && (
+  <div class="ax-metadata-list-title">{Astro.slots.has('title') ? <slot name="title" /> : title}</div>
+)}<dl id={contentId} class="ax-metadata-list-dl" data-ax-layout={layout} style={gridTemplate ? `--_ax-metadata-columns:${gridTemplate}` : undefined}><Fragment set:html={items.html} /></dl>{items.hasOverflow && (
+  <button
+    type="button"
+    class="ax-metadata-list-toggle"
+    aria-controls={contentId}
+    aria-expanded="false"
+    data-ax-metadata-list-toggle=""
+    data-ax-show-more={showMore}
+    data-ax-show-less={showLess}
+  >{showMore}</button>
+)}</div>
+{items.hasOverflow && <script>import '../../behaviors/metadataListToggle';</script>}

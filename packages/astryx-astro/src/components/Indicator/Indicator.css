@@ -1,0 +1,158 @@
+/*
+ * Port of @astryxdesign/core Indicator/CheckboxIndicator.tsx, RadioIndicator.tsx,
+ * CheckIndicator.tsx (styles, *SizeStyles), Indicator/indicator.markers.stylex.ts
+ * (indicatorScope) and hooks/useIndicatorFocusRing.tsx (as CSS).
+ *
+ * Rule order mirrors stylex.props() order: chrome → size → checked | unchecked → disabled
+ * → disabled+unchecked. `stylex.when.ancestor(':hover', indicatorScope)` compiles to a
+ * zero-specificity `:where(.marker:hover *)`; here the marker is the `ax-indicator-scope`
+ * class an owner puts on the row whose hover tints the control (only while enabled).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── CheckboxIndicator ─────────────────────────────────────────────── */
+  .astryx-checkbox-indicator {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-width: var(--border-width);
+    border-style: solid;
+    border-radius: var(--radius-inner);
+    transition-property: background-color, border-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-checkbox-indicator[data-size="sm"] { width: 20px; height: 20px; }
+  .astryx-checkbox-indicator[data-size="md"] { width: 24px; height: 24px; }
+
+  /* unchecked: accent is the foreground an inherit-shade loading Spinner reads */
+  .astryx-checkbox-indicator:not([data-checked]) {
+    color: var(--color-accent);
+    border-color: var(--color-border-emphasized);
+    background-color: var(--color-background-surface);
+  }
+  @media (hover: hover) {
+    .astryx-checkbox-indicator:not([data-checked]):where(.ax-indicator-scope:hover *) {
+      border-color: color-mix(in srgb, var(--color-border-emphasized), var(--color-tint-hover) 20%);
+      background-color: color-mix(in srgb, var(--color-background-surface), var(--color-tint-hover) 5%);
+    }
+  }
+  /* checked or indeterminate */
+  .astryx-checkbox-indicator[data-checked] {
+    color: var(--color-on-accent);
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+  }
+  @media (hover: hover) {
+    .astryx-checkbox-indicator[data-checked]:where(.ax-indicator-scope:hover *) {
+      border-color: color-mix(in srgb, var(--color-accent), var(--color-tint-hover) 15%);
+      background-color: color-mix(in srgb, var(--color-accent), var(--color-tint-hover) 15%);
+    }
+  }
+  .astryx-checkbox-indicator[data-disabled] { opacity: 0.5; border-color: var(--color-border); }
+  .astryx-checkbox-indicator[data-disabled]:not([data-checked]) { background-color: var(--color-background-muted); }
+
+  .astryx-checkbox-indicator-check { display: none; color: var(--color-on-accent); }
+  .astryx-checkbox-indicator-check[data-size="sm"] { width: 12px; height: 12px; }
+  .astryx-checkbox-indicator-check[data-size="md"] { width: 14px; height: 14px; }
+  .astryx-checkbox-indicator[data-checked="checked"] > .astryx-checkbox-indicator-check { display: block; }
+
+  .astryx-checkbox-indicator-dash {
+    display: none;
+    background-color: var(--color-on-accent);
+    border-radius: var(--radius-full);
+  }
+  .astryx-checkbox-indicator-dash[data-size="sm"] { width: 10px; height: 2px; }
+  .astryx-checkbox-indicator-dash[data-size="md"] { width: 12px; height: 2px; }
+  .astryx-checkbox-indicator[data-checked="indeterminate"] > .astryx-checkbox-indicator-dash { display: block; }
+
+  /* ── RadioIndicator ────────────────────────────────────────────────── */
+  .astryx-radio-indicator {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-width: var(--border-width);
+    border-style: solid;
+    /* --radius-full on a square box renders pixel-identical to 50%, but stays themeable */
+    border-radius: var(--radius-full);
+    transition-property: background-color, border-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-radio-indicator[data-size="sm"] { width: 20px; height: 20px; }
+  .astryx-radio-indicator[data-size="md"] { width: 24px; height: 24px; }
+
+  .astryx-radio-indicator:not([data-checked]) {
+    border-color: var(--color-border-emphasized);
+    background-color: var(--color-background-surface);
+  }
+  @media (hover: hover) {
+    .astryx-radio-indicator:not([data-checked]):where(.ax-indicator-scope:hover *) {
+      border-color: color-mix(in srgb, var(--color-border-emphasized), var(--color-tint-hover) 20%);
+      background-color: color-mix(in srgb, var(--color-background-surface), var(--color-tint-hover) 5%);
+    }
+  }
+  .astryx-radio-indicator[data-checked] {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+  }
+  @media (hover: hover) {
+    .astryx-radio-indicator[data-checked]:where(.ax-indicator-scope:hover *) {
+      border-color: color-mix(in srgb, var(--color-accent), var(--color-tint-hover) 15%);
+      background-color: color-mix(in srgb, var(--color-accent), var(--color-tint-hover) 15%);
+    }
+  }
+  .astryx-radio-indicator[data-disabled] { opacity: 0.5; border-color: var(--color-border); }
+  .astryx-radio-indicator[data-disabled]:not([data-checked]) { background-color: var(--color-background-muted); }
+
+  .astryx-radio-indicator-dot {
+    border-radius: var(--radius-full);
+    background-color: var(--color-on-accent);
+  }
+  .astryx-radio-indicator-dot[data-size="sm"] { width: 8px; height: 8px; }
+  .astryx-radio-indicator-dot[data-size="md"] { width: 10px; height: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-checkbox-indicator,
+    .astryx-radio-indicator { transition-duration: 0s; }
+  }
+
+  /* Forced colors strip painted backgrounds and don't reliably force an SVG stroke in
+   * currentColor: keep the marks perceivable on the Canvas fill (WCAG 1.4.11). */
+  @media (forced-colors: active) {
+    .astryx-checkbox-indicator-check { color: CanvasText; }
+    .astryx-checkbox-indicator-dash,
+    .astryx-radio-indicator-dot { background-color: CanvasText; }
+  }
+
+  /* ── CheckIndicator replacement slot ───────────────────────────────── */
+  /* children stand where the 1rem (Icon sm) glyph would, so the row does not move */
+  .ax-check-indicator-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    color: var(--color-accent);
+  }
+  .ax-check-indicator-slot[data-disabled] { color: var(--color-icon-disabled); }
+
+  /* ── Owner focus ring (useIndicatorFocusRing) ──────────────────────── *
+   * A control whose real input is visually hidden paints the standard ring on the
+   * indicator's own root (only it can shape the ring with its border-radius), and only on
+   * :focus-visible. Put `ax-indicator-ring-host` on the element that contains the input
+   * (omit it while disabled) and `ax-indicator-ring` on a wrapper holding ONLY the
+   * indicator; whatever a theme renders there as the first element gets the ring. */
+  .ax-indicator-ring-host:has(input:focus-visible) .ax-indicator-ring > :first-child {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+}

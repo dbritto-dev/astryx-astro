@@ -1,0 +1,184 @@
+/*
+ * Port of @astryxdesign/core Thumbnail/Thumbnail.tsx (styles) and the parts of
+ * hooks/containerReveal.stylex.ts Thumbnail uses (container + revealLayoutPreserved).
+ * Rule order mirrors stylex.props(): root → disabled; media → interactive → overlay.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_press-overlay { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  .astryx-thumbnail {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    width: 64px;
+    flex-shrink: 0;
+    isolation: isolate;
+  }
+  .astryx-thumbnail[data-ax-disabled] { opacity: 0.5; pointer-events: none; }
+
+  .ax-thumbnail-media {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-element);
+    overflow: hidden;
+    background-color: var(--color-neutral);
+  }
+  .ax-thumbnail-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ax-thumbnail-inset-border {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    pointer-events: none;
+  }
+  .ax-thumbnail-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--color-icon-secondary);
+  }
+
+  /* ── interactive (open): hover / press overlay on an ::after layer ───── */
+  .ax-thumbnail-media[data-ax-interactive] { cursor: pointer; }
+  .ax-thumbnail-media[data-ax-interactive] { --_press-overlay: transparent; }
+  .ax-thumbnail-media[data-ax-interactive]:where(:not(:disabled, [aria-disabled="true"])):active { --_press-overlay: var(--color-overlay-pressed); }
+  @media (pointer: coarse) {
+    .ax-thumbnail-media[data-ax-interactive]:where(:not(:disabled, [aria-disabled="true"])):active { --_press-overlay: transparent; }
+  }
+  @media (hover: hover) {
+    .ax-thumbnail-media[data-ax-interactive]:where(:not(:disabled, [aria-disabled="true"])):hover:where(:not(:disabled, [aria-disabled="true"])) { --_press-overlay: var(--color-overlay-hover); }
+    .ax-thumbnail-media[data-ax-interactive]:where(:not(:disabled, [aria-disabled="true"])):active { --_press-overlay: var(--color-overlay-pressed); }
+  }
+  .ax-thumbnail-media[data-ax-interactive]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: var(--_press-overlay);
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .ax-thumbnail-media[data-ax-interactive]::after { transition-duration: 0s; }
+  }
+
+  .ax-thumbnail-open {
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-element);
+    overflow: hidden;
+  }
+  .ax-thumbnail-open:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* ── busy overlay (isLoading with a src) ──────────────────────────────── */
+  .ax-thumbnail-upload {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-overlay);
+    border-radius: inherit;
+    z-index: 1;
+    line-height: 0;
+  }
+
+  /* ── remove action ───────────────────────────────────────────────────── */
+  .ax-thumbnail-remove-slot {
+    position: absolute;
+    top: var(--spacing-1);
+    inset-inline-end: var(--spacing-1);
+    z-index: 1;
+    line-height: 0;
+  }
+
+  /* Hover/focus reveal (useContainerReveal, layout preserved). The container publishes its
+   * state as inherited custom properties; content reads them, so nested containers are
+   * isolated. Focus and coarse pointers reveal at once; keyboard focus never waits. */
+  .ax-thumbnail-media[data-ax-reveal] {
+    --_hover-delay: 0s;
+    --_reveal-opacity: 0;
+    --_fade-delay: 0s;
+  }
+  @media (hover: hover) {
+    .ax-thumbnail-media[data-ax-reveal]:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      --_reveal-opacity: 1;
+      --_fade-delay: var(--_hover-delay, 0s);
+    }
+  }
+  .ax-thumbnail-media[data-ax-reveal]:focus-within { --_reveal-opacity: 1; --_fade-delay: 0s; }
+  @media (any-pointer: coarse) {
+    .ax-thumbnail-media[data-ax-reveal] { --_reveal-opacity: 1; --_fade-delay: 0s; }
+  }
+  .ax-thumbnail-remove-slot[data-ax-reveal-content] {
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transition-delay: var(--_fade-delay, 0s);
+    opacity: var(--_reveal-opacity, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-thumbnail-remove-slot[data-ax-reveal-content] { transition-duration: 0s; }
+  }
+
+  /* Stand-in for <Button variant="secondary" size="sm" isIconOnly> (Button is ported
+   * separately) with Thumbnail's xstyle overrides: a fixed --color-overlay scrim and an
+   * --color-on-dark icon read on any image. Carries Button's theme hooks. */
+  .astryx-thumbnail .astryx-button.ax-thumbnail-remove {
+    --button-focus-offset: var(--focus-outline-offset);
+    --button-icon-only-aspect: 1 / 1;
+    --_button-radius: calc(var(--radius-element) - var(--spacing-1));
+    --_thumbnail-hit-inset: 0px;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--_button-radius, var(--radius-element));
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+    aspect-ratio: var(--button-icon-only-aspect);
+    flex-shrink: 0;
+    max-width: none;
+    height: 20px;
+    min-width: 20px;
+    background-color: var(--color-overlay);
+    color: var(--color-on-dark);
+    transition-property: background-image, background-color, color, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-thumbnail .astryx-button.ax-thumbnail-remove:focus-visible { outline-offset: var(--button-focus-offset); }
+  .astryx-thumbnail .astryx-button.ax-thumbnail-remove:where(:not(:disabled, [aria-disabled="true"])):active { transform: scale(0.98); }
+  .astryx-thumbnail .astryx-button.ax-thumbnail-remove[aria-disabled="true"] { cursor: default; background-image: none; }
+  .astryx-thumbnail .astryx-button.ax-thumbnail-remove::after {
+    content: "";
+    position: absolute;
+    inset: var(--_thumbnail-hit-inset);
+  }
+  @media (pointer: coarse) {
+    .astryx-thumbnail .astryx-button.ax-thumbnail-remove { --_thumbnail-hit-inset: -2px; }
+    .astryx-thumbnail .astryx-button.ax-thumbnail-remove:active { transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-thumbnail .astryx-button.ax-thumbnail-remove { transition-duration: 0s; }
+    .astryx-thumbnail .astryx-button.ax-thumbnail-remove:active { transform: scale(1); }
+  }
+  .ax-thumbnail-remove-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+}

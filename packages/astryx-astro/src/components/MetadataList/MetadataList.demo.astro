@@ -1,0 +1,84 @@
+---
+import MetadataList from './MetadataList.astro';
+import MetadataListItem from './MetadataListItem.astro';
+import Badge from '../Badge/Badge.astro';
+import Code from '../Code/Code.astro';
+const frame = 'padding:var(--spacing-4);border:1px solid var(--color-border);border-radius:var(--radius-container)';
+const heading = 'margin:0;font-size:var(--text-label-size);font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+---
+<div style="display:grid;gap:var(--spacing-5);color:var(--color-text-primary)">
+  <div style="display:grid;gap:var(--spacing-5);grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+    <div style={frame}>
+      <MetadataList title="Single column (labels at start)" data-testid="meta-single">
+        <MetadataListItem label="Name" data-testid="name">astryx-astro</MetadataListItem>
+        <MetadataListItem label="Status"><Badge variant="success" label="Active" /></MetadataListItem>
+        <MetadataListItem label="Created" icon="calendar">January 1, 2026</MetadataListItem>
+        <MetadataListItem label="Package"><Code>@astryxdesign/core</Code></MetadataListItem>
+      </MetadataList>
+    </div>
+    <div style={frame}>
+      <MetadataList label={{position: 'top'}}>
+        <h3 slot="title" style={heading}>Stacked labels</h3>
+        <MetadataListItem label="Owner" icon="info">Platform team</MetadataListItem>
+        <MetadataListItem label="Region">us-east-1</MetadataListItem>
+        <MetadataListItem label="Description">A long value wraps onto the next line instead of overflowing the column it sits in.</MetadataListItem>
+      </MetadataList>
+    </div>
+    <div style={frame}>
+      <MetadataList title="Fixed label width (120px)" label={{width: 120}}>
+        <MetadataListItem label="ID">7f3a9c</MetadataListItem>
+        <MetadataListItem label="A much longer label">Value</MetadataListItem>
+      </MetadataList>
+    </div>
+  </div>
+
+  <div style={frame}>
+    <MetadataList title="Multi column (auto-fill)" columns="multi">
+      <MetadataListItem label="Name">MetadataList</MetadataListItem>
+      <MetadataListItem label="Status">Active</MetadataListItem>
+      <MetadataListItem label="Version">0.7.9</MetadataListItem>
+      <MetadataListItem label="License">MIT</MetadataListItem>
+    </MetadataList>
+  </div>
+  <div style={frame}>
+    <MetadataList title="Three fixed columns" columns={3}>
+      <MetadataListItem label="CPU">4 vCPU</MetadataListItem>
+      <MetadataListItem label="Memory">16 GB</MetadataListItem>
+      <MetadataListItem label="Disk">200 GB</MetadataListItem>
+      <MetadataListItem label="OS">Linux</MetadataListItem>
+    </MetadataList>
+  </div>
+  <div style={frame}>
+    <MetadataList title="Two columns, labels at start" columns={2} label={{position: 'start'}}>
+      <MetadataListItem label="Plan">Team</MetadataListItem>
+      <MetadataListItem label="Seats">12</MetadataListItem>
+      <MetadataListItem label="Renews">Mar 3</MetadataListItem>
+      <MetadataListItem label="Billing">Annual</MetadataListItem>
+    </MetadataList>
+  </div>
+  <div style={frame}>
+    <MetadataList title="Horizontal" orientation="horizontal">
+      <MetadataListItem label="Author">Ada</MetadataListItem>
+      <MetadataListItem label="Reviewers">Grace, Alan</MetadataListItem>
+      <MetadataListItem label="Branch"><Code>main</Code></MetadataListItem>
+      <MetadataListItem label="Updated" icon="clock">2 hours ago</MetadataListItem>
+    </MetadataList>
+  </div>
+  <div style="display:grid;gap:var(--spacing-5);grid-template-columns:repeat(auto-fill,minmax(320px,1fr))" data-test="metadata-collapse">
+    <div style={frame}>
+      <MetadataList title="Collapsed after 2 (single)" maxNumOfItems={2}>
+        <MetadataListItem label="One">1</MetadataListItem>
+        <MetadataListItem label="Two">2</MetadataListItem>
+        <MetadataListItem label="Three">3</MetadataListItem>
+        <MetadataListItem label="Four">4</MetadataListItem>
+      </MetadataList>
+    </div>
+    <div style={frame}>
+      <MetadataList title="Collapsed after 2 (stacked, es-ES)" label={{position: 'top'}} maxNumOfItems={2} locale="es-ES">
+        <MetadataListItem label="Uno">1</MetadataListItem>
+        <MetadataListItem label="Dos">2</MetadataListItem>
+        <MetadataListItem label="Tres">3</MetadataListItem>
+      </MetadataList>
+    </div>
+  </div>
+</div>

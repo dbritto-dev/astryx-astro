@@ -1,0 +1,185 @@
+/*
+ * Port of @astryxdesign/core ProgressBar/ProgressBar.tsx (styles, variantStyles,
+ * markOnFillStyles, markOnTrackStyles), its touch layer's CSS contract
+ * (ProgressBarTouch.ts) and the progress motion table (motion/uikit/progressBar.ts).
+ *
+ * The determinate fill spans the whole track and slides along it with a transform
+ * (compositor-only, keeps moving while scripts run); `--_progress-bar-fill` (set inline)
+ * is the filled share. Under forced colors it is sized by `width` instead, so the
+ * CanvasText outline keeps the fill's shape. Under a coarse pointer the fill moves like
+ * UIProgressView (linear, duration ∝ distance) and never draws shorter than 16px above
+ * zero. Under reduced motion values land at once and the indeterminate bar pulses in place.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  @keyframes ax-progress-bar-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(250%); }
+  }
+  @keyframes ax-progress-bar-slide-rtl {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-250%); }
+  }
+  @keyframes ax-progress-bar-pulse {
+    from { opacity: 1; }
+    to { opacity: var(--_progress-bar-pulse-floor); }
+  }
+
+  .astryx-progress-bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+    width: 100%;
+    min-width: 48px;
+  }
+  .ax-progress-bar-header { display: flex; justify-content: space-between; align-items: baseline; }
+  .ax-progress-bar-label {
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+  }
+  .ax-progress-bar-label[data-ax-hidden] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .ax-progress-bar-value {
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+  }
+  .astryx-progress-bar[data-ax-disabled] :is(.ax-progress-bar-label, .ax-progress-bar-value) { color: var(--color-text-disabled); }
+
+  /* marks share the track's geometry without entering the progressbar subtree; unclipped
+   * so themed tall marks overhang symmetrically */
+  .ax-progress-bar-track-box { position: relative; width: 100%; }
+
+  .astryx-progress-bar-track {
+    width: 100%;
+    height: 8px;
+    background-color: var(--color-background-muted);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  /* ── determinate fill ─────────────────────────────────────────────────── */
+  .astryx-progress-bar-fill:not([data-ax-indeterminate]) {
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-full);
+    transform: translateX(calc(var(--_progress-bar-fill, 0%) - 100%));
+    will-change: transform;
+    transition-property: transform;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-progress-bar-fill:not([data-ax-indeterminate]):dir(rtl) {
+    transform: translateX(calc(100% - var(--_progress-bar-fill, 0%)));
+  }
+  @media (pointer: coarse) {
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]) {
+      /* --_progress-bar-flip steps 0,1,2 per change so a return trip never reverses a
+       * running transition to its own start value */
+      transform: translateX(calc(max(var(--_progress-bar-fill, 0%), var(--_progress-bar-min, 0px)) - 100% + var(--_progress-bar-flip, 0) * 0.01px));
+      transition-duration: calc(var(--_progress-bar-move, 0ms) * var(--_astryx-motion-tempo, 1));
+      transition-timing-function: var(--_progress-bar-curve, linear);
+    }
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]):dir(rtl) {
+      transform: translateX(calc(min(calc(100% - var(--_progress-bar-fill, 0%)), calc(100% - var(--_progress-bar-min, 0px))) - var(--_progress-bar-flip, 0) * 0.01px));
+    }
+    /* at zero it paints nothing (the minimum length applies above zero only) */
+    .astryx-progress-bar-fill[data-ax-empty] { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]) { transition-duration: 0s; }
+  }
+  @media (forced-colors: active) {
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]),
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]):dir(rtl) {
+      width: var(--_progress-bar-fill, 0%);
+      transform: none;
+      will-change: auto;
+      transition-property: width;
+    }
+  }
+  @media (forced-colors: active) and (pointer: coarse) {
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]),
+    .astryx-progress-bar-fill:not([data-ax-indeterminate]):dir(rtl) {
+      width: calc(max(var(--_progress-bar-fill, 0%), var(--_progress-bar-min, 0px)) + var(--_progress-bar-flip, 0) * 0.01px);
+      transition-duration: 0s;
+    }
+  }
+
+  /* ── indeterminate fill ───────────────────────────────────────────────── */
+  .astryx-progress-bar-fill[data-ax-indeterminate] {
+    height: 100%;
+    width: 40%;
+    border-radius: var(--radius-full);
+    animation-name: ax-progress-bar-slide;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  .astryx-progress-bar-fill[data-ax-indeterminate]:is([dir="rtl"] *) { animation-name: ax-progress-bar-slide-rtl; }
+  /* reduced motion: one solid bar whose opacity pulses (a busy loop: no tempo scaling) */
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-progress-bar-fill[data-ax-indeterminate],
+    .astryx-progress-bar-fill[data-ax-indeterminate]:is([dir="rtl"] *) {
+      width: 100%;
+      animation-name: ax-progress-bar-pulse;
+      animation-duration: var(--_progress-bar-pulse);
+      animation-timing-function: var(--_progress-bar-pulse-curve);
+      animation-direction: alternate;
+    }
+  }
+
+  /* forced colors replace status fills with Canvas; this boundary keeps the shape visible */
+  @media (forced-colors: active) {
+    .astryx-progress-bar-fill {
+      outline-width: 1px;
+      outline-style: solid;
+      outline-color: CanvasText;
+      outline-offset: -1px;
+    }
+  }
+
+  /* fill variants */
+  .astryx-progress-bar-fill[data-variant="accent"] { background-color: var(--color-accent); }
+  .astryx-progress-bar-fill[data-variant="success"] { background-color: var(--color-success); }
+  .astryx-progress-bar-fill[data-variant="warning"] { background-color: var(--color-warning); }
+  .astryx-progress-bar-fill[data-variant="error"] { background-color: var(--color-error); }
+  .astryx-progress-bar-fill[data-variant="neutral"] { background-color: var(--color-text-disabled); }
+  .astryx-progress-bar-fill[data-variant="disabled"] { background-color: var(--color-text-disabled); }
+
+  /* ── target marks: a centred vertical tick, focusable, outside role=progressbar ── */
+  .astryx-progress-bar-mark {
+    position: absolute;
+    top: 50%;
+    /* only these private vars size it, so a theme's width/height (emitted as the vars)
+     * land whatever the consumer's cascade looks like */
+    width: var(--_progressbar-mark-width, 2px);
+    height: var(--_progressbar-mark-height, 8px);
+    transform: translate(-50%, -50%);
+  }
+  .astryx-progress-bar-mark:is([dir="rtl"] *) { transform: translate(50%, -50%); }
+
+  /* a mark inside the fill takes the fill's on-color; neutral/disabled have none */
+  .astryx-progress-bar-mark[data-placement="fill"][data-variant="accent"] { background-color: var(--color-on-accent); }
+  .astryx-progress-bar-mark[data-placement="fill"][data-variant="success"] { background-color: var(--color-on-success); }
+  .astryx-progress-bar-mark[data-placement="fill"][data-variant="warning"] { background-color: var(--color-on-warning); }
+  .astryx-progress-bar-mark[data-placement="fill"][data-variant="error"] { background-color: var(--color-on-error); }
+  .astryx-progress-bar-mark[data-placement="fill"][data-variant="neutral"] { background-color: var(--color-text-primary); }
+  .astryx-progress-bar-mark[data-placement="fill"][data-variant="disabled"] { background-color: var(--color-text-secondary); }
+  /* out on the bare track: the one foreground that reads on every theme's track */
+  .astryx-progress-bar-mark[data-placement="track"] { background-color: var(--color-text-primary); }
+  .astryx-progress-bar-mark[data-placement="track"][data-variant="disabled"] { background-color: var(--color-text-secondary); }
+}

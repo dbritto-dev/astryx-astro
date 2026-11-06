@@ -1,0 +1,55 @@
+---
+import FieldStatus, {type FieldStatusType} from './FieldStatus.astro';
+const types: FieldStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<FieldStatusType, string> = {
+  error: 'This field is required',
+  warning: 'This will be visible to others',
+  success: 'Username is available',
+};
+// A stand-in for a bordered control (TextInput is ported separately).
+const control = 'display:block;position:relative;z-index:1;height:var(--size-element-md);border:var(--border-width) solid var(--color-border-emphasized);border-radius:var(--radius-element);background:var(--color-background-surface);padding-inline:var(--spacing-2);line-height:var(--size-element-md);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const caption = 'margin:0 0 var(--spacing-1);font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5)">
+    {types.map((type) => (
+      <div>
+        <p style={caption}>attached · {type}</p>
+        <span style={control}>name@example</span>
+        <FieldStatus type={type} message={messages[type]} />
+      </div>
+    ))}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5)">
+    {types.map((type) => (
+      <div>
+        <p style={caption}>detached · {type}</p>
+        <FieldStatus type={type} variant="detached" message={messages[type]} />
+      </div>
+    ))}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5)">
+    <div style="max-width:260px">
+      <p style={caption}>long message wraps (detached icon stays on the first line)</p>
+      <FieldStatus type="error" variant="detached" message="We couldn't reach https://very-long-subdomain.example-domain-that-does-not-exist.com/path — check the address and try again." />
+    </div>
+    <div style="max-width:260px">
+      <p style={caption}>deprecated tooltip variant: a plain box</p>
+      <FieldStatus type="warning" variant="tooltip" message="Shown without a tooltip" />
+    </div>
+  </div>
+  <div data-test="field-status-insert">
+    <p style={caption}>inserted after load: slides in (no motion under reduced motion) and is announced</p>
+    <button type="button" data-insert style="font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border-radius:var(--radius-element);border:var(--border-width) solid var(--color-border-emphasized);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer">Validate</button>
+    <template><FieldStatus type="error" variant="detached" message="Pick a date in the future" /></template>
+    <div data-target></div>
+  </div>
+</div>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-test="field-status-insert"]').forEach((root) => {
+    root.querySelector('[data-insert]')?.addEventListener('click', () => {
+      const tpl = root.querySelector('template')!;
+      root.querySelector('[data-target]')!.replaceChildren(tpl.content.cloneNode(true));
+    });
+  });
+</script>

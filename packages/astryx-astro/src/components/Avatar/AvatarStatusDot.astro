@@ -1,0 +1,77 @@
+---
+/**
+ * AvatarStatusDot — a status dot that scales with its Avatar. Port of
+ * @astryxdesign/core Avatar/AvatarStatusDot.tsx.
+ *
+ * Put it in an Avatar's `status` slot. Astryx reads the avatar size from context; here the
+ * Avatar stamps it (cascade key `avatar-size`, and `avatar-group` from an AvatarGroup), so
+ * the dot first renders at the context default (36px → the small tier) and is resized by
+ * its owner: ≤36px 10px dot / 1px border, ≤72px 20 / 2 with a 12px icon, else 32 / 4 with
+ * an 18px icon.
+ *
+ * Each variant pairs a colour with a built-in shape glyph so status never relies on colour
+ * alone (WCAG 1.4.1): success = filled dot, neutral = ring, error = minus bar. A rendered
+ * `icon` (slot) replaces the glyph, except at the smallest tier where icons are not drawn.
+ *
+ * Accessibility: with `label` the dot is `role="img"` + `aria-label`. Inside an Avatar's
+ * role="img" root its semantics are pruned, so the Avatar composes the label into its own
+ * name ("Jane Doe, Online").
+ *
+ * @example
+ * <Avatar name="Jane Doe" size="lg"><AvatarStatusDot slot="status" variant="success" label="Online" /></Avatar>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {dotPartAttributes, dotPartVars, statusDotGeometry, type StatusDotGlyphShape} from './avatarParts';
+import './Avatar.css';
+
+/** Extensible like Astryx AvatarStatusDotVariantMap; custom variants draw no glyph. */
+export type AvatarStatusDotVariant = 'success' | 'neutral' | 'error' | (string & {});
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** success (filled), neutral (ring), error (minus bar). @default 'success' */
+  variant?: AvatarStatusDotVariant;
+  /** Accessible label, e.g. "Online". Composed into the Avatar's accessible name. */
+  label?: string;
+}
+
+const glyphShapeMap: Partial<Record<string, StatusDotGlyphShape>> = {neutral: 'ring', error: 'minus'};
+// AvatarSizeContext default (md).
+const g = statusDotGeometry(36);
+
+// `slot` only routes the dot into the Avatar's status slot; keep it off the element.
+const {variant = 'success', label, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const iconHtml = Astro.slots.has('icon') ? await Astro.slots.render('icon') : '';
+const hasIcon = iconHtml.trim() !== '';
+const glyphShape = glyphShapeMap[variant];
+const marker = inherits({'avatar-size': true, 'avatar-group': true});
+
+const {themeClass, attrs} = themeProps('avatar-status-dot', {variant});
+const glyph = themeProps('avatar-status-dot-glyph', {shape: glyphShape});
+const root: Record<string, unknown> = {
+  ...rest,
+  ...(label ? {role: 'img', 'aria-label': label, 'data-ax-status-label': label} : {}),
+  ...attrs,
+  ...dotPartAttributes('dot', g, hasIcon),
+  'data-ax-avatar-part': 'dot',
+  'data-ax-inherit': marker,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(dotPartVars('dot', g), style as StyleValue),
+};
+const part = (name: string) => ({
+  ...dotPartAttributes(name, g, hasIcon),
+  'data-ax-avatar-part': name,
+  'data-ax-inherit': marker,
+});
+const iconAttrs = part('dot-icon');
+const glyphAttrs = part('dot-glyph');
+---
+<div {...root}>{hasIcon && (
+  <span aria-hidden="true" class="ax-avatar-status-dot-icon" style={mergeStyles(dotPartVars('dot-icon', g))} {...iconAttrs}><Fragment set:html={iconHtml} /></span>
+)}{glyphShape && (
+  <svg aria-hidden="true" fill="none" class={glyph.themeClass} {...glyph.attrs} {...glyphAttrs} data-ax-has-icon={hasIcon ? '' : undefined}>{glyphShape === 'ring'
+    ? <circle fill="none" stroke="currentColor" {...part('dot-ring')}></circle>
+    : <line stroke="currentColor" stroke-linecap="round" {...part('dot-minus')}></line>}</svg>
+)}</div>

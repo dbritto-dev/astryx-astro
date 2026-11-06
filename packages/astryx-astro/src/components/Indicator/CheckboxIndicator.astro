@@ -1,0 +1,58 @@
+---
+/**
+ * CheckboxIndicator — the default checkbox visual: a square box with a checkmark or an
+ * indeterminate bar. Port of @astryxdesign/core Indicator/CheckboxIndicator.tsx.
+ *
+ * Decorative: always `aria-hidden="true"` (set after the caller's attributes, so it cannot
+ * be un-hidden) and no role, focus or input. The owner keeps those, and paints the focus
+ * ring on this root (see `ax-indicator-ring` in Indicator.css). The default slot replaces
+ * the state mark (CheckboxInput passes its loading Spinner); an empty slot keeps the mark.
+ * Row hover tints it through the owner's `ax-indicator-scope` class.
+ *
+ * Themes restyle it via `.astryx-checkbox-indicator[data-checked|data-disabled|data-size]`
+ * or replace it by name: registerIndicatorTheme(theme, {checkbox: MyCheckbox}).
+ *
+ * @example
+ * <CheckboxIndicator state="indeterminate" size="sm" />
+ * <CheckboxIndicator state="checked"><Spinner size="sm" shade="inherit" aria-hidden="true" /></CheckboxIndicator>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {IndicatorSize, IndicatorState} from './indicatorRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Indicator.css';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'role' | 'aria-label' | 'aria-labelledby' | 'tabindex'> {
+  /** Which state to draw; an unchecked box is an empty box, not nothing. */
+  state: IndicatorState<'multiSelection'>;
+  /** Control size: 20px or 24px. @default 'md' */
+  size?: IndicatorSize;
+  /** Purely visual; the owner keeps the real disabled semantics. @default false */
+  isDisabled?: boolean;
+}
+
+const {state, size = 'md', isDisabled = false, class: className, style, ...rest} = Astro.props;
+
+const isChecked = state === 'checked';
+const isIndeterminate = state === 'indeterminate';
+const children = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const hasChildren = children.trim() !== '';
+
+const {themeClass, attrs} = themeProps('checkbox-indicator', {
+  size,
+  checked: isChecked ? 'checked' : isIndeterminate ? 'indeterminate' : null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const root: Record<string, unknown> = {
+  ...rest,
+  'aria-hidden': 'true',
+  ...attrs,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+};
+const check = themeProps('checkbox-indicator-check', {size});
+const dash = themeProps('checkbox-indicator-dash', {size});
+---
+<span {...root}>{hasChildren ? <Fragment set:html={children} /> : (
+  <><svg viewBox="0 0 10 10" class={check.themeClass} {...check.attrs}><path d="M8.5 2.5L4 7.5L1.5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg><span class={dash.themeClass} {...dash.attrs}></span></>
+)}</span>

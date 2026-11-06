@@ -1,0 +1,15 @@
+/* Port of @astryxdesign/core Timer/Timer.tsx (styles.time). Typography comes from Text. */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-timer-time {
+    color: inherit;
+    display: inline;
+    font-family: inherit;
+    font-size: inherit;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    font-weight: inherit;
+    line-height: inherit;
+  }
+}

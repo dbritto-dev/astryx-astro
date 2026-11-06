@@ -1,0 +1,164 @@
+---
+/**
+ * ProgressBar — determinate or indeterminate progress, with an optional value label and
+ * target marks. Port of @astryxdesign/core ProgressBar/ProgressBar.tsx,
+ * ProgressBar/ProgressBarTouch.ts (its CSS contract) and motion/uikit/progressBar.ts.
+ *
+ * Accessibility: the track is `role="progressbar"` named by the label (aria-labelledby; a
+ * hidden label stays in the tree), with aria-valuenow (clamped to 0…max), aria-valuemin 0,
+ * aria-valuemax and aria-valuetext = the formatted value; indeterminate bars expose none of
+ * the values. A non-finite value or max counts as 0. Marks sit outside the progressbar as
+ * focusable `role="img"` ticks named by their label.
+ *
+ * Motion: the fill slides with a transform (--duration-medium); under a coarse pointer it
+ * moves linearly and never draws shorter than 16px above zero; the indeterminate bar
+ * slides (mirrored in RTL) and, under reduced motion, pulses its opacity in place.
+ *
+ * Theming: `.astryx-progress-bar[data-variant]`, `.astryx-progress-bar-track`,
+ * `.astryx-progress-bar-fill[data-variant]` (fill variant: `disabled` when isDisabled),
+ * `.astryx-progress-bar-mark[data-variant][data-placement="fill|track"]`, and the private
+ * `--_progressbar-mark-width/-height` a theme's mark width/height become.
+ *
+ * Port notes: values are server-rendered (no client animation between values unless you
+ * update `--_progress-bar-fill` and the aria-value* attributes yourself); Astryx reveals a
+ * mark's label in a Tooltip, which is not ported yet; the touch layer's measured
+ * "drawn share" for mark colouring under a finger is not reproduced.
+ *
+ * @example
+ * <ProgressBar value={75} label="Upload progress" />
+ * <ProgressBar isIndeterminate label="Loading…" />
+ * <ProgressBar value={3.2} max={5} label="Disk usage" hasValueLabel formatValueLabel={(v, m) => `${v} GB / ${m} GB`} />
+ * <ProgressBar value={45} label="Fundraiser" marks={[{value: 80, label: 'Goal'}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './ProgressBar.css';
+
+/** Extensible like Astryx ProgressBarVariantMap. */
+export type ProgressBarVariant = 'accent' | 'success' | 'warning' | 'error' | 'neutral' | (string & {});
+
+/** A fixed target mark on the track, in the same 0..max scale as `value`. */
+export interface ProgressBarMark {
+  value: number;
+  /** Required: the mark's accessible name (and, in Astryx, its tooltip). */
+  label: string;
+}
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Accessible label; shown above the bar unless `isLabelHidden`. */
+  label: string;
+  /** Current value (ignored when indeterminate). @default 0 */
+  value?: number;
+  /** @default 100 */
+  max?: number;
+  /** Visually hide the label (it stays accessible). @default false */
+  isLabelHidden?: boolean;
+  /** Show the formatted value next to the label (not when indeterminate). @default false */
+  hasValueLabel?: boolean;
+  /** Formats the value label and aria-valuetext. @default (v, max) => `${Math.round(v / max * 100)}%` */
+  formatValueLabel?: (value: number, max: number) => string;
+  /** @default 'accent' */
+  variant?: ProgressBarVariant;
+  /** Animated indeterminate bar; `value`, `hasValueLabel` and `marks` are ignored. @default false */
+  isIndeterminate?: boolean;
+  /** Target marks drawn on the track. */
+  marks?: ReadonlyArray<ProgressBarMark>;
+  /** Disabled colors (canceled / inactive operations). @default false */
+  isDisabled?: boolean;
+  'data-testid'?: string;
+}
+
+// motion/uikit: the touch fill is linear and at least two 8px track heights; the
+// reduced-motion pulse is 2000ms each way on timing.curves.move down to 0.84 opacity.
+const TOUCH_MIN_FILL_PX = 16;
+const FILL_CURVE = 'cubic-bezier(0, 0, 1, 1)';
+const PULSE_STYLE = {
+  '--_progress-bar-pulse': '2000ms',
+  '--_progress-bar-pulse-curve': 'cubic-bezier(0.42, 0, 0.58, 1)',
+  '--_progress-bar-pulse-floor': '0.84',
+};
+
+function defaultFormatValueLabel(value: number, max: number): string {
+  const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+  return `${pct}%`;
+}
+
+const {
+  value = 0,
+  max = 100,
+  label,
+  isLabelHidden = false,
+  hasValueLabel = false,
+  formatValueLabel = defaultFormatValueLabel,
+  variant = 'accent',
+  isIndeterminate = false,
+  isDisabled = false,
+  marks,
+  'data-testid': testId,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const labelId = `ax-progress-label-${Math.random().toString(36).slice(2, 10)}`;
+const safeValue = Number.isFinite(value) ? value : 0;
+const safeMax = Number.isFinite(max) ? max : 0;
+const clampedValue = Math.min(Math.max(0, safeValue), safeMax);
+const percentage = safeMax > 0 ? (clampedValue / safeMax) * 100 : 0;
+const valueText = formatValueLabel(clampedValue, safeMax);
+const showValueLabel = hasValueLabel && !isIndeterminate;
+const fillVariant = isDisabled ? 'disabled' : variant;
+
+const resolvedMarks = !isIndeterminate && marks
+  ? marks.filter((m) => Number.isFinite(m.value)).map((m) => {
+      const clamped = Math.min(Math.max(0, m.value), safeMax);
+      const pct = safeMax > 0 ? (clamped / safeMax) * 100 : 0;
+      return {label: m.label, pct, isOnFill: percentage > 0 && pct <= percentage};
+    })
+  : [];
+
+const {themeClass, attrs} = themeProps('progress-bar', {variant});
+const track = themeProps('progress-bar-track');
+const fill = themeProps('progress-bar-fill', {variant: fillVariant});
+const fillStyle = isIndeterminate
+  ? mergeStyles(PULSE_STYLE)
+  : mergeStyles({
+      '--_progress-bar-fill': `${percentage}%`,
+      '--_progress-bar-move': '0ms',
+      '--_progress-bar-curve': FILL_CURVE,
+      '--_progress-bar-flip': '0',
+      '--_progress-bar-min': `${TOUCH_MIN_FILL_PX}px`,
+    });
+---
+<div
+  {...attrs}
+  class={cx(themeClass, className)}
+  style={mergeStyles(style as StyleValue)}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-testid={testId}
+  {...rest}
+>{!isLabelHidden || showValueLabel ? (
+  <div class="ax-progress-bar-header"><span id={labelId} class="ax-progress-bar-label" data-ax-hidden={isLabelHidden ? '' : undefined}>{label}</span>{showValueLabel && <span class="ax-progress-bar-value">{valueText}</span>}</div>
+) : (
+  <VisuallyHidden id={labelId}>{label}</VisuallyHidden>
+)}<div class="ax-progress-bar-track-box"><div
+  role="progressbar"
+  aria-valuenow={isIndeterminate ? undefined : clampedValue}
+  aria-valuemin={isIndeterminate ? undefined : 0}
+  aria-valuemax={isIndeterminate ? undefined : safeMax}
+  aria-labelledby={labelId}
+  aria-valuetext={isIndeterminate ? undefined : valueText}
+  class={track.themeClass}
+  {...track.attrs}
+><div
+  class={fill.themeClass}
+  {...fill.attrs}
+  data-ax-indeterminate={isIndeterminate ? '' : undefined}
+  data-ax-empty={!isIndeterminate && percentage === 0 ? '' : undefined}
+  style={fillStyle}
+></div></div>{resolvedMarks.map((mark) => {
+  const m = themeProps('progress-bar-mark', {variant: fillVariant, placement: mark.isOnFill ? 'fill' : 'track'});
+  return <span role="img" aria-label={mark.label} tabindex="0" class={cx(m.themeClass, 'ax-focus-visible')} {...m.attrs} style={`inset-inline-start:${mark.pct}%`}></span>;
+})}</div></div>

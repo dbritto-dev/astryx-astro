@@ -1,0 +1,53 @@
+---
+import EmptyState from './EmptyState.astro';
+import Icon from '../Icon/Icon.astro';
+// Button is ported separately: minimal native buttons stand in for actions here.
+const primary = 'font:inherit;font-size:var(--text-label-size);font-weight:var(--font-weight-medium);height:var(--size-element-md);padding-inline:var(--spacing-3);border:0;border-radius:var(--radius-element);background:var(--color-accent);color:var(--color-on-accent);cursor:pointer';
+const secondary = primary + ';background:var(--color-neutral);color:var(--color-text-primary)';
+const frame = 'border:1px dashed var(--color-border);border-radius:var(--radius-container)';
+const illustration = `<svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true"><rect x="8" y="14" width="48" height="36" rx="6" fill="var(--color-background-muted)" stroke="var(--color-border-emphasized)" stroke-width="2"/><path d="M8 24h48" stroke="var(--color-border-emphasized)" stroke-width="2"/><circle cx="32" cy="38" r="6" stroke="var(--color-text-secondary)" stroke-width="2"/></svg>`;
+---
+<div style="display:grid;gap:var(--spacing-5);grid-template-columns:repeat(auto-fill,minmax(300px,1fr));color:var(--color-text-primary)">
+  <div style={frame}>
+    <EmptyState title="No results found" description="Try adjusting your search or filters to find what you're looking for." />
+  </div>
+  <div style={frame}>
+    <EmptyState icon="search" title="No messages" description="You're all caught up!" headingLevel={2}>
+      <Fragment slot="actions">
+        <button type="button" style={primary}>Compose</button>
+        <button type="button" style={secondary}>Refresh</button>
+      </Fragment>
+    </EmptyState>
+  </div>
+  <div style={frame}>
+    <EmptyState isCompact title="Nothing here yet" description="Files you upload appear here.">
+      <Icon slot="icon" icon="upload" size="lg" color="secondary" />
+      <Fragment slot="actions">
+        <button type="button" style={primary}>Upload</button>
+        <button type="button" style={secondary}>Learn more</button>
+      </Fragment>
+    </EmptyState>
+  </div>
+  <div style={frame}>
+    <EmptyState title="No projects" description="Create a project to start collaborating with your team.">
+      <Fragment slot="icon" set:html={illustration} />
+    </EmptyState>
+  </div>
+  <div style={frame}>
+    <EmptyState isCompact title="Empty folder" />
+  </div>
+  <div style={frame} data-test="empty-state-insert">
+    <div data-target style="display:flex;flex-direction:column;align-items:center;padding:var(--spacing-4);gap:var(--spacing-2)">
+      <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">1 item in the list</span>
+      <button type="button" data-clear style={secondary}>Clear list</button>
+    </div>
+    <template><EmptyState isCompact title="List cleared" description="This message is announced because it appeared after load." /></template>
+  </div>
+</div>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-test="empty-state-insert"]').forEach((root) => {
+    root.querySelector('[data-clear]')?.addEventListener('click', () => {
+      root.querySelector('[data-target]')!.replaceWith(root.querySelector('template')!.content.cloneNode(true));
+    });
+  });
+</script>

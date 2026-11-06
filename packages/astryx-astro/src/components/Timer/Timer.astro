@@ -1,0 +1,79 @@
+---
+/**
+ * Timer — a standardized elapsed duration for active work ("5s", "2m 05s", "1h 05m"), or a
+ * stopwatch reading ("4:05", "1:02:03"), in a semantic <time> with an ISO 8601 duration.
+ * Port of @astryxdesign/core Timer/Timer.tsx.
+ *
+ * The server renders the first paint (0 elapsed, `datetime="PT0S"`, as Astryx does before
+ * its first effect); the <ax-timer> element (src/elements/timer.ts) ticks it in the
+ * browser, writing the <time>'s text and datetime directly. Digits are formatted with Intl
+ * in the server-resolved locale (`locale` prop → Astro.locals.astryxLocale →
+ * Astro.currentLocale), passed to the element as `data-locale`; see timerFormat.ts.
+ *
+ * Typography follows Timestamp: a Text root (type supporting, color secondary by default)
+ * carrying `astryx-timer`; `class`/`style` go on that root, other attributes on the <time>.
+ * Not a live region: don't add aria-live unless a per-tick announcement is wanted.
+ *
+ * @example
+ * <Timer />
+ * <Timer format="clock" />
+ * <Timer startTime={operationStartedAt} />
+ * <Text>Processing for <Timer type="inherit" color="inherit" /></Text>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Text, {type TextColor, type TextSize, type TextType, type TextWeight} from '../Text/Text.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale} from '../../lib/i18n';
+import {digitsFor, getPresentation, resolveFormat, type TimerFormat} from './timerFormat';
+import './Timer.css';
+
+export type {TimerFormat} from './timerFormat';
+
+export interface Props extends Omit<HTMLAttributes<'time'>, 'datetime' | 'color'> {
+  /** Unix ms when the operation began; omit to count from the element's mount. */
+  startTime?: number;
+  /** 'elapsed' compact units, or 'clock' (m:ss / h:mm:ss). @default 'elapsed' */
+  format?: TimerFormat;
+  /** Semantic text type (as Timestamp). @default 'supporting' */
+  type?: TextType;
+  /** Explicit font size override. */
+  size?: TextSize;
+  /** @default 'secondary' */
+  color?: TextColor;
+  weight?: TextWeight;
+  /** Locale for the digits (port extension). */
+  locale?: string;
+}
+
+const {
+  startTime,
+  format = 'elapsed',
+  type = 'supporting',
+  size,
+  color = 'secondary',
+  weight,
+  locale: localeProp,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const locale = resolveLocale(Astro, localeProp);
+const resolvedFormat = resolveFormat(format);
+const initial = getPresentation(0, resolvedFormat, digitsFor(locale));
+const {themeClass} = themeProps('timer');
+const TimerTag = 'ax-timer' as 'span';
+---
+<Text
+  as={TimerTag}
+  type={type}
+  size={size}
+  color={color}
+  weight={weight}
+  class={cx(themeClass, className)}
+  style={style}
+  data-start-time={startTime != null && Number.isFinite(startTime) ? String(startTime) : undefined}
+  data-format={resolvedFormat}
+  data-locale={locale}
+><time {...rest} datetime="PT0S" class="ax-timer-time">{initial.text}</time></Text>
+<script>import '../../elements/timer';</script>

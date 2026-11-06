@@ -1,0 +1,18 @@
+---
+import Code, {type CodeColor} from './Code.astro';
+import Text from '../Text/Text.astro';
+const colors: CodeColor[] = ['primary', 'secondary', 'inherit'];
+---
+<div style="display:grid;gap:var(--spacing-4);color:var(--color-text-primary)">
+  <Text as="p">Use <Code>const x = 1</Code> to declare a variable, then call <Code>format(x)</Code>.</Text>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4);align-items:baseline">
+    {colors.map((color) => (
+      <Text as="p" color="secondary">color="{color}": <Code color={color}>npm run build</Code></Text>
+    ))}
+  </div>
+  <Text as="p" type="large">Inherit the size: run <Code size="inherit">pnpm --filter docs build</Code> in large text.</Text>
+  <Text as="p" type="supporting">Default size inside supporting text: <Code>--color-background-muted</Code></Text>
+  <div style="max-width:220px;border:1px dashed var(--color-border);padding:var(--spacing-2);border-radius:var(--radius-inner)">
+    <Text as="p">A long token wraps: <Code>packages/astryx-astro/src/components/Code/Code.astro</Code></Text>
+  </div>
+</div>

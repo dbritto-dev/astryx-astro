@@ -1,0 +1,201 @@
+---
+/**
+ * Avatar — a profile image with initials / person-icon fallback, an optional status dot,
+ * and optional link or button behaviour. Port of @astryxdesign/core Avatar/Avatar.tsx,
+ * Avatar/AvatarSizeContext.ts, Avatar/AvatarStatusLabelContext.ts and utils/characters.ts.
+ *
+ * Fallback chain (as Astryx): `src` → `fallbackSrc` → initials from `name` (first
+ * letter/digit/emoji grapheme of the first and last words) → a person icon. An image that
+ * fails to load swaps to the next step in the browser (behaviors/imageFallback.ts); later
+ * steps sit in <template>s, so a fallback image is only requested when needed.
+ *
+ * Accessibility: a static avatar with a name (`alt` || `name`, composed with a status dot's
+ * label: "Jane Doe, Online") is `role="img"` + `aria-label`; with no name it is decorative
+ * (`role="presentation"` + `aria-hidden`). Caller aria-* / role win. `href` renders an
+ * <a> (safeHref), `onClick` a <button type="button">; those carry only the aria-label.
+ *
+ * `onClick` (port note): a server component has no callbacks. Pass an inline handler
+ * string (rendered as the native `onclick`) or `true` to render the button and attach a
+ * listener yourself.
+ *
+ * Tooltip (port note): Astryx shows the name (or a custom `tooltip` string) in a Tooltip on
+ * hover/focus. Tooltip is not ported yet, so no tooltip is drawn; the markup is kept —
+ * a static avatar with a tooltip is a tab stop (except in an AvatarGroup), and a custom
+ * string still describes the avatar (aria-describedby → its text).
+ *
+ * Inside an AvatarGroup the group's size and shape win over this avatar's own props.
+ *
+ * @example
+ * <Avatar src="/user.jpg" name="John Doe" />
+ * <Avatar name="Jane Smith" size="xl" shape="rounded" />
+ * <Avatar name="Jane Doe" size="lg"><AvatarStatusDot slot="status" variant="success" label="Online" /></Avatar>
+ * <Avatar name="John Doe" href="/users/john" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits, stamp} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {safeHref} from '../../lib/safeUrl';
+import {translator} from '../../lib/i18n';
+import {decodeEntities, getInitials, meaningful, resolveSize, stampDotPart, type AvatarShape, type AvatarSize} from './avatarParts';
+import './Avatar.css';
+
+export type {AvatarShape, AvatarSize, AvatarNamedSize, AvatarNumericSize} from './avatarParts';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'onclick'> {
+  /** Alt text / accessible name. Falls back to `name`. */
+  alt?: string;
+  /** Image used when `src` fails to load; if it fails too, initials from `name` show. */
+  fallbackSrc?: string;
+  /** The user's name: initials when there is no image, and the default accessible name. */
+  name?: string;
+  /** xsm 20, sm 24, md 36, lg 48, xl 128, or a px number. An AvatarGroup's size wins. @default 'md' */
+  size?: AvatarSize;
+  /** @default 'circle' */
+  shape?: AvatarShape;
+  /** Primary image source. */
+  src?: string;
+  /** Tooltip text: true/omitted = the name, a string = that text, false = none. @default true */
+  tooltip?: string | boolean;
+  /** Renders the avatar as a link (blocked schemes render a static avatar). */
+  href?: string;
+  /** Custom link component (an Astro component) used with `href`. */
+  as?: any;
+  /** Link target (with `href`). */
+  target?: string;
+  /** Link rel (with `href`). */
+  rel?: string;
+  /** Renders a <button type="button">: an inline handler string, or `true` to wire it yourself. */
+  onClick?: string | true;
+  'data-testid'?: string;
+  /** Locale for the composed "name, status" accessible name. */
+  locale?: string;
+}
+
+const {
+  alt,
+  'data-testid': testId,
+  fallbackSrc,
+  name,
+  size = 'md',
+  shape = 'circle',
+  src,
+  tooltip = true,
+  href: rawHref,
+  as: LinkComponent,
+  target,
+  rel,
+  onClick,
+  locale,
+  class: className,
+  style,
+  ...props
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const numericSize = resolveSize(size);
+
+// Status slot first: the dot takes this avatar's size and reports its label.
+let statusLabel: string | undefined;
+const statusHtml = Astro.slots.has('status')
+  ? await stamp(await Astro.slots.render('status'), 'avatar-size', (attrs) => {
+      const label = attrs['data-ax-status-label'];
+      if (label !== undefined) {
+        statusLabel = meaningful(decodeEntities(label)) ?? statusLabel;
+        delete attrs['data-ax-status-label'];
+      }
+      stampDotPart(attrs, numericSize);
+    })
+  : '';
+const hasStatus = statusHtml.trim() !== '';
+
+const meaningfulName = meaningful(name);
+const nameLabel = meaningful(alt) ?? meaningfulName;
+const initials = meaningfulName ? getInitials(meaningfulName) : '';
+const accessibleName = nameLabel && statusLabel
+  ? t('@astryx.avatar.nameWithStatus', {name: nameLabel, status: statusLabel})
+  : (nameLabel || statusLabel);
+
+// Visible tooltip prefers `name`; only a custom string describes the avatar.
+const tooltipContent = tooltip === false ? undefined : typeof tooltip === 'string' ? tooltip : meaningfulName;
+const trimmedTooltip = tooltipContent?.trim();
+const showTooltip = trimmedTooltip != null && trimmedTooltip !== '';
+const isCustomTooltip = typeof tooltip === 'string' && showTooltip;
+const tooltipId = isCustomTooltip ? `ax-avatar-tip-${Math.random().toString(36).slice(2, 10)}` : undefined;
+const describedBy = isCustomTooltip
+  ? [props['aria-describedby'], tooltipId].filter(Boolean).join(' ')
+  : undefined;
+
+const href = rawHref != null ? safeHref(rawHref) : undefined;
+const renderAsLink = href != null;
+const renderAsButton = !renderAsLink && onClick != null && (onClick as unknown) !== false;
+const isInteractive = renderAsLink || renderAsButton;
+if (import.meta.env.DEV && isInteractive && !nameLabel && meaningful(props['aria-label']) == null && meaningful(props['aria-labelledby']) == null) {
+  console.warn('[astryx Avatar] an interactive avatar (with `href` or `onClick`) needs a meaningful accessible name. Pass `alt` or `name`.');
+}
+
+const {themeClass, attrs: themeAttrs} = themeProps('avatar', {size, shape});
+const rootStyle = mergeStyles({'--_ax-avatar-size': `${numericSize}px`}, style as StyleValue);
+const rootClass = cx(themeClass, 'ax-focus-visible', className as string | undefined);
+const marker = inherits({'avatar-group': true});
+const shared = {
+  ...themeAttrs,
+  'data-ax-avatar-part': 'root',
+  'data-ax-inherit': marker,
+  class: rootClass,
+  style: rootStyle,
+};
+
+let rootAttrs: Record<string, unknown>;
+if (isInteractive) {
+  rootAttrs = {
+    ...(accessibleName ? {'aria-label': accessibleName} : {}),
+    ...props,
+    ...(describedBy ? {'aria-describedby': describedBy} : {}),
+    ...(renderAsLink ? {href, target, rel} : {type: 'button', onclick: typeof onClick === 'string' ? onClick : undefined}),
+    'data-avatar-item': '',
+    'data-testid': testId,
+    ...shared,
+  };
+} else {
+  rootAttrs = {
+    ...(accessibleName ? {role: 'img', 'aria-label': accessibleName} : {role: 'presentation', 'aria-hidden': 'true'}),
+    ...props,
+    // A tooltip makes the static avatar a tab stop (WCAG 1.4.13 / 2.1.1); a group strips it.
+    tabindex: showTooltip ? '0' : undefined,
+    'data-testid': testId,
+    ...(describedBy ? {'aria-describedby': describedBy} : {}),
+    ...shared,
+  };
+}
+
+// The fallback plate (initials or person icon).
+const {themeClass: fallbackClass, attrs: fallbackAttrs} = themeProps('avatar-fallback', {size});
+const hasSrc = src != null && src !== '';
+const hasFallbackSrc = fallbackSrc != null && fallbackSrc !== '';
+const usesImage = hasSrc || hasFallbackSrc;
+// Fallback steps: [src] → [fallbackSrc] → plate. Later steps wait in <template>s.
+const fallbackStep = hasSrc ? '1' : '0';
+const plateStep = usesImage ? String((hasSrc ? 1 : 0) + (hasFallbackSrc ? 1 : 0)) : undefined;
+const plate = {
+  class: cx(fallbackClass, initials !== '' && 'ax-avatar-initials'),
+  ...fallbackAttrs,
+  'data-ax-avatar-part': 'fallback',
+  'data-ax-inherit': marker,
+  'data-ax-fallback-step': plateStep,
+};
+const iconSize = Math.round(numericSize * 0.6 * 100) / 100;
+const Root = renderAsLink ? (LinkComponent ?? 'a') : renderAsButton ? 'button' : 'div';
+---
+<Root {...rootAttrs}><div class="ax-avatar-content" data-ax-image-fallback={usesImage ? '' : undefined}>{hasSrc && (
+  <img src={src} alt="" class="ax-avatar-image" data-ax-fallback-step="0" />
+)}{hasFallbackSrc && (hasSrc ? (
+  <template data-ax-fallback-step={fallbackStep}><img src={fallbackSrc} alt="" class="ax-avatar-image" data-ax-fallback-step={fallbackStep} /></template>
+) : (
+  <img src={fallbackSrc} alt="" class="ax-avatar-image" data-ax-fallback-step={fallbackStep} />
+))}{usesImage ? (
+  <template data-ax-fallback-step={plateStep}><div {...plate}>{initials !== '' ? initials : <svg class="ax-avatar-default-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>}</div></template>
+) : (
+  <div {...plate}>{initials !== '' ? initials : <svg class="ax-avatar-default-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>}</div>
+)}</div>{hasStatus && <div class="ax-avatar-status"><Fragment set:html={statusHtml} /></div>}</Root>{isCustomTooltip && <span id={tooltipId} hidden>{trimmedTooltip}</span>}
+{usesImage && <script>import '../../behaviors/imageFallback';</script>}

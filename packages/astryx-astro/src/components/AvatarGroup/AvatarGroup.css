@@ -1,0 +1,53 @@
+/*
+ * Port of @astryxdesign/core AvatarGroup/AvatarGroup.tsx (styles.root, dynamicStyles) and
+ * AvatarGroup/AvatarGroupOverflow.tsx (styles, dynamicStyles). Members read the overlap
+ * from `--_avatar-group-overlap` (set on the group and stamped on each member); the group
+ * pads its start edge by the same amount so the first member stays inside its box.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-avatar-group {
+    display: inline-flex;
+    align-items: center;
+    padding-inline-start: calc(-1 * var(--_avatar-group-overlap));
+  }
+  .astryx-avatar-group:empty { padding-inline-start: 0; }
+
+  /* ── AvatarGroupOverflow ("+N") ─────────────────────────────────────── */
+  .astryx-avatar-group-overflow {
+    position: relative;
+    /* inline-flex: outside a group a block flex box would stretch to its parent */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--_avatar-radius);
+    /* opaque base so avatars never bleed through, neutral tint layered on top */
+    background-color: var(--color-background-surface);
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-body);
+    font-weight: var(--font-weight-medium);
+    user-select: none;
+    border-width: 2px;
+    border-style: solid;
+    border-color: var(--color-background-surface);
+    /* border-box: a short "+N" is a circle at exactly the avatar size; longer counts grow
+     * into a pill past the min width */
+    box-sizing: border-box;
+    padding-inline: var(--spacing-2);
+    background-image: linear-gradient(var(--color-neutral), var(--color-neutral));
+  }
+  button.astryx-avatar-group-overflow { cursor: pointer; padding-block: 0; }
+  button.astryx-avatar-group-overflow:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-avatar-group-overflow {
+    margin-inline-start: var(--_avatar-group-overlap);
+    /* the avatar size plus the 2px ring on each side, like the members' content-box ring */
+    min-width: calc(var(--_ax-avatar-size, 36px) + 4px);
+    height: calc(var(--_ax-avatar-size, 36px) + 4px);
+    /* scales with the avatar, never below the supporting-text legibility floor */
+    font-size: max(var(--text-supporting-size), calc(var(--_ax-avatar-size, 36px) * 0.35));
+  }
+  .astryx-avatar-group-overflow[data-shape="circle"] { --_avatar-radius: var(--radius-full); }
+  .astryx-avatar-group-overflow[data-shape="rounded"] { --_avatar-radius: var(--radius-element); }
+  .astryx-avatar-group-overflow[data-shape="square"] { --_avatar-radius: var(--radius-none); }
+}

@@ -1,0 +1,37 @@
+---
+import Thumbnail from './Thumbnail.astro';
+
+// Inline SVG artwork (no external images in demos).
+const art = (a: string, b: string, shape = '<circle cx="66" cy="30" r="10" fill="#fff" fill-opacity=".9"/><path d="M0 96 34 52l22 26 14-14 26 32z" fill="#fff" fill-opacity=".75"/>') =>
+  'data:image/svg+xml,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/>${shape}</svg>`,
+  );
+const broken = 'data:image/png;base64,AAAA';
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary);max-width:96px;text-align:center';
+const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1);width:96px';
+const row = 'display:flex;flex-wrap:wrap;align-items:start;gap:var(--spacing-4)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <div style={row}>
+    <span style={cell}><Thumbnail src={art('#4facfe', '#00f2fe')} alt="Mountain lake" label="lake.png" /><span style={caption}>image</span></span>
+    <span style={cell}><Thumbnail src={art('#f093fb', '#f5576c')} label="sunset.jpg" /><span style={caption}>decorative (no alt)</span></span>
+    <span style={cell}><Thumbnail label="notes.pdf" /><span style={caption}>no src → placeholder</span></span>
+    <span style={cell} data-case="broken"><Thumbnail src={broken} alt="Broken upload" label="broken.png" /><span style={caption}>load error → placeholder</span></span>
+    <span style={cell}><Thumbnail isLoading label="uploading.png" /><span style={caption}>loading (skeleton)</span></span>
+    <span style={cell}><Thumbnail isLoading src={art('#43e97b', '#38f9d7')} alt="Uploading chart" /><span style={caption}>loading with src</span></span>
+  </div>
+
+  <div style={row} data-test="thumbnail-reveal">
+    <span style={cell} data-case="hover"><Thumbnail src={art('#fa709a', '#fee140')} alt="Beach" label="beach.jpg" onRemove={true} /><span style={caption}>remove on hover / focus</span></span>
+    <span style={cell} data-case="always"><Thumbnail src={art('#a18cd1', '#fbc2eb')} alt="Flowers" label="flowers.jpg" onRemove={true} showRemoveOn="always" /><span style={caption}>remove always</span></span>
+    <span style={cell} data-case="open"><Thumbnail src={art('#30cfd0', '#330867')} alt="Night sky" label="night.png" onClick={true} onRemove={true} /><span style={caption}>open + remove</span></span>
+    <span style={cell}><Thumbnail label="draft.docx" onRemove={true} showRemoveOn="always" /><span style={caption}>placeholder + remove</span></span>
+    <span style={cell}><Thumbnail src={art('#667eea', '#764ba2')} alt="Abstract" label="abstract.png" onClick={true} onRemove={true} showRemoveOn="always" isDisabled /><span style={caption}>disabled</span></span>
+    <span style={cell}><Thumbnail isLoading src={art('#f6d365', '#fda085')} alt="Processing" label="processing.png" onClick={true} onRemove={true} /><span style={caption}>loading: open is inert</span></span>
+  </div>
+
+  <div style={row}>
+    <span style={cell}><Thumbnail src={art('#84fab0', '#8fd3f4')} alt="Diagram" label="diagram.svg" locale="es-ES" onRemove={true} showRemoveOn="always" /><span style={caption}>es-ES labels</span></span>
+    <span style={cell}><Thumbnail src={art('#e0c3fc', '#8ec5fc')} style="width:96px" alt="Larger preview" onRemove={true} showRemoveOn="always" /><span style={caption}>width: 96px</span></span>
+  </div>
+</div>

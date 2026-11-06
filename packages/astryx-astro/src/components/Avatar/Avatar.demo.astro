@@ -1,0 +1,77 @@
+---
+import Avatar, {type AvatarShape, type AvatarSize} from './Avatar.astro';
+import AvatarStatusDot from './AvatarStatusDot.astro';
+import Icon from '../Icon/Icon.astro';
+
+// Inline SVG "photos" (no external images in demos).
+const photo = (a: string, b: string) =>
+  'data:image/svg+xml,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/><circle cx="48" cy="38" r="17" fill="#fff" fill-opacity=".85"/><path d="M14 96c4-22 18-32 34-32s30 10 34 32z" fill="#fff" fill-opacity=".85"/></svg>`,
+  );
+const broken = 'data:image/png;base64,AAAA';
+const sizes: AvatarSize[] = ['xsm', 'sm', 'md', 'lg', 'xl'];
+const shapes: AvatarShape[] = ['circle', 'rounded', 'square'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;align-items:end;gap:var(--spacing-4)';
+const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <div style={row}>
+    {sizes.map((size, i) => (
+      <span style={cell}><Avatar name="Ada Lovelace" size={size} src={i % 2 ? photo('#6d8cff', '#b06dff') : undefined} /><span style={caption}>{size}</span></span>
+    ))}
+    {([16, 40, 64, 96] as AvatarSize[]).map((size) => (
+      <span style={cell}><Avatar name="Grace Hopper" size={size} /><span style={caption}>{size}px</span></span>
+    ))}
+  </div>
+
+  <div style={row}>
+    {shapes.map((shape) => (
+      <span style={cell}><Avatar name="Linus Torvalds" size="lg" shape={shape} src={photo('#ff9a62', '#ff5f8f')} /><span style={caption}>{shape}</span></span>
+    ))}
+    {shapes.map((shape) => (
+      <span style={cell}><Avatar name="Margaret Hamilton" size="lg" shape={shape} /><span style={caption}>initials · {shape}</span></span>
+    ))}
+  </div>
+
+  <div style={row} data-test="avatar-fallbacks">
+    <span style={cell}><Avatar name="Broken Image" size="lg" src={broken} data-case="src-broken" /><span style={caption}>src fails → initials</span></span>
+    <span style={cell}><Avatar name="Fallback Source" size="lg" src={broken} fallbackSrc={photo('#30c48d', '#2a8bd8')} data-case="fallback-src" /><span style={caption}>src fails → fallbackSrc</span></span>
+    <span style={cell}><Avatar name="Both Broken" size="lg" src={broken} fallbackSrc={broken} data-case="both-broken" /><span style={caption}>both fail → initials</span></span>
+    <span style={cell}><Avatar size="lg" src={broken} data-case="icon" /><span style={caption}>no name → icon</span></span>
+    <span style={cell}><Avatar size="lg" /><span style={caption}>decorative</span></span>
+    <span style={cell}><Avatar name="(automation) —" size="lg" /><span style={caption}>punctuation-led</span></span>
+    <span style={cell}><Avatar name="🦊 Fox 🇨🇴" size="lg" /><span style={caption}>emoji graphemes</span></span>
+    <span style={cell}><Avatar name="élodie ünal" size="lg" /><span style={caption}>accented</span></span>
+    <span style={cell}><Avatar name="—" size="lg" /><span style={caption}>no initials → icon</span></span>
+    <!-- Fixture: inserted by tools/tests/avatar-image-fallback.test.mjs after load. -->
+    <template data-test="avatar-insert"><Avatar name="Inserted Later" size="lg" src={broken} fallbackSrc={broken} data-case="inserted" /></template>
+  </div>
+
+  <div style={row}>
+    {(['sm', 'md', 'lg', 'xl'] as AvatarSize[]).map((size) => (
+      <span style={cell}>
+        <Avatar name="Jane Doe" size={size} src={photo('#ffb347', '#ffcc33')}>
+          <AvatarStatusDot slot="status" variant="success" label="Online" />
+        </Avatar>
+        <span style={caption}>success · {size}</span>
+      </span>
+    ))}
+    <span style={cell}><Avatar name="Sam Lee" size="lg"><AvatarStatusDot slot="status" variant="neutral" label="Away" /></Avatar><span style={caption}>neutral (ring)</span></span>
+    <span style={cell}><Avatar name="Kim Park" size="lg"><AvatarStatusDot slot="status" variant="error" label="Busy" /></Avatar><span style={caption}>error (minus)</span></span>
+    <span style={cell}><Avatar name="Kim Park" size="xl"><AvatarStatusDot slot="status" variant="error" label="Busy" /></Avatar><span style={caption}>error · xl</span></span>
+    <span style={cell}><Avatar name="Neutral Xl" size="xl"><AvatarStatusDot slot="status" variant="neutral" label="Offline" /></Avatar><span style={caption}>neutral · xl</span></span>
+    <span style={cell}><Avatar name="Verified User" size="xl" shape="rounded"><AvatarStatusDot slot="status" variant="success" label="Verified"><Icon slot="icon" icon="check" size="sm" style="width:100%;height:100%" /></AvatarStatusDot></Avatar><span style={caption}>icon · rounded (corner)</span></span>
+    <span style={cell}><Avatar name="Small Icon" size="sm"><AvatarStatusDot slot="status" variant="error" label="Busy"><Icon slot="icon" icon="close" /></AvatarStatusDot></Avatar><span style={caption}>icon hidden at small tier</span></span>
+    <span style={cell}><AvatarStatusDot variant="success" label="Online" /><span style={caption}>standalone dot</span></span>
+  </div>
+
+  <div style={row}>
+    <span style={cell}><Avatar name="Link Person" size="lg" href="#avatar" src={photo('#7f7fd5', '#86a8e7')} /><span style={caption}>href (link)</span></span>
+    <span style={cell}><Avatar name="Button Person" size="lg" onClick={true} /><span style={caption}>onClick (button)</span></span>
+    <span style={cell}><Avatar name="jsmith" tooltip="Jane Smith, Staff Engineer" size="lg" /><span style={caption}>custom tooltip (describes)</span></span>
+    <span style={cell}><Avatar name="No Tooltip" tooltip={false} size="lg" /><span style={caption}>tooltip=false (no tab stop)</span></span>
+    <span style={cell}><Avatar name="Blocked Link" href="javascript:alert(1)" size="lg" /><span style={caption}>blocked href → static</span></span>
+    <span style={cell}><Avatar name="Ana García" size="lg" locale="es-ES"><AvatarStatusDot slot="status" variant="success" label="En línea" /></Avatar><span style={caption}>es-ES name</span></span>
+  </div>
+</div>
