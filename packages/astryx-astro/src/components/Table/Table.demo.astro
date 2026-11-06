@@ -472,18 +472,18 @@ const settingsColumns: TableColumn<Person>[] = [
   </section>
 
   <section>
-    <p style={caption}>Children mode: TableHeader / TableBody / TableFooter with TableRow, TableHeaderCell and TableCell (colSpan); dividers="grid", compact</p>
+    <p style={caption}>Children mode: TableHeader / TableBody / TableFooter with TableRow, TableHeaderCell and TableCell (colSpan); dividers="grid", compact. Right-click the Team header or a team cell: <code>contextMenuActions</code></p>
     <Table aria-label="Quarterly spend" dividers="grid" density="compact" isStriped id="table-children">
       <TableHeader>
         <TableRow isHeaderRow>
-          <TableHeaderCell scope="col">Team</TableHeaderCell>
+          <TableHeaderCell scope="col" id="table-children-team" contextMenuActions={[{id: 'hide-column', label: 'Hide column', icon: 'eyeSlash'}]}>Team</TableHeaderCell>
           <TableHeaderCell scope="col" style="text-align:end">Q1</TableHeaderCell>
           <TableHeaderCell scope="col" style="text-align:end">Q2</TableHeaderCell>
           <TableHeaderCell scope="col" style="text-align:end">Total</TableHeaderCell>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow><TableCell scope="row">Platform</TableCell><TableCell style="text-align:end">$412,000</TableCell><TableCell style="text-align:end">$398,500</TableCell><TableCell style="text-align:end">$810,500</TableCell></TableRow>
+        <TableRow><TableCell scope="row" id="table-children-platform" contextMenuActions={[{id: 'open', label: 'Open team', group: 'view'}, {id: 'pin', label: 'Pinned', checked: true, group: 'view'}, {id: 'archive', label: 'Archive team', variant: 'destructive', group: 'danger'}]}>Platform</TableCell><TableCell style="text-align:end">$412,000</TableCell><TableCell style="text-align:end">$398,500</TableCell><TableCell style="text-align:end">$810,500</TableCell></TableRow>
         <TableRow><TableCell scope="row">Payments</TableCell><TableCell style="text-align:end">$221,300</TableCell><TableCell style="text-align:end">$240,100</TableCell><TableCell style="text-align:end">$461,400</TableCell></TableRow>
         <TableRow><TableCell scope="row">Design</TableCell><TableCell style="text-align:end">$148,900</TableCell><TableCell style="text-align:end">$151,200</TableCell><TableCell style="text-align:end">$300,100</TableCell></TableRow>
       </TableBody>

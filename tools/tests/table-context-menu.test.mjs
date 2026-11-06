@@ -7,7 +7,8 @@
  * rowKey, kind} (cancelable) with the menu rows' own `astryx-select` kept inside, the header
  * sort actions (check mark on the active direction, Clear sort only while sorted, the sort
  * change), Shift+F10 from a focused control (menu at the trigger's bottom-start, arrows, Enter,
- * Escape returning focus), and the row-expansion Expand / Collapse row action.
+ * Escape returning focus), the row-expansion Expand / Collapse row action, and children-mode
+ * TableCell / TableHeaderCell `contextMenuActions` (a ContextMenu per cell).
  *   node tools/tests/table-context-menu.test.mjs
  */
 import {setup, sleep} from './_harness.mjs';
@@ -31,7 +32,7 @@ const openMenu = () => page.evaluate(() => {
   return {
     id: menu.id, label: list?.getAttribute('aria-label'), left: r.left, top: r.top,
     rows: [...list.children].map((c) => (c.getAttribute('role') === 'menuitem'
-      ? `${c.textContent.trim()}${c.getAttribute('aria-disabled') === 'true' ? '[disabled]' : ''}${c.dataset.variant === 'destructive' ? '[destructive]' : ''}${c.querySelector('.astryx-icon')?.innerHTML.includes('M4.5 12.75l6 6 9-13.5') || c.querySelector('[data-icon="check"]') ? '[✓]' : ''}`
+      ? `${c.textContent.trim()}${c.getAttribute('aria-disabled') === 'true' ? '[disabled]' : ''}${c.dataset.variant === 'destructive' ? '[destructive]' : ''}${/M4\.5 12\.75l6 6 9-13\.5|M20 6 9 17l-5-5/.test(c.querySelector('.astryx-icon')?.innerHTML ?? '') || c.querySelector('[data-icon="check"]') ? '[✓]' : ''}`
       : c.getAttribute('role') === 'separator' || c.classList.contains('astryx-dropdown-menu-divider') ? '—' : c.tagName)),
     focused: document.activeElement?.closest('[role="menuitem"]')?.textContent.trim() ?? null,
   };
@@ -170,5 +171,36 @@ const chevron = await page.evaluate((s) => {
 }, rowOf('p03'));
 check('the chevron stays centred in its 40px column inside the trigger', chevron <= 1, String(chevron));
 check('no stray events', (await events()).length === 0);
+
+// ── children mode: TableCell / TableHeaderCell contextMenuActions (a ContextMenu per cell) ──
+console.log('Children mode (TableCell / TableHeaderCell contextMenuActions)');
+const C = '#table-children-platform';
+await (await page.$(C)).scrollIntoViewIfNeeded();
+const childGeo = await page.evaluate((s) => {
+  const td = document.querySelector(s);
+  const trigger = td.querySelector(':scope > .ax-table-context-trigger');
+  const tr = trigger.getBoundingClientRect();
+  const cr = td.getBoundingClientRect();
+  return {fills: Math.abs(tr.width - cr.width) < 1 && Math.abs(tr.height - cr.height) < 1.5, density: trigger.dataset.density, tdPadding: getComputedStyle(td).paddingTop, triggerPadding: getComputedStyle(trigger).paddingTop};
+}, C);
+check('a body cell with actions: the trigger fills the cell and carries the density padding', childGeo.fills && childGeo.density === 'compact' && childGeo.tdPadding === '0px' && childGeo.triggerPadding === '4px', JSON.stringify(childGeo));
+await rightClick(C, 0.95, 0.9);
+m = await openMenu();
+check('right-click opens its menu: groups with a divider, a check mark for a checked action, destructive kept', m && JSON.stringify(m.rows) === '["Open team","Pinned[✓]","—","Archive team[destructive]"]', JSON.stringify(m?.rows));
+await page.click('[role="menuitem"][data-id="open"]');
+await sleep(120);
+const childEv = await events();
+check("choosing a row dispatches the menu row's astryx-select (data-id = the action id), no table action", childEv.some((e) => e.type === 'astryx-select') && !childEv.some((e) => e.type === 'astryx-context-action') && await page.evaluate(() => !document.querySelector('ax-menu[data-ax-menu-kind="context"]:popover-open')), JSON.stringify(childEv));
+await rightClick('#table-children-team');
+m = await openMenu();
+check('a header cell with actions opens its own menu', m && JSON.stringify(m.rows) === '["Hide column"]', JSON.stringify(m?.rows));
+await page.keyboard.press('Escape');
+await sleep(80);
+const plain = await page.evaluate(() => {
+  const cells = [...document.querySelectorAll('#table-children td.astryx-table-cell, #table-children th.astryx-table-header-cell')];
+  return cells.filter((c) => !['table-children-platform', 'table-children-team'].includes(c.id)).every((c) => !c.querySelector('.ax-context-menu-trigger, ax-menu'));
+});
+check('cells without actions render no menu (the browser\'s own passes through)', plain);
+await events();
 
 await done();

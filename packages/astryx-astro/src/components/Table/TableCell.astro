@@ -8,13 +8,20 @@
  * `table-density`), the rest follows from the table's attributes. Standalone it renders a
  * plain `<td>`. Theme hook: `.astryx-table-cell[data-density]`.
  *
- * Deferred: `contextMenuActions` (ContextMenu is not ported yet).
+ * `contextMenuActions` (Astryx wrapInTableContextMenu): the content sits in a ContextMenu
+ * trigger that fills the cell and carries the density padding (moved off the `<td>`), so a
+ * right-click anywhere in the cell opens the menu. Choosing a row dispatches `astryx-select`
+ * on it, its `data-id` the action's `id` (`onSelect` is not called; a getter resolves on the
+ * server). Empty or omitted: no menu, the browser's own passes through.
  *
  * @example
  * <TableRow><TableCell>Alice</TableCell><TableCell colSpan={2}>Engineer</TableCell></TableRow>
  */
 import type {HTMLAttributes} from 'astro/types';
 import {cx, themeProps} from '../../lib/themeProps';
+import ContextMenu from '../ContextMenu/ContextMenu.astro';
+import {contextMenuItems} from './contextMenuOptions';
+import type {TableContextActions} from './types';
 import './Table.css';
 
 export interface Props extends HTMLAttributes<'td'> {
@@ -26,15 +33,20 @@ export interface Props extends HTMLAttributes<'td'> {
   colSpan?: number;
   /** Rows spanned (Astryx name; `rowspan` works too). */
   rowSpan?: number;
+  /** Right-click actions: a context menu around the cell content (empty: none). */
+  contextMenuActions?: TableContextActions;
 }
 
-const {colSpan, rowSpan, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
+const {colSpan, rowSpan, contextMenuActions, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('table-cell');
+const menuItems = contextMenuItems(contextMenuActions);
 ---
 <td
   {...rest}
   colspan={colSpan ?? rest.colspan}
   rowspan={rowSpan ?? rest.rowspan}
-  class={cx(themeClass, className)}
+  class={cx(themeClass, menuItems && 'ax-table-context-cell', className)}
   data-ax-inherit="table-density"
-><slot /></td>
+>{menuItems ? (
+  <ContextMenu items={menuItems} triggerClass="ax-table-context-trigger" data-ax-context-kind="body" data-ax-inherit="table-density"><slot /></ContextMenu>
+) : <slot />}</td>
