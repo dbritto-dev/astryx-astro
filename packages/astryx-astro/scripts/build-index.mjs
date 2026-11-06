@@ -30,6 +30,8 @@ const lines = [
   "export {stamp, stampAttr, seal, inherits} from './lib/cascade';",
   "export {attachDialog} from './components/Dialog/attach';",
   "export {attachDrawer} from './components/Drawer/attach';",
+  "export {proportional, pixel, generateColumns, resolveColumnWidths, DEFAULT_MIN_COLUMN_WIDTH, useTableSortable, useTableSortableState, useTableColumnResize, useTableStickyColumns, useTableRowExpansion, useTableRowStatus, useTableGroupedRows, useTableTreeData, useTableTreeState, useTableRowIndex} from './components/Table/table';",
+  "export type * from './components/Table/types';",
   '',
 ];
 const seen = new Set();

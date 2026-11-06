@@ -17,6 +17,8 @@ export {routeFieldProps, statusIconPlan, textEntryTraitAttributes, joinAriaIDs, 
 export {stamp, stampAttr, seal, inherits} from './lib/cascade';
 export {attachDialog} from './components/Dialog/attach';
 export {attachDrawer} from './components/Drawer/attach';
+export {proportional, pixel, generateColumns, resolveColumnWidths, DEFAULT_MIN_COLUMN_WIDTH, useTableSortable, useTableSortableState, useTableColumnResize, useTableStickyColumns, useTableRowExpansion, useTableRowStatus, useTableGroupedRows, useTableTreeData, useTableTreeState, useTableRowIndex} from './components/Table/table';
+export type * from './components/Table/types';
 
 export {default as AlertDialog} from './components/AlertDialog/AlertDialog.astro';
 export {default as AspectRatio} from './components/AspectRatio/AspectRatio.astro';
@@ -99,6 +101,13 @@ export {default as VStack} from './components/Stack/VStack.astro';
 export {default as StatusDot} from './components/StatusDot/StatusDot.astro';
 export {default as Step} from './components/Stepper/Step.astro';
 export {default as Stepper} from './components/Stepper/Stepper.astro';
+export {default as Table} from './components/Table/Table.astro';
+export {default as TableBody} from './components/Table/TableBody.astro';
+export {default as TableCell} from './components/Table/TableCell.astro';
+export {default as TableFooter} from './components/Table/TableFooter.astro';
+export {default as TableHeader} from './components/Table/TableHeader.astro';
+export {default as TableHeaderCell} from './components/Table/TableHeaderCell.astro';
+export {default as TableRow} from './components/Table/TableRow.astro';
 export {default as Heading} from './components/Text/Heading.astro';
 export {default as Text} from './components/Text/Text.astro';
 export {default as TextArea} from './components/TextArea/TextArea.astro';

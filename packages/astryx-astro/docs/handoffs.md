@@ -289,3 +289,22 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 
 - Stepper/stepperContext.ts duplicates the AsyncLocalStorage pattern of lib/subtreeLocals.ts.
 - Token's behavior could use behaviors/clickable.ts.
+
+## Table
+
+- `data` + `columns` (`{key, header, width: proportional()/pixel(), align, sortable, resizable,
+  renderCell, accessor, format}`); `renderCell` runs on the server (text, `comp(Badge, {...})`,
+  element or trusted HTML). `useTable*` plugin functions keep Astryx names and go in
+  `plugins={{...}}`; callbacks became events (`astryx-sort-change`, `astryx-column-resize`,
+  `astryx-expanded-change`, `astryx-toggle-group`, `astryx-expanded-ids-change`; preventDefault
+  keeps state).
+- Cascade key `table-density`. Client behaviours register with `registerTableBehavior(name, …)`;
+  the scroller is `<ax-table>` (on `<ax-scrollable-area>`).
+- Deferred plugin hook points (selection + TableSelectionToolbar, filtering, pagination,
+  context menus, column settings) are documented in `Table/README.md`.
+
+## Function slots (all components)
+
+- Astro passes arguments to slot functions only through `<template slot="name">{(arg) => …}</template>`;
+  `<Fragment slot>` silently drops them. Use `<template slot>` for every render-prop-style slot.
+- Give grid/flex children `min-width: 0` around wide content (tables, code) or the track widens.
