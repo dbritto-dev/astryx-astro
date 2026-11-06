@@ -1,0 +1,88 @@
+---
+import Tooltip from './Tooltip.astro';
+import {attachTooltip} from './attach';
+
+const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer';
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+// How a component that owns its trigger (Button's `tooltip` prop) attaches one.
+const owned = attachTooltip({id: 'tip-owned'});
+---
+<div>
+  <p style={label}>Placements</p>
+  <div style={row}>
+    <Tooltip content="Above (default)"><button type="button" style={btn} id="tip-above-trigger">Above</button></Tooltip>
+    <Tooltip content="Below" placement="below"><button type="button" style={btn} id="tip-below-trigger">Below</button></Tooltip>
+    <Tooltip content="Start" placement="start"><button type="button" style={btn} id="tip-start-trigger">Start</button></Tooltip>
+    <Tooltip content="End" placement="end"><button type="button" style={btn} id="tip-end-trigger">End</button></Tooltip>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Alignment along the placement axis</p>
+  <div style={row}>
+    <Tooltip content="Aligned to the start edge" alignment="start"><button type="button" style={btn}>alignment start</button></Tooltip>
+    <Tooltip content="Centered" alignment="center"><button type="button" style={btn}>alignment center</button></Tooltip>
+    <Tooltip content="Aligned to the end edge" alignment="end"><button type="button" style={btn}>alignment end</button></Tooltip>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Text triggers: a focusable span with the dashed hover indication (auto), or none</p>
+  <p style="margin:0">
+    The <Tooltip content="Hypertext Markup Language">HTML</Tooltip> spec defines{' '}
+    <Tooltip content="No underline on this one" hasHoverIndication={false}>popover hints</Tooltip>.
+  </p>
+</div>
+
+<div>
+  <p style={label}>Timing and focus rules</p>
+  <div style={row}>
+    <Tooltip content="No delay" delay={0}><button type="button" style={btn} id="tip-nodelay-trigger">delay 0</button></Tooltip>
+    <Tooltip content="Lingers 600ms" hideDelay={600}><button type="button" style={btn}>hideDelay 600</button></Tooltip>
+    <Tooltip content="Only on hover" focusTrigger="never"><button type="button" style={btn}>focusTrigger never</button></Tooltip>
+    <Tooltip content="Anything inside counts" focusTrigger="always"><span style="display:inline-flex;gap:4px"><button type="button" style={btn}>always</button></span></Tooltip>
+    <Tooltip content="Tap opens it" touchTrigger="tap"><button type="button" style={btn}>touchTrigger tap</button></Tooltip>
+    <Tooltip content="You will not see me" isEnabled={false}><button type="button" style={btn}>isEnabled false</button></Tooltip>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Long content wraps at 300px; a disabled-but-focusable control explains itself</p>
+  <div style={row}>
+    <Tooltip content="Tooltips keep content concise, but longer hints wrap within a 300px measure so they stay readable instead of running across the screen.">
+      <button type="button" style={btn}>Long content</button>
+    </Tooltip>
+    <Tooltip content="You need edit access to publish">
+      <button type="button" style={btn + ';opacity:.55'} aria-disabled="true">Publish</button>
+    </Tooltip>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Sibling mode: a component that renders its own trigger (attachTooltip), and `for` an existing id</p>
+  <div style={row}>
+    <button type="button" style={btn} {...owned.trigger}>Owned trigger</button>
+    <Tooltip {...owned.layer} content="Attached with attachTooltip()" placement="below" />
+    <button type="button" style={btn} id="tip-for-target">By id</button>
+    <Tooltip for="tip-for-target" content="Wired by id at runtime" />
+  </div>
+</div>
+
+<div dir="rtl">
+  <p style={label}>RTL: start/end mirror</p>
+  <div style={row}>
+    <Tooltip content="התחלה" placement="start"><button type="button" style={btn} id="tip-rtl-start">start</button></Tooltip>
+    <Tooltip content="סוף" placement="end"><button type="button" style={btn} id="tip-rtl-end">end</button></Tooltip>
+  </div>
+</div>
+
+<div style="padding-block:var(--spacing-8) var(--spacing-2)">
+  <p style={label}>Controlled (isOpen) and isDefaultOpen</p>
+  <div style={row}>
+    <Tooltip content="Controlled: always shown" isOpen><button type="button" style={btn} id="tip-controlled-trigger">isOpen</button></Tooltip>
+    <span style="width:var(--spacing-12)"></span>
+    <Tooltip content="Open on load" isDefaultOpen placement="end"><button type="button" style={btn}>isDefaultOpen</button></Tooltip>
+    <Tooltip content="Never shown" isOpen={false}><button type="button" style={btn}>isOpen false</button></Tooltip>
+  </div>
+</div>

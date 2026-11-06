@@ -1,0 +1,31 @@
+/*
+ * Port of @astryxdesign/core HoverCard/useHoverCard.tsx (styles.container on the layer root,
+ * styles.content) and HoverCard/HoverCard.tsx (wrapperInline, hoverIndication).
+ * `--_hovercard-radius` is the private radius var themes write.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-hover-card {
+    background-color: var(--color-background-surface);
+    --_hovercard-radius: var(--radius-container);
+    border-radius: var(--_hovercard-radius);
+    box-shadow: var(--shadow-med);
+  }
+
+  .ax-hover-card-content {
+    display: block;
+    padding-block-start: var(--spacing-3);
+    padding-block-end: var(--spacing-3);
+    padding-inline-start: var(--spacing-3);
+    padding-inline-end: var(--spacing-3);
+  }
+
+  .ax-hover-card-trigger { display: inline; }
+  .ax-hover-card-trigger[data-hover-indication] {
+    text-decoration-line: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: var(--color-border-emphasized);
+    text-underline-offset: var(--spacing-0-5);
+  }
+}

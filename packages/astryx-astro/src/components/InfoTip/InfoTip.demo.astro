@@ -1,0 +1,26 @@
+---
+import InfoTip from './InfoTip.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-6);align-items:center';
+const field = 'display:inline-flex;align-items:center;gap:var(--spacing-1);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium)';
+---
+<div>
+  <p style={label}>Sizes: xsm, sm (default), md, lg</p>
+  <div style={row}>
+    <span style={field}>xsm <InfoTip size="xsm" content="12px icon" /></span>
+    <span style={field}>sm <InfoTip content="16px icon (default)" id="infotip-sm" /></span>
+    <span style={field}>md <InfoTip size="md" content="20px icon" /></span>
+    <span style={field}>lg <InfoTip size="lg" content="24px icon" /></span>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Next to labels and metrics; a custom accessible name; rich content slot</p>
+  <div style={row}>
+    <label style={field} for="infotip-input">Visibility <InfoTip content="Editors can change this field; viewers cannot." /></label>
+    <input id="infotip-input" style="font:inherit;padding:var(--spacing-1) var(--spacing-2)" value="Team" />
+    <span style={field}>Active users 1,204 <InfoTip label="About this metric" content="30-day rolling average of signed-in users." id="infotip-metric" /></span>
+    <span style={field}>Quota <InfoTip label="About quota"><Fragment slot="content"><strong>80%</strong> of your monthly quota is used.</Fragment></InfoTip></span>
+  </div>
+</div>

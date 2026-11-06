@@ -1,0 +1,294 @@
+/*
+ * Layer runtime styles — every anchored layer (Tooltip, HoverCard, InfoTip, Popover, menus,
+ * comboboxes …) imports this file and carries class `ax-layer`.
+ *
+ * Ports of @astryxdesign/core:
+ *   Layer/useLayer.tsx (styles.base, viewportFit, gutter and placement styles, getPositionArea,
+ *     getPositionTryFallbacks, getSelfAlignment), Layer/layerSlideRules.ts (@position-try rules,
+ *     anchor-clear switch), Layer/layerViewportInset.stylex.ts (gutter + caps),
+ *     Layer/layerTextReset.stylex.ts, Layer/layerStructureReset.stylex.ts,
+ *     Layout/overlayPaddingReset.stylex.ts, Layer/layerAnimations.stylex.ts,
+ *     motion/reducedMotion.stylex.ts.
+ *
+ * Markup contract (see src/elements/runtime/README.md):
+ *   <… popover class="ax-layer [ax-layer-motion]" data-placement="below" data-align="start"
+ *      [data-astryx-keep-clear] style="--_astryx-layer-clearance: var(--spacing-1)">
+ * The runtime (anchor.ts) writes `position-anchor` on the layer and the matching `anchor-name`
+ * on the trigger while the layer shows; everything else here is static.
+ *
+ * Deviations: Astryx emits each gutter twice (an env()-less fallback, then the full value);
+ * every engine with anchor positioning supports env(), so one declaration is kept. The slide
+ * `@position-try` rules are static here (Astryx injects them at runtime because StyleX cannot
+ * emit them) and deduplicated by landing side (their bodies never depended on alignment).
+ * Astryx only animates entry; exit fades out (no travel) so `@starting-style` +
+ * `allow-discrete` can keep the anchor until the exit ends.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* LayerProvider: carries the inset custom properties without a box of its own */
+  .ax-layer-provider { display: contents; }
+
+  /* ── Layer root: text + structure + padding reset, flush box (zero specificity, so any
+   *    component or theme rule on the same element wins, as later StyleX styles do) ── */
+  :where(.ax-layer) {
+    /* layerTextReset */
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    font-weight: var(--text-body-weight);
+    line-height: var(--text-body-leading);
+    font-style: normal;
+    text-align: start;
+    text-align-last: auto;
+    text-indent: 0;
+    text-transform: none;
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-shadow: none;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: manual;
+    /* layerStructureReset */
+    --step-connector-gap: initial;
+    --_astryx-text-overflow-wrap: initial;
+    /* useLayer styles.base */
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    overflow: visible;
+    background-color: transparent;
+    /* overlayPaddingReset */
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+    --layout-padding-outer-x: initial;
+    --layout-padding-outer-y: initial;
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    --layout-padding-inner-x: initial;
+    --layout-padding-inner-y: initial;
+    --_section-padding-propagated: initial;
+    /* keyboardCap: an uncapped layer declares a limit no viewport cap reaches */
+    --_layer-keyboard-max-block-size: 100vh;
+    --_layer-keyboard-overflow: visible;
+    /* per-layer runtime state never leaks into a layer nested inside this one */
+    --_astryx-layer-clearance: initial;
+    --_astryx-layer-try-fallbacks: initial;
+    --_astryx-layer-clear-fallbacks: initial;
+    --_ax-anchor-width: initial;
+    /* layerViewportInset: one gutter definition (spec:AST-059 FR1) */
+    --_ax-gutter-block: calc(max(var(--spacing-4), env(safe-area-inset-top, 0px), env(safe-area-inset-bottom, 0px)) + max(var(--astryx-layer-inset-block-start, 0px), var(--astryx-layer-inset-block-end, 0px)));
+    --_ax-gutter-inline: calc(max(var(--spacing-4), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) + max(var(--astryx-layer-inset-inline-start, 0px), var(--astryx-layer-inset-inline-end, 0px)));
+    --_ax-max-inline-size: calc(100vi - calc(max(var(--spacing-4), env(safe-area-inset-left, 0px)) + var(--astryx-layer-inset-inline-start, 0px)) - calc(max(var(--spacing-4), env(safe-area-inset-right, 0px)) + var(--astryx-layer-inset-inline-end, 0px)));
+    --_ax-max-block-size: min(calc(100dvb - calc(max(var(--spacing-4), env(safe-area-inset-top, 0px)) + var(--astryx-layer-inset-block-start, 0px)) - calc(max(var(--spacing-4), env(safe-area-inset-bottom, 0px)) + var(--astryx-layer-inset-block-end, 0px))), var(--_layer-keyboard-max-block-size, 100dvb));
+  }
+
+  /* ── viewportFit: every anchor-mode layer is capped to the viewport minus both gutters ── */
+  :where(.ax-layer[data-placement]) {
+    box-sizing: border-box;
+    max-inline-size: var(--_ax-max-inline-size);
+    max-block-size: var(--_ax-max-block-size);
+  }
+
+  /* ── position-area (getPositionArea: self-* logical family, mirrors in RTL) ── */
+  :where(.ax-layer)[data-placement="above"] { position-area: self-block-start; }
+  :where(.ax-layer)[data-placement="above"][data-align="start"] { position-area: self-block-start span-self-inline-end; }
+  :where(.ax-layer)[data-placement="above"][data-align="end"] { position-area: self-block-start span-self-inline-start; }
+  :where(.ax-layer)[data-placement="below"] { position-area: self-block-end; }
+  :where(.ax-layer)[data-placement="below"][data-align="start"] { position-area: self-block-end span-self-inline-end; }
+  :where(.ax-layer)[data-placement="below"][data-align="end"] { position-area: self-block-end span-self-inline-start; }
+  :where(.ax-layer)[data-placement="start"] { position-area: self-inline-start; }
+  :where(.ax-layer)[data-placement="start"][data-align="start"] { position-area: self-inline-start span-self-block-end; }
+  :where(.ax-layer)[data-placement="start"][data-align="end"] { position-area: self-inline-start span-self-block-start; }
+  :where(.ax-layer)[data-placement="end"] { position-area: self-inline-end; }
+  :where(.ax-layer)[data-placement="end"][data-align="start"] { position-area: self-inline-end span-self-block-end; }
+  :where(.ax-layer)[data-placement="end"][data-align="end"] { position-area: self-inline-end span-self-block-start; }
+
+  /* ── position-try-fallbacks (getPositionTryFallbacks): flips, then for centered layers the
+   *    one-sided spans, then the slides (same side first). A keep-clear layer reads its
+   *    anchor-clear list first through --_astryx-layer-try-fallbacks. ── */
+  :where(.ax-layer)[data-placement="above"] { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, top span-left, top span-right, bottom span-left, bottom span-right, --astryx-layer-slide-above, --astryx-layer-slide-below); }
+  :where(.ax-layer)[data-placement="above"]:is([data-align="start"], [data-align="end"]) { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, --astryx-layer-slide-above, --astryx-layer-slide-below); }
+  :where(.ax-layer)[data-placement="below"] { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, bottom span-left, bottom span-right, top span-left, top span-right, --astryx-layer-slide-below, --astryx-layer-slide-above); }
+  :where(.ax-layer)[data-placement="below"]:is([data-align="start"], [data-align="end"]) { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, --astryx-layer-slide-below, --astryx-layer-slide-above); }
+  :where(.ax-layer)[data-placement="start"] { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, left span-top, left span-bottom, right span-top, right span-bottom, --astryx-layer-slide-start, --astryx-layer-slide-end); }
+  :where(.ax-layer)[data-placement="start"]:is([data-align="start"], [data-align="end"]) { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, --astryx-layer-slide-start, --astryx-layer-slide-end); }
+  :where(.ax-layer)[data-placement="end"] { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, right span-top, right span-bottom, left span-top, left span-bottom, --astryx-layer-slide-end, --astryx-layer-slide-start); }
+  :where(.ax-layer)[data-placement="end"]:is([data-align="start"], [data-align="end"]) { position-try-fallbacks: var(--_astryx-layer-try-fallbacks, flip-block, flip-inline, flip-block flip-inline, --astryx-layer-slide-end, --astryx-layer-slide-start); }
+
+  /* ── Alignment-axis gutter (getGutterStyles): the far viewport edge, both when centered ── */
+  :where(.ax-layer)[data-placement="above"],
+  :where(.ax-layer)[data-placement="below"] { margin-inline-start: var(--_ax-gutter-inline); margin-inline-end: var(--_ax-gutter-inline); }
+  :where(.ax-layer):is([data-placement="above"], [data-placement="below"])[data-align="start"] { margin-inline-start: 0; }
+  :where(.ax-layer):is([data-placement="above"], [data-placement="below"])[data-align="end"] { margin-inline-end: 0; }
+  :where(.ax-layer)[data-placement="start"],
+  :where(.ax-layer)[data-placement="end"] { margin-block-start: var(--_ax-gutter-block); margin-block-end: var(--_ax-gutter-block); }
+  :where(.ax-layer):is([data-placement="start"], [data-placement="end"])[data-align="start"] { margin-block-start: 0; }
+  :where(.ax-layer):is([data-placement="start"], [data-placement="end"])[data-align="end"] { margin-block-end: 0; }
+
+  /* ── Placement-axis margins (placementAbove/Below/Start/End): the clearance faces the anchor,
+   *    the gutter sits on the far edge; a flip tactic swaps them with the area. ── */
+  :where(.ax-layer)[data-placement="above"] { margin-block-start: var(--_ax-gutter-block); margin-block-end: var(--_astryx-layer-clearance, 0px); }
+  :where(.ax-layer)[data-placement="below"] { margin-block-start: var(--_astryx-layer-clearance, 0px); margin-block-end: var(--_ax-gutter-block); }
+  :where(.ax-layer)[data-placement="start"] { margin-inline-start: var(--_ax-gutter-inline); margin-inline-end: var(--_astryx-layer-clearance, 0px); }
+  :where(.ax-layer)[data-placement="end"] { margin-inline-start: var(--_astryx-layer-clearance, 0px); margin-inline-end: var(--_ax-gutter-inline); }
+
+  /* ── getSelfAlignment (FR5): an aligned layer whose anchor left the viewport holds its
+   *    position instead of being shifted into the narrowest strip at the edge. ── */
+  :where(.ax-layer)[data-astryx-anchor-hidden]:is([data-placement="above"], [data-placement="below"])[data-align="start"] { justify-self: unsafe self-start; }
+  :where(.ax-layer)[data-astryx-anchor-hidden]:is([data-placement="above"], [data-placement="below"])[data-align="end"] { justify-self: unsafe self-end; }
+  :where(.ax-layer)[data-astryx-anchor-hidden]:is([data-placement="start"], [data-placement="end"])[data-align="start"] { align-self: unsafe self-start; }
+  :where(.ax-layer)[data-astryx-anchor-hidden]:is([data-placement="start"], [data-placement="end"])[data-align="end"] { align-self: unsafe self-end; }
+
+  /* ── Anchor-clear list (getAnchorClearFallbacks, Tooltip): only block placements have one ── */
+  :where(.ax-layer)[data-astryx-keep-clear][data-placement="above"] { --_astryx-layer-clear-fallbacks: --astryx-layer-beside-end, --astryx-layer-beside-start, flip-block, --astryx-layer-fit-above, --astryx-layer-fit-below; }
+  :where(.ax-layer)[data-astryx-keep-clear][data-placement="below"] { --_astryx-layer-clear-fallbacks: --astryx-layer-beside-end, --astryx-layer-beside-start, flip-block, --astryx-layer-fit-below, --astryx-layer-fit-above; }
+  :where(.ax-layer)[data-astryx-keep-clear][data-astryx-clears-anchor] { --_astryx-layer-try-fallbacks: var(--_astryx-layer-clear-fallbacks); }
+  :where(.ax-layer)[data-astryx-layer-scrolls] { overflow-y: auto; overscroll-behavior-block: contain; }
+
+  /* ── Rect fallback (no CSS anchor positioning): anchor.ts writes top/left itself ── */
+  .ax-layer[data-astryx-rect] { inset: auto; position-area: none; }
+
+  /* ── Slides (layerSlideRules.ts): the whole alignment axis on the landing side, gutter on
+   *    both alignment edges, clearance toward the anchor. ── */
+  @position-try --astryx-layer-slide-above {
+    position-area: self-block-start span-all;
+    margin-block-end: var(--_astryx-layer-clearance, 0px);
+    margin-block-start: var(--_ax-gutter-block);
+    margin-inline-start: var(--_ax-gutter-inline);
+    margin-inline-end: var(--_ax-gutter-inline);
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+  }
+  @position-try --astryx-layer-slide-below {
+    position-area: self-block-end span-all;
+    margin-block-start: var(--_astryx-layer-clearance, 0px);
+    margin-block-end: var(--_ax-gutter-block);
+    margin-inline-start: var(--_ax-gutter-inline);
+    margin-inline-end: var(--_ax-gutter-inline);
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+  }
+  @position-try --astryx-layer-slide-start {
+    position-area: self-inline-start span-all;
+    margin-inline-end: var(--_astryx-layer-clearance, 0px);
+    margin-inline-start: var(--_ax-gutter-inline);
+    margin-block-start: var(--_ax-gutter-block);
+    margin-block-end: var(--_ax-gutter-block);
+    inset-block-start: 0;
+    inset-block-end: 0;
+  }
+  @position-try --astryx-layer-slide-end {
+    position-area: self-inline-end span-all;
+    margin-inline-start: var(--_astryx-layer-clearance, 0px);
+    margin-inline-end: var(--_ax-gutter-inline);
+    margin-block-start: var(--_ax-gutter-block);
+    margin-block-end: var(--_ax-gutter-block);
+    inset-block-start: 0;
+    inset-block-end: 0;
+  }
+  /* beside: across the alignment axis at the content's own inline size */
+  @position-try --astryx-layer-beside-end {
+    position-area: self-inline-end span-all;
+    margin-inline-start: var(--_astryx-layer-clearance, 0px);
+    margin-inline-end: var(--_ax-gutter-inline);
+    margin-block-start: var(--_ax-gutter-block);
+    margin-block-end: var(--_ax-gutter-block);
+    inset-block-start: 0;
+    inset-block-end: 0;
+    inline-size: max-content;
+  }
+  @position-try --astryx-layer-beside-start {
+    position-area: self-inline-start span-all;
+    margin-inline-end: var(--_astryx-layer-clearance, 0px);
+    margin-inline-start: var(--_ax-gutter-inline);
+    margin-block-start: var(--_ax-gutter-block);
+    margin-block-end: var(--_ax-gutter-block);
+    inset-block-start: 0;
+    inset-block-end: 0;
+    inline-size: max-content;
+  }
+  /* fit: a block side sized to its room, never under half the room the trigger leaves */
+  @position-try --astryx-layer-fit-above {
+    position-area: self-block-start span-all;
+    margin-block-end: var(--_astryx-layer-clearance, 0px);
+    margin-block-start: var(--_ax-gutter-block);
+    margin-inline-start: var(--_ax-gutter-inline);
+    margin-inline-end: var(--_ax-gutter-inline);
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    block-size: max(calc(100% - var(--_astryx-layer-clearance, 0px) - var(--_ax-gutter-block)), calc((100dvb - anchor-size(block)) / 2 - var(--_astryx-layer-clearance, 0px) - var(--_ax-gutter-block) - 1px));
+  }
+  @position-try --astryx-layer-fit-below {
+    position-area: self-block-end span-all;
+    margin-block-start: var(--_astryx-layer-clearance, 0px);
+    margin-block-end: var(--_ax-gutter-block);
+    margin-inline-start: var(--_ax-gutter-inline);
+    margin-inline-end: var(--_ax-gutter-inline);
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    block-size: max(calc(100% - var(--_astryx-layer-clearance, 0px) - var(--_ax-gutter-block)), calc((100dvb - anchor-size(block)) / 2 - var(--_astryx-layer-clearance, 0px) - var(--_ax-gutter-block) - 1px));
+  }
+
+  /* ── Motion (layerAnimations.stylex.ts): enter from spacing-2 toward the anchor at 0.95,
+   *    --duration-fast-max on --ease-standard; exit fades on the exit tokens. ── */
+  :where(.ax-layer-motion) {
+    --_ax-enter-x: 0px;
+    --_ax-enter-y: 0px;
+    --_ax-enter-scale: 0.95;
+    transition-property: opacity, translate, scale, display, overlay;
+    transition-behavior: allow-discrete;
+  }
+  /* Closed (and exiting). Written with :popover-open so an engine without the Popover API,
+   * which shows layers by display alone, drops the rule instead of keeping them transparent. */
+  :where(.ax-layer-motion):not(:popover-open) {
+    opacity: 0;
+    transition-duration: var(--duration-exit);
+    transition-timing-function: var(--ease-exit);
+  }
+  :where(.ax-layer-motion)[data-placement="below"] { --_ax-enter-y: calc(-1 * var(--spacing-2)); }
+  :where(.ax-layer-motion)[data-placement="above"] { --_ax-enter-y: var(--spacing-2); }
+  :where(.ax-layer-motion)[data-placement="end"] { --_ax-enter-x: calc(-1 * var(--spacing-2)); }
+  :where(.ax-layer-motion)[data-placement="start"] { --_ax-enter-x: var(--spacing-2); }
+  :where(.ax-layer-motion)[data-placement="end"]:dir(rtl) { --_ax-enter-x: var(--spacing-2); }
+  :where(.ax-layer-motion)[data-placement="start"]:dir(rtl) { --_ax-enter-x: calc(-1 * var(--spacing-2)); }
+  :where(.ax-layer-motion):popover-open {
+    opacity: 1;
+    translate: 0 0;
+    scale: 1;
+    transition-duration: var(--duration-fast-max);
+    transition-timing-function: var(--ease-standard);
+  }
+  @starting-style {
+    :where(.ax-layer-motion):popover-open {
+      opacity: 0;
+      translate: var(--_ax-enter-x) var(--_ax-enter-y);
+      scale: var(--_ax-enter-scale);
+    }
+  }
+
+  /* Reduce Motion: no travel. Under a fine pointer the layer appears at once; under a finger
+   * it cross-fades in 200ms on easeInOut (reducedMotionFadeConsts). Written for both the media
+   * query and a theme's `reducedMotion: 'always'` ([data-astryx-reduced-motion]). */
+  @media (prefers-reduced-motion: reduce) {
+    :where(.ax-layer-motion) { --_ax-enter-x: 0px; --_ax-enter-y: 0px; --_ax-enter-scale: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    :where(.ax-layer-motion):not(:popover-open), :where(.ax-layer-motion):popover-open { transition-duration: 0s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    :where(.ax-layer-motion):not(:popover-open), :where(.ax-layer-motion):popover-open { transition-duration: 200ms; transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  }
+  :where([data-astryx-reduced-motion]) :where(.ax-layer-motion) { --_ax-enter-x: 0px; --_ax-enter-y: 0px; --_ax-enter-scale: 1; }
+  @media (not (pointer: coarse)) {
+    :where([data-astryx-reduced-motion]) :where(.ax-layer-motion):not(:popover-open),
+    :where([data-astryx-reduced-motion]) :where(.ax-layer-motion):popover-open { transition-duration: 0s; }
+  }
+  @media (pointer: coarse) {
+    :where([data-astryx-reduced-motion]) :where(.ax-layer-motion):not(:popover-open),
+    :where([data-astryx-reduced-motion]) :where(.ax-layer-motion):popover-open { transition-duration: 200ms; transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  }
+}

@@ -1,0 +1,45 @@
+/*
+ * Port of @astryxdesign/core Tooltip/useTooltip.tsx (styles.container on the layer root,
+ * styles.content), Tooltip/Tooltip.tsx (wrapperInline, hoverIndication) and
+ * Text/text.stylex.ts truncationTooltipStyles. Rule order mirrors stylex.props() order.
+ * Layer geometry and motion: ../Layer/Layer.css.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* Inverted palette: dark background, light text, for high contrast. */
+  .astryx-tooltip {
+    background-color: var(--color-text-primary);
+    color: var(--color-background-surface);
+    border-radius: var(--radius-container);
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+  }
+
+  .ax-tooltip-content {
+    display: block;
+    padding-block-start: var(--spacing-1);
+    padding-block-end: var(--spacing-1);
+    padding-inline-start: var(--spacing-2);
+    padding-inline-end: var(--spacing-2);
+    max-width: 300px;
+    word-break: break-word;
+  }
+
+  /* Text-only trigger: an Astryx-added tab stop that draws the shared ring. */
+  .ax-tooltip-trigger { display: inline; }
+  .ax-tooltip-trigger[data-hover-indication] {
+    text-decoration-line: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: var(--color-border-emphasized);
+    text-underline-offset: 2px;
+  }
+
+  /* Text / Heading truncation tooltip content. */
+  .ax-truncate-tooltip-text {
+    display: block;
+    max-width: 300px;
+    word-break: break-word;
+  }
+}

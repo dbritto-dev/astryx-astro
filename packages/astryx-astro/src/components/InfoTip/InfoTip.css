@@ -1,0 +1,36 @@
+/*
+ * Port of @astryxdesign/core InfoTip/InfoTip.tsx (styles.trigger) and the registry-icon
+ * sizing of Icon/Icon.tsx (registrySizeStyles: xsm/sm/md/lg = 0.75/1/1.25/1.5rem, read
+ * through the `--_icon-width/-height` vars themes write).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-info-tip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    padding: var(--spacing-0-5);
+    margin: 0;
+    border-style: none;
+    background-color: transparent;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    color: var(--color-icon-secondary);
+    transition-property: color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .ax-info-tip:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .ax-info-tip:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-icon-primary); }
+  }
+
+  .ax-info-tip-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: inherit; }
+  .ax-info-tip-icon[data-size="xsm"] { width: var(--_icon-width, 0.75rem); height: var(--_icon-height, 0.75rem); font-size: min(var(--_icon-width, 0.75rem), var(--_icon-height, 0.75rem)); }
+  .ax-info-tip-icon[data-size="sm"] { width: var(--_icon-width, 1rem); height: var(--_icon-height, 1rem); font-size: min(var(--_icon-width, 1rem), var(--_icon-height, 1rem)); }
+  .ax-info-tip-icon[data-size="md"] { width: var(--_icon-width, 1.25rem); height: var(--_icon-height, 1.25rem); font-size: min(var(--_icon-width, 1.25rem), var(--_icon-height, 1.25rem)); }
+  .ax-info-tip-icon[data-size="lg"] { width: var(--_icon-width, 1.5rem); height: var(--_icon-height, 1.5rem); font-size: min(var(--_icon-width, 1.5rem), var(--_icon-height, 1.5rem)); }
+}

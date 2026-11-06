@@ -1,0 +1,95 @@
+---
+/**
+ * Layer — a generic overlay layer: the Astro face of Astryx's `useLayer` (context mode:
+ * anchored to a trigger with CSS anchor positioning; fixed mode: at x/y). Build custom
+ * overlays on it; Popover, HoverCard and Tooltip cover the common patterns.
+ *
+ * Ports @astryxdesign/core Layer/useLayer.tsx (render props: placement, alignment,
+ * positioning, offset, role, aria-label; options: lightDismiss; fixed mode x/y),
+ * Layer/layerClickBoundary.ts (`data-astryx-layer-root`), layerTextReset/layerStructureReset
+ * and Layout/overlayPaddingReset (Layer.css). Behaviour: src/elements/runtime/layer.ts.
+ *
+ * The layer is a native popover (`manual`, or `auto` with `lightDismiss`) rendered where it is
+ * written, as a sibling of its trigger; open it with `<button popovertarget={id}>` (zero JS)
+ * or `el.show()`. `<ax-layer>` is phrasing content, so it may sit inside a `<p>`.
+ *
+ * Not ported: `lazyMount` (server-rendered markup is always present; the layer stays
+ * display:none until shown) and the corrective portal out of unsafe parents (no portals: write
+ * the layer beside its trigger, never inside a `<button>` or `<a>`). The touch keyboard
+ * clearance (useLayerKeyboardClearance) is deferred.
+ *
+ * Events: `astryx-open-change` `{isOpen, reason}` on the layer element.
+ *
+ * @example
+ * <button popovertarget="menu-layer">Open</button>
+ * <Layer id="menu-layer" placement="below" alignment="start" offset="var(--spacing-1)" lightDismiss>…</Layer>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {LayerAlignment, LayerPlacement} from '../../lib/types';
+import {cx} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {seal} from '../../lib/cascade';
+import {clearance, layerId, placementAttrs} from './layer';
+import './Layer.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** The layer's id; a trigger opens it with `popovertarget={id}`. @default generated */
+  id?: string;
+  /** Positioning strategy: `context` anchors to a trigger, `fixed` uses x/y. @default 'context' */
+  mode?: 'context' | 'fixed';
+  /** Id of the element to anchor to. @default the `[popovertarget]` invoker */
+  anchor?: string;
+  /** Logical placement relative to the anchor (mirrors in RTL). @default 'above' */
+  placement?: LayerPlacement;
+  /** Alignment along the placement axis. @default 'center' */
+  alignment?: LayerAlignment;
+  /** `custom`: author position styles yourself via `style` (anchor() insets, anchor-size()); keeps the position-anchor wiring, derives nothing. @default 'anchor' */
+  positioning?: 'anchor' | 'custom';
+  /** Clearance from the anchor as a CSS length (number = px), kept across flips. @default 0 */
+  offset?: number | string;
+  /** Fixed mode: viewport x in px. */
+  x?: number;
+  /** Fixed mode: viewport y in px. */
+  y?: number;
+  /** ARIA role of the layer (e.g. 'tooltip', 'dialog'). */
+  role?: string;
+  /** Accessible name (`aria-label`); pair with a named role. */
+  label?: string;
+  /** Native light dismiss (`popover="auto"`): outside press and Escape close it. @default false */
+  lightDismiss?: boolean;
+  /** What an Escape that reaches the layer does. @default 'close' with lightDismiss, else 'none' */
+  escape?: 'close' | 'block' | 'none';
+  /** The shared entry/exit motion by placement (useLayer adds none by default). @default false */
+  hasMotion?: boolean;
+  /** Open on load. */
+  isDefaultOpen?: boolean;
+}
+
+const {
+  id: idProp, mode = 'context', anchor, placement = 'above', alignment = 'center', positioning = 'anchor',
+  offset, x = 0, y = 0, role, label, lightDismiss = false, escape, hasMotion = false, isDefaultOpen,
+  class: className, style, ...rest
+} = Astro.props;
+
+const id = idProp ?? layerId('ax-layer');
+const html = await seal(await Astro.slots.render('default'));
+const fixed = mode === 'fixed';
+---
+<ax-layer
+  id={id}
+  popover={lightDismiss ? 'auto' : 'manual'}
+  class={cx('ax-layer', hasMotion && !fixed && 'ax-layer-motion', className)}
+  data-astryx-layer-root=""
+  {...(fixed ? {} : placementAttrs({placement, alignment, positioning}))}
+  data-ax-anchor={fixed ? undefined : anchor}
+  data-ax-escape={escape}
+  data-ax-open={isDefaultOpen ? 'true' : undefined}
+  role={role}
+  aria-label={label}
+  style={mergeStyles(
+    fixed ? {position: 'fixed', top: cssSize(y), left: cssSize(x), margin: '0', inset: 'auto'} : positioning === 'anchor' ? clearance(offset) : undefined,
+    style as StyleValue,
+  )}
+  {...rest}
+><Fragment set:html={html} /></ax-layer>
+<script>import '../../elements/runtime/layer';</script>
