@@ -1,0 +1,52 @@
+/*
+ * Port of @astryxdesign/core DateInput/DateInput.tsx (styles.iconButton, iconButtonDisabled,
+ * input, inputDisabled, inputInvalid, sizeStyles) and Field/inputDisabledFocus.ts
+ * (inputFocusRing). The bordered box is the shared `.ax-input` (Field/Field.css:
+ * inputWrapperStyles, status borders and hover shadows); the text is `.ax-input-native`.
+ * Also the internal picker layer (_PickerLayer.astro) the date/time inputs share.
+ * Rule order mirrors stylex.props(): base → size → disabled → status.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* sizeStyles */
+  .astryx-date-input[data-size="sm"] { height: var(--size-element-sm); min-width: 180px; }
+  .astryx-date-input[data-size="md"] { height: var(--size-element-md); min-width: 180px; }
+  .astryx-date-input[data-size="lg"] { height: var(--size-element-lg); min-width: 180px; }
+
+  /* inputFocusRing: a disabled or busy field restores the ring while its text input has focus
+   * (not while the toggle or a status button has it). */
+  .astryx-date-input.ax-input[data-disabled]:not([data-status]):has(> input:focus) { border-color: var(--color-accent); }
+  .astryx-date-input.ax-input[data-disabled]:has(> input:focus) { box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted); }
+  .astryx-date-input.ax-input[data-disabled]:not([data-status]):not(:has(> input:focus)) { border-color: var(--color-border-emphasized); }
+  .astryx-date-input.ax-input[data-disabled]:not(:has(> input:focus)) { box-shadow: none; }
+  @media (forced-colors: active) {
+    .astryx-date-input.ax-input[data-disabled]:not([data-status]):has(> input:focus) { border-color: Highlight; }
+  }
+
+  /* styles.iconButton (+ focusOutlineStyles.focusVisible via .ax-focus-visible) */
+  .ax-date-input-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    cursor: pointer;
+    border-radius: var(--radius-element);
+    flex-shrink: 0;
+  }
+  .ax-date-input-toggle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* styles.inputInvalid: typed text that cannot become the value */
+  .ax-input-native[data-ax-invalid] { color: var(--color-text-secondary); }
+
+  /* The on-field status icon slot (caller status, or the typed rejection in its place). */
+  .ax-date-status-slot { display: contents; }
+  .ax-date-status-slot[hidden] { display: none; }
+
+  /* ── Picker layer (usePopover render) ──────────────────────────────────── */
+  .ax-picker-layer > .astryx-popover { box-sizing: border-box; }
+}

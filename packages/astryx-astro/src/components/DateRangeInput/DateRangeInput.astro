@@ -1,0 +1,293 @@
+---
+/**
+ * DateRangeInput — pick a start and end date from a dual-month calendar popover, with optional
+ * preset ranges. Port of @astryxdesign/core DateRangeInput/DateRangeInput.tsx,
+ * Field/inputStyles.stylex.ts, Field/inputDisabledFocus.ts (withinRing),
+ * Layer/layerViewportInset.stylex.ts and Popover/usePopover.tsx for the layer. Pure helpers:
+ * ./rangeModel.ts; behaviour: src/elements/date-range-input.ts (`<ax-date-range-input>`).
+ *
+ * - The trigger is a `<button>` (the field's control: `aria-haspopup="dialog"`,
+ *   `aria-expanded`, named "<label>: <range>" or "<label>: <placeholder>", described by the
+ *   description, status, a visually hidden "Required" and the disabled reason). It and the
+ *   calendar icon button (`tabindex="-1"`) are native invokers of a `popover="auto"` layer
+ *   (light dismiss, Escape through the shared stack, zero-JS open/close) anchored to the field.
+ *   Opening moves focus into the popover; the calendar reopens on the value's month with no
+ *   range in progress.
+ * - Inside: a `role="group"` of preset buttons (Tab-navigated; the applied one has
+ *   `aria-current="true"`; a preset outside min/max/constraints or the span bounds is
+ *   `aria-disabled`) beside the range Calendar (`numberOfMonths`, `minRangeSpan`,
+ *   `maxRangeSpan`); the presets stack above it when both do not fit. Picking the second day
+ *   or a preset commits and closes; Escape during a pick cancels the pick first.
+ * - `hasClear` (default true): the clear button empties the range and returns keyboard focus to
+ *   the trigger.
+ * - Form: `htmlName`/`name` submits `<name>-start` and `<name>-end` (ISO dates, '' when empty)
+ *   through hidden inputs; disabled fields submit nothing; reset restores the server value.
+ * - `isDisabled` / `isLoading` keep the trigger focusable (`aria-disabled`); loading dims the
+ *   field and shows a spinner; `disabledMessage` adds a tooltip that also describes the
+ *   trigger and the presets.
+ *
+ * Presets: `{label, getRange}` (Astryx; called on the server) or `{label, range}`.
+ * Events (on `<ax-date-range-input>`): `astryx-change` `{value: DateRange | null}` (null =
+ * cleared), cancelable — `preventDefault()` keeps the old value. The calendar's own event
+ * stays inside. Element API: `value` (get/set `{start, end}` or null), `isOpen`, `open()`,
+ * `close()`, `clear()`, `focus()`, `dateConstraints` (client functions).
+ *
+ * Port notes: `dateConstraints` run on the server (Calendar's window; presets are checked on
+ * the server too). Deferred (AGENTS.md scope): touch slide-across over the presets (contract
+ * #6); `changeAction` / `onChange`: use the event.
+ *
+ * @example
+ * <DateRangeInput label="Reporting period" value={{start: '2026-03-01', end: '2026-03-07'}}
+ *   presets={[{label: 'Last 7 days', getRange: () => lastDays(7)}]} />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import Calendar from '../Calendar/Calendar.astro';
+import PickerLayer from '../DateInput/_PickerLayer.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {joinAriaIDs, routeFieldProps, statusIconPlan, type FieldComposedProps, type InputSize, type InputStatus} from '../Field/fieldProps';
+import {calendarFromLocals, createDateDisabled, type DayOfWeek, type DayOfWeekName} from '../Calendar/calendarModel';
+import {plainDateFromISO, type CalendarSystem, type ISODateString} from '../../lib/date';
+import {formatRangeDisplay, isRangeEqual, isRangeWithinSpan, toRange, type DateRange} from './rangeModel';
+import '../Field/Field.css';
+import '../VisuallyHidden/VisuallyHidden.css';
+import '../DateInput/DateInput.css';
+import './DateRangeInput.css';
+
+export type {DateRange};
+export type DateRangeInputSize = InputSize;
+export type DateRangeInputStatus = InputStatus;
+export interface DateRangePreset {
+  label: string;
+  /** Astryx: computes the range (called on the server). */
+  getRange?: () => DateRange;
+  /** Port extension: the range itself. */
+  range?: DateRange;
+}
+
+export interface Props extends FieldComposedProps {
+  /** Selected range or null. The element owns it afterwards. */
+  value?: DateRange | null;
+  /** Why the input is disabled (tooltip; also describes the trigger). */
+  disabledMessage?: string;
+  /** Busy: dims the field, aria-busy + spinner, opening blocked. @default false */
+  isLoading?: boolean;
+  /** Minimum selectable date (ISO). */
+  min?: ISODateString;
+  /** Maximum selectable date (ISO). */
+  max?: ISODateString;
+  /** A date is disabled if ANY returns false (evaluated on the server). */
+  dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
+  /** Max days a range may span, both endpoints counted (7 = a 7-day window). */
+  maxRangeSpan?: number;
+  /** Min days a range must span, both endpoints counted (2 forbids one day). @default 1 */
+  minRangeSpan?: number;
+  /** Quick-select ranges beside the calendar (above it when both do not fit). */
+  presets?: ReadonlyArray<DateRangePreset>;
+  /** Clear button while a range is selected. @default true */
+  hasClear?: boolean;
+  /** Placeholder while no range is selected. @default translated "Select date range" */
+  placeholder?: string;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: DateRangeInputSize;
+  /** Months in the calendar. @default 2 */
+  numberOfMonths?: 1 | 2;
+  /** First day of week: 0 (Sunday) … 6, or 'sun' … 'sat'. @default 0 */
+  weekStartsOn?: DayOfWeek | DayOfWeekName;
+  /** Calendar the trigger text and the popover show; values stay Gregorian ISO. @default Astro.locals.astryxCalendar ?? 'gregory' */
+  calendar?: CalendarSystem;
+  /** Form name prefix: submits `<name>-start` and `<name>-end` (`name` works too). Dropped while disabled. */
+  htmlName?: string;
+  name?: string;
+  'aria-label'?: string;
+}
+
+const {
+  value: valueProp = null,
+  disabledMessage,
+  isLoading = false,
+  min,
+  max,
+  dateConstraints,
+  maxRangeSpan,
+  minRangeSpan,
+  presets,
+  hasClear = true,
+  placeholder: placeholderProp,
+  size: sizeProp,
+  numberOfMonths = 2,
+  weekStartsOn,
+  calendar: calendarProp,
+  htmlName,
+  name,
+  'aria-label': ariaLabelProp,
+  'aria-labelledby': ariaLabelledByProp,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('DateRangeInput', props as Props & Record<string, unknown>);
+const {isDisabled, status, statusVariant} = r;
+const isEffectivelyDisabled = isDisabled || isLoading;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const calendar = calendarFromLocals(calendarProp, Astro, 'DateRangeInput');
+const size: DateRangeInputSize = sizeProp ?? 'md';
+const value = toRange(valueProp);
+const placeholder = placeholderProp ?? t('@astryx.dateRangeInput.placeholder');
+const displayValue = formatRangeDisplay(value, locale, calendar);
+const triggerAriaLabel = `${r.label}: ${value ? displayValue : placeholder}`;
+
+const boxId = uid(Astro, 'ax-date-range-input');
+const popoverId = uid(Astro, 'ax-date-range-input-calendar');
+const triggerNameId = ariaLabelledByProp != null ? r.ids.make('name') : undefined;
+const requiredId = r.ids.make('required');
+const isEffectivelyRequired = r.required['aria-required'] === 'true';
+const plan = statusIconPlan(status, statusVariant);
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, plan.tooltipId, isEffectivelyRequired ? requiredId : undefined, disabledTip?.id);
+
+const isDateDisabled = createDateDisabled({min, max, dateConstraints});
+const presetItems = (presets ?? []).map((preset) => {
+  const range = toRange(preset.range ?? preset.getRange?.());
+  const isPresetDisabled = isDisabled || !range || !isRangeWithinSpan(range, maxRangeSpan, minRangeSpan) ||
+    isDateDisabled(plainDateFromISO(range.start)) || isDateDisabled(plainDateFromISO(range.end));
+  const isActive = !!range && isRangeEqual(value, range);
+  return {label: preset.label, range, isPresetDisabled, isActive};
+});
+
+const {themeClass, attrs: themeAttrs} = themeProps('date-range-input', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const toggleIcon = themeProps('date-range-input-toggle-icon', {state: 'collapsed'});
+const presetsTheme = themeProps('date-range-input-presets');
+const fieldName = isDisabled ? undefined : (htmlName ?? name);
+const showsClear = hasClear && !isEffectivelyDisabled;
+const invoker = isEffectivelyDisabled ? {} : {popovertarget: popoverId};
+const openLabel = t('@astryx.dateInput.openCalendar');
+const closeLabel = t('@astryx.dateInput.toggleCalendarClose');
+const config = {
+  locale,
+  calendar,
+  min,
+  max,
+  numberOfMonths,
+  label: r.label,
+  placeholder,
+  ariaLabel: ariaLabelProp ?? null,
+  labels: {open: openLabel, close: closeLabel},
+};
+---
+<Field {...r.field} isDisabled={isEffectivelyDisabled}>
+  <ax-date-range-input
+    id={boxId}
+    class={cx(themeClass, 'ax-input', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    data-ax-busy={isLoading ? '' : undefined}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-locale={locale}
+    data-ax-config={JSON.stringify(config)}
+    data-ax-popover={popoverId}
+    data-ax-default-value={value ? JSON.stringify(value) : ''}
+  >
+    <button
+      type="button"
+      tabindex="-1"
+      class="ax-date-input-toggle ax-focus-visible"
+      data-ax-range-toggle=""
+      aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+      aria-label={openLabel}
+      {...invoker}
+    ><Icon icon="calendar" size="sm" color="secondary" class={toggleIcon.themeClass} {...toggleIcon.attrs} /></button>
+    <button
+      {...r.native}
+      type="button"
+      id={r.id}
+      class="ax-date-range-input-trigger"
+      data-ax-range-trigger=""
+      data-ax-placeholder={value ? undefined : ''}
+      aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+      aria-label={ariaLabelProp ?? triggerAriaLabel}
+      aria-labelledby={ariaLabelledByProp != null ? joinAriaIDs(triggerNameId, ariaLabelledByProp) : undefined}
+      aria-describedby={describedBy}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      aria-expanded="false"
+      aria-haspopup="dialog"
+      {...invoker}
+    >{value ? displayValue : placeholder}</button>
+    {showsClear && <InputClearButton label={t('@astryx.dateInput.clear', {label: r.label})} isHidden={!value} locale={r.locale} />}
+    {triggerNameId && <VisuallyHidden id={triggerNameId} data-ax-range-name="">{ariaLabelProp ?? triggerAriaLabel}</VisuallyHidden>}
+    {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    <InputStatusIcon status={status} plan={plan} locale={r.locale} />
+    {fieldName && <input type="hidden" name={`${fieldName}-start`} value={value?.start ?? ''} data-ax-range-value="start" />}
+    {fieldName && <input type="hidden" name={`${fieldName}-end`} value={value?.end ?? ''} data-ax-range-value="end" />}
+  </ax-date-range-input>
+  {isEffectivelyRequired && <VisuallyHidden id={requiredId}>{t('@astryx.field.required')}</VisuallyHidden>}
+  <PickerLayer
+    id={popoverId}
+    anchorId={boxId}
+    mode="auto"
+    label={t('@astryx.dateRangeInput.dialogLabel')}
+    closeLabel={t('@astryx.dateInput.closeCalendar')}
+    locale={r.locale}
+  >
+    <div class="ax-date-range-input-scroll">
+      <div class="ax-date-range-input-layout">
+        {presetItems.length > 0 && (
+          <div role="group" aria-label={t('@astryx.dateRangeInput.presetDateRanges')} class={cx(presetsTheme.themeClass, 'ax-date-range-input-presets')} {...presetsTheme.attrs}>
+            {presetItems.map((preset) => {
+              const theme = themeProps('date-range-input-preset', {
+                selected: preset.isActive ? 'selected' : null,
+                disabled: preset.isPresetDisabled ? 'disabled' : null,
+              });
+              return (
+                <button
+                  type="button"
+                  class={cx(theme.themeClass, 'ax-focus-visible ax-date-range-input-preset')}
+                  {...theme.attrs}
+                  aria-current={preset.isActive ? 'true' : undefined}
+                  aria-disabled={preset.isPresetDisabled ? 'true' : undefined}
+                  aria-describedby={disabledTip?.id}
+                  data-start={preset.range?.start}
+                  data-end={preset.range?.end}
+                >{preset.label}</button>
+              );
+            })}
+          </div>
+        )}
+        <Calendar
+          class={presetItems.length > 0 ? 'ax-date-range-input-calendar' : undefined}
+          mode="range"
+          value={value}
+          min={min}
+          max={max}
+          dateConstraints={dateConstraints}
+          maxRangeSpan={maxRangeSpan}
+          minRangeSpan={minRangeSpan}
+          numberOfMonths={numberOfMonths}
+          weekStartsOn={weekStartsOn}
+          calendar={calendar}
+          locale={r.locale}
+        />
+      </div>
+    </div>
+  </PickerLayer>
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/date-range-input';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

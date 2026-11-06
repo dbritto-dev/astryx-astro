@@ -1,0 +1,32 @@
+/*
+ * Port of @astryxdesign/core TimeInput/TimeInput.tsx (styles.icon, input, inputDisabled,
+ * inputInvalid, sizeStyles) and Field/inputDisabledFocus.ts (withinRing). The bordered box is
+ * the shared `.ax-input` (Field/Field.css), the text `.ax-input-native`.
+ * Rule order mirrors stylex.props(): base → size → disabled (+ ring) → status.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* sizeStyles */
+  .astryx-time-input[data-size="sm"] { height: var(--size-element-sm); min-width: 120px; }
+  .astryx-time-input[data-size="md"] { height: var(--size-element-md); min-width: 120px; }
+  .astryx-time-input[data-size="lg"] { height: var(--size-element-lg); min-width: 120px; }
+
+  /* withinRing: a disabled field restores the focus ring while focus is anywhere inside it */
+  .astryx-time-input.ax-input[data-disabled]:not([data-status]):focus-within { border-color: var(--color-accent); }
+  .astryx-time-input.ax-input[data-disabled]:focus-within { box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted); }
+  @media (forced-colors: active) {
+    .astryx-time-input.ax-input[data-disabled]:not([data-status]):focus-within { border-color: Highlight; }
+  }
+
+  /* styles.icon */
+  .ax-time-input-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* styles.inputInvalid */
+  .astryx-time-input > .ax-input-native[data-ax-invalid] { color: var(--color-text-secondary); }
+}

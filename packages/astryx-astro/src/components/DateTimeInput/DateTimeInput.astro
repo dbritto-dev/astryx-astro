@@ -1,0 +1,366 @@
+---
+/**
+ * DateTimeInput — a date and a time under one label: a typed date segment with a calendar
+ * popover beside a typed time segment (optionally with a list of preset times). Port of
+ * @astryxdesign/core DateTimeInput/DateTimeInput.tsx (PointerDateTimeField), the shared
+ * DateInput/useTypedDate.ts (../DateInput/typedDate.ts) and TimeInput's typed time
+ * (../TimeInput/timeField.ts), Field/inputStyles.stylex.ts, Field/inputDisabledFocus.ts
+ * (withinRing), hooks/useInputContainer.ts, hooks/useHighlightedOptionScroll.ts.
+ * Behaviour: src/elements/date-time-input.ts (`<ax-date-time-input>`).
+ *
+ * - Value: a local wall-clock ISO datetime (`YYYY-MM-DDTHH:MM[:SS]`, no time zone — Astryx has
+ *   no zone handling). `min`/`max` are datetimes: their dates bound the calendar and typed
+ *   dates, their times bound the time on the boundary days. A datetime reports only with
+ *   both parts: picking or typing a date keeps the time (or takes now, clamped to the
+ *   boundary day's time); a time waits for a date.
+ * - Date segment: DateInput's typed entry (any calendar, digits, IME-safe; rejections show as
+ *   the field's error status and are announced) and its calendar (toggle button, click,
+ *   ArrowDown / Alt+ArrowDown), here in a `popover="auto"` layer (light dismiss, Escape)
+ *   anchored to the date segment, as in Astryx.
+ * - Time segment: TimeInput's typed entry and ArrowUp/ArrowDown stepping by `timeIncrement`
+ *   (announced; needs a date). `timeOptionInterval` turns it into a combobox with a listbox of
+ *   every valid time at that cadence (Alt+ArrowDown or a click opens it; while open
+ *   ArrowUp/Down/Home/End move the active option, Enter commits typed text first, else the
+ *   option; Escape/Tab/a press outside close it; typing moves the highlight, never filters).
+ * - The status message is always detached (one box under both segments); the segments wrap
+ *   into full-width rows below 400px.
+ * - Form: `htmlName`/`name` submits the ISO datetime through a hidden input ('' while
+ *   incomplete); disabled fields submit nothing; reset restores the server value.
+ *
+ * Events (on `<ax-date-time-input>`): `astryx-change` `{value: ISODateTimeString | undefined}`
+ * (cancelable). Element API: `value`, `isOpen` (calendar), `open()`, `close()`, `clear()`,
+ * `focus()`, `dateConstraints` (client functions, added to the server mask).
+ *
+ * Port notes: `presentation` / `nativePicker` are accepted; every value renders the pointer
+ * surface. Deferred (AGENTS.md scope): the coarse-pointer bottom sheet (TouchDateTimeField —
+ * its Date/Time SegmentedControl, month pager and time wheels) and the native date/time
+ * segments (NativeDateSegment / NativeTimeSegment). `changeAction` / `onChange`: use the event.
+ *
+ * @example
+ * <DateTimeInput label="Meeting time" value="2026-03-21T14:30" timeOptionInterval={30} />
+ */
+import Field from '../Field/Field.astro';
+import FieldStatus from '../FieldStatus/FieldStatus.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import Calendar from '../Calendar/Calendar.astro';
+import PickerLayer from '../DateInput/_PickerLayer.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {joinAriaIDs, routeFieldProps, type FieldComposedProps, type InputSize, type InputStatus} from '../Field/fieldProps';
+import {calendarFromLocals, type DayOfWeek, type DayOfWeekName} from '../Calendar/calendarModel';
+import {constraintMask, providerCalendarOf, typedDateServerConfig} from '../DateInput/serverConfig';
+import {TypedDate} from '../DateInput/typedDate';
+import {formatLocaleTime, isTimeInRange, resolveHourFormat, type CalendarSystem, type ISODateString} from '../../lib/date';
+import {normalizeDateTime, normalizeOptionTime, splitDateTime, timeBoundsFor, timeOptions, type ISODateTimeString} from './dateTimeModel';
+import '../Field/Field.css';
+import '../VisuallyHidden/VisuallyHidden.css';
+import '../DateInput/DateInput.css';
+import '../TimeInput/TimeInput.css';
+import './DateTimeInput.css';
+
+export type {ISODateTimeString};
+export type DateTimeInputSize = InputSize;
+export type DateTimeInputStatus = InputStatus;
+export type DateTimeInputHourFormat = '12h' | '24h';
+export type DateTimeInputTimeIncrement = 1 | 5 | 10 | 15 | 30;
+export type DateTimeInputTimeOptionInterval = 5 | 10 | 15 | 30 | 60;
+/** Which surfaces collect the date and time (only the pointer surface is ported; see the header). */
+export type DateTimeInputPresentation = 'popover' | 'bottom-sheet' | 'native' | 'adaptive-bottom-sheet' | 'adaptive-native';
+/** @deprecated Use `presentation`. */
+export type DateTimeInputNativePicker = 'touch' | 'always' | 'never';
+
+export interface Props extends Omit<FieldComposedProps, 'statusVariant'> {
+  /** Selected datetime (`YYYY-MM-DDTHH:MM` or `…:SS`). The element owns it afterwards. */
+  value?: ISODateTimeString | string | null;
+  /** Why the input is disabled (tooltip; also describes both inputs). */
+  disabledMessage?: string;
+  /** Busy: aria-busy + spinner; typing and picking blocked. @default false */
+  isLoading?: boolean;
+  /** Minimum datetime: bounds the dates, and the time on its day. */
+  min?: ISODateTimeString | string;
+  /** Maximum datetime. */
+  max?: ISODateTimeString | string;
+  /** A date is disabled if ANY returns false (evaluated on the server). */
+  dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
+  /** Include seconds in the time. @default false */
+  hasSeconds?: boolean;
+  /** '12h' with the locale's day period or '24h'. @default the locale's hour cycle */
+  hourFormat?: DateTimeInputHourFormat;
+  /** Minutes per ArrowUp/ArrowDown in the time field. @default 1 */
+  timeIncrement?: DateTimeInputTimeIncrement;
+  /** Minute cadence of a preset-time list on the time field (a combobox). Off by default. */
+  timeOptionInterval?: DateTimeInputTimeOptionInterval;
+  /** Clear button while a value is set. @default false */
+  hasClear?: boolean;
+  /** Date placeholder; a caller placeholder replaces the calendar format hint. @default translated "Select a date" */
+  placeholder?: string;
+  /** Calendar the date segment reads, writes and shows; values stay Gregorian ISO. @default Astro.locals.astryxCalendar ?? 'gregory' */
+  calendar?: CalendarSystem;
+  /** Time placeholder. @default translated "Select a time" */
+  timePlaceholder?: string;
+  /** Accessible name of the time input. @default translated "{label} time" */
+  timeLabel?: string;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: DateTimeInputSize;
+  /** Months in the calendar popover. @default 1 */
+  numberOfMonths?: 1 | 2;
+  /** First day of week: 0 (Sunday) … 6, or 'sun' … 'sat'. @default 0 */
+  weekStartsOn?: DayOfWeek | DayOfWeekName;
+  /** Picker surfaces (every value renders the pointer surface; see the header). @default 'adaptive-native' */
+  presentation?: DateTimeInputPresentation;
+  /** @deprecated Use `presentation`. */
+  nativePicker?: DateTimeInputNativePicker;
+  /** Form field name for the hidden ISO datetime (`name` works too). Dropped while disabled. */
+  htmlName?: string;
+  name?: string;
+}
+
+const {
+  value: valueProp,
+  disabledMessage,
+  isLoading = false,
+  min,
+  max,
+  dateConstraints,
+  hasSeconds = false,
+  hourFormat: hourFormatProp,
+  timeIncrement = 1,
+  timeOptionInterval,
+  hasClear = false,
+  placeholder: placeholderProp,
+  calendar: calendarProp,
+  timePlaceholder: timePlaceholderProp,
+  timeLabel,
+  size: sizeProp,
+  numberOfMonths = 1,
+  weekStartsOn,
+  presentation: _presentation,
+  nativePicker: _nativePicker,
+  htmlName,
+  name,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('DateTimeInput', {...(props as Props & Record<string, unknown>), statusVariant: 'detached'});
+const {isDisabled, status} = r;
+const isEffectivelyDisabled = isDisabled || isLoading;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const calendar = calendarFromLocals(calendarProp, Astro, 'DateTimeInput');
+const hourFormat = resolveHourFormat(locale, hourFormatProp);
+const size: DateTimeInputSize = sizeProp ?? 'md';
+
+const value = normalizeDateTime(valueProp);
+const valueParts = splitDateTime(value);
+const minParts = splitDateTime(min);
+const maxParts = splitDateTime(max);
+const {timeMin, timeMax} = timeBoundsFor(valueParts.date, minParts, maxParts);
+
+const placeholder = placeholderProp ?? t('@astryx.dateTimeInput.placeholder');
+const timePlaceholder = timePlaceholderProp ?? t('@astryx.dateTimeInput.timePlaceholder');
+const resolvedTimeLabel = timeLabel ?? t('@astryx.dateTimeInput.timeSuffix', {label: r.label});
+
+const mask = constraintMask({dateConstraints, min: minParts.date, max: maxParts.date, value: valueParts.date, numberOfMonths, calendar});
+const {config: typedConfig, calendarDescription} = typedDateServerConfig({
+  t,
+  locale,
+  calendar,
+  providerCalendar: providerCalendarOf(Astro),
+  format: 'date_long',
+  min: minParts.date,
+  max: maxParts.date,
+  mask,
+  hasPlaceholder: placeholderProp != null,
+});
+const typed = new TypedDate(typedConfig);
+const dateDisplay = valueParts.date ? typed.formatCommitted(valueParts.date) : '';
+const timeDisplay = valueParts.time ? formatLocaleTime(valueParts.time, locale, hourFormat, hasSeconds) : '';
+
+const rootId = uid(Astro, 'ax-date-time-input');
+const dateSegmentId = `${rootId}-date`;
+const timeSegmentId = `${rootId}-time`;
+const timeInputId = uid(Astro, 'ax-date-time-input-time');
+const popoverId = uid(Astro, 'ax-date-time-input-calendar');
+const listPopoverId = uid(Astro, 'ax-date-time-input-times');
+const listboxId = `${listPopoverId}-listbox`;
+const calendarDescriptionId = calendarDescription ? r.ids.make('calendar') : undefined;
+const typedMessageId = r.ids.make('typed-status');
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const describedByCaller = r.describedBy(r.field.descriptionID, calendarDescriptionId, r.statusMessageId, disabledTip?.id);
+const describedByTyped = r.describedBy(r.field.descriptionID, calendarDescriptionId, typedMessageId, disabledTip?.id);
+const controlLabelledBy = r.labelledBy;
+
+const hasTimeOptions = timeOptionInterval !== undefined;
+const options = hasTimeOptions ? timeOptions(timeOptionInterval, hasSeconds).map((time) => ({time, label: formatLocaleTime(time, locale, hourFormat, hasSeconds)})) : [];
+const selectedOptionTime = normalizeOptionTime(valueParts.time, hasSeconds);
+
+const statusType = status?.type ?? null;
+const root = themeProps('date-time-input', {size, status: statusType, disabled: isDisabled ? 'disabled' : null});
+const dateSeg = themeProps('date-time-input-date-segment', {size, status: statusType});
+const timeSeg = themeProps('date-time-input-time-segment', {size, status: statusType});
+const toggleIcon = themeProps('date-time-input-toggle-icon', {state: 'collapsed'});
+const clockIcon = themeProps('date-time-input-clock-icon');
+const listboxTheme = themeProps('date-time-input-time-listbox');
+const fieldName = isDisabled ? undefined : (htmlName ?? name);
+const showsClear = hasClear && !isEffectivelyDisabled;
+const segmentDisabled = isEffectivelyDisabled ? 'disabled' : undefined;
+const openLabel = t('@astryx.dateInput.openCalendar');
+const closeLabel = t('@astryx.dateInput.toggleCalendarClose');
+const config = {
+  typed: typedConfig,
+  placeholder,
+  numberOfMonths,
+  labels: {open: openLabel, close: closeLabel},
+  time: {
+    locale,
+    hourFormat,
+    hasSeconds,
+    increment: timeIncrement,
+    placeholder: timePlaceholder,
+    hint: hourFormat === '12h' ? t('@astryx.dateTimeInput.timeHint12h') : t('@astryx.dateTimeInput.timeHint24h'),
+    invalid: t('@astryx.timeInput.invalidTime'),
+  },
+  min: min || undefined,
+  max: max || undefined,
+  popover: popoverId,
+  listPopover: hasTimeOptions ? listPopoverId : undefined,
+};
+---
+<Field {...r.field}>
+  <ax-date-time-input
+    id={rootId}
+    class={cx(root.themeClass, r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...root.attrs}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-locale={locale}
+    data-ax-config={JSON.stringify(config)}
+    data-ax-status-caller={status?.type}
+    data-ax-status-box={r.statusMessageId}
+    data-ax-describedby-caller={describedByCaller}
+    data-ax-describedby-typed={describedByTyped}
+    data-ax-default-value={value ?? ''}
+  >
+    <div id={dateSegmentId} class={cx(dateSeg.themeClass, 'ax-input')} {...dateSeg.attrs} data-disabled={segmentDisabled} data-ax-date-segment="">
+      <button
+        type="button"
+        class="ax-date-input-toggle ax-focus-visible"
+        data-ax-date-toggle=""
+        aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+        aria-describedby={disabledTip?.id}
+        aria-label={openLabel}
+      ><Icon icon="calendar" size="sm" color="secondary" class={toggleIcon.themeClass} {...toggleIcon.attrs} /></button>
+      <input
+        {...r.native}
+        {...r.required}
+        class="ax-input-native"
+        id={r.id}
+        type="text"
+        role="combobox"
+        value={dateDisplay}
+        placeholder={placeholder}
+        aria-labelledby={controlLabelledBy}
+        aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+        readonly={isEffectivelyDisabled || undefined}
+        aria-describedby={describedByCaller}
+        aria-invalid={status?.type === 'error' ? 'true' : undefined}
+        aria-busy={isLoading ? 'true' : undefined}
+        aria-expanded="false"
+        aria-haspopup="dialog"
+        aria-autocomplete="none"
+        autocomplete="off"
+        data-ax-date-input=""
+      />
+      <VisuallyHidden as="div" role="alert" aria-live="assertive" data-ax-date-alert="" />
+      {calendarDescription && <VisuallyHidden id={calendarDescriptionId}>{calendarDescription}</VisuallyHidden>}
+      {showsClear && <InputClearButton label={t('@astryx.dateInput.clear', {label: r.label})} isHidden={!value} locale={r.locale} />}
+      {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    </div>
+    <div id={timeSegmentId} class={cx(timeSeg.themeClass, 'ax-input')} {...timeSeg.attrs} data-disabled={segmentDisabled} data-ax-time-segment="">
+      <div class="ax-time-input-icon"><Icon icon="clock" size="sm" color="secondary" class={clockIcon.themeClass} {...clockIcon.attrs} /></div>
+      <input
+        class="ax-input-native"
+        id={timeInputId}
+        type="text"
+        value={timeDisplay}
+        placeholder={timePlaceholder}
+        role={hasTimeOptions ? 'combobox' : undefined}
+        aria-expanded={hasTimeOptions ? 'false' : undefined}
+        aria-autocomplete={hasTimeOptions ? 'list' : undefined}
+        aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+        readonly={isEffectivelyDisabled || undefined}
+        aria-label={resolvedTimeLabel}
+        aria-describedby={describedByCaller}
+        aria-required={r.required['aria-required']}
+        aria-invalid={status?.type === 'error' ? 'true' : undefined}
+        aria-busy={isLoading ? 'true' : undefined}
+        autocomplete="off"
+        data-ax-time-input=""
+      />
+      <VisuallyHidden as="div" role="alert" aria-live="assertive" data-ax-time-alert="" />
+    </div>
+    {fieldName && <input type="hidden" name={fieldName} value={value ?? ''} data-ax-date-time-value="" />}
+  </ax-date-time-input>
+  <template data-ax-typed-status={rootId}><FieldStatus type="error" message="" id={typedMessageId} variant="detached" /></template>
+  <PickerLayer
+    id={popoverId}
+    anchorId={dateSegmentId}
+    mode="auto"
+    label={t('@astryx.dateTimeInput.dialogLabel')}
+    closeLabel={t('@astryx.dateInput.closeCalendar')}
+    locale={r.locale}
+  >
+    <Calendar
+      mode="single"
+      value={valueParts.date ?? null}
+      min={minParts.date as ISODateString | undefined}
+      max={maxParts.date as ISODateString | undefined}
+      dateConstraints={dateConstraints}
+      numberOfMonths={numberOfMonths}
+      weekStartsOn={weekStartsOn}
+      calendar={calendar}
+      locale={r.locale}
+    />
+  </PickerLayer>
+  {hasTimeOptions && (
+    <PickerLayer id={listPopoverId} anchorId={timeSegmentId} ownerId={timeSegmentId} role="none" class="ax-date-time-input-list-layer" locale={r.locale}>
+      <div
+        id={listboxId}
+        role="listbox"
+        aria-label={t('@astryx.dateTimeInput.timeOptionsLabel', {label: resolvedTimeLabel})}
+        class={cx(listboxTheme.themeClass, 'ax-date-time-input-listbox')}
+        {...listboxTheme.attrs}
+        data-ax-size={size}
+      >
+        {options.map((option) => {
+          const optionTheme = themeProps('date-time-input-time-option');
+          return (
+            <div
+              id={`${listboxId}-${option.time.replace(/:/g, '')}`}
+              role="option"
+              aria-selected={option.time === selectedOptionTime ? 'true' : 'false'}
+              tabindex="-1"
+              class={cx(optionTheme.themeClass, 'ax-date-time-input-option')}
+              {...optionTheme.attrs}
+              data-time={option.time}
+              hidden={!isTimeInRange(option.time, timeMin, timeMax) || undefined}
+            >{option.label}</div>
+          );
+        })}
+      </div>
+    </PickerLayer>
+  )}
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/date-time-input';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

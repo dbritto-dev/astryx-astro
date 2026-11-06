@@ -1,0 +1,201 @@
+---
+/**
+ * TimeInput — type a time, step it with the arrow keys. Port of @astryxdesign/core
+ * TimeInput/TimeInput.tsx (TimeInput + TimeField), utils/timeFormat.ts (locale hour cycle,
+ * digits, day periods), utils/timeParser.ts, Field/inputStyles.stylex.ts,
+ * Field/inputDisabledFocus.ts (withinRing), hooks/useInputContainer.ts. Typed-entry logic:
+ * ./timeField.ts (shared with DateTimeInput); behaviour: src/elements/time-input.ts.
+ *
+ * - A text input with a leading clock icon. Typing reports a time as soon as the text reads
+ *   as one inside min/max ("2:30 PM", "14:30", "1430", the locale's own day periods and
+ *   digits — "午後2:30", "٢:٣٠ م"); blur reverts unreadable or out-of-range text (dimmed,
+ *   `aria-invalid`, "Invalid time" announced while it stays) and clears an emptied field.
+ * - ArrowUp / ArrowDown add or subtract `increment` minutes (wrapping at midnight; a step
+ *   outside min/max is refused), starting from now when empty; the new time is announced.
+ *   IME composition keeps the arrows. Focused and empty, the placeholder becomes a format hint.
+ * - `hourFormat` unset follows the locale's hour cycle (en-US 12h, de-DE/en-GB/ja-JP 24h, a
+ *   `-u-hc-h23` / `-u-hc-h12` tag wins): resolved on the server, so the typed text, hint and
+ *   announcements agree.
+ * - Form: `htmlName`/`name` submits the ISO time (`HH:MM` or `HH:MM:SS`) through a hidden input;
+ *   disabled fields submit nothing; reset restores the server value.
+ * - Disabled keeps the tab stop (`aria-disabled` + `readonly`, Enter cannot submit);
+ *   `disabledMessage` adds a tooltip on the box. `isLoading`: aria-busy + spinner (typing
+ *   still allowed, as in Astryx). Clicking the box chrome focuses the input.
+ * - Field-composed (contract #8), groupable (InputGroup), size cascade as TextInput.
+ *
+ * Events (on `<ax-time-input>`): `astryx-change` `{value: ISOTimeString | undefined}`
+ * (cancelable; undefined = cleared). Element API: `value` (get/set), `clear()`, `focus()`,
+ * `stepUp()`, `stepDown()`.
+ *
+ * Port notes: `presentation` / `nativePicker` are accepted; every value renders the typed field
+ * (Astryx's 'text-input'/'popover' surface). Deferred (AGENTS.md scope): the native
+ * `<input type="time">` surface on coarse pointers (NativeTimeSegment) and the bottom-sheet
+ * time wheels (TouchTimeField). `changeAction` / `onChange`: use the event. Astryx has no time
+ * list for TimeInput (DateTimeInput's `timeOptionInterval` has one).
+ *
+ * @example
+ * <TimeInput label="Start time" value="14:30" hasClear />
+ * <TimeInput label="Opening" locale="de-DE" min="09:00" max="17:00" increment={15} htmlName="opening" />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  statusIconPlan,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+} from '../Field/fieldProps';
+import {formatLocaleTime, parseISOTime, resolveHourFormat, type ISOTimeString} from '../../lib/date';
+import type {TimeFieldConfig} from './timeField';
+import '../Field/Field.css';
+import '../VisuallyHidden/VisuallyHidden.css';
+import './TimeInput.css';
+
+export type TimeInputSize = InputSize;
+export type TimeInputStatus = InputStatus;
+export type TimeInputHourFormat = '12h' | '24h';
+/** Which surface selects the time (only the typed field is ported; see the header). */
+export type TimeInputPresentation = 'text-input' | 'popover' | 'bottom-sheet' | 'native' | 'adaptive-bottom-sheet' | 'adaptive-native';
+/** @deprecated Use `presentation`. */
+export type TimeInputNativePicker = 'touch' | 'always' | 'never';
+
+export interface Props extends FieldComposedProps {
+  /** Selected time (`HH:MM` or `HH:MM:SS`). The element owns it afterwards. */
+  value?: ISOTimeString | string | null;
+  /** Why the input is disabled (tooltip on hover/focus; also describes the input). */
+  disabledMessage?: string;
+  /** Busy: aria-busy + spinner. @default false */
+  isLoading?: boolean;
+  /** Minimum time (ISO); typed and stepped times outside are rejected. */
+  min?: ISOTimeString | string;
+  /** Maximum time (ISO). */
+  max?: ISOTimeString | string;
+  /** Include seconds in the display and parsing. @default false */
+  hasSeconds?: boolean;
+  /** Clear button while a time is set. @default false */
+  hasClear?: boolean;
+  /** Focus on load. @default false */
+  hasAutoFocus?: boolean;
+  /** '12h' with the locale's day period or '24h'. @default the locale's hour cycle */
+  hourFormat?: TimeInputHourFormat;
+  /** Minutes per ArrowUp/ArrowDown (whole minutes; a fraction leaves the time unchanged). @default 1 */
+  increment?: number;
+  /** Selection surface (every value renders the typed field; see the header). @default 'adaptive-native' */
+  presentation?: TimeInputPresentation;
+  /** @deprecated Use `presentation`. */
+  nativePicker?: TimeInputNativePicker;
+  /** Placeholder; focused and empty shows a format hint instead. @default translated "Select a time" */
+  placeholder?: string;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: TimeInputSize;
+  /** Form field name for the hidden ISO value (`name` works too). Dropped while disabled. */
+  htmlName?: string;
+  name?: string;
+}
+
+const {
+  value: valueProp,
+  disabledMessage,
+  isLoading = false,
+  min,
+  max,
+  hasSeconds = false,
+  hasClear = false,
+  hasAutoFocus = false,
+  hourFormat: hourFormatProp,
+  increment = 1,
+  presentation: _presentation,
+  nativePicker: _nativePicker,
+  placeholder: placeholderProp,
+  size: sizeProp,
+  htmlName,
+  name,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('TimeInput', props as Props & Record<string, unknown>, {groupable: true});
+const {isDisabled, status, statusVariant} = r;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const hourFormat = resolveHourFormat(locale, hourFormatProp);
+const size: TimeInputSize = sizeProp ?? 'md';
+const value = valueProp && parseISOTime(valueProp) ? (valueProp as ISOTimeString) : undefined;
+const displayValue = value ? formatLocaleTime(value, locale, hourFormat, hasSeconds) : '';
+const plan = statusIconPlan(status, statusVariant);
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, plan.tooltipId, disabledTip?.id);
+const {themeClass, attrs: themeAttrs} = themeProps('time-input', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const fieldName = isDisabled ? undefined : (htmlName ?? name);
+const showsClear = hasClear && !isDisabled;
+const config: TimeFieldConfig & {min?: string; max?: string} = {
+  locale,
+  hourFormat,
+  hasSeconds,
+  increment,
+  min: min || undefined,
+  max: max || undefined,
+  placeholder: placeholderProp ?? t('@astryx.timeInput.placeholder'),
+  hint: hourFormat === '12h' ? t('@astryx.dateTimeInput.timeHint12h') : t('@astryx.dateTimeInput.timeHint24h'),
+  invalid: t('@astryx.timeInput.invalidTime'),
+};
+---
+<Field {...r.field}>
+  <ax-time-input
+    class={cx(themeClass, 'ax-input', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-locale={locale}
+    data-ax-config={JSON.stringify(config)}
+    data-ax-default-value={value ?? ''}
+  >
+    <span {...r.groupLabel}>{r.label}</span>
+    <div class="ax-time-input-icon"><Icon icon="clock" size="sm" color="secondary" /></div>
+    <input
+      {...r.native}
+      {...r.required}
+      {...r.groupInput}
+      class="ax-input-native"
+      id={r.id}
+      type="text"
+      value={displayValue}
+      placeholder={config.placeholder}
+      aria-disabled={isDisabled ? 'true' : undefined}
+      readonly={isDisabled || undefined}
+      autofocus={hasAutoFocus || undefined}
+      data-autofocus={hasAutoFocus ? '' : undefined}
+      aria-describedby={describedBy}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      aria-labelledby={r.labelledBy}
+      autocomplete="off"
+    />
+    {fieldName && <input type="hidden" name={fieldName} value={value ?? ''} data-ax-time-value="" {...{[GROUP_DROP_DISABLED]: ''}} />}
+    <VisuallyHidden as="div" role="alert" aria-live="assertive" data-ax-time-alert="" />
+    {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    {showsClear && <InputClearButton label={t('@astryx.timeInput.clearLabel', {label: r.label})} isHidden={!value} locale={r.locale} {...{[GROUP_DROP_DISABLED]: ''}} />}
+    <InputStatusIcon status={status} plan={plan} locale={r.locale} />
+  </ax-time-input>
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/time-input';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}
