@@ -318,3 +318,19 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Indicator state on the client: `CheckboxInput/_IndicatorStates.astro` + `elements/indicator-state.ts`
   (built-ins updated in place; theme replacements rendered per state into `<template>`s and
   swapped). Reuse for CheckboxList and menu checkbox items.
+
+## Date and time inputs
+
+- Astryx 0.7.9 DateInput/TimeInput are free-form text entry (`role="combobox"`), not segmented.
+- Events (cancelable; preventDefault keeps the old value): DateInput/DateTimeInput
+  `astryx-change` {value: ISO|undefined}; TimeInput {value: ISOTime|undefined}; DateRangeInput
+  {value: {start, end}|null}. Calendar's own change stays inside the component.
+- Element API: `value`, `open()`/`close()`/`isOpen`, `clear()`, `focus()`, `dateConstraints`;
+  DateInput `formatValue`; TimeInput `stepUp()`/`stepDown()`. Forms: `name` submits ISO via
+  hidden inputs (DateRangeInput `<name>-start`/`<name>-end`).
+- Reusable `<ax-picker-popover>` (elements/picker-popover.ts): a popover owned by a text field
+  (`popover="manual"`, outside-press dismissal, `data-ax-owner`, `data-ax-label-for`,
+  `showPicker({autoFocus})`); internal `DateInput/_PickerLayer.astro`.
+- `presentation`/`nativePicker` accepted but always render the popover (sheet/wheels deferred).
+- Flaky under heavy load (animation timing): lightbox, segmented-control tests — the runner
+  retries once and reports FLAKY.
