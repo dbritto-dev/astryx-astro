@@ -4,8 +4,12 @@ import SizeProvider from './_ButtonSizeProvider.astro';
 import Icon from '../Icon/Icon.astro';
 import Badge from '../Badge/Badge.astro';
 import RouterLink from '../Link/_DemoRouterLink.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
 import type {ComponentSize, Elevation} from '../../lib/types';
 
+// An external tooltip: the caller renders the layer and passes its trigger attributes.
+const shareTip = attachTooltip({id: 'btn-external-tip'});
 const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
 const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
 const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
@@ -63,6 +67,7 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
       <span id="export-help" hidden>Exports the visible rows only</span>
       <Button label="Export" tooltip="CSV, up to 10,000 rows" aria-describedby="export-help" data-test="tooltip-composed" />
       <Button label="Docs" href="/components/tooltip/" tooltip="Opens the Tooltip docs" data-test="tooltip-link" />
+      <Button label="Share" icon="arrowUp" variant="secondary" {...shareTip.trigger} data-test="tooltip-external" /><Tooltip {...shareTip.layer} content="Copies a link to this page" />
     </div>
   </section>
 

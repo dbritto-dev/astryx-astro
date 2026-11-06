@@ -312,6 +312,8 @@ export class DateInputElement extends HTMLElement {
     else input.removeAttribute('aria-controls');
     this.#toggle?.setAttribute('aria-label', isOpen ? labels.close : labels.open);
     this.#toggle?.querySelector('.astryx-date-input-toggle-icon')?.setAttribute('data-state', isOpen ? 'expanded' : 'collapsed');
+    // A bottom sheet is modal: focus moves into it, onto the calendar's focus day.
+    if (isOpen && this.#popover?.getAttribute('data-ax-surface') === 'bottom-sheet') this.#calendar?.focusDay();
     if (isOpen) return;
     // onHide: return focus to the input only when the dismiss left focus nowhere.
     const isFocusMovingAway = this.#isFocusMovingAway;

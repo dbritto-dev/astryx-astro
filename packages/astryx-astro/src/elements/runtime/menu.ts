@@ -38,6 +38,14 @@
  *   Optional: `data-ax-menu-region="header|footer"` beside the menu (dialog Tab cycle),
  *   `data-ax-busy-label` on a row (announced politely when its level shows),
  *   `data-ax-size-from-trigger` on a dropdown root (rows follow the trigger's `data-size`).
+ *   `data-ax-presentation="bottom-sheet|adaptive"` on a dropdown root (+ `ax-sheet-layer`,
+ *   `ax-sheet-surface` on its surface, `data-ax-sheet-label`): the presentation contract
+ *   (../sheet/surface.ts) — the layer opens as a modal bottom sheet (always / on a compact touch
+ *   screen), unanchored, `[data-presentation]` of the root menu following the surface.
+ *   Dropdown options (TabMenu: Astryx's menu-button focus-on-open, no arrow keys on its trigger):
+ *   `data-ax-open-focus="first"` — every open lands on the first enabled row, a pointer open
+ *   too; `data-ax-trigger-arrows="false"` — ↑/↓ on the closed trigger do not open the menu
+ *   (they stay with the page, e.g. a roving strip around the trigger).
  *
  * ── Behaviour (Astryx parity) ───────────────────────────────────────────────────────────
  *  - Open: the native invoker opens on click with zero JS; with JS, Enter / Space / ArrowDown on
@@ -86,6 +94,7 @@ import {currentGesture, type DismissReason, type LayerEscapeBehavior, type Layer
 import {focusForLastInput, getModality} from './modality';
 import {createRovingFocus, type RovingFocus} from './roving';
 import {createTypeahead} from './typeahead';
+import {createSheetSurface, type SheetSurface} from '../sheet/surface';
 
 // ── Row roles (menuItemRoles.ts) ────────────────────────────────────────────────────────
 
@@ -582,6 +591,8 @@ export class MenuElement extends LayerElement {
   /** The gesture of an open the menu made itself (keyboard fallback, long press): the native contextmenu of it is absorbed. */
   #ownOpenGesture: number | null = null;
   #longPress: {timer: ReturnType<typeof setTimeout>; x: number; y: number} | null = null;
+  /** A dropdown's presentation surface (only with `data-ax-presentation`). */
+  #sheet: SheetSurface | null = null;
 
   get kind(): MenuKind {
     const kind = this.getAttribute(KIND_ATTR);
@@ -632,6 +643,23 @@ export class MenuElement extends LayerElement {
   connectedCallback(): void {
     // Mounting open is not an open anyone asked for: no focus move (#5976).
     if (this.getAttribute('data-ax-open') === 'true' && !this.isOpen) this.#openFocus = 'none';
+    if (this.kind === 'dropdown' && this.hasAttribute('data-ax-presentation')) {
+      this.#sheet ??= createSheetSurface({
+        layer: this,
+        surface: () => this.querySelector<HTMLElement>(':scope > .ax-sheet-surface'),
+        anchoredClass: 'astryx-popover',
+        triggers: () => (this.trigger ? [this.trigger] : []),
+        anchoredHaspopup: () => (this.#regions() ? 'dialog' : 'menu'),
+        onLatch: (mode) => {
+          this.menu?.setAttribute('data-presentation', mode);
+          // A custom trigger without a name: the heading reads its text, as the sheet's name.
+          const heading = this.querySelector<HTMLElement>(':scope > .ax-sheet-surface > [data-ax-sheet-heading]');
+          const trigger = this.trigger;
+          if (heading && !heading.textContent?.trim() && trigger) heading.textContent = trigger.getAttribute('aria-label')?.trim() || trigger.textContent?.trim() || '';
+        },
+      });
+      this.#sheet.connect();
+    }
     super.connectedCallback();
     queueMicrotask(() => { if (this.isConnected) this.#wire(); });
   }
@@ -645,6 +673,7 @@ export class MenuElement extends LayerElement {
     this.#stopOverflow = null;
     cancelAnimationFrame(this.#frame);
     this.#cancelLongPress();
+    this.#sheet?.disconnect();
     super.disconnectedCallback();
   }
 
@@ -654,6 +683,11 @@ export class MenuElement extends LayerElement {
     // A programmatic open lands on the first row (APG), unless the caller decided already.
     if (!this.isOpen && this.#openFocus == null && this.kind !== 'submenu') this.#openFocus = 'first';
     const wasOpen = this.isOpen;
+    if (!wasOpen && this.#sheet) {
+      this.#sheet.latch();
+      // A sheet is never anchored.
+      if (this.#sheet.isSheet) options = {...options, anchor: null};
+    }
     const shown = super.show(options);
     if (!shown && !wasOpen) this.#openFocus = null;
     return shown;
@@ -700,12 +734,23 @@ export class MenuElement extends LayerElement {
 
   // ── LayerElement policy ──────────────────────────────────────────────────
 
+  protected resolveAnchor(): HTMLElement | null {
+    // The first hook of every open (the native invoker's too): choose the surface here.
+    if (this.#sheet) {
+      this.#sheet.latch();
+      if (this.#sheet.isSheet) return null;
+    }
+    return super.resolveAnchor();
+  }
+
   protected escapeBehavior(): LayerEscapeBehavior | null {
     return this.getAttribute('data-ax-escape') === 'none' ? null : 'close';
   }
 
   protected outsidePressMode(): LayerOutsidePress {
     const kind = this.kind;
+    // A sheet covers the viewport: its own press beside the panel dismisses it.
+    if (this.#sheet?.isSheet) return 'ignore';
     if (kind === 'context') return 'dismiss';
     if (kind === 'submenu') return 'ignore';
     return this.getAttribute('popover') === 'auto' ? 'native' : 'dismiss';
@@ -747,8 +792,10 @@ export class MenuElement extends LayerElement {
     } else {
       this.#hideOtherContextMenus();
     }
-    const focus: OpenFocus = this.#openFocus
+    let focus: OpenFocus = this.#openFocus
       ?? (kind === 'dropdown' ? (getModality(this) === 'pointer' ? 'container' : 'first') : kind === 'context' ? 'first' : 'none');
+    // `data-ax-open-focus="first"`: a pointer open lands on the first row too.
+    if (focus === 'container' && kind === 'dropdown' && this.getAttribute('data-ax-open-focus') === 'first') focus = 'first';
     this.#openFocus = null;
     cancelAnimationFrame(this.#frame);
     const view = this.ownerDocument.defaultView ?? window;
@@ -767,6 +814,7 @@ export class MenuElement extends LayerElement {
     this.#measureOverflow();
     this.#observeOverflow();
     this.#announceBusyRows();
+    if (this.#sheet?.isSheet) this.#sheet.start();
   }
 
   protected willClose(): void {
@@ -788,10 +836,16 @@ export class MenuElement extends LayerElement {
     this.#level?.reset();
     this.#stopOverflow?.();
     this.#stopOverflow = null;
+    if (this.#sheet) {
+      this.#sheet.stop();
+      // The page scrolls again as the exit starts (useScrollLock(isOpen)).
+      this.removeAttribute('data-ax-scroll-lock');
+    }
   }
 
   protected didClose(): void {
     if (this.kind === 'dropdown') this.#setTriggerTooltip(true);
+    this.#sheet?.closed();
   }
 
   // ── Wiring ───────────────────────────────────────────────────────────────
@@ -899,6 +953,8 @@ export class MenuElement extends LayerElement {
     const trigger = this.trigger;
     if (!this.isOpen) {
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter' && event.key !== ' ') return;
+      // `data-ax-trigger-arrows="false"`: ↑/↓ on the closed trigger are the page's.
+      if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && this.getAttribute('data-ax-trigger-arrows') === 'false') return;
       event.preventDefault();
       if (event.repeat || isTriggerDisabled(trigger)) return;
       this.#openFocus = event.key === 'ArrowUp' ? 'last' : 'first';

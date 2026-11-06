@@ -167,6 +167,7 @@ for tooltips, `aria-describedby` containing the id, both in the server HTML.
 | `data-ax-touch-trigger` | `auto` (`tap`, `none`) |
 | `data-ax-enabled="false"` | enabled |
 | `data-ax-controlled` + `data-ax-open` | controlled: hover/focus never change it; Escape emits `astryx-open-change` with `isRequest` |
+| `data-ax-anchor="<id>"` | the position anchor (Astryx `positionRef`) when the trigger carries the attributes (a row triggers, its checkbox anchors; `<Tooltip anchor>`); with no trigger in the markup it is wired as the trigger (`<Tooltip for>`; `data-ax-for` names the trigger when both are given) |
 
 API: `show/hide` (LayerElement), `showNow(trigger)`, `hideNow()`, `pin(trigger?)` (Astryx
 `useTooltip().show()`: held until `unpin()`, Escape, a press outside or focus leaving; announced
@@ -311,6 +312,12 @@ const tip = tooltip ? attachTooltip({describedBy: rest['aria-describedby']}) : n
   (`components/Popover/attach.ts`) gives a native-invoker trigger + `<Popover for=…>` props.
 - An existing element can also be wired by id: `<Tooltip for="some-id" content="…" />`
   (attributes are added at runtime, so the description is not in the server HTML).
+- A Button takes `{...tip.trigger}` too (its external tooltip: a caller's `data-ax-tooltip` is
+  kept when it has no `tooltip` of its own), for a layer the caller drives (Pagination's nav
+  buttons, the copy buttons' flipping text).
+- Position against another element than the trigger (Astryx `positionRef`):
+  `<Tooltip {...tip.layer} anchor={inputId} />` — CheckboxInput / Switch reasons: the row
+  triggers, the control anchors.
 
 ## `modalOutlet.ts` — top-layer outlets for content that must paint above modals
 
@@ -371,7 +378,9 @@ selectors) or just `createTypeahead` + roving. One import wires everything:
   on a row (announced when its level shows), `data-ax-size-from-trigger` on a dropdown (rows
   and `[data-ax-marker]` indicators follow the trigger's `data-size` at open),
   `data-ax-disabled` on a context menu (native menu), `data-ax-open="true"` (open on connect, no
-  focus move).
+  focus move). Dropdown options: `data-ax-open-focus="first"` (a pointer open lands on the
+  first row too — TabMenu's focus-on-open) and `data-ax-trigger-arrows="false"` (↑/↓ on the
+  closed trigger do not open it; they stay with the page, e.g. the TabList strip's roving).
 
 **Behaviour** — open: the invoker click (zero JS), Enter / Space / ↓ on the closed trigger
 (first row), ↑ (last row); a pointer open focuses the menu element, a script `show()` the first

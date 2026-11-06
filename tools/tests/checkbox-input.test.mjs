@@ -102,6 +102,16 @@ check('disabledMessage: tooltip on the row describes the input', tip.described &
 await page.hover('label:has-text("Disabled with reason")', {force: true});
 await sleep(400);
 check('disabledMessage: hovering the row shows the reason', await page.evaluate((id) => document.getElementById(id)?.matches(':popover-open'), tip.id));
+// Astryx: the row is the interaction trigger, the checkbox (positionRef) the anchor — above, centred.
+const geo = await page.evaluate(([sel, id]) => {
+  const box = document.querySelector(sel).closest('.ax-checkbox-box').getBoundingClientRect();
+  const row = document.querySelector(sel).closest('.ax-checkbox-row').getBoundingClientRect();
+  const layer = document.getElementById(id);
+  const t = layer.getBoundingClientRect();
+  return {anchorAttr: layer.getAttribute('data-ax-anchor') === document.querySelector(sel).id, align: layer.dataset.align ?? 'center',
+    tipCenter: Math.round(t.left + t.width / 2), boxCenter: Math.round(box.left + box.width / 2), rowCenter: Math.round(row.left + row.width / 2), gap: Math.round(box.top - t.bottom)};
+}, [input('disabled-message'), tip.id]);
+check('disabledMessage: the tooltip anchors on the checkbox (data-ax-anchor), centred above it, not on the row', geo.anchorAttr && geo.align === 'center' && Math.abs(geo.tipCenter - geo.boxCenter) <= 1 && geo.gap >= 0 && geo.gap <= 8 && geo.rowCenter !== geo.boxCenter, JSON.stringify(geo));
 await page.mouse.move(5, 5);
 await sleep(300);
 

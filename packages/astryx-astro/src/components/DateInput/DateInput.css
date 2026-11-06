@@ -49,4 +49,17 @@
 
   /* ── Picker layer (usePopover render) ──────────────────────────────────── */
   .ax-picker-layer > .astryx-popover { box-sizing: border-box; }
+
+  /* Sheet presentation (BottomSheet/presentation.css restyles the layer and the surface):
+   * TouchDateField's sheet has no content padding (the Calendar pads itself); the content
+   * starts below the grab handle and is centred in the panel. */
+  .ax-picker-layer > .ax-sheet-surface.astryx-bottom-sheet {
+    --_ax-sheet-pbs: var(--spacing-6);
+    --_ax-sheet-pi: 0px;
+    --_ax-sheet-pbe: 0px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .ax-picker-layer > .ax-sheet-surface.astryx-bottom-sheet > .ax-sheet-handle { align-self: stretch; }
 }

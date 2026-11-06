@@ -38,10 +38,20 @@
  * (`show()` / `hide()` / `toggle()`, `data-ax-open`). Astryx `onClick` is the trigger's native
  * `click`.
  *
+ * Presentation (data `items` only, as in Astryx; compound children are always the popover):
+ * `bottom-sheet` always, `adaptive` on a compact touch screen (Astryx useAdaptivePresentation,
+ * the presentation contract in elements/sheet/presentation.ts) — the same `<ax-menu>` layer is
+ * restyled as a modal bottom sheet when it opens: no anchoring, the surface themed as
+ * `astryx-bottom-sheet` (hug height, the menu sheet's 16px / 4px inset), a modal dialog named by
+ * the menu label with a level-3 heading above the rows, `.astryx-dropdown-menu[data-presentation=
+ * "bottom-sheet"]`, the trigger `aria-haspopup="dialog"`, page scroll locked; a swipe down, a
+ * press beside the panel or Escape closes it and focus returns to the trigger. `popover` (the
+ * default) never reads the query.
+ *
  * Deferred (AGENTS.md touch scope): press-drag-release (useMenuPress: a mouse opening on press
- * and the row under the release acting, a held finger), the entrance input hold, and the
- * `bottom-sheet` / `adaptive` presentation (BottomSheet is not ported: both render the anchored
- * popover, `data-presentation="popover"`).
+ * and the row under the release acting, a held finger), the entrance input hold, and in the
+ * sheet the action-list rows (spacious ListItems) and drill-in sub-menus (MenuBottomSheet):
+ * the sheet shows the menu's own rows, and a sub-menu row still opens its flyout.
  *
  * @example
  * <DropdownMenu button={{label: 'Actions'}} items={[{label: 'Edit'}, {type: 'divider'}, {label: 'Delete', variant: 'destructive'}]} />
@@ -50,6 +60,7 @@
 import type {HTMLAttributes} from 'astro/types';
 import Button, {type Props as ButtonProps} from '../Button/Button.astro';
 import Icon from '../Icon/Icon.astro';
+import Heading from '../Text/Heading.astro';
 import MenuStamp from './_MenuStamp.astro';
 import Items from './_DropdownMenuItems.astro';
 import type {LayerAlignment, LayerPlacement} from '../../lib/types';
@@ -57,10 +68,13 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
 import {resolveMenuWidth, type DropdownMenuOption} from './menuShared';
 import '../Layer/Layer.css';
 import '../Popover/Popover.css';
+import '../BottomSheet/BottomSheet.css';
+import '../BottomSheet/presentation.css';
 import './DropdownMenu.css';
 
 export type {DropdownMenuOption, DropdownMenuItemData, DropdownMenuDividerData, DropdownMenuSection, DropdownMenuEndContent} from './menuShared';
@@ -73,7 +87,7 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
   button?: DropdownMenuButtonProps;
   /** Data-driven rows; the default slot holds compound rows instead. */
   items?: DropdownMenuOption[];
-  /** Only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  /** Surface for data `items`: anchored popover, modal bottom sheet, or a sheet on compact touch screens only. @default 'popover' */
   presentation?: DropdownMenuPresentation;
   /** Render open (no focus move); the element owns the state afterwards. */
   isMenuOpen?: boolean;
@@ -100,7 +114,7 @@ interface InternalProps {
 const {
   button: buttonProp,
   items,
-  presentation: _presentation = 'popover',
+  presentation: presentationProp = 'popover',
   isMenuOpen = false,
   menuWidth,
   menuMaxHeight,
@@ -123,8 +137,9 @@ const layerId = uid(Astro, 'ax-dropdown-menu');
 const menuId = (idProp as string | undefined) ?? `${layerId}-menu`;
 let triggerId = `${layerId}-trigger`;
 const hasRegions = Astro.slots.has('header') || Astro.slots.has('footer');
-const headerHtml = Astro.slots.has('header') ? (await Astro.slots.render('header')).trim() : '';
-const footerHtml = Astro.slots.has('footer') ? (await Astro.slots.render('footer')).trim() : '';
+const regionHtml = async (name: string) => (Astro.slots.has(name) ? (await renderLayerContent(Astro, () => Astro.slots.render(name))).trim() : '');
+const headerHtml = await regionHtml('header');
+const footerHtml = await regionHtml('footer');
 const regions = hasRegions && (headerHtml !== '' || footerHtml !== '');
 
 // renderTrigger → the `trigger` slot: its first button / [role=button] gets the wiring.
@@ -137,7 +152,7 @@ if (Astro.slots.has('trigger')) {
       return {
         id: attrs.id ? undefined : triggerId,
         ...(tag === 'button' ? {popovertarget: layerId} : {}),
-        'aria-haspopup': regions ? 'dialog' : 'menu',
+        'aria-haspopup': regions || presentationProp === 'bottom-sheet' && items ? 'dialog' : 'menu',
         'aria-expanded': isMenuOpen ? 'true' : 'false',
         'aria-controls': mergeIds(attrs['aria-controls'], regions ? layerId : menuId),
       };
@@ -155,8 +170,14 @@ const hasIconSlot = Astro.slots.has('icon');
 
 const width = resolveMenuWidth(menuWidth);
 const maxHeight = menuMaxHeight != null ? `--_ax-menu-max-height:${menuMaxHeight}px` : undefined;
-const {themeClass, attrs: menuAttrs} = themeProps('dropdown-menu', {presentation: 'popover'});
-const surface = themeProps('popover');
+// The sheet is a data-mode presentation (Astryx: compound menus are always the popover).
+const presentation: DropdownMenuPresentation = items ? presentationProp : 'popover';
+const canSheet = presentation === 'bottom-sheet' || presentation === 'adaptive';
+const isSheet = presentation === 'bottom-sheet';
+const sheetLabel = menuLabel ?? (isCustomTrigger ? undefined : t('@astryx.dropdownMenu.label'));
+const {themeClass, attrs: menuAttrs} = themeProps('dropdown-menu', {presentation: isSheet ? 'bottom-sheet' : 'popover'});
+const surface = themeProps(isSheet ? 'bottom-sheet' : 'popover');
+const haspopup = regions || isSheet ? 'dialog' : 'menu';
 
 // The trigger Button. Its slots are passed only when used: Astro registers a named slot
 // whatever the expression around it evaluates to, and Button prefers a slot to its prop.
@@ -165,7 +186,7 @@ const buttonAttrs: Record<string, unknown> = {
   id: triggerId,
   class: cx('ax-dropdown-menu-trigger', button.class as string | undefined),
   popovertarget: layerId,
-  'aria-haspopup': regions ? 'dialog' : 'menu',
+  'aria-haspopup': haspopup,
   'aria-expanded': isMenuOpen ? 'true' : 'false',
   'aria-controls': regions ? layerId : menuId,
   'data-testid': testId,
@@ -203,10 +224,13 @@ const menuElementAttrs: Record<string, unknown> = {
   popover="auto"
   data-ax-menu-kind="dropdown"
   data-ax-anchor={triggerId}
-  class="ax-layer ax-layer-motion ax-dropdown-menu-layer"
+  class={cx('ax-layer ax-layer-motion ax-dropdown-menu-layer', canSheet && 'ax-sheet-layer')}
   data-astryx-layer-root=""
   {...placementAttrs({placement, alignment})}
   data-ax-open={isMenuOpen ? 'true' : undefined}
+  data-ax-presentation={canSheet ? presentation : undefined}
+  data-ax-surface={isSheet ? 'bottom-sheet' : undefined}
+  data-ax-sheet-label={canSheet ? sheetLabel : undefined}
   data-ax-width={width?.mode}
   data-ax-max-height={menuMaxHeight != null ? '' : undefined}
   data-ax-size-from-trigger={__sizeFromTrigger ? '' : undefined}
@@ -214,14 +238,17 @@ const menuElementAttrs: Record<string, unknown> = {
   style={mergeStyles(clearance('var(--spacing-1)'), width ? `--_ax-menu-width:${width.value}` : undefined, maxHeight)}
 >
   <div
-    class={cx(surface.themeClass, 'ax-focus-visible')}
+    class={cx(surface.themeClass, 'ax-focus-visible', canSheet && 'ax-sheet-surface')}
     {...surface.attrs}
-    role={regions ? 'dialog' : undefined}
-    aria-modal={regions ? 'true' : undefined}
-    aria-label={regions ? (menuLabel ?? (isCustomTrigger ? undefined : t('@astryx.dropdownMenu.label'))) : undefined}
-    aria-labelledby={regions && menuLabel == null && isCustomTrigger ? triggerId : undefined}
-    tabindex={regions ? -1 : undefined}
+    role={regions || isSheet ? 'dialog' : undefined}
+    aria-modal={regions || isSheet ? 'true' : undefined}
+    aria-label={regions || isSheet ? sheetLabel : undefined}
+    aria-labelledby={(regions || isSheet) && sheetLabel == null && isCustomTrigger ? triggerId : undefined}
+    tabindex={regions || isSheet ? -1 : undefined}
+    data-ax-height={canSheet ? 'hug' : undefined}
   >
+    {canSheet && <div class="ax-bottom-sheet-handle ax-sheet-handle" aria-hidden="true"></div>}
+    {canSheet && <Heading level={3} class="ax-sheet-heading" tabindex="-1" data-ax-sheet-heading="">{sheetLabel ?? ''}</Heading>}
     {regions ? (
       <div class="ax-dropdown-menu-regions" data-ax-max-height={menuMaxHeight != null ? '' : undefined} style={maxHeight}>
         {headerHtml !== '' && <div class="ax-dropdown-menu-region" data-ax-menu-region="header"><Fragment set:html={headerHtml} /></div>}

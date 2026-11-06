@@ -68,6 +68,16 @@ const tip = tooltip ? attachTooltip({describedBy: rest['aria-describedby']}) : n
 A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
 `attachHoverCard` / `attachPopover` (Popover/attach.ts) work the same way.
 
+- Button keeps a caller's `data-ax-tooltip` when it has no `tooltip` of its own (external
+  tooltip): spread `{...tip.trigger}` on `<Button>` and render the `<Tooltip {...tip.layer}>`
+  yourself when you drive its text or `isEnabled` (Pagination nav buttons, the CodeBlock /
+  Timestamp copy buttons). The caller composes `aria-describedby`; `isDisabled` stays native.
+- `<Tooltip anchor="<id>">` (layer `data-ax-anchor` while a trigger carries `data-ax-tooltip`):
+  position against another element than the trigger (Astryx `positionRef`). CheckboxInput /
+  Switch reasons: the row triggers (hover, any focus inside), the input anchors (above, centred).
+  With no trigger in the markup `data-ax-anchor` is still `for`'s wiring (`data-ax-for` names
+  the trigger when both are given).
+
 ## Stand-ins to replace when their owner lands
 
 None open: Popover's fallback close is a real secondary `<Button>` (size md, the layer's reset
@@ -111,7 +121,8 @@ SizeContext), closing through `popovertarget` + `popovertargetaction="hide"`.
 - Toolbar slots: `startContent`, `centerContent`, `endContent`; container-side edge compensation
   on the start/end slots. Keyboard hint: `elements/runtime/keyboardHint.ts`
   (`data-ax-keyboard-hint="<ax-layer id>"` on any roving container; `behaviors/keyboardHint.ts`
-  is gone).
+  is gone); its `.ax-keyboard-hint*` rules live in `src/styles/shared.css` (one copy for
+  Toolbar, SegmentedControl, TabList).
 - Toolbar > ButtonGroup (useListFocus nesting): the group's members are Toolbar items too; the
   composite keeps one Tab stop, on load the group's first member; ←/→/Home/End inside a
   horizontal group stay in the group (wrapping), keys it ignores move through the Toolbar.
@@ -173,6 +184,22 @@ Middleware may still assign the keys (`ctx.locals.astryxTheme = 'neutral'`).
 | `astryxTheme`, `astryxThemeMode` | `<Theme>` (theme/) | Icon, `resolveComponentIcon` |
 | `astryxLocale`, `astryxDirection`, `astryxCalendar`, `astryxMessages`, `astryxOverrides` | `<InternationalizationProvider>` (i18n/) | `translator(Astro)` (locale, then overrides → messages → shipped → English) |
 | `astryxLinkComponent` | `<LinkProvider>` (LinkProvider/) | Link, Button `href`, Token … — `resolveLinkComponent(Astro, as)` + `linkDestination(href, to)` in `LinkProvider/linkComponent.ts` |
+| `astryxLayerProvider` | `<LayerProvider>` | a nested LayerProvider (renders no second toast viewport) |
+
+**Layer-scoped keys** (Astryx `createLayerScopedContext` + `LayerContentBoundary`, contract #23):
+a context module registers its key with `layerScopedLocal('astryxList')` (returns the key);
+every overlay renders its content slot through `renderLayerContent(Astro, render)`, next to its
+`seal()`: the registered keys are reset to their request value for everything inside, other keys
+(Theme, locale, link component, calendar) pass through. `renderWithLocals` still skips
+`undefined`; the reset is its own frame (also correct without AsyncLocalStorage: the request
+value before the outermost override is kept, so `requestLocal()` works there too).
+Registered: `astryxList`, `astryxCheckboxList`, `astryxRadioList`, `astryxTabList`,
+`astryxStepper` (Stepper/stepperContext.ts, now on lib/subtreeLocals.ts — `readStepperContext`).
+Not layer-scoped (as in Astryx): `astryxCommandPalette`, `astryxBottomSheetSwitcher` (BottomSheet
+still resets it to null in each sheet), `astryxLayerProvider`. Callers: Tooltip, HoverCard,
+InfoTip, Popover, Layer, DropdownMenu rows (`_MenuStamp`, so ContextMenu too) + header/footer +
+SubMenu flyouts, Dialog (AlertDialog, CommandPalette slots), Drawer, BottomSheet, ComplexSelector,
+the date pickers (`_PickerLayer`). A new overlay with a content slot must do the same.
 
 Root theme: spread `themeRootAttributes(name, mode)` (theme/themeRoot.ts) on `<html>` and set
 `astryxTheme` in middleware; a `<Theme>` with neither above it syncs `<html>` with an inline script.
@@ -255,6 +282,10 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Every modal surface calls `supplyModalOutlet(dialog)` after `showModal()` (runtime/modalOutlet.ts).
 - `toast({...})` / `createToastQueue()` / `getToastContext()` are client-only:
   `import {toast} from 'astryx-astro/elements/toast'`.
+- LayerProvider (the root one) renders the page's `<ToastViewport>` after its content from its
+  `toast` config (`position`, `maxVisible`, `inset`) and its `inset` (Astryx ToastHostOutlet);
+  nested providers render none. The `data-astryx-toast-*` stand-in attributes are gone; the
+  fallback viewport (no viewport on the page) uses the defaults.
 - A visible tooltip inside a dialog consumes the first Escape (Astryx useTooltip); tests that
   press Escape on a focused control with a tooltip must expect two presses.
 - `astryx-open-change` from a tooltip bubbles through its container; listeners on a container
@@ -287,7 +318,6 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 
 ## Cleanup backlog (lead)
 
-- Stepper/stepperContext.ts duplicates the AsyncLocalStorage pattern of lib/subtreeLocals.ts.
 - Token's behavior could use behaviors/clickable.ts.
 
 ## Table
@@ -314,6 +344,9 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Events: CheckboxInput/Switch `astryx-change` {isChecked, event}; RadioList `astryx-change`
   {value}; Slider `astryx-change` {value} (number or [start, end], on change) and
   `astryx-change-end` {value} (drag end / each handled key).
+- CheckboxInput puts a caller's `aria-labelledby` on its input as given (routeFieldProps
+  consumes it for Field's label, which a checkbox has none of); CheckboxListItem passes its rich
+  label's id that way, `_CheckboxSlot` only stamps the form `value`.
 - RadioList passes context to items via the subtree locals key `astryxRadioList`.
 - Indicator state on the client: `CheckboxInput/_IndicatorStates.astro` + `elements/indicator-state.ts`
   (built-ins updated in place; theme replacements rendered per state into `<template>`s and
@@ -331,7 +364,12 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Reusable `<ax-picker-popover>` (elements/picker-popover.ts): a popover owned by a text field
   (`popover="manual"`, outside-press dismissal, `data-ax-owner`, `data-ax-label-for`,
   `showPicker({autoFocus})`); internal `DateInput/_PickerLayer.astro`.
-- `presentation`/`nativePicker` accepted but always render the popover (sheet/wheels deferred).
+- `presentation` (DateInput): `bottom-sheet` / `adaptive-bottom-sheet` (coarse pointer) restyle
+  the calendar layer as a sheet (presentation contract; focus on the calendar's focus day);
+  `native` / `adaptive-native` (default, `nativePicker` maps onto them) keep the popover — the OS
+  picker is deferred — except in a non-Gregorian calendar (→ `adaptive-bottom-sheet`, Astryx
+  calendarPickerPresentation). `_PickerLayer` takes `presentation`; DateTimeInput, DateRangeInput
+  and TimeInput can pass it the same way. TouchDateField's wheels / swipe paging stay deferred.
 - Flaky under heavy load (animation timing): lightbox, segmented-control tests — the runner
   retries once and reports FLAKY.
 
@@ -345,6 +383,12 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `astryx-change` on checkbox rows {value: boolean} and radio groups {value: string}, cancelable.
 - Cascade keys: `dropdown-menu-size`, `dropdown-menu-control-size`, `dropdown-menu-flyout`,
   `dropdown-menu-radio-group`.
+- Dropdown options on `<ax-menu>`: `data-ax-open-focus="first"` (a pointer open lands on the first
+  row too) and `data-ax-trigger-arrows="false"` (↑/↓ on the closed trigger stay with the page).
+  TabMenu uses both (its `tab-list.ts` overrides are gone).
+- `presentation="bottom-sheet|adaptive"` (data `items` only, as in Astryx) restyles the menu layer
+  as a sheet: heading + rows (`[data-presentation]` on the root menu follows the surface). The
+  sheet's action-list rows and drill-in sub-menus (MenuBottomSheet) are deferred.
 - Item makes a link root only when `as` is a component (as in Astryx); menus use `_MenuLink.astro`.
 
 ## Slot gotchas (all components)
@@ -380,8 +424,13 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `components/Typeahead/createStaticSource.ts`) → `el.searchSource` (client SearchSource) →
   `astryx-query`.
 - Stand-in: MultiSelector's decorative checkbox is `<Indicator name="checkbox">` until
-  CheckboxInput lands. Deferred: BottomSheet presentation (`presentation` kept, popover
-  rendered), MultiSelector option `action` grid rows and `renderTrigger`, touch press models.
+  CheckboxInput lands. Deferred: MultiSelector option `action` grid rows and `renderTrigger`,
+  touch press models.
+- `presentation="bottom-sheet|adaptive"` (Selector, MultiSelector; SelectorBottomSheet): the
+  `<ax-combobox-layer>` is restyled as a sheet (heading = label); `layer.isSheet` while latched —
+  the owner then moves focus to the search row, else the listbox (tabindex 0, the trigger's
+  keys, `aria-activedescendant`). Markup: `data-ax-presentation`, `data-ax-surface-class` (the
+  anchored theme classes to swap), `ax-sheet-layer` / `ax-sheet-surface`.
 ## Bottom sheets and the `presentation` contract
 
 - `<ax-bottom-sheet>` (elements/bottom-sheet.ts) extends `ModalHostElement`: same API and
@@ -404,8 +453,12 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   (`COMPACT_TOUCH_QUERY`); the surface is latched in `data-ax-surface` as the layer opens;
   the same layer is restyled (`astryx-bottom-sheet` class swap, full-viewport layer with
   `::backdrop`, gestures on the surface, a grab handle element rendered only for
-  sheet-capable presentations). Reference: Popover (`runtime/popover.ts`, Popover.css).
-  DropdownMenu / ContextMenu / Selector / DateInput adopt it the same way.
+  sheet-capable presentations). Shared implementation: `createSheetSurface()`
+  (`elements/sheet/surface.ts`: latch, gestures, backdrop press, scroll lock, adaptive trigger
+  sync) and `components/BottomSheet/presentation.css` (`.ax-sheet-layer`, `.ax-sheet-surface`,
+  `.ax-sheet-handle`, `.ax-sheet-heading`; content inset vars `--_ax-sheet-pbs/-pi/-pbe`).
+  Adopted by Popover, DropdownMenu, Selector, MultiSelector, DateInput; ContextMenu, Tokenizer,
+  PowerSearch can adopt it the same way.
 
 ## Comboboxes (`runtime/combobox.ts`)
 
@@ -426,16 +479,17 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 
 - `<ax-bottom-sheet>` (on the Dialog family's `ModalHostElement`), stacking, switcher
   (`activeSheet`, `data-ax-switch-to`, `astryx-active-sheet-change`), `attachBottomSheet` (exported).
-- `presentation` contract (`elements/sheet/presentation.ts`): one compact-touch query; surface
-  chosen at open and kept in `data-ax-surface` until close; the same element is restyled
-  (class → `astryx-bottom-sheet`, full-viewport with `::backdrop`, gestures on the surface);
-  `'popover'` never reads the query. DropdownMenu, Selector, DateInput can adopt it.
+- `presentation` contract (`elements/sheet/presentation.ts`): one compact-touch query (plus
+  `COARSE_POINTER_QUERY` for the pickers' `adaptive-bottom-sheet`; `canPresentSheet`,
+  `adaptiveQuery`, `watchQuery`); surface chosen at open and kept in `data-ax-surface` until close;
+  the same element is restyled (class → `astryx-bottom-sheet`, full-viewport with `::backdrop`,
+  gestures on the surface); `'popover'` never reads the query. Adopters: see above.
 - Scroll lock matches `[data-ax-scroll-lock][data-ax-open="true"]` (values are "true"/"false").
 
 ## Lists
 
 - Context via subtree locals: `astryxList` (density, dividers, edge, listStyle, marker),
-  `astryxCheckboxList`. Keys on the item checkbox: `checkbox-list-item` (item), and
+  `astryxCheckboxList` — both layer-scoped (an overlay inside a list renders without them). Keys on the item checkbox: `checkbox-list-item` (item), and
   `checkbox-list-reason`, `checkbox-list-state`, `checkbox-list-required` (list).
 - ListItem: `interactiveRole="button"`, `interactiveRef`, `href`, slots `label`/`description`/
   `startContent`/`endContent`/`marker`. Markdown uses `listStyle` + `List/_ListMarkerScope.astro`
@@ -449,13 +503,9 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 
 ## Final integration backlog (lead)
 
-- Layer roots should reset layer-scoped subtree-locals contexts (`astryxList`,
-  `astryxCheckboxList`, `astryxRadioList`, Stepper) — not Theme/locale/link contexts.
-- CheckboxInput drops `aria-labelledby` (consumed by routeFieldProps, never applied).
-- Tooltip: let a layer's `data-ax-anchor` override the trigger as anchor (removes CheckboxInput/Switch workarounds).
-- Adopt the `presentation` contract in DropdownMenu, Selector, DateInput.
 - Table: filtering, pagination, context-menu rows, column settings plugins.
-- LayerProvider could render a ToastViewport from its toast config.
+- Presentation contract still to adopt: ContextMenu, Tokenizer, PowerSearch, DateTimeInput /
+  DateRangeInput pickers; DropdownMenu sheet action-list rows + drill-in sub-menus.
 
 ## TabList and Pagination
 
@@ -467,13 +517,6 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   (cancelable) then `astryx-change` {page: 1}; silent setters `page`, `pageSize`, `totalItems`,
   `totalPages`, `hasMore`; `pageCount`, `goTo(page)`; links mode `href={(p) => url}` (extension).
   Paging helpers incl. `generatePageRange` (exported) in `Pagination/pageRange.ts`.
-
-## More integration backlog (lead)
-
-- `.ax-keyboard-hint` rules are duplicated in Toolbar, SegmentedControl, TabList → shared.css.
-- Button overwrites a caller's `data-ax-tooltip`; accept an external tooltip id (Pagination uses
-  `data-ax-nav-tip` as a workaround).
-- Menu runtime options: focus-first on pointer open; no ↑/↓ open on the trigger (TabMenu).
 
 ## Tokenizer, PowerSearch, CommandPalette
 

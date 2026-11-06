@@ -32,7 +32,7 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
-import {stepperContext} from './stepperContext';
+import {readStepperContext} from './stepperContext';
 import {
   CHECK_CIRCLE_SVG, CURRENT_SVG, OT_ARRIVAL_SHARE_H, OT_ARRIVAL_SHARE_V, OT_RAIL_SHARE_OF_LEAVING,
   indicatorState, isFilled, statusWord, type StepIndicatorPreset, type StepStatus,
@@ -62,7 +62,7 @@ export interface Props extends HTMLAttributes<'li'> {
   'data-testid'?: string;
 }
 
-const ctx = stepperContext.getStore();
+const ctx = readStepperContext(Astro);
 if (!ctx) throw new Error('Step must be rendered inside a Stepper.');
 
 const {

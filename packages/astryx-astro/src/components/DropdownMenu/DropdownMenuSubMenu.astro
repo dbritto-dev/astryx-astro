@@ -43,6 +43,7 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, placementAttrs} from '../Layer/layer';
 import {MENU_FLYOUT_KEY, MENU_SIZE_KEY, resolveMenuWidth, type MenuIcon} from './menuShared';
 import '../Layer/Layer.css';
@@ -93,7 +94,7 @@ const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots
 const iconHtml = await slot('icon');
 const labelHtml = await slot('label');
 const descriptionHtml = await slot('description');
-const content = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const content = Astro.slots.has('default') ? await renderLayerContent(Astro, () => Astro.slots.render('default')) : '';
 
 const rowId = idProp ?? uid(Astro, 'ax-submenu-row');
 const layerId = uid(Astro, 'ax-submenu');

@@ -3,8 +3,10 @@
  * RadioList/RadioListReasonContext.ts) as a subtree-scoped `Astro.locals` key
  * (lib/subtreeLocals.ts): RadioList renders its items with `renderWithLocals()`, so every
  * RadioListItem inside reads the group's name, value, size … and nothing outside does.
+ * Layer-scoped (`layerScopedLocal()`): overlays inside the list render their content without it.
  */
 import type {InputStatus} from '../Field/fieldProps';
+import {layerScopedLocal} from '../../lib/subtreeLocals';
 
 export type RadioListSize = 'sm' | 'md';
 
@@ -24,7 +26,7 @@ export interface RadioListContextValue {
   reasonID?: string;
 }
 
-export const RADIO_LIST_LOCAL = 'astryxRadioList';
+export const RADIO_LIST_LOCAL = layerScopedLocal('astryxRadioList');
 
 export function readRadioListContext(astro: {locals?: object}): RadioListContextValue | null {
   const value = (astro.locals as Record<string, unknown> | undefined)?.[RADIO_LIST_LOCAL];

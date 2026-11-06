@@ -76,6 +76,14 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
   </section>
 
   <section>
+    <h3 style={cap}>Presentation: "adaptive" is a bottom sheet on a compact touch screen, "bottom-sheet" always</h3>
+    <div style={grid}>
+      <MultiSelector id="ms-adaptive" label="Columns (adaptive)" options={columns} value={['Name']} presentation="adaptive" />
+      <MultiSelector id="ms-sheet" label="Columns (bottom sheet)" options={columns} value={['Email']} hasSelectAll presentation="bottom-sheet" />
+    </div>
+  </section>
+
+  <section>
     <h3 style={cap}>Open by default</h3>
     <div style="min-height:300px">
       <MultiSelector label="Open on load" options={columns} value={['Role']} hasSelectAll isDefaultOpen />

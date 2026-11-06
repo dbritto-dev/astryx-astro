@@ -41,8 +41,8 @@
  *
  * Not available / deferred: `onChange`/`changeAction` (use the event), `handleRef` (the
  * element API), `renderTrigger` (a caller-rendered opener), option `action` grid rows
- * (spec:AST-058), `presentation` "bottom-sheet" | "adaptive" (BottomSheet not ported), the
- * touch press controller. Stand-in: the decorative checkbox is the `checkbox` Indicator
+ * (spec:AST-058), the touch press controller. `presentation` "bottom-sheet" | "adaptive"
+ * restyles the same layer as Selector's does (SelectorBottomSheet, see Selector.astro). Stand-in: the decorative checkbox is the `checkbox` Indicator
  * (CheckboxInput is not ported yet; Astryx renders an inert CheckboxInput there).
  *
  * @example
@@ -53,6 +53,7 @@ import Icon from '../Icon/Icon.astro';
 import Spinner from '../Spinner/Spinner.astro';
 import Tooltip from '../Tooltip/Tooltip.astro';
 import Divider from '../Divider/Divider.astro';
+import Heading from '../Text/Heading.astro';
 import Badge from '../Badge/Badge.astro';
 import Indicator from '../Indicator/Indicator.astro';
 import InputClearButton from '../Field/InputClearButton.astro';
@@ -79,6 +80,8 @@ import {getSelectableOptions, optionRows, type SelectorOptionData, type Selector
 import '../Field/Field.css';
 import '../Layer/Layer.css';
 import '../Popover/Popover.css';
+import '../BottomSheet/BottomSheet.css';
+import '../BottomSheet/presentation.css';
 import '../Selector/Selector.css';
 import './MultiSelector.css';
 
@@ -173,7 +176,7 @@ const {
   maxBadges = 3,
   renderOption,
   indicatorPosition = 'start',
-  presentation: _presentation = 'popover',
+  presentation = 'popover',
   isDefaultOpen = false,
   statusVariant: statusVariantProp = 'attached',
   slot: _slot, ...props
@@ -183,6 +186,8 @@ const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && stat
 const r = routeFieldProps('MultiSelector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>, {groupable: true, isReadOnly});
 const {isDisabled, status} = r;
 const isEffectivelyReadOnly = isReadOnly && !isDisabled;
+const canSheet = presentation === 'bottom-sheet' || presentation === 'adaptive';
+const isSheet = presentation === 'bottom-sheet';
 const locale = resolveLocale(Astro, r.locale);
 const t = translator(Astro, r.locale);
 const size: MultiSelectorSize = sizeProp ?? 'md';
@@ -295,7 +300,7 @@ const messages = {
       class="ax-multi-selector-trigger"
       data-astryx-focus-owner=""
       role={isEffectivelyReadOnly || !hasSearch ? 'combobox' : undefined}
-      aria-haspopup={isEffectivelyReadOnly ? undefined : 'listbox'}
+      aria-haspopup={isEffectivelyReadOnly ? undefined : isSheet ? 'dialog' : 'listbox'}
       aria-expanded={isEffectivelyReadOnly ? 'false' : isDefaultOpen ? 'true' : 'false'}
       aria-controls={isEffectivelyReadOnly ? undefined : ids.listbox}
       aria-readonly={isEffectivelyReadOnly ? 'true' : undefined}
@@ -351,14 +356,27 @@ const messages = {
     <ax-combobox-layer
       id={ids.layer}
       popover="auto"
-      class="ax-layer ax-layer-motion ax-popover-layer ax-selector-layer"
+      class={cx('ax-layer ax-layer-motion ax-popover-layer ax-selector-layer', canSheet && 'ax-sheet-layer')}
       data-astryx-layer-root=""
       {...placementAttrs({placement: 'below', alignment: 'start'})}
       data-ax-anchor={ids.box}
+      data-ax-presentation={canSheet ? presentation : undefined}
+      data-ax-surface={isSheet ? 'bottom-sheet' : undefined}
+      data-ax-surface-class={canSheet ? 'astryx-popover astryx-multi-selector-popup' : undefined}
+      data-ax-sheet-label={canSheet ? r.label : undefined}
       data-ax-open={isDefaultOpen && isInteractive ? 'true' : undefined}
       style={clearance('var(--spacing-1)')}
     >
-      <div class="astryx-popover astryx-multi-selector-popup ax-focus-visible">
+      <div
+        class={cx(isSheet ? 'astryx-bottom-sheet' : 'astryx-popover astryx-multi-selector-popup', 'ax-focus-visible', canSheet && 'ax-sheet-surface')}
+        role={isSheet ? 'dialog' : undefined}
+        aria-modal={isSheet ? 'true' : undefined}
+        aria-label={isSheet ? r.label : undefined}
+        tabindex={isSheet ? -1 : undefined}
+        data-ax-height={canSheet ? 'hug' : undefined}
+      >
+        {canSheet && <div class="ax-bottom-sheet-handle ax-sheet-handle" aria-hidden="true"></div>}
+        {canSheet && <Heading level={3} class="ax-sheet-heading">{r.label}</Heading>}
         <div class={hasSearch ? 'ax-selector-search-panel' : 'ax-selector-panel'}>
           {hasSearch && (
             <Fragment>

@@ -46,11 +46,13 @@ import type {LayerAlignment, LayerPlacement, SpacingStep} from '../../lib/types'
 import {cx} from '../../lib/themeProps';
 import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {translator} from '../../lib/i18n';
 import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
 import Button from '../Button/Button.astro';
 import '../Layer/Layer.css';
 import '../BottomSheet/BottomSheet.css';
+import '../BottomSheet/presentation.css';
 import './Popover.css';
 
 export type PopoverPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
@@ -128,7 +130,7 @@ if (!forId && Astro.slots.has('default')) {
   );
   triggerHtml = stamped.html;
 }
-const contentHtml = Astro.slots.has('content') ? await seal(await Astro.slots.render('content')) : null;
+const contentHtml = Astro.slots.has('content') ? await seal(await renderLayerContent(Astro, () => Astro.slots.render('content'))) : null;
 
 const widthValue = width == null || width === '' ? undefined
   : typeof width === 'string' && (INTRINSIC.has(width.trim().toLowerCase()) || width.trim().startsWith('fit-content('))
@@ -140,7 +142,7 @@ const surfaceClass = isSheet ? 'astryx-bottom-sheet' : 'astryx-popover';
 <ax-popover
   id={id}
   popover={hasLightDismiss ? 'auto' : 'manual'}
-  class="ax-layer ax-layer-motion ax-popover-layer"
+  class={cx('ax-layer ax-layer-motion ax-popover-layer', canSheet && 'ax-sheet-layer')}
   data-astryx-layer-root=""
   {...placementAttrs({placement, alignment})}
   data-ax-anchor={anchorId}
@@ -155,7 +157,7 @@ const surfaceClass = isSheet ? 'astryx-bottom-sheet' : 'astryx-popover';
   style={mergeStyles(clearance('var(--spacing-1)'), widthValue && {'--_ax-popover-width': widthValue})}
 >
   <div
-    class={cx(surfaceClass, 'ax-popover-surface ax-focus-visible', className)}
+    class={cx(surfaceClass, 'ax-popover-surface ax-focus-visible', canSheet && 'ax-sheet-surface', className)}
     role={isDialog ? 'dialog' : undefined}
     aria-modal={isDialog && (isModal || isSheet) ? 'true' : undefined}
     aria-label={isDialog ? label : undefined}
@@ -163,7 +165,7 @@ const surfaceClass = isSheet ? 'astryx-bottom-sheet' : 'astryx-popover';
     data-padding={padding}
     style={mergeStyles(canSheet ? {'--_ax-sheet-pad': spacing(padding)} : null, style as StyleValue)}
   >
-    {canSheet && <div class="ax-bottom-sheet-handle ax-popover-sheet-handle" aria-hidden="true"></div>}
+    {canSheet && <div class="ax-bottom-sheet-handle ax-sheet-handle ax-popover-sheet-handle" aria-hidden="true"></div>}
     <div data-testid={testId}>{contentHtml ? <Fragment set:html={contentHtml} /> : content}</div>
     {hasCloseButton && (
       <div class="ax-popover-fallback-close" data-astryx-popover-fallback-close>

@@ -336,4 +336,14 @@
       .ax-panel-search-input { font-size: max(1rem, var(--text-label-size)); }
     }
   }
+
+  /* ── Sheet presentation (BottomSheet/presentation.css restyles the layer and the surface):
+   *    SelectorBottomSheet's hug height and Section inset (16px above, 4px at the sides); the
+   *    surface scrolls, so the list loses its caps. ── */
+  .ax-selector-layer > .ax-sheet-surface.astryx-bottom-sheet {
+    --_ax-sheet-pbs: var(--spacing-4);
+    --_ax-sheet-pi: var(--spacing-1);
+    --_ax-sheet-pbe: 0px;
+  }
+  .ax-sheet-surface.astryx-bottom-sheet :is(.ax-selector-search-panel, .ax-selector-listbox) { max-height: none; }
 }

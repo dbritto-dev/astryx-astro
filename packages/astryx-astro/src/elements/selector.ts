@@ -15,6 +15,11 @@
  *     > [data-ax-input-clear] (inside InputClearButton) · template[data-ax-*]
  *   <ax-combobox-layer id popover=auto data-ax-anchor=<box id>>
  *     [data-ax-selector-search] input · role=listbox > role=option[data-value] …
+ *
+ * Presentation (useSelectorPresentation + SelectorBottomSheet): a layer that opens as a bottom
+ * sheet (`presentation="bottom-sheet|adaptive"`, see runtime/combobox.ts) is modal, so focus
+ * moves into it — the search row, else the listbox, which then takes a Tab stop, the trigger's
+ * keyboard map and `aria-activedescendant` — and returns to the trigger as it closes.
  */
 import './runtime/disabledInteraction';
 import {announce, createRenderedTextAnnouncer} from './runtime/announce';
@@ -111,7 +116,8 @@ export abstract class ListboxSelectElement extends Base {
     if (this.listbox && this.layer) {
       const combo = createCombobox({
         listbox: this.listbox,
-        fields: () => [this.hasSearch ? this.search : this.trigger],
+        // A sheet is modal: the listbox (focused there) names the active option too.
+        fields: () => [this.hasSearch ? this.search : this.trigger, this.layer?.isSheet ? this.listbox : null],
         isOpen: () => this.isOpen,
         onActivate: (option, event) => this.activate(option, event),
       });
@@ -149,6 +155,13 @@ export abstract class ListboxSelectElement extends Base {
     const onTriggerKeyDown = (event: KeyboardEvent) => this.#onTriggerKeyDown(event);
     trigger.addEventListener('keydown', onTriggerKeyDown);
     cleanup.push(() => trigger.removeEventListener('keydown', onTriggerKeyDown));
+    // In a sheet the focused listbox takes the trigger's keyboard map (Astryx onKeyDown).
+    const listbox = this.listbox;
+    if (listbox) {
+      const onListboxKeyDown = (event: KeyboardEvent) => { if (event.target === listbox && this.layer?.isSheet) this.#onTriggerKeyDown(event); };
+      listbox.addEventListener('keydown', onListboxKeyDown);
+      cleanup.push(() => listbox.removeEventListener('keydown', onListboxKeyDown));
+    }
 
     const onTriggerFocus = () => {
       // useFocusReturnVisibility: a keyboard focus brings the ring back.
@@ -222,6 +235,14 @@ export abstract class ListboxSelectElement extends Base {
     this.opened(reason);
     this.combo?.sync();
     this.#syncEmpty();
+    if (this.layer?.isSheet && listbox) {
+      // SelectorBottomSheet: the listbox is a Tab stop; initial focus the search row, else it.
+      listbox.tabIndex = 0;
+      if (!this.search) {
+        cancelAnimationFrame(this.#focusFrame);
+        this.#focusFrame = requestAnimationFrame(() => { if (this.isOpen) listbox.focus({preventScroll: true}); });
+      }
+    }
     if (this.search) {
       cancelAnimationFrame(this.#focusFrame);
       // useSelectorPresentation handleLayerShow: focus the query a frame later, caret at the end.
@@ -242,6 +263,7 @@ export abstract class ListboxSelectElement extends Base {
     this.querySelector('.ax-selector-chevron, .ax-multi-selector-chevron')?.setAttribute('data-state', 'collapsed');
     this.layer?.style.removeProperty('margin-block-start');
     this.layer?.style.removeProperty('--_astryx-layer-try-fallbacks');
+    this.listbox?.removeAttribute('tabindex');
     this.combo?.highlight(null);
     this.typeahead?.reset();
     if (this.query !== '' || this.search?.value) this.setQuery('', {silent: true});
@@ -263,7 +285,7 @@ export abstract class ListboxSelectElement extends Base {
   #overlaySelectedItem() {
     const layer = this.layer;
     const listbox = this.listbox;
-    if (!layer || !listbox || !this.isOpen) return;
+    if (!layer || !listbox || !this.isOpen || layer.isSheet) return;
     const target = this.combo?.selected() ?? this.combo?.options()[0] ?? null;
     layer.style.removeProperty('margin-block-start');
     layer.style.removeProperty('--_astryx-layer-try-fallbacks');

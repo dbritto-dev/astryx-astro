@@ -130,6 +130,18 @@ await page.keyboard.press('Tab');
 await page.keyboard.press('Tab');
 await sleep(150);
 check('disabledMessage: keyboard focus shows the reason tooltip', await page.evaluate((id) => document.getElementById(id)?.matches(':popover-open'), tip.id));
+{
+  // Astryx: the row triggers it, the switch input (positionRef) anchors it — above, centred.
+  const geo = await page.evaluate(([sel, id]) => {
+    const r = document.querySelector(sel);
+    const track = r.querySelector('.astryx-switch').getBoundingClientRect();
+    const layer = document.getElementById(id);
+    const t = layer.getBoundingClientRect();
+    return {anchorAttr: layer.getAttribute('data-ax-anchor') === r.querySelector('input').id, align: layer.dataset.align ?? 'center',
+      tipCenter: Math.round(t.left + t.width / 2), trackCenter: Math.round(track.left + track.width / 2), gap: Math.round(track.top - t.bottom)};
+  }, [root('disabled-message'), tip.id]);
+  check('disabledMessage: the tooltip anchors on the switch (data-ax-anchor), centred above it', geo.anchorAttr && geo.align === 'center' && Math.abs(geo.tipCenter - geo.trackCenter) <= 1 && geo.gap >= 0 && geo.gap <= 8, JSON.stringify(geo));
+}
 await page.click(inputOf('loading'), {force: true});
 s = await stateOf('loading');
 check('loading: aria-busy, spinner in the thumb, toggling blocked', !s.checked && await page.evaluate((sel) => {

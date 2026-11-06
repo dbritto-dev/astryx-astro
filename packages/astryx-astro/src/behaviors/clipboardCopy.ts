@@ -11,8 +11,7 @@
  *   data-ax-copy-label / data-ax-copied-label        aria-label idle / while copied
  *   data-ax-copy-announce        spoken on success (a swapped aria-label alone is not reliably announced)
  *   data-ax-copy-reset="2000"    ms the copied state lasts (useClipboard resetAfterMs)
- *   data-ax-copy-tooltip="<id>"  the sibling <ax-tooltip> of the button (wired here: Button
- *                                does not take a caller `data-ax-tooltip` yet)
+ *   data-ax-tooltip="<id>"       the button's sibling <ax-tooltip> (Button's external tooltip)
  *   data-ax-copy-tip / data-ax-copied-tip            tooltip text idle / while copied
  * While copied the button carries `data-copied` (CSS swaps the two icon states). The tooltip
  * describes the button only while its text differs from the button's name (Button's
@@ -38,7 +37,7 @@ function sync(button: HTMLElement, copied: boolean) {
   button.toggleAttribute('data-copied', copied);
   const label = button.getAttribute(copied ? 'data-ax-copied-label' : 'data-ax-copy-label');
   if (label) button.setAttribute('aria-label', label);
-  const tipId = button.getAttribute('data-ax-copy-tooltip');
+  const tipId = button.getAttribute('data-ax-tooltip');
   if (!tipId) return;
   const tip = button.getAttribute(copied ? 'data-ax-copied-tip' : 'data-ax-copy-tip');
   const content = button.ownerDocument.getElementById(tipId)?.querySelector('.ax-tooltip-content');
@@ -53,8 +52,6 @@ function sync(button: HTMLElement, copied: boolean) {
 
 defineBehavior('copy', (button) => {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  const tipId = button.getAttribute('data-ax-copy-tooltip');
-  if (tipId && !button.hasAttribute('data-ax-tooltip')) button.setAttribute('data-ax-tooltip', tipId);
   sync(button, false);
 
   const onClick = async (event: MouseEvent) => {

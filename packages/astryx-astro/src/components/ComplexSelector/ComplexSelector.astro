@@ -55,6 +55,7 @@ import Spinner from '../Spinner/Spinner.astro';
 import InputStatusIcon from '../Field/_InputStatusIcon.astro';
 import {cx, themeProps} from '../../lib/themeProps';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {clearance, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
@@ -142,7 +143,7 @@ const ids = {
 };
 // The default slot may be a render function `(value, state) => …` (Astryx `children`).
 const contentHtml = Astro.slots.has('default')
-  ? await seal(await Astro.slots.render('default', [value, {triggerId: r.id, contentId: ids.content, isOpen: isDefaultOpen, isBusy: isLoading}]))
+  ? await seal(await renderLayerContent(Astro, () => Astro.slots.render('default', [value, {triggerId: r.id, contentId: ids.content, isOpen: isDefaultOpen, isBusy: isLoading}])))
   : '';
 
 const plan = statusIconPlan(status, effectiveStatusVariant);

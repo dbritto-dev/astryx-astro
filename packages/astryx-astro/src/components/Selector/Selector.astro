@@ -42,9 +42,16 @@
  * `.astryx-selector-indicator-icon[data-state]`, `.astryx-selector-check`, `.astryx-selector-popup`;
  * private var `--_field-radius`.
  *
+ * Presentation (useSelectorPresentation + SelectorBottomSheet, the presentation contract in
+ * elements/sheet/presentation.ts): "bottom-sheet" always, "adaptive" on a compact touch screen
+ * — the same layer opens as a modal bottom sheet (hug height, 16px / 4px inset, the label as a
+ * level-3 heading and as the dialog's name, the trigger `aria-haspopup="dialog"`, page scroll
+ * locked); focus moves to the search row, else to the listbox (a Tab stop with the trigger's
+ * keys); a swipe down, a press beside the panel or Escape closes it. "popover" (the default)
+ * never reads the query.
+ *
  * Not available / deferred: `onChange`/`changeAction` (use the event; no optimistic value),
- * `onClick`/`onFocus`/`onKeyDown` props (native events work on the trigger), `presentation`
- * "bottom-sheet" | "adaptive" (BottomSheet is not ported: both render the popover), option
+ * `onClick`/`onFocus`/`onKeyDown` props (native events work on the trigger), option
  * `action` (MultiSelector renders option actions in Astryx; Selector never did), the touch
  * press-drag-release model (useMenuPress) and the coarse-pointer press controller. A native
  * `<select>` with `appearance: base-select` is the future (Chromium-only) path for this
@@ -58,6 +65,7 @@ import Icon from '../Icon/Icon.astro';
 import Spinner from '../Spinner/Spinner.astro';
 import Tooltip from '../Tooltip/Tooltip.astro';
 import Divider from '../Divider/Divider.astro';
+import Heading from '../Text/Heading.astro';
 import Indicator from '../Indicator/Indicator.astro';
 import InputClearButton from '../Field/InputClearButton.astro';
 import SelectorOptionRow from './_SelectorOptionRow.astro';
@@ -84,6 +92,8 @@ import {getSelectableOptions, optionRows, type SelectorOptionData, type Selector
 import '../Field/Field.css';
 import '../Layer/Layer.css';
 import '../Popover/Popover.css';
+import '../BottomSheet/BottomSheet.css';
+import '../BottomSheet/presentation.css';
 import './Selector.css';
 
 export type {SelectorOptionData, SelectorOptionType, SelectorDivider, SelectorSection} from './options';
@@ -158,7 +168,7 @@ const {
   htmlName,
   disabledMessage,
   indicatorPosition = 'end',
-  presentation: _presentation = 'popover',
+  presentation = 'popover',
   placement,
   isDefaultOpen = false,
   startIcon,
@@ -217,6 +227,8 @@ const STATUS_LABEL = {warning: '@astryx.input.statusButton.warning', error: '@as
 const isInteractive = !isDisabled && !isEffectivelyReadOnly;
 const showsClear = hasClear && !isDisabled && !isEffectivelyReadOnly;
 const shouldOverlaySelectedItem = placement == null && !hasSearch;
+const canSheet = presentation === 'bottom-sheet' || presentation === 'adaptive';
+const isSheet = presentation === 'bottom-sheet';
 const popoverPlacement: LayerPlacement = placement ?? 'below';
 const triggerRole = isEffectivelyReadOnly || !hasSearch ? 'combobox' : undefined;
 
@@ -272,7 +284,7 @@ const MARKS = [
       class="ax-selector-trigger"
       data-astryx-focus-owner=""
       role={triggerRole}
-      aria-haspopup={isEffectivelyReadOnly ? undefined : 'listbox'}
+      aria-haspopup={isEffectivelyReadOnly ? undefined : isSheet ? 'dialog' : 'listbox'}
       aria-expanded={isEffectivelyReadOnly ? 'false' : isDefaultOpen ? 'true' : 'false'}
       aria-controls={isEffectivelyReadOnly ? undefined : ids.listbox}
       aria-readonly={isEffectivelyReadOnly ? 'true' : undefined}
@@ -326,14 +338,27 @@ const MARKS = [
     <ax-combobox-layer
       id={ids.layer}
       popover="auto"
-      class="ax-layer ax-layer-motion ax-popover-layer ax-selector-layer"
+      class={cx('ax-layer ax-layer-motion ax-popover-layer ax-selector-layer', canSheet && 'ax-sheet-layer')}
       data-astryx-layer-root=""
       {...placementAttrs({placement: popoverPlacement, alignment: 'start'})}
       data-ax-anchor={ids.box}
+      data-ax-presentation={canSheet ? presentation : undefined}
+      data-ax-surface={isSheet ? 'bottom-sheet' : undefined}
+      data-ax-surface-class={canSheet ? 'astryx-popover astryx-selector-popup' : undefined}
+      data-ax-sheet-label={canSheet ? r.label : undefined}
       data-ax-open={isDefaultOpen && isInteractive ? 'true' : undefined}
       style={shouldOverlaySelectedItem ? undefined : clearance('var(--spacing-1)')}
     >
-      <div class="astryx-popover astryx-selector-popup ax-focus-visible">
+      <div
+        class={cx(isSheet ? 'astryx-bottom-sheet' : 'astryx-popover astryx-selector-popup', 'ax-focus-visible', canSheet && 'ax-sheet-surface')}
+        role={isSheet ? 'dialog' : undefined}
+        aria-modal={isSheet ? 'true' : undefined}
+        aria-label={isSheet ? r.label : undefined}
+        tabindex={isSheet ? -1 : undefined}
+        data-ax-height={canSheet ? 'hug' : undefined}
+      >
+        {canSheet && <div class="ax-bottom-sheet-handle ax-sheet-handle" aria-hidden="true"></div>}
+        {canSheet && <Heading level={3} class="ax-sheet-heading">{r.label}</Heading>}
         <div class={hasSearch ? 'ax-selector-search-panel' : 'ax-selector-panel'}>
           {hasSearch && (
             <Fragment>

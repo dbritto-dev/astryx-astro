@@ -11,9 +11,13 @@
  *   trigger:  data-ax-tooltip="<layer id>"  (or data-ax-hover-card="<layer id>")
  *             + aria-describedby="<layer id>" for tooltips (SSR, so it is named before JS)
  *   layer:    <ax-tooltip id popover="hint" role="tooltip" class="astryx-tooltip ax-layer …"
- *               data-placement data-align data-astryx-keep-clear
+ *               data-placement data-align data-astryx-keep-clear [data-ax-anchor="<id>"]
  *               [data-ax-delay] [data-ax-hide-delay] [data-ax-focus-trigger] [data-ax-touch-trigger]
  *               [data-ax-enabled="false"] [data-ax-open="true|false"] [data-ax-controlled]>
+ *   anchor:   the layer positions against its trigger, or against `data-ax-anchor` when that
+ *             names another element (Astryx `positionRef` beside `interactionRef`: a row is the
+ *             hover/focus trigger, its checkbox the anchor). With no trigger in the markup,
+ *             `data-ax-anchor` (or `data-ax-for`) is wired as the trigger (`<Tooltip for>`).
  *
  * Tooltip behaviour (Astryx 0.7.9):
  * - hover shows after `delay` (200), leaving hides after `hideDelay`, or a 100ms bridge so the
@@ -110,9 +114,12 @@ abstract class HoverLayerElement extends LayerElement {
   #announced = false;
   protected hoveringContent = false;
   protected escapeDismissing = false;
+  /** The trigger the current open came from (hover, focus, press). */
+  #activeTrigger: HTMLElement | null = null;
 
+  /** The element the user interacts with (Astryx `interactionRef`). */
   get trigger(): HTMLElement | null {
-    return this.anchor;
+    return this.#activeTrigger ?? this.triggers()[0] ?? this.anchor;
   }
 
   get delay(): number { return numberAttr(this, 'data-ax-delay', this.defaults.delay); }
@@ -143,6 +150,21 @@ abstract class HoverLayerElement extends LayerElement {
     return super.resolveAnchor() ?? this.triggers()[0] ?? null;
   }
 
+  /**
+   * Where the layer positions for a trigger (Astryx `positionRef`): the `data-ax-anchor`
+   * element when the layer names one, else the trigger itself.
+   */
+  protected anchorFor(trigger: HTMLElement | null): HTMLElement | null {
+    const id = this.getAttribute('data-ax-anchor');
+    const named = id ? this.ownerDocument.getElementById(id) : null;
+    return named ?? trigger ?? this.resolveAnchor();
+  }
+
+  protected isInsidePress(path: ReadonlyArray<EventTarget>): boolean {
+    const trigger = this.trigger;
+    return super.isInsidePress(path) || (trigger != null && path.includes(trigger));
+  }
+
   protected escapeBehavior() { return 'close' as const; }
 
   protected outsidePressMode(): LayerOutsidePress {
@@ -155,13 +177,14 @@ abstract class HoverLayerElement extends LayerElement {
 
   connectedCallback(): void {
     super.connectedCallback();
-    // Sibling mode by id (`for`): wire a trigger that was rendered without the attributes.
-    const anchorId = this.getAttribute('data-ax-anchor');
+    // Sibling mode by id (`for`): wire a trigger that was rendered without the attributes. A
+    // layer whose trigger already carries them names its position anchor instead.
+    const anchorId = this.getAttribute('data-ax-for') ?? this.getAttribute('data-ax-anchor');
     if (!anchorId || !this.id) return;
     queueMicrotask(() => {
       const el = this.ownerDocument.getElementById(anchorId);
       const attr = this.kind === 'tooltip' ? 'data-ax-tooltip' : 'data-ax-hover-card';
-      if (!el || el.hasAttribute(attr)) return;
+      if (!el || el.hasAttribute(attr) || (!this.hasAttribute('data-ax-for') && this.triggers().length > 0)) return;
       el.setAttribute(attr, this.id);
       if (this.kind === 'tooltip' || !this.hasAttribute('aria-label')) {
         const ids = new Set((el.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean));
@@ -192,7 +215,9 @@ abstract class HoverLayerElement extends LayerElement {
   protected openFor(trigger: HTMLElement | null, reason: OpenChangeReason): void {
     if (!this.isEnabled) return;
     if (this.controlledOpen === false) return;
-    this.show({anchor: trigger ?? this.resolveAnchor(), reason});
+    const from = trigger ?? this.trigger;
+    if (from) this.#activeTrigger = from;
+    this.show({anchor: this.anchorFor(from), source: from, reason});
   }
 
   showNow(trigger: HTMLElement | null, reason: OpenChangeReason = 'api'): void {
@@ -306,6 +331,7 @@ abstract class HoverLayerElement extends LayerElement {
     this.held = false;
     this.#announced = false;
     this.hoveringContent = false;
+    this.#activeTrigger = null;
     this.clearTimers();
   }
 

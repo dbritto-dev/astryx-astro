@@ -149,12 +149,6 @@ export class PaginationElement extends HTMLElement {
     this.#hasMore = more == null ? undefined : more === 'true';
     try { this.#messages = JSON.parse(this.getAttribute('data-ax-messages') ?? '{}'); } catch { this.#messages = {}; }
 
-    // The nav buttons' tooltips (see _PaginationNavButton.astro).
-    for (const button of this.querySelectorAll<HTMLElement>('[data-ax-nav-tip]')) {
-      const id = button.getAttribute('data-ax-nav-tip');
-      if (id && button.getAttribute('data-ax-tooltip') !== id) button.setAttribute('data-ax-tooltip', id);
-    }
-
     const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void, opts?: AddEventListenerOptions) => {
       this.addEventListener(type, fn as EventListener, opts);
       this.#cleanup.push(() => this.removeEventListener(type, fn as EventListener, opts));
@@ -313,7 +307,7 @@ export class PaginationElement extends HTMLElement {
     if (button.disabled === !enabled) return;
     button.disabled = !enabled;
     button.toggleAttribute('data-ax-disabled', !enabled);
-    const id = button.getAttribute('data-ax-nav-tip');
+    const id = button.getAttribute('data-ax-tooltip');
     const tip = id ? (this.ownerDocument.getElementById(id) as TooltipLayer | null) : null;
     if (!tip) return;
     if (!enabled) tip.hideNow?.('api');

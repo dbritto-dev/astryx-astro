@@ -82,6 +82,14 @@ const composed = await page.$eval('[data-test="tooltip-composed"]', (el) => ({d:
 check('caller aria-describedby is composed with the layer id', composed.d === `export-help ${composed.t}`, JSON.stringify(composed));
 const asLink = await page.$eval('[data-test="tooltip-link"]', (el) => ({tag: el.tagName, d: el.getAttribute('aria-describedby'), t: el.getAttribute('data-ax-tooltip'), next: el.nextElementSibling?.id}));
 check('a link Button is a trigger too (layer after the <a>)', asLink.tag === 'A' && asLink.d === asLink.t && asLink.next === asLink.t, JSON.stringify(asLink));
+const ext = '[data-test="tooltip-external"]';
+const extAttrs = await page.$eval(ext, (el) => ({t: el.getAttribute('data-ax-tooltip'), d: el.getAttribute('aria-describedby'), layers: document.querySelectorAll('[id="btn-external-tip"]').length}));
+check('external tooltip: a caller\'s data-ax-tooltip is kept (server HTML), no layer of its own', extAttrs.t === 'btn-external-tip' && extAttrs.d === 'btn-external-tip' && extAttrs.layers === 1, JSON.stringify(extAttrs));
+check('external tooltip: no data-ax-tooltip on a Button without one', await page.$eval('[data-test="variants"] .astryx-button', (el) => !el.hasAttribute('data-ax-tooltip')));
+await hover(ext);
+await sleep(320);
+check('external tooltip: hover shows the caller\'s layer', await isOpen(page, '#btn-external-tip'));
+await away();
 
 const dis = '[data-test="disabled-tooltip"]';
 const disId = await layerOf(dis);

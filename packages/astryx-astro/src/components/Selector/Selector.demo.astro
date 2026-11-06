@@ -127,6 +127,15 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
   </section>
 
   <section>
+    <h3 style={cap}>Presentation: "adaptive" is a bottom sheet on a compact touch screen, "bottom-sheet" always</h3>
+    <div style={grid}>
+      <Selector id="sel-adaptive" label="Fruit (adaptive)" options={fruit} value="Banana" presentation="adaptive" />
+      <Selector id="sel-sheet" label="Fruit (bottom sheet)" options={fruit} presentation="bottom-sheet" />
+      <Selector id="sel-sheet-search" label="Country (bottom sheet, search)" options={countries} hasSearch presentation="bottom-sheet" placeholder="Select a country" />
+    </div>
+  </section>
+
+  <section>
     <h3 style={cap}>Open by default</h3>
     <div style="min-height:240px">
       <Selector id="sel-open" label="Open on load" options={fruit} value="Cherry" isDefaultOpen placement="below" />

@@ -26,6 +26,14 @@ const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
   </section>
 
   <section>
+    <h3 style={cap}>Presentation: "bottom-sheet" always, "adaptive-bottom-sheet" under a coarse pointer</h3>
+    <div style={grid}>
+      <DateInput label="Check-in (bottom sheet)" value="2026-03-21" presentation="bottom-sheet" data-test="sheet" />
+      <DateInput label="Check-out (adaptive)" presentation="adaptive-bottom-sheet" data-test="adaptive-sheet" />
+    </div>
+  </section>
+
+  <section>
     <h3 style={cap}>Locales</h3>
     <div style={grid}>
       <DateInput label="Datum (de-DE)" locale="de-DE" value="2026-03-21" format="date" data-test="de" />

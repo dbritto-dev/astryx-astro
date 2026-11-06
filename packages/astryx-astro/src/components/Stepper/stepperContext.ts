@@ -3,12 +3,13 @@
  *
  * A Step's whole markup depends on its Stepper (orientation, indicator position, activeStep,
  * density), which attribute stamping (lib/cascade.ts) cannot express. The Stepper renders its
- * slot inside `stepperContext.run(ctx, …)`; Steps read `stepperContext.getStore()` while they
- * render. AsyncLocalStorage follows the async render chain, so sibling Steppers rendered in
- * parallel never see each other's context, and nested Steppers shadow their parent.
- * Server-only (imported from frontmatter).
+ * slot with the subtree-scoped `Astro.locals.astryxStepper` (lib/subtreeLocals.ts
+ * `renderWithLocals`); Steps read it with `readStepperContext(Astro)` while they render.
+ * Sibling Steppers rendered in parallel never see each other's context, and nested Steppers
+ * shadow their parent. Layer-scoped, as in Astryx (createLayerScopedContext): overlays inside
+ * a Stepper render their content without it. Server-only (imported from frontmatter).
  */
-import {AsyncLocalStorage} from 'node:async_hooks';
+import {layerScopedLocal} from '../../lib/subtreeLocals';
 
 export interface StepperRenderContext {
   activeStep: number;
@@ -20,4 +21,9 @@ export interface StepperRenderContext {
   locale?: string;
 }
 
-export const stepperContext = new AsyncLocalStorage<StepperRenderContext>();
+export const STEPPER_LOCAL = layerScopedLocal('astryxStepper');
+
+export function readStepperContext(astro: {locals?: object}): StepperRenderContext | null {
+  const value = (astro.locals as Record<string, unknown> | undefined)?.[STEPPER_LOCAL];
+  return (value as StepperRenderContext | undefined) ?? null;
+}

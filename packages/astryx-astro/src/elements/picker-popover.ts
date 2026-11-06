@@ -36,6 +36,8 @@ export class PickerPopoverElement extends PopoverElement {
   }
 
   protected outsidePressMode(): LayerOutsidePress {
+    // A sheet covers the viewport: its own press beside the panel dismisses it.
+    if (this.isSheetSurface) return 'ignore';
     return this.getAttribute('popover') === 'auto' ? 'native' : 'dismiss';
   }
 

@@ -130,6 +130,14 @@ const long: DropdownMenuOption[] = fruits.map((label) => ({label, id: label.toLo
   </section>
 
   <section>
+    <h3 style={cap}>Presentation (data items): "adaptive" is a bottom sheet on a compact touch screen, "bottom-sheet" always</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'Project'}} presentation="adaptive" items={actions} id="dm-adaptive-menu" data-testid="dm-adaptive-trigger" />
+      <DropdownMenu button={{label: 'Share', variant: 'secondary'}} presentation="bottom-sheet" items={actions.slice(0, 3)} id="dm-sheet-menu" data-testid="dm-sheet-trigger" />
+    </div>
+  </section>
+
+  <section>
     <h3 style={cap}>Placement, alignment and width</h3>
     <div style={row}>
       <DropdownMenu button={{label: 'Above'}} placement="above" items={actions.slice(0, 3)} data-testid="dm-above-trigger" />

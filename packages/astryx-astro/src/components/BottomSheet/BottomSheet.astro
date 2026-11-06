@@ -73,7 +73,7 @@ import type {SpacingStep} from '../../lib/types';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, spacing, styleToString, type StyleValue} from '../../lib/style';
 import {uid} from '../../lib/uid';
-import {renderWithLocals} from '../../lib/subtreeLocals';
+import {renderLayerContent, renderWithLocals} from '../../lib/subtreeLocals';
 import {prepareLayerContent} from '../Dialog/content';
 import {isValidSnapPoint, type BottomSheetSnapPoint} from '../../elements/sheet/snapOffsets';
 import type {SwitcherContext} from './switcherContext';
@@ -154,7 +154,7 @@ const isSized = BLOCK_SIZE.test(styleText) || (className != null && className !=
 const validSnaps = (snapPoints ?? []).filter((p) => isValidSnapPoint(p));
 
 const raw = Astro.slots.has('default')
-  ? await renderWithLocals(Astro, {astryxBottomSheetSwitcher: null}, () => Astro.slots.render('default'))
+  ? await renderLayerContent(Astro, () => renderWithLocals(Astro, {astryxBottomSheetSwitcher: null}, () => Astro.slots.render('default')))
   : '';
 const {html: content} = await prepareLayerContent(raw, {id, closeCommand: hasScrim ? 'close' : 'hide-popover'});
 const nativeAttrs = hasScrim ? {closedby: purpose === 'info' ? 'any' : purpose === 'form' ? 'closerequest' : 'none'} : {};

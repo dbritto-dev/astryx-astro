@@ -2,6 +2,17 @@
 import Popover from './Popover.astro';
 import Tooltip from '../Tooltip/Tooltip.astro';
 import {attachPopover} from './attach';
+import Theme from '../theme/Theme.astro';
+import InternationalizationProvider from '../i18n/InternationalizationProvider.astro';
+import List from '../List/List.astro';
+import ListItem from '../List/ListItem.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import {registerIconTheme} from '../Icon/iconRegistry';
+import {lucideIcons} from '../Icon/themeIcons';
+
+// A theme whose close icon is recognisable, to show the Theme context reaching popover content.
+registerIconTheme('popover-scope-demo', {icons: {...lucideIcons, close: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true" data-demo-icon="scope-close"><path d="M5 5l14 14M19 5L5 19"/></svg>'}});
 
 const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer';
 const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
@@ -135,4 +146,31 @@ const sibling = attachPopover({id: 'pop-sibling'});
       </Fragment>
     </Popover>
   </div>
+</div>
+
+<div>
+  <p style={label}>
+    Layer-scoped contexts: the compact, divided List around this popover does not reach its
+    content (the row inside is a plain balanced row), while the Theme (its close icon) and the
+    locale (fr-FR: the spinner is named "Chargement") do.
+  </p>
+  <Theme theme="popover-scope-demo">
+    <InternationalizationProvider locale="fr-FR">
+      <List density="compact" hasDividers id="pop-scope-list" style="max-width:360px">
+        <ListItem label="Rapport mensuel" id="pop-scope-outer">
+          <Popover slot="endContent" label="Détails" id="pop-scope">
+            <button type="button" style={btn} id="pop-scope-trigger">Détails</button>
+            <Fragment slot="content">
+              <ul style="margin:0;padding:0;list-style:none"><ListItem label="Dans le popover" id="pop-scope-inner" /></ul>
+              <div style="display:flex;gap:var(--spacing-2);align-items:center;margin-top:var(--spacing-2)">
+                <span id="pop-scope-icon"><Icon icon="close" /></span>
+                <span id="pop-scope-spinner"><Spinner size="sm" /></span>
+              </div>
+            </Fragment>
+          </Popover>
+        </ListItem>
+        <ListItem label="Rapport annuel" id="pop-scope-outer-2" />
+      </List>
+    </InternationalizationProvider>
+  </Theme>
 </div>

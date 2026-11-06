@@ -1,7 +1,8 @@
 ---
 /**
  * LayerProvider — app-level layer configuration. Port of @astryxdesign/core
- * Layer/LayerProvider.tsx + Layer/layerInset.ts (spec:AST-059 FR6).
+ * Layer/LayerProvider.tsx + Layer/toastHost.tsx (ToastHostOutlet) + Layer/layerInset.ts
+ * (spec:AST-059 FR6).
  *
  * `inset` declares a persistent bar floating over a viewport edge, once: each edge adds to
  * the gutter every anchored layer keeps from that edge. Layers render inline, so the
@@ -9,15 +10,22 @@
  * wrapper and every layer inside inherits them; a nested provider narrows them for its
  * subtree. An app may instead declare them on `:root` in CSS.
  *
- * `toast` is recorded as `data-astryx-toast-*` attributes for the Toast port (the toast
- * viewport is not ported yet).
+ * `toast`: the root provider renders the toast viewport after its content (ToastHostOutlet:
+ * `<ToastViewport>` with the config's `position` / `maxVisible` / `inset` and the provider's
+ * `inset` as its layer inset), so `toast()` finds it and apps render no viewport of their own.
+ * A nested provider (one inside another, `Astro.locals.astryxLayerProvider`) passes through:
+ * no second viewport, its `toast` config is ignored (the viewport is the root's), only its
+ * `inset` narrows the anchored layers below it. The slot is buffered (rendered through
+ * lib/subtreeLocals.ts), as inside Theme.
  *
  * @example
- * <LayerProvider inset={{blockEnd: 56}}><App /></LayerProvider>
+ * <LayerProvider inset={{blockEnd: 56}} toast={{position: 'topEnd', maxVisible: 3}}><App /></LayerProvider>
  */
 import type {HTMLAttributes} from 'astro/types';
+import ToastViewport from '../Toast/ToastViewport.astro';
 import {cx} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
+import {renderWithLocals} from '../../lib/subtreeLocals';
 import {insetVars, type LayerInset} from './layer';
 import './Layer.css';
 
@@ -33,20 +41,21 @@ export interface LayerToastConfig {
 export interface Props extends HTMLAttributes<'div'> {
   /** Persistent bars over viewport edges (px numbers or CSS lengths). Defaults to zero on every edge. */
   inset?: LayerInset;
-  /** Toast viewport configuration (consumed by the Toast port). */
+  /** The toast viewport the root provider renders. Omit to use defaults. */
   toast?: LayerToastConfig;
 }
 
+/** Subtree-scoped marker (not layer-scoped, as Astryx LayerContext): a provider is above. */
+const PROVIDER_LOCAL = 'astryxLayerProvider';
+
 const {inset, toast, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
-const toastInset = toast?.inset
-  ? Object.entries(toast.inset).filter(([, v]) => v != null).map(([k, v]) => `${k}:${v}`).join(' ')
-  : undefined;
+const isNested = (Astro.locals as Record<string, unknown> | undefined)?.[PROVIDER_LOCAL] === true;
+const html = Astro.slots.has('default')
+  ? await renderWithLocals(Astro, {[PROVIDER_LOCAL]: true}, () => Astro.slots.render('default'))
+  : '';
 ---
 <div
   class={cx('ax-layer-provider', className)}
-  data-astryx-toast-position={toast?.position}
-  data-astryx-toast-max-visible={toast?.maxVisible}
-  data-astryx-toast-inset={toastInset}
   style={mergeStyles(insetVars(inset), style as StyleValue)}
   {...rest}
-><slot /></div>
+><Fragment set:html={html} />{!isNested && <ToastViewport position={toast?.position} maxVisible={toast?.maxVisible} inset={toast?.inset} layerInset={inset} />}</div>
