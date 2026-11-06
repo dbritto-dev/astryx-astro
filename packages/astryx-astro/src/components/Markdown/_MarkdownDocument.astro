@@ -1,0 +1,224 @@
+---
+/**
+ * Internal: Markdown's server render. Runs the shared pipeline (markdownPipeline.ts), asks
+ * _MarkdownAtoms for the atoms the document needs (named slots), builds the kit, renders the
+ * blocks with the shared renderer (markdownRender.ts) and writes the root. Holes (Astro
+ * component overrides / plugin output) are rendered in place by _MarkdownSegments.
+ *
+ * Streaming (`isStreaming`): the root is `<ax-markdown-stream>` carrying the source, the
+ * serializable options and a reference to the kit `<template>` written just before it; the
+ * element re-renders appended text with the same function. `kitOnly` writes just the kit (see
+ * _MarkdownKit.astro).
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Segments from './_MarkdownSegments.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {stamp} from '../../lib/cascade';
+import {visitMarkdownNodes} from '../../lib/markdown/ast';
+import type {MarkdownPluginEntry} from '../../lib/markdown/plugins/protocol';
+import type {CodeLanguage} from '../../lib/codeblock';
+import {isAstroIconComponent} from '../Icon/iconRegistry';
+import {parseDocument, parseInlineDocument, preparePlugins, createIncrementalState} from './markdownPipeline';
+import {
+  renderMarkdownBlocks,
+  renderMarkdownInline,
+  type MarkdownComponentNode,
+  type MarkdownComponents,
+  type MarkdownInlinePlugin,
+  type MarkdownRenderOptions,
+  type MarkdownSource,
+} from './markdownRender';
+import {createIdSource, extractScripts, serializeKit, type MarkdownAtomName, type MarkdownKit} from './markdownKit';
+import './Markdown.css';
+
+type Props = Omit<HTMLAttributes<'div'>, 'children'> & {
+  source: string;
+  display?: 'block' | 'inline';
+  density?: 'default' | 'compact';
+  headingLevelStart?: 1 | 2 | 3 | 4 | 5 | 6;
+  isStreaming?: boolean;
+  hasLinkClickEvent?: boolean;
+  sources?: Record<string, MarkdownSource>;
+  citationStyle?: 'label' | 'number';
+  contentWidth?: number | string | null;
+  contentAlign?: 'start' | 'center';
+  components?: MarkdownComponents;
+  plugins?: ReadonlyArray<MarkdownPluginEntry>;
+  inlinePlugins?: MarkdownInlinePlugin[];
+  autolink?: 'gfm';
+  codeLanguages?: ReadonlyArray<CodeLanguage>;
+  locale?: string;
+  hasLinkComponent?: boolean;
+  kitOnly?: boolean;
+  kitId?: string;
+  'data-testid'?: string;
+};
+
+const {
+  source,
+  display = 'block',
+  density = 'default',
+  headingLevelStart = 1,
+  isStreaming = false,
+  hasLinkClickEvent = false,
+  sources,
+  citationStyle = 'label',
+  contentWidth = 680,
+  contentAlign = 'start',
+  components,
+  plugins,
+  inlinePlugins,
+  autolink,
+  codeLanguages,
+  locale,
+  hasLinkComponent = false,
+  kitOnly = false,
+  kitId,
+  class: className,
+  style,
+  id: rootId,
+  'data-testid': testId,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {slot?: string};
+
+const t = translator(Astro, locale);
+const prepared = preparePlugins(plugins);
+const parseConfig = {
+  sourceIds: sources ? new Set(Object.keys(sources)) : undefined,
+  autolink,
+  math: components?.math != null,
+  prepared,
+};
+const isInline = display === 'inline';
+const doc = kitOnly || isInline ? null : parseDocument(source, parseConfig, isStreaming ? {state: createIncrementalState()} : undefined);
+const inlineNodes = !kitOnly && isInline ? parseInlineDocument(source, parseConfig, isStreaming) : null;
+
+// What the document uses decides which atoms render (a streaming document may get anything).
+const root = {type: 'root', children: doc?.blocks ?? (inlineNodes ? [{type: 'paragraph', children: inlineNodes}] : [])} as never;
+const uses = {code: false, collapsible: false, table: false, tasks: false, taskList: false, headingLinks: false, links: false};
+const all = isStreaming || kitOnly;
+visitMarkdownNodes(root, 'code', (node: {value: string}) => {
+  uses.code = true;
+  // CodeBlock collapses from 10 lines (with a language header): load its behaviour then.
+  if (node.value.split('\n').length >= 10) uses.collapsible = true;
+});
+visitMarkdownNodes(root, 'table', () => void (uses.table = true));
+visitMarkdownNodes(root, 'list', (node: {children: {checked?: boolean | null; children: {type: string}[]}[]}) => {
+  if (node.children.some((item) => item.checked != null)) uses.tasks = true;
+  if (node.children.length > 0 && node.children.every((item) => item.checked != null && item.children.every((b) => b.type === 'paragraph'))) uses.taskList = true;
+});
+visitMarkdownNodes(root, 'link', () => void (uses.links = true));
+uses.headingLinks = (doc?.headings?.permalinkUrls.size ?? 0) > 0;
+if (all) for (const key of Object.keys(uses) as (keyof typeof uses)[]) uses[key] = true;
+if (all) uses.headingLinks = true;
+
+const wanted: MarkdownAtomName[] = [];
+if (uses.code) wanted.push('copy', 'chevron');
+if (uses.tasks || uses.taskList) wanted.push('task-checked', 'task-unchecked', 'checkbox-checked', 'checkbox-unchecked');
+if (uses.headingLinks) wanted.push('heading-copy');
+if (uses.links && hasLinkComponent) wanted.push('link');
+
+const scripts = new Set<string>();
+const atoms: MarkdownKit['atoms'] = {};
+const renderAtom = async (name: string, args?: unknown[]) => {
+  const slotName = `atom:${name}`;
+  if (!Astro.slots.has(slotName)) return undefined;
+  const rendered = extractScripts(await Astro.slots.render(slotName, args));
+  rendered.scripts.forEach((s) => scripts.add(s));
+  return rendered.html;
+};
+for (const name of wanted) {
+  let html = await renderAtom(name);
+  // Item consumes `item-description` on its start content (no description: a null provider).
+  if (html && name.startsWith('checkbox-')) html = await stamp(html, 'item-description', null);
+  if (html) atoms[name] = html;
+}
+for (const [id, src] of Object.entries(sources ?? {})) {
+  if (src.icon != null && typeof src.icon !== 'string' && isAstroIconComponent(src.icon as never)) {
+    const html = await renderAtom('citation-icon', [src.icon]);
+    if (html) atoms[`citation-icon:${id}`] = html;
+  }
+}
+
+const kit: MarkdownKit = {
+  strings: {
+    taskList: t('@astryx.markdown.taskList'),
+    tableLabel: t('@astryx.table.label'),
+    code: t('@astryx.codeBlock.code'),
+    citation: t('@astryx.citation.label', {number: '{number}', title: '{title}'}),
+    headingCopy: t('@astryx.markdownHeadingLinks.copy', {heading: '{heading}'}),
+    headingCopied: t('@astryx.markdownHeadingLinks.copied'),
+  },
+  atoms,
+};
+
+const docId = kitOnly ? (kitId ?? uid(Astro, 'ax-md-kit')) : uid(Astro, 'ax-md');
+const ids = createIdSource(docId);
+const holes: MarkdownComponentNode[] = [];
+const marker = `axmd-hole-${docId}`;
+const host = {
+  ids,
+  kit,
+  hole: (node: MarkdownComponentNode) => {
+    holes.push(node);
+    return `<!--${marker}:${holes.length - 1}-->`;
+  },
+};
+const contentWidthValue = contentWidth ? (typeof contentWidth === 'number' ? `${contentWidth}px` : contentWidth) : null;
+const options: MarkdownRenderOptions = {
+  density,
+  headingLevelStart,
+  contentWidth: contentWidthValue,
+  contentAlign,
+  sources,
+  citationStyle,
+  components,
+  inlinePlugins,
+  codeLanguages,
+  hasLinkComponent,
+};
+const bodyHtml = kitOnly
+  ? ''
+  : isInline
+    ? renderMarkdownInline(inlineNodes!, {options, host, prepared})
+    : renderMarkdownBlocks(doc!.blocks, {options, host, prepared, headings: doc!.headings}).join('');
+
+// Streaming: the element needs the source, the serializable options and the kit.
+const kitTemplateId = isStreaming ? `${docId}-kit` : kitId ?? docId;
+const config = isStreaming
+  ? JSON.stringify({display, density, headingLevelStart, contentWidth: contentWidthValue, contentAlign, sources, citationStyle, autolink, math: components?.math != null, hasLinkComponent})
+  : undefined;
+
+const {themeClass, attrs: themeAttrs} = themeProps('markdown', {density});
+const rootAttrs: Record<string, unknown> = {
+  ...rest,
+  id: rootId,
+  role: isInline ? undefined : 'document',
+  'data-testid': testId,
+  class: cx(themeClass, className as string | undefined),
+  ...themeAttrs,
+  style: mergeStyles(style as StyleValue),
+  'data-ax-inline': isInline ? '' : undefined,
+  'data-ax-link-click': hasLinkClickEvent ? '' : undefined,
+  ...(isStreaming ? {'data-ax-kit': kitTemplateId, 'data-ax-doc': docId, 'data-ax-config': config, 'data-ax-source': source} : {}),
+};
+const Root = isStreaming ? 'ax-markdown-stream' : isInline ? 'span' : 'div';
+const hasHoles = holes.length > 0;
+const scriptHtml = [...scripts].join('');
+---
+{(isStreaming || kitOnly) && <template id={kitTemplateId} data-ax-markdown-kit set:html={serializeKit(kit)} />}
+{!kitOnly && (hasHoles
+  ? <Root {...rootAttrs}><Segments html={bodyHtml} holes={holes} marker={marker} /></Root>
+  : <Root {...rootAttrs} set:html={bodyHtml} />)}
+{scriptHtml !== '' && <Fragment set:html={scriptHtml} />}
+{(uses.code && !all) && <script>import '../../elements/scrollable-area';</script>}
+{(uses.collapsible && !all) && <script>import '../../behaviors/codeBlock';</script>}
+{(uses.table && !all) && <script>import '../../elements/table';</script>}
+{(uses.taskList && !all) && <script>import '../../elements/checkbox-list';</script>}
+{(uses.headingLinks && !all) && <script>import '../../behaviors/markdownHeadingLink';</script>}
+{(hasLinkClickEvent && !all) && <script>import '../../behaviors/markdownLinkClick';</script>}
+{all && <script>import '../../elements/markdown-stream';</script>}

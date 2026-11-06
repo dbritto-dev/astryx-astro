@@ -1,0 +1,30 @@
+---
+/**
+ * Internal: writes the renderer's HTML, rendering each hole marker (`<!--{marker}:{n}-->`) as
+ * the Astro component node it stands for — a `components` override or a plugin renderer that
+ * returned `{component, props, children}`. A node's `children` HTML (which may hold nested
+ * holes) becomes its default slot. The HTML between markers is written verbatim, so a hole may
+ * sit anywhere inside the surrounding markup.
+ */
+import type {MarkdownComponentNode} from './markdownRender';
+
+interface Props {
+  html: string;
+  holes: MarkdownComponentNode[];
+  marker: string;
+}
+
+const {html, holes, marker} = Astro.props;
+const parts = html.split(new RegExp(`<!--${marker}:(\\d+)-->`));
+const items = parts.map((part, i) => (i % 2 === 0 ? {html: part} : {node: holes[Number(part)]}));
+---
+{items.map((item) => {
+  if ('html' in item) return item.html === '' ? null : <Fragment set:html={item.html} />;
+  const node = item.node;
+  if (!node) return null;
+  const Component = node.component as any;
+  if (typeof Component === 'string') return node.children != null ? <Component {...node.props}><Astro.self html={node.children} holes={holes} marker={marker} /></Component> : <Component {...node.props} />;
+  return node.children != null
+    ? <Component {...node.props}><Astro.self html={node.children} holes={holes} marker={marker} /></Component>
+    : <Component {...node.props} />;
+})}

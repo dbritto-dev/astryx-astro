@@ -1,0 +1,29 @@
+---
+/**
+ * Internal (for streaming hosts such as Chat): writes only a Markdown render kit —
+ * `<template id data-ax-markdown-kit>` with the translated strings and every atom — plus the
+ * scripts its markup needs, for `<ax-markdown-stream data-ax-kit="<id>">` elements created on
+ * the client. One kit serves any number of elements with the same locale, theme icons and
+ * link component.
+ *
+ *   <MarkdownKit id="chat-markdown" />
+ *   const el = document.createElement('ax-markdown-stream');
+ *   el.setAttribute('data-ax-kit', 'chat-markdown');
+ *   el.config = {density: 'compact'};
+ *   log.append(el); el.append('**Hel'); el.append('lo**'); el.finish();
+ */
+import Atoms from './_MarkdownAtoms.astro';
+import Document from './_MarkdownDocument.astro';
+import type {MarkdownSource} from './markdownRender';
+
+interface Props {
+  /** The kit template's id (the elements' `data-ax-kit`). */
+  id: string;
+  locale?: string;
+  /** Sources whose Astro-component icons should be pre-rendered for citations. */
+  sources?: Record<string, MarkdownSource>;
+}
+
+const {id, locale, sources} = Astro.props;
+---
+<Atoms consumer={Document} props={{kitOnly: true, kitId: id, source: '', locale, sources}} />

@@ -1,0 +1,248 @@
+---
+import Markdown from './Markdown.astro';
+import DemoHeading from './_DemoHeading.astro';
+import DemoSourceIcon from './_DemoSourceIcon.astro';
+import MarkdownKit from './_MarkdownKit.astro';
+import Outline from '../Outline/Outline.astro';
+import LinkProvider from '../LinkProvider/LinkProvider.astro';
+import RouterLink from '../LinkProvider/_RouterLink.astro';
+import Button from '../Button/Button.astro';
+import List from '../List/List.astro';
+import ListItem from '../List/ListItem.astro';
+import ListMarkerScope from '../List/_ListMarkerScope.astro';
+import CheckboxList from '../CheckboxList/CheckboxList.astro';
+import CheckboxListItem from '../CheckboxList/CheckboxListItem.astro';
+import Table from '../Table/Table.astro';
+import TableHeader from '../Table/TableHeader.astro';
+import TableBody from '../Table/TableBody.astro';
+import TableRow from '../Table/TableRow.astro';
+import TableHeaderCell from '../Table/TableHeaderCell.astro';
+import TableCell from '../Table/TableCell.astro';
+import CodeBlock from '../CodeBlock/CodeBlock.astro';
+import Code from '../Code/Code.astro';
+import Citation from '../Citation/Citation.astro';
+import {
+  createMarkdownFenceTransform,
+  createMarkdownHeadingLinks,
+  createMarkdownPlugin,
+  createMarkdownTextTransform,
+  markdownSourceLinesPlugin,
+} from '../../lib/markdown/plugins';
+import {parseOutlineFromMarkdown} from '../../lib/markdown';
+import chartUrl from './_demo-chart.svg?no-inline';
+import {linkDoc, overridesDoc, releaseNotes, releaseSources, streamSources, streamText} from './_demoContent';
+
+const doc = releaseNotes.replace('__CHART__', chartUrl);
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const headingLinks = createMarkdownHeadingLinks({headingIdPrefix: 'guide'});
+const guide = '# Guide\n\n## Install\n\nRun the installer.\n\n## Configure\n\nEdit the settings file.\n\n## Configure\n\nDuplicate titles get unique ids.';
+const guidePlugins = [headingLinks];
+
+const diagrams = createMarkdownPlugin({
+  name: 'diagrams',
+  apiVersion: 1,
+  transform: createMarkdownFenceTransform({
+    languages: ['mermaid'],
+    createNode: ({code, meta}: {code: string; meta?: string | null}) => ({
+      type: 'extension',
+      plugin: 'diagrams',
+      name: 'diagram',
+      display: 'block',
+      data: {code, ...(meta == null ? {} : {label: meta})},
+    }),
+  }),
+  renderers: {
+    diagram: {
+      render: ({node}: {node: {data: {code: string; label?: string}}}) =>
+        `<figure class="docs-md-diagram" data-test="diagram"><figcaption>${esc(node.data.label ?? 'Diagram')}</figcaption><pre>${esc(node.data.code)}</pre></figure>`,
+      toText: (node: {data: {code: string}}) => node.data.code,
+    },
+  },
+} as never);
+const finalLabels = createMarkdownPlugin({
+  name: 'final-labels',
+  apiVersion: 1,
+  transform: createMarkdownTextTransform({
+    pattern: /\bDraft\b/g,
+    requiredSubstrings: ['Draft'],
+    replace: () => ({type: 'text', value: 'Final'}),
+  } as never),
+} as never);
+const overrides = {
+  heading: DemoHeading,
+  inlineCode: ({children}: {children: string}) => `<code class="docs-md-inline" data-test="inline-override">${esc(children)}</code>`,
+  math: ({value, display}: {value: string; display: 'inline' | 'block'}) =>
+    display === 'block'
+      ? `<div class="docs-md-math" role="math" aria-label="${esc(value.trim())}" data-test="math-block">${esc(value.trim())}</div>`
+      : `<span class="docs-md-math" role="math" aria-label="${esc(value)}" data-test="math-inline">${esc(value)}</span>`,
+};
+const sourceLinesDoc = '# Title\n\nFirst paragraph.\n\n- one\n- two';
+const outline = parseOutlineFromMarkdown(doc);
+const iconSources = {
+  guide: {title: 'Style guide', url: '/docs/style', icon: DemoSourceIcon},
+  chart: {title: 'Usage chart', src: chartUrl},
+  plain: {title: 'Plain source'},
+};
+const longCode = Array.from({length: 12}, (_, i) => `"k${i}": ${i},`).join('\n');
+const diffCode = '- const a = 1;\n+ const a = 2;\n  return a;';
+const parity = {
+  bullets: '- Alpha\n- Beta **bold**',
+  ordered: '3. Three\n4. Four',
+  tasks: '- [x] Done\n- [ ] Todo',
+  mixedTasks: '- [x] Ship\n- Plain',
+  table: '| Name | Qty |\n|:--|--:|\n| Apple | 3 |',
+  code: '```ts\nconst a = 1;\n```',
+  codePlain: '```\nplain text\n```',
+};
+---
+<style is:global>
+  .docs-md-layout { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: var(--spacing-6); align-items: start; }
+  .docs-md-layout > :first-child { min-width: 0; }
+  .docs-md-outline { position: sticky; top: var(--spacing-4); }
+  @media (max-width: 900px) { .docs-md-layout { grid-template-columns: minmax(0, 1fr); } .docs-md-outline { display: none; } }
+  .docs-md-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--spacing-5); align-items: start; }
+  .docs-md-grid > * { min-width: 0; }
+  .docs-md-card { padding: var(--spacing-4); border: 1px solid var(--color-border); border-radius: var(--radius-container); min-width: 0; }
+  .docs-md-math { font-family: var(--font-family-code); font-style: italic; }
+  div.docs-md-math { padding: var(--spacing-2) var(--spacing-3); border-inline-start: 2px solid var(--color-border-emphasized); margin-block: var(--spacing-3); }
+  .docs-md-inline { padding: 0 var(--spacing-1); border-radius: var(--radius-element); background: var(--color-background-muted); font-family: var(--font-family-code); color: var(--color-text-accent); }
+  .docs-md-diagram { margin: var(--spacing-3) 0; padding: var(--spacing-3); border: 1px dashed var(--color-border); border-radius: var(--radius-element); }
+  .docs-md-diagram figcaption { font-weight: var(--font-weight-semibold); }
+  .docs-md-diagram pre { margin: var(--spacing-2) 0 0; font-family: var(--font-family-code); }
+  .docs-md-stream-controls { display: flex; gap: var(--spacing-2); flex-wrap: wrap; margin-block-end: var(--spacing-3); }
+  .docs-md-stream { min-height: 120px; }
+</style>
+
+<section>
+  <h3 style={cap}>A long document: every construct, with sources (label citations) and an Outline built from the same text</h3>
+  <div class="docs-md-layout">
+    <Markdown id="md-full" data-test="full" sources={releaseSources} children={doc} />
+    <div class="docs-md-outline"><Outline items={outline} data-test="outline" density="compact" /></div>
+  </div>
+</section>
+
+<section>
+  <h3 style={cap}>density="compact", headingLevelStart={3}, contentWidth={420}, contentAlign="center", numbered citations</h3>
+  <div class="docs-md-card">
+    <Markdown data-test="compact" density="compact" headingLevelStart={3} contentWidth={420} contentAlign="center" sources={streamSources} citationStyle="number" children={streamText} />
+  </div>
+</section>
+
+<section>
+  <h3 style={cap}>display="inline" inside surrounding text, and autolink="gfm"</h3>
+  <p data-test="inline-host">This description includes <Markdown display="inline" data-test="inline" children={'`inline code`, **bold text** and a [link](/docs)'} /> mid-sentence.</p>
+  <Markdown autolink="gfm" data-test="autolink" children={'Visit https://example.com or email contact@example.com. Bracketed: <https://docs.example.com>.'} />
+  <Markdown data-test="citation-icons" sources={iconSources} children={'Citation chips show a source icon [guide], an image [chart], or none 【plain】; unknown ids stay text [nope].'} />
+</section>
+
+<section>
+  <h3 style={cap}>Component overrides (an Astro heading, function inlineCode and math), a semantic-fence plugin and a text transform</h3>
+  <div class="docs-md-card">
+    <Markdown data-test="overrides" components={overrides} plugins={[diagrams, finalLabels]} children={overridesDoc} />
+  </div>
+</section>
+
+<section>
+  <h3 style={cap}>createMarkdownHeadingLinks(): copyable permalinks (hover or focus a heading), ids shared with the Outline</h3>
+  <div class="docs-md-layout">
+    <Markdown id="guide" data-test="heading-links" plugins={guidePlugins} children={guide} />
+    <div class="docs-md-outline"><Outline items={parseOutlineFromMarkdown(guide, {plugins: guidePlugins})} data-test="guide-outline" density="compact" /></div>
+  </div>
+</section>
+
+<section>
+  <h3 style={cap}>LinkProvider: internal links render through the provider's component; markdownSourceLinesPlugin; hasLinkClickEvent</h3>
+  <div class="docs-md-grid">
+    <LinkProvider component={RouterLink}><Markdown data-test="link-provider" children={linkDoc} /></LinkProvider>
+    <Markdown data-test="source-lines" plugins={[markdownSourceLinesPlugin]} children={sourceLinesDoc} />
+    <Markdown data-test="link-click" hasLinkClickEvent children={'Click [this internal link](#md-full) — the page listens for `astryx-link-click` and cancels it.'} />
+  </div>
+</section>
+
+<section>
+  <h3 style={cap}>Streaming: &lt;ax-markdown-stream&gt; reveals appended chunks with the same rendering rules</h3>
+  <div class="docs-md-stream-controls">
+    <Button label="Stream the answer" variant="primary" size="sm" data-md-stream-start />
+    <Button label="Finish" variant="secondary" size="sm" data-md-stream-finish />
+  </div>
+  <div class="docs-md-card docs-md-stream">
+    <Markdown isStreaming id="md-stream" data-test="stream" sources={streamSources} children={streamText.slice(0, 64)} />
+  </div>
+  <details style="margin-block-start:var(--spacing-3)">
+    <summary>One-shot render of the same text (what the stream settles to)</summary>
+    <Markdown id="md-stream-reference" data-test="stream-reference" sources={streamSources} children={streamText} />
+  </details>
+  <template id="md-stream-text">{streamText}</template>
+  <template id="md-full-text">{doc}</template>
+</section>
+
+<section>
+  <h3 style={cap}>Chat-style: streams created on the client from one shared kit (_MarkdownKit.astro)</h3>
+  <MarkdownKit id="md-demo-kit" />
+  <div class="docs-md-stream-controls">
+    <Button label="Add a streamed message" variant="secondary" size="sm" data-md-add-message />
+  </div>
+  <div class="docs-md-card" data-md-log style="display:grid;gap:var(--spacing-3)"></div>
+</section>
+
+{/* Parity fixtures: the same content through Markdown and through the Astryx components it
+    composes (as Markdown.tsx composes them), hidden. tools/tests/markdown.test.mjs compares them. */}
+<div hidden data-md-parity="bullets"><div data-side="md"><Markdown children={parity.bullets} /></div><div data-side="ref"><List listStyle="disc" density="compact"><ListMarkerScope marker="disc"><ListItem><Fragment slot="label">Alpha</Fragment></ListItem></ListMarkerScope><ListMarkerScope marker="disc"><ListItem><Fragment slot="label">Beta <strong class="ax-markdown-strong">bold</strong></Fragment></ListItem></ListMarkerScope></List></div></div>
+<div hidden data-md-parity="ordered"><div data-side="md"><Markdown children={parity.ordered} /></div><div data-side="ref"><List listStyle="decimal" density="compact" start={3}><ListMarkerScope marker="decimal" hasMarkerGutter><ListItem><Fragment slot="label">Three</Fragment></ListItem></ListMarkerScope><ListMarkerScope marker="decimal" hasMarkerGutter><ListItem><Fragment slot="label">Four</Fragment></ListItem></ListMarkerScope></List></div></div>
+<div hidden data-md-parity="tasks"><div data-side="md"><Markdown children={parity.tasks} /></div><div data-side="ref"><CheckboxList label="Task list" isLabelHidden value={['task-0']} isReadOnly density="compact"><CheckboxListItem value="task-0"><Fragment slot="label">Done</Fragment></CheckboxListItem><CheckboxListItem value="task-1"><Fragment slot="label">Todo</Fragment></CheckboxListItem></CheckboxList></div></div>
+<div hidden data-md-parity="mixed-tasks"><div data-side="md"><Markdown children={parity.mixedTasks} /></div><div data-side="ref"><List listStyle="disc" density="compact"><ListMarkerScope marker="disc" task={{isChecked: true, label: 'Ship'}}><ListItem><Fragment slot="label">Ship</Fragment></ListItem></ListMarkerScope><ListMarkerScope marker="disc"><ListItem><Fragment slot="label">Plain</Fragment></ListItem></ListMarkerScope></List></div></div>
+<div hidden data-md-parity="table"><div data-side="md"><Markdown children={parity.table} /></div><div data-side="ref"><Table dividers="grid" textOverflow="wrap"><TableHeader><TableRow><TableHeaderCell style="min-width:4ch">Name</TableHeaderCell><TableHeaderCell style="min-width:4ch;text-align:end">Qty</TableHeaderCell></TableRow></TableHeader><TableBody><TableRow><TableCell>Apple</TableCell><TableCell style="text-align:end">3</TableCell></TableRow></TableBody></Table></div></div>
+<div hidden data-md-parity="code"><div data-side="md"><Markdown children={parity.code} /></div><div data-side="ref"><CodeBlock code="const a = 1;" language="ts" isCollapsible isWrapped style="min-width:min(680px, 100%)" /></div></div>
+<div hidden data-md-parity="code-long"><div data-side="md"><Markdown children={'```json\n' + longCode + '\n```'} /></div><div data-side="ref"><CodeBlock code={longCode} language="json" isCollapsible isWrapped style="min-width:min(680px, 100%)" /></div></div>
+<div hidden data-md-parity="code-diff"><div data-side="md"><Markdown children={'```diff-ts\n' + diffCode + '\n```'} /></div><div data-side="ref"><CodeBlock code={diffCode} language="ts" isDiff isCollapsible isWrapped style="min-width:min(680px, 100%)" /></div></div>
+<div hidden data-md-parity="code-plain"><div data-side="md"><Markdown children={parity.codePlain} /></div><div data-side="ref"><CodeBlock code="plain text" language="plaintext" isCollapsible isWrapped style="min-width:min(680px, 100%)" /></div></div>
+<div hidden data-md-parity="inline-code"><div data-side="md"><Markdown children={'`x = 1`'} /></div><div data-side="ref"><Code>x = 1</Code></div></div>
+<div hidden data-md-parity="citation-icon"><div data-side="md"><Markdown sources={iconSources} children={'[guide]'} /></div><div data-side="ref"><Citation source={iconSources.guide} number={1} variant="label" /></div></div>
+<div hidden data-md-parity="citation"><div data-side="md"><Markdown sources={releaseSources} children={'See [s1].'} /></div><div data-side="ref"><Citation source={releaseSources.s1} number={1} variant="label" /></div></div>
+
+<script>
+  const stream = document.getElementById('md-stream') as (HTMLElement & {text: string; append(...s: string[]): void; finish(): void; isStreaming: boolean}) | null;
+  const text = (document.getElementById('md-stream-text') as HTMLTemplateElement | null)?.content.textContent ?? '';
+  let timer: ReturnType<typeof setInterval> | null = null;
+  const stop = () => { if (timer) clearInterval(timer); timer = null; };
+  document.querySelector('[data-md-stream-start]')?.addEventListener('click', () => {
+    if (!stream) return;
+    stop();
+    stream.isStreaming = true;
+    stream.text = '';
+    let i = 0;
+    // Bursty chunks, as a model's tokens arrive: the element smooths them.
+    timer = setInterval(() => {
+      const size = 3 + ((i * 7) % 23);
+      stream.append(text.slice(i, i + size));
+      i += size;
+      if (i >= text.length) { stop(); setTimeout(() => stream.finish(), 600); }
+    }, 70);
+  });
+  document.querySelector('[data-md-stream-finish]')?.addEventListener('click', () => {
+    if (!stream) return;
+    stop();
+    stream.text = text;
+    stream.finish();
+  });
+  document.querySelector('[data-md-add-message]')?.addEventListener('click', () => {
+    const log = document.querySelector('[data-md-log]');
+    if (!log) return;
+    const message = document.createElement('ax-markdown-stream') as HTMLElement & {config: object; append(...s: string[]): void; finish(): void};
+    message.setAttribute('data-ax-kit', 'md-demo-kit');
+    message.config = {density: 'compact'};
+    log.append(message);
+    let i = 0;
+    const id = setInterval(() => {
+      message.append(text.slice(i, i + 9));
+      i += 9;
+      if (i >= text.length) { clearInterval(id); message.finish(); }
+    }, 40);
+  });
+  document.querySelector('[data-test="link-click"]')?.addEventListener('astryx-link-click', (event) => {
+    event.preventDefault();
+    (event.target as HTMLElement).setAttribute('data-clicked', (event as CustomEvent).detail.href);
+  });
+</script>

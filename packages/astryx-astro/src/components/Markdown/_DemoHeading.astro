@@ -1,0 +1,17 @@
+---
+/**
+ * Demo only: a `components.heading` override — an Astro component that receives Astryx's
+ * heading props (`level`, `id`, `sourceLines`) and the rendered heading text in its slot.
+ */
+interface Props {
+  level: 1 | 2 | 3 | 4 | 5 | 6;
+  id?: string;
+}
+const {level, id} = Astro.props;
+const Tag = `h${level}` as const;
+---
+<Tag id={id} class="docs-md-heading" data-level={level}><span class="docs-md-heading-mark" aria-hidden="true">§</span><slot /></Tag>
+<style>
+  .docs-md-heading { display: flex; align-items: baseline; gap: var(--spacing-2); margin: var(--spacing-4) 0 var(--spacing-2); font-size: var(--text-heading-4-size); color: var(--color-text-accent); }
+  .docs-md-heading-mark { color: var(--color-text-secondary); font-weight: var(--font-weight-normal); }
+</style>
