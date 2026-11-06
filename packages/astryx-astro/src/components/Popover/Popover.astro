@@ -20,8 +20,21 @@
  *
  * Events: `astryx-open-change` `{isOpen, reason}` on the `<ax-popover>` element
  * (Astryx `onOpenChange`); `isOpen` is the initial state, reflected in `data-ax-open`.
- * Deferred: `presentation="bottom-sheet" | "adaptive"` (BottomSheet is not ported: both
- * render the anchored popover). The fallback close is a secondary `<Button>` (usePopover's
+ *
+ * `presentation` (Astryx useAdaptivePresentation; contract in elements/sheet/presentation.ts):
+ * `'popover'` anchors to the trigger; `'bottom-sheet'` always presents the content as a touch
+ * sheet; `'adaptive'` uses the sheet on a compact screen (narrower than 768px or shorter than
+ * 500px) with a coarse primary pointer, the anchored popover elsewhere. The sheet is the same
+ * `<ax-popover>` and surface restyled (no second copy of the content): the layer becomes the
+ * full-viewport press catcher with a `::backdrop` scrim, the surface becomes the panel and is
+ * themed through the `bottom-sheet` target (`astryx-bottom-sheet`), with a grab handle
+ * (rendered only for sheet-capable presentations), the bottom-sheet padding protocol, a tall
+ * (~92dvh) budget, the reserve below the screen and safe-area inset. In a sheet, placement,
+ * alignment, width, role, isModal and hasAutoFocus do not apply (a modal dialog named by
+ * `label`, else the trigger's text); it always light-dismisses (a press beside/above it, a
+ * swipe down), Escape follows `hasEscapeDismiss`, page scroll is locked, Tab is contained.
+ * The surface is chosen as it opens and kept until it closes.
+ * The fallback close is a secondary `<Button>` (usePopover's
  * `<Button variant="secondary" label={closeButtonLabel} onClick={layer.hide}>`) closing through
  * `popovertargetaction="hide"`; it renders at md, the size a layer's reset SizeContext gives it.
  *
@@ -31,12 +44,13 @@
 import type {HTMLAttributes} from 'astro/types';
 import type {LayerAlignment, LayerPlacement, SpacingStep} from '../../lib/types';
 import {cx} from '../../lib/themeProps';
-import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
 import {seal} from '../../lib/cascade';
 import {translator} from '../../lib/i18n';
 import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
 import Button from '../Button/Button.astro';
 import '../Layer/Layer.css';
+import '../BottomSheet/BottomSheet.css';
 import './Popover.css';
 
 export type PopoverPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
@@ -72,7 +86,7 @@ export interface Props extends Pick<HTMLAttributes<'div'>, 'class' | 'style'> {
   hasLightDismiss?: boolean;
   /** Close on Escape (full effect together with hasLightDismiss={false}). @default true */
   hasEscapeDismiss?: boolean;
-  /** Surface choice; only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  /** 'popover' (anchored), 'bottom-sheet' (always a sheet), 'adaptive' (a sheet on a compact touch screen). @default 'popover' */
   presentation?: PopoverPresentation;
   /** Sibling mode: id of a trigger rendered elsewhere. */
   for?: string;
@@ -87,14 +101,17 @@ const INTRINSIC = new Set(['auto', 'contain', 'fit-content', 'inherit', 'initial
 const {
   content, placement = 'below', alignment = 'start', isOpen, isEnabled = true, width, padding = 3, label,
   role = 'dialog', isModal = true, hasCloseButton = true, closeButtonLabel, hasAutoFocus = true,
-  hasLightDismiss = true, hasEscapeDismiss = true, for: forId, id: idProp, 'data-testid': testId, locale,
+  hasLightDismiss = true, hasEscapeDismiss = true, presentation = 'popover', for: forId, id: idProp, 'data-testid': testId, locale,
   class: className, style,
 } = Astro.props;
 
 const t = translator(Astro, locale);
 const id = idProp ?? layerId('ax-popover');
 const anchorId = forId ?? `${id}-anchor`;
-const isDialog = role === 'dialog';
+const canSheet = presentation === 'bottom-sheet' || presentation === 'adaptive';
+const isSheet = presentation === 'bottom-sheet';
+// A sheet is a modal dialog whatever `role` / `isModal` say (Astryx: the sheet's surface is a dialog).
+const isDialog = role === 'dialog' || isSheet;
 const haspopup = isDialog ? 'dialog' : 'true';
 
 let triggerHtml = '';
@@ -117,6 +134,7 @@ const widthValue = width == null || width === '' ? undefined
   : typeof width === 'string' && (INTRINSIC.has(width.trim().toLowerCase()) || width.trim().startsWith('fit-content('))
     ? width.trim()
     : `min(${cssSize(width)}, var(--_ax-max-inline-size))`;
+const surfaceClass = isSheet ? 'astryx-bottom-sheet' : 'astryx-popover';
 ---
 {!forId && <span class="ax-popover-anchor" id={anchorId}><Fragment set:html={triggerHtml} /></span>}
 <ax-popover
@@ -127,20 +145,25 @@ const widthValue = width == null || width === '' ? undefined
   {...placementAttrs({placement, alignment})}
   data-ax-anchor={anchorId}
   data-ax-escape={!hasEscapeDismiss && !hasLightDismiss ? 'none' : undefined}
+  data-ax-escape-dismiss={canSheet && !hasEscapeDismiss ? 'false' : undefined}
   data-ax-autofocus={hasAutoFocus ? undefined : 'false'}
   data-ax-width={widthValue ? '' : undefined}
   data-ax-open={isOpen ? 'true' : undefined}
-  style={mergeStyles(clearance('var(--spacing-1)'), widthValue && {width: widthValue})}
+  data-ax-presentation={canSheet ? presentation : undefined}
+  data-ax-surface={isSheet ? 'bottom-sheet' : undefined}
+  data-ax-sheet-label={canSheet ? label : undefined}
+  style={mergeStyles(clearance('var(--spacing-1)'), widthValue && {'--_ax-popover-width': widthValue})}
 >
   <div
-    class={cx('astryx-popover ax-focus-visible', className)}
+    class={cx(surfaceClass, 'ax-popover-surface ax-focus-visible', className)}
     role={isDialog ? 'dialog' : undefined}
-    aria-modal={isDialog && isModal ? 'true' : undefined}
+    aria-modal={isDialog && (isModal || isSheet) ? 'true' : undefined}
     aria-label={isDialog ? label : undefined}
     tabindex={isDialog ? -1 : undefined}
     data-padding={padding}
-    style={style as StyleValue}
+    style={mergeStyles(canSheet ? {'--_ax-sheet-pad': spacing(padding)} : null, style as StyleValue)}
   >
+    {canSheet && <div class="ax-bottom-sheet-handle ax-popover-sheet-handle" aria-hidden="true"></div>}
     <div data-testid={testId}>{contentHtml ? <Fragment set:html={contentHtml} /> : content}</div>
     {hasCloseButton && (
       <div class="ax-popover-fallback-close" data-astryx-popover-fallback-close>

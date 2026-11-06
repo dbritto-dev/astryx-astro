@@ -101,3 +101,38 @@ const sibling = attachPopover({id: 'pop-sibling'});
   <p style={label}>RTL: alignment start is the right edge</p>
   <Popover label="RTL" id="pop-rtl" alignment="start" content="תוכן"><button type="button" style={btn} id="pop-rtl-trigger">RTL start</button></Popover>
 </div>
+
+<div>
+  <p style={label}>
+    Presentation: "adaptive" stays anchored here and becomes a bottom sheet on a compact touch
+    screen (narrower than 768px or shorter than 500px with a coarse pointer). To see it, open
+    DevTools' device toolbar (a phone, which emulates touch) and reload; the surface is chosen
+    as it opens and kept until it closes. "bottom-sheet" is always a sheet: swipe it down, tap
+    beside it, or press Escape.
+  </p>
+  <div style={row}>
+    <Popover label="Filters" id="pop-adaptive" presentation="adaptive" width={280}>
+      <button type="button" style={btn} id="pop-adaptive-trigger">Filters (adaptive)</button>
+      <Fragment slot="content">
+        <p style={title}>Filters</p>
+        <p style={text}>Anchored on desktop, a sheet on a phone.</p>
+        <div style="display:flex;gap:var(--spacing-2);margin-top:var(--spacing-3)">
+          <button type="button" style={btn} id="pop-adaptive-first">Open now</button>
+          <button type="button" style={btn}>Free delivery</button>
+        </div>
+      </Fragment>
+    </Popover>
+    <Popover id="pop-sheet" presentation="bottom-sheet" role="none" padding={4}>
+      <button type="button" style={btn} id="pop-sheet-trigger">Sort (bottom-sheet)</button>
+      <Fragment slot="content">
+        <p style={title}>Sort by</p>
+        <p style={text}>No label: the sheet is named by the trigger's text.</p>
+        <div style="display:flex;flex-direction:column;gap:var(--spacing-2);margin-top:var(--spacing-3)">
+          <button type="button" style={btn} id="pop-sheet-first">Newest</button>
+          <button type="button" style={btn}>Oldest</button>
+          <button type="button" style={btn}>Most viewed</button>
+        </div>
+      </Fragment>
+    </Popover>
+  </div>
+</div>

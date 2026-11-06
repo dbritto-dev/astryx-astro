@@ -1,0 +1,207 @@
+---
+/**
+ * BottomSheet — a mobile touch sheet that rises from the bottom edge: a grab handle,
+ * drag-to-resize snap points, purpose-controlled dismissal, stacking. Port of
+ * @astryxdesign/core 0.7.9 BottomSheet/BottomSheet.tsx, BottomSheetPanel.tsx,
+ * BottomSheetEdgeTint.tsx, BottomSheetHostContext.ts, bottomSheetStack.ts,
+ * useSheetGestures.ts, snapOffsets.ts (+ Layer/useLayerDismissal.ts, Layer/modalOutlet.ts,
+ * hooks/useScrollLock.ts, hooks/useScrollableArea.ts, Layout/container.stylex.ts,
+ * motion/rubberBand.ts). Behaviour: src/elements/bottom-sheet.ts (`<ax-bottom-sheet>`) on
+ * the framework-free core in src/elements/sheet/.
+ *
+ * Markup: `<ax-bottom-sheet>` (display: contents) → `<dialog class="ax-bottom-sheet-dialog">`
+ * (`id`, `aria-label`, modality; spans the viewport so a tap beside the panel is a backdrop
+ * press) → the panel `<div class="astryx-bottom-sheet">` (the theme target: `class`,
+ * `style` and the other DOM props go here, as Astryx's ref and shared props target the panel)
+ * → a decorative grab handle, the scroll area (`role="group"` named by `label`, a tab stop
+ * only while its content overflows) and the content box, which is the container: `padding`,
+ * else the theme's bottom-sheet padding (`--astryx-bottom-sheet-padding*`, --spacing-4),
+ * published to Layout regions, Section and bleed children (contract #14). Content is sealed.
+ *
+ * Presentation (`hasScrim`): `true` → `showModal()`: top layer, `::backdrop` scrim, page
+ * inert, Tab contained, page scroll locked, a toast outlet, a scrim press dismisses for
+ * `purpose="info"`, stacking. `false` → `popover="manual"`: no scrim, no trap, no lock, the
+ * page stays interactive; non-modal sheets replace each other but never stack.
+ *
+ * Heights: `hug` fits content (≤ 92dvh), `capped` ~62dvh (default), `tall` ~92dvh, a number
+ * (px) or a CSS length. `snapPoints` add shorter stops (viewport fraction, `'50%'`,
+ * `'320px'`); a stop of a quarter of the sheet or less is a peek (slides, thins the scrim).
+ * Drag the handle (or pull the content down at its top) between stops; a throw projects with
+ * UIKit's deceleration; a release past the shortest stop + 40 % of it dismisses (info only;
+ * form/required settle at the shortest stop). Reduced motion: no travel (a coarse pointer and
+ * a finger's swipe cross-fade, ≤ 200 ms). Safe-area: the panel's end padding includes
+ * `env(safe-area-inset-bottom)`; the edge tint colours iOS Safari's toolbar.
+ *
+ * Dismissal (`purpose`): info — Escape, scrim press, swipe; form — Escape only; required —
+ * none (role="alertdialog"). Escape and close requests go through the shared layer stack and
+ * reach only the top sheet. Focus moves into the sheet (the panel in Chromium, a
+ * `data-autofocus` field where the engine moved nothing) and returns to the opener (or
+ * `finalFocus`), into the sheet a close reveals, or once for a stack closing together.
+ *
+ * Stacking: a scrim sheet opened over another sits on top; the covered sheet stays mounted,
+ * recedes (0.96 / −8px, deeper 0.92 / −16px), is inert and stands down from dismissal; one
+ * scrim dims the page. Sheets rendered in a sheet's content leave with it and come back with
+ * it. Replacing: close the top sheet and open another in the same task, from inside it (or
+ * through BottomSheetSwitcher) — the new sheet rises above, a taller old one moves down to
+ * meet it, then fades; focus follows; closing the flow returns focus to its first opener.
+ *
+ * Open it with `attachBottomSheet()` (./attach.ts: a `commandfor` invoker, zero JS) or call
+ * `show()` / `hide()` on the host; `isOpen` is the initial state (opened on connect,
+ * settled). A control in the content with `data-ax-dialog-close` closes it (zero JS).
+ * Events: `astryx-open-change` `{isOpen, reason}` on the host (reason `escape | outside |
+ * swipe | api | toggle | host`) — Astryx `onOpenChange`.
+ *
+ * Mobile keyboard (v1): only a fully expanded `tall` sheet scrolls a focused text control
+ * into view (with 48px clearance); pages should set the viewport meta
+ * `interactive-widget=resizes-content` so the layout viewport shrinks for the keyboard.
+ *
+ * Deferred / deviations: Gboard keyboard riding (`useMobileKeyboard` move: 'ride', the
+ * keyboard inset) — v1 above; the scroll area's forward-Tab delegation to a first link or
+ * button; a no-scrim sheet shown under an unrelated open modal is not held below it; a
+ * covered sheet reopened from code re-shows to come back on top (one blur/focus). `id` names
+ * the `<dialog>` (invokers target it), not the panel.
+ *
+ * @example
+ * ---
+ * const filters = attachBottomSheet({id: 'filters'});
+ * ---
+ * <Button {...filters.trigger} label="Filters" />
+ * <BottomSheet {...filters.layer} label="Filters" height="tall" snapPoints={[0.5]}>…</BottomSheet>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, spacing, styleToString, type StyleValue} from '../../lib/style';
+import {uid} from '../../lib/uid';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {prepareLayerContent} from '../Dialog/content';
+import {isValidSnapPoint, type BottomSheetSnapPoint} from '../../elements/sheet/snapOffsets';
+import type {SwitcherContext} from './switcherContext';
+import '../Dialog/overlay.css';
+import './BottomSheet.css';
+
+export type BottomSheetPurpose = 'required' | 'form' | 'info';
+export type BottomSheetHeight = 'hug' | 'capped' | 'tall';
+export type {BottomSheetSnapPoint};
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'id'> {
+  /** Accessible label (required: the sheet has no built-in heading to derive one from). */
+  label: string;
+  /** Initial open state of a standalone sheet: opened on connect (the element owns it afterwards). @default false */
+  isOpen?: boolean;
+  /** Implicit dismissal: info — Escape, scrim, swipe; form — Escape; required — none (alertdialog). @default 'info' */
+  purpose?: BottomSheetPurpose;
+  /** Deprecated with BottomSheetSwitcher: this step's id inside a switcher. */
+  sheetId?: string;
+  /** Content padding as a spacing step; omitted uses the theme's bottom-sheet padding (--spacing-4). */
+  padding?: SpacingStep;
+  /** 'hug' (fits, ≤ 92dvh), 'capped' (~62dvh), 'tall' (~92dvh), a number (px) or a CSS length. @default 'capped' */
+  height?: BottomSheetHeight | number | (string & {});
+  /** Extra stops: a viewport fraction (0.5), '50%' or '320px'. The sheet's own height is the tallest. */
+  snapPoints?: ReadonlyArray<BottomSheetSnapPoint>;
+  /** Modal with a scrim (`showModal()`); false is a non-modal `popover="manual"` sheet. @default true */
+  hasScrim?: boolean;
+  /** Astryx `finalFocusRef`: a CSS selector for the element that receives focus when the sheet closes. */
+  finalFocus?: string;
+  /** The `<dialog>` id (invokers target it). @default generated */
+  id?: string;
+  'data-testid'?: string;
+}
+
+const HEIGHT_BUDGETS: Record<BottomSheetHeight, string> = {hug: '92dvh', capped: '62dvh', tall: '92dvh'};
+const BLOCK_SIZE = /(?:^|;)\s*(?:min-|max-)?(?:height|block-size)\s*:/i;
+
+const {
+  label,
+  isOpen: isOpenProp = false,
+  purpose = 'info',
+  sheetId,
+  padding,
+  height = 'capped',
+  snapPoints,
+  hasScrim: hasScrimProp = true,
+  finalFocus,
+  id: idProp,
+  class: className,
+  style,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {slot?: unknown};
+
+const switcher = (Astro.locals as {astryxBottomSheetSwitcher?: SwitcherContext | null}).astryxBottomSheetSwitcher ?? null;
+const inSwitcher = switcher != null;
+const hasScrim = inSwitcher ? switcher.hasScrim : hasScrimProp;
+const isOpen = inSwitcher ? sheetId != null && switcher.activeSheet === sheetId : isOpenProp;
+
+if (import.meta.env.DEV) {
+  if (!label) console.warn('[astryx] BottomSheet requires a non-empty `label` for an accessible name; the open sheet has no built-in heading to derive one from.');
+  if (inSwitcher && !sheetId) console.warn('[astryx] BottomSheet requires a non-empty `sheetId` when nested in BottomSheetSwitcher; standalone `isOpen` props are ignored there.');
+  if (!inSwitcher && sheetId != null) console.warn('[astryx] BottomSheet: `sheetId` only works inside BottomSheetSwitcher. Use `isOpen` for a standalone sheet.');
+  const ignored = (snapPoints ?? []).filter((p) => !isValidSnapPoint(p));
+  if (ignored.length) console.warn(`[astryx] BottomSheet: snapPoints ignored ${JSON.stringify(ignored)}. A snap point is a viewport fraction above 0 and up to 1 (0.5 is half the screen), a px length ('320px'), or a percentage ('50%').`);
+}
+
+const id = idProp ?? uid(Astro, 'ax-bottom-sheet');
+const {themeClass, attrs: themeAttrs} = themeProps('bottom-sheet');
+const isNamed = typeof height === 'string' && height in HEIGHT_BUDGETS;
+const heightKind = isNamed ? (height as BottomSheetHeight) : 'custom';
+const budget = isNamed ? HEIGHT_BUDGETS[height as BottomSheetHeight] : typeof height === 'number' ? `${height}px` : String(height);
+const styleText = styleToString(style as StyleValue) ?? '';
+// A caller's height owns the element's height (the drag never writes it); any caller sizing
+// (a height, or a class that may set one) keeps the smallest reserve.
+const hasFixedHeight = /(?:^|;)\s*(?:height|block-size)\s*:/i.test(styleText);
+const isSized = BLOCK_SIZE.test(styleText) || (className != null && className !== '');
+const validSnaps = (snapPoints ?? []).filter((p) => isValidSnapPoint(p));
+
+const raw = Astro.slots.has('default')
+  ? await renderWithLocals(Astro, {astryxBottomSheetSwitcher: null}, () => Astro.slots.render('default'))
+  : '';
+const {html: content} = await prepareLayerContent(raw, {id, closeCommand: hasScrim ? 'close' : 'hide-popover'});
+const nativeAttrs = hasScrim ? {closedby: purpose === 'info' ? 'any' : purpose === 'form' ? 'closerequest' : 'none'} : {};
+const dialogClass = switcher?.dialogClass;
+const dialogStyle = switcher?.dialogStyle;
+---
+<ax-bottom-sheet
+  class="ax-overlay-host"
+  data-ax-purpose={purpose}
+  data-ax-modal={hasScrim ? '' : undefined}
+  data-ax-open={isOpen ? 'true' : undefined}
+  data-ax-sheet-id={sheetId}
+  data-ax-snap-points={validSnaps.length ? JSON.stringify(validSnaps) : undefined}
+  data-ax-final-focus={finalFocus}
+  data-ax-sized={isSized ? '' : undefined}
+  data-ax-fixed-height={hasFixedHeight ? '' : undefined}
+>
+  <dialog
+    {...nativeAttrs}
+    id={id}
+    class={cx('ax-bottom-sheet-dialog', dialogClass)}
+    style={dialogStyle}
+    popover={hasScrim ? undefined : 'manual'}
+    aria-label={label}
+    aria-modal={hasScrim ? 'true' : undefined}
+    role={purpose === 'required' ? 'alertdialog' : undefined}
+    data-astryx-layer-root=""
+    data-ax-scrim={hasScrim ? '' : undefined}
+    data-ax-scroll-lock={hasScrim ? '' : undefined}
+    data-ax-height={heightKind}
+  >
+    <div
+      {...rest}
+      class={cx(themeClass, 'ax-overlay-root', className)}
+      {...themeAttrs}
+      tabindex="-1"
+      data-ax-height={heightKind}
+      style={mergeStyles({'--_sheet-budget': budget} as StyleValue, style as StyleValue)}
+    >
+      <div class="ax-bottom-sheet-handle" aria-hidden="true"></div>
+      <div class="ax-bottom-sheet-body ax-focus-visible" role="group" aria-label={label} data-scroll-axis="both">
+        <div class="ax-bottom-sheet-content" data-scroll-content="" style={mergeStyles({'--_ax-pad': spacing(padding)} as StyleValue)}>
+          <Fragment set:html={content} />
+        </div>
+      </div>
+    </div>
+    <div class="ax-bottom-sheet-edge-tint" data-sheet-edge-tint="" aria-hidden="true"></div>
+  </dialog>
+</ax-bottom-sheet>
+<script>import '../../elements/bottom-sheet';</script>

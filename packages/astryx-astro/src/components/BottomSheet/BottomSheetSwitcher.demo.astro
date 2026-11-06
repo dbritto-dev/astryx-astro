@@ -1,0 +1,73 @@
+---
+import BottomSheet from './BottomSheet.astro';
+import BottomSheetSwitcher from './BottomSheetSwitcher.astro';
+import {attachBottomSheet} from './attach';
+import Button from '../Button/Button.astro';
+import Text from '../Text/Text.astro';
+import Heading from '../Text/Heading.astro';
+import VStack from '../Stack/VStack.astro';
+import HStack from '../Stack/HStack.astro';
+import TextInput from '../TextInput/TextInput.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const start = attachBottomSheet({id: 'sw-details', triggerId: 'sw-trigger'});
+const plain = attachBottomSheet({id: 'sw-plain-pick', triggerId: 'sw-plain-trigger', hasScrim: false});
+---
+<div>
+  <p style={label}>
+    Deprecated in Astryx (each step can be its own BottomSheet), kept working: one activeSheet,
+    a handoff between steps (the next step rises above the inert previous one; the tall first
+    step moves down to meet the short second one, then fades), one scrim, focus back to the
+    opener when the flow closes. Steps move with data-ax-switch-to; Escape, the scrim or a swipe
+    on the active step closes the flow.
+  </p>
+  <div style={row}>
+    <Button {...start.trigger} label="Start checkout" />
+    <Button {...plain.trigger} label="No-scrim flow" />
+    <span id="sw-state" style={label}>activeSheet: null</span>
+  </div>
+</div>
+
+<BottomSheetSwitcher id="sw-flow" activeSheet={null}>
+  <BottomSheet sheetId="details" id="sw-details" label="Details" height="tall" data-testid="sw-details-panel">
+    <VStack gap={3}>
+      <Heading level={3}>Delivery details</Heading>
+      <TextInput label="Address" value="12 Analytical Way" />
+      <TextInput label="Instructions" value="Leave at the door" />
+      <Button label="Continue" variant="primary" data-ax-switch-to="confirm" id="sw-continue" />
+    </VStack>
+  </BottomSheet>
+  <BottomSheet sheetId="confirm" id="sw-confirm" label="Confirm" height="hug" purpose="form" data-testid="sw-confirm-panel">
+    <VStack gap={3}>
+      <Heading level={3}>Confirm</Heading>
+      <Text type="body" color="secondary">purpose="form": the scrim and a swipe do nothing on this step; Escape closes the flow.</Text>
+      <HStack gap={2}>
+        <Button label="Back" data-ax-switch-to="details" id="sw-back" />
+        <Button label="Place order" variant="primary" data-ax-switch-to="" id="sw-done" />
+      </HStack>
+    </VStack>
+  </BottomSheet>
+</BottomSheetSwitcher>
+
+<BottomSheetSwitcher id="sw-plain" hasScrim={false}>
+  <BottomSheet sheetId="pick" id="sw-plain-pick" label="Pick a size" height="hug">
+    <VStack gap={2}>
+      <Heading level={3}>Pick a size</Heading>
+      <HStack gap={2}><Button label="Small" data-ax-switch-to="done" /><Button label="Large" data-ax-switch-to="done" /></HStack>
+    </VStack>
+  </BottomSheet>
+  <BottomSheet sheetId="done" label="Added" height="hug">
+    <VStack gap={2}>
+      <Heading level={3}>Added to the order</Heading>
+      <Button label="Close" data-ax-switch-to="" />
+    </VStack>
+  </BottomSheet>
+</BottomSheetSwitcher>
+
+<script>
+  const state = document.getElementById('sw-state');
+  document.getElementById('sw-flow')?.addEventListener('astryx-active-sheet-change', (e) => {
+    if (state) state.textContent = `activeSheet: ${(e as CustomEvent<{activeSheet: string | null}>).detail.activeSheet}`;
+  });
+</script>

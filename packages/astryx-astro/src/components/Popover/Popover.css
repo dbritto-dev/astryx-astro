@@ -7,6 +7,9 @@
  */
 @layer reset, astryx-base, astryx-theme;
 
+@property --_ax-popover-width { syntax: "*"; inherits: false; }
+@property --_ax-sheet-pad { syntax: "*"; inherits: false; }
+
 @layer astryx-base {
   /* Stable anchor: pressed-state transforms on the trigger never move the layer. */
   .ax-popover-anchor { display: inline-flex; }
@@ -19,6 +22,7 @@
     min-width: min(anchor-size(width), var(--_ax-max-inline-size));
   }
   .ax-popover-layer[data-astryx-rect]:not([data-ax-width]) { min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size)); }
+  .ax-popover-layer[data-ax-width] { width: var(--_ax-popover-width); }
 
   .astryx-popover {
     position: relative;
@@ -71,5 +75,114 @@
     clip-path: none;
     pointer-events: auto;
     padding-block-start: var(--spacing-1);
+  }
+
+  /* The grab handle exists only for sheet-capable presentations and shows only in a sheet. */
+  .ax-popover-surface > .ax-popover-sheet-handle { display: none; }
+
+  /* ── Sheet presentation (`data-ax-surface="bottom-sheet"`: presentation="bottom-sheet", or
+   *    "adaptive" opened on a compact touch screen; the runtime latches it as the layer opens).
+   *    Popover.tsx renders a BottomSheet (height "tall", padding = the popover padding); here
+   *    the same layer and surface are restyled: the layer is the viewport-sized press catcher
+   *    (a tap beside or above the panel lands on it), its ::backdrop the scrim; the surface is
+   *    the panel (`.astryx-bottom-sheet` rules in BottomSheet/BottomSheet.css) and also the
+   *    scroll area, so the handle sticks to its top. ── */
+  .ax-popover-layer[data-ax-surface="bottom-sheet"][data-placement] {
+    position: fixed;
+    inset: 0;
+    width: 100dvw;
+    height: 100dvh;
+    min-width: 0;
+    max-inline-size: none;
+    max-block-size: none;
+    margin: 0;
+    position-area: none;
+    position-try-fallbacks: none;
+    justify-content: center;
+    align-items: flex-end;
+    /* No fade, no travel on the layer: the panel slides; the layer stays rendered (and in the
+     * top layer) through the slide-out. */
+    opacity: 1;
+    translate: none;
+    scale: none;
+    transition-property: display, overlay;
+    transition-duration: var(--duration-medium);
+    transition-behavior: allow-discrete;
+  }
+  .ax-popover-layer[data-ax-surface="bottom-sheet"][data-placement]:popover-open { display: flex; }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-popover-layer[data-ax-surface="bottom-sheet"][data-placement] { transition-duration: 0.01s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .ax-popover-layer[data-ax-surface="bottom-sheet"][data-placement] { transition-duration: 200ms; }
+  }
+  .ax-popover-layer[data-ax-surface="bottom-sheet"]::backdrop {
+    background-color: var(--color-overlay);
+    opacity: var(--_sheet-scrim-opacity, 1);
+    transition-property: opacity, display, overlay;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+    transition-behavior: allow-discrete;
+  }
+  .ax-popover-layer[data-ax-surface="bottom-sheet"]:not(:popover-open)::backdrop { opacity: 0; transition-timing-function: linear; }
+  @starting-style {
+    .ax-popover-layer[data-ax-surface="bottom-sheet"]:popover-open::backdrop { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-popover-layer[data-ax-surface="bottom-sheet"]::backdrop { transition-duration: 0.01s; }
+  }
+
+  /* The panel: a tall budget; the surface scrolls; the popover padding is the sheet content's
+   * padding (published to Layout regions, Section and bleed children, contract #14). */
+  .ax-popover-surface.astryx-bottom-sheet {
+    --_sheet-budget: 92dvh;
+    display: block;
+    overflow: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y pinch-zoom;
+    --container-padding-inline-start: var(--_ax-sheet-pad, var(--spacing-3));
+    --container-padding-inline-end: var(--_ax-sheet-pad, var(--spacing-3));
+    --container-padding-block-start: var(--_ax-sheet-pad, var(--spacing-3));
+    --container-padding-block-end: var(--_ax-sheet-pad, var(--spacing-3));
+    padding: var(--_ax-sheet-pad, var(--spacing-3));
+    padding-block-end: calc(var(--_ax-sheet-pad, var(--spacing-3)) + env(safe-area-inset-bottom, 0px) + var(--_sheet-reserve, 48px));
+  }
+  /* The panel leaves as the layer closes (the layer's display/overlay transition keeps it). */
+  .ax-popover-layer:not(:popover-open) > .ax-popover-surface.astryx-bottom-sheet {
+    transform: translateY(100%);
+    transition-timing-function: var(--ease-exit);
+  }
+  @media (pointer: coarse) {
+    .ax-popover-layer:not(:popover-open) > .ax-popover-surface.astryx-bottom-sheet { transition-timing-function: cubic-bezier(0.3, 0, 0.6, 0.6); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-popover-layer:not(:popover-open) > .ax-popover-surface.astryx-bottom-sheet { transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .ax-popover-layer:not(:popover-open) > .ax-popover-surface.astryx-bottom-sheet { opacity: 0; }
+  }
+  /* The grab handle floats over the content at the panel's top while it scrolls. */
+  .ax-popover-surface.astryx-bottom-sheet > .ax-popover-sheet-handle {
+    display: flex;
+    position: sticky;
+    /* The sticky view rectangle is inset by the scroller's padding: reach its padding edge. */
+    top: calc(-1 * var(--_ax-sheet-pad, var(--spacing-3)));
+    margin-block-start: calc(-1 * var(--_ax-sheet-pad, var(--spacing-3)));
+    margin-inline: calc(-1 * var(--_ax-sheet-pad, var(--spacing-3)));
+    margin-block-end: calc(var(--_ax-sheet-pad, var(--spacing-3)) - var(--spacing-6));
+  }
+  /* sheetFallbackClose: hidden until reached, then in flow below the content. */
+  .ax-popover-surface.astryx-bottom-sheet > .ax-popover-fallback-close {
+    position: absolute;
+    left: auto;
+    bottom: auto;
+    transform: none;
+  }
+  .ax-popover-surface.astryx-bottom-sheet > .ax-popover-fallback-close:focus-within {
+    position: relative;
+    display: flex;
+    width: fit-content;
+    margin-block-start: var(--spacing-3);
+    padding-block-start: 0;
   }
 }
