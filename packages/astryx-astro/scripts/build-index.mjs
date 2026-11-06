@@ -26,6 +26,8 @@ const lines = [
   "export {resolveLinkComponent, linkDestination} from './components/LinkProvider/linkComponent';",
   "export {renderWithLocals, requestLocal} from './lib/subtreeLocals';",
   "export {uid} from './lib/uid';",
+  "export {routeFieldProps, statusIconPlan, textEntryTraitAttributes, joinAriaIDs, fieldId} from './components/Field/fieldProps';",
+  "export {stamp, stampAttr, seal, inherits} from './lib/cascade';",
   '',
 ];
 const seen = new Set();

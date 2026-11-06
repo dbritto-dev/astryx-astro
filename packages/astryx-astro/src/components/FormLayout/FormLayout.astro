@@ -8,6 +8,7 @@
  * `defaultOptionality` resets it). Consumers (Field, FieldLabel, inputs) opt in with
  * `data-ax-inherit`:
  *   - `form-direction`   → stamped `data-form-direction="vertical|horizontal|horizontal-labels"`
+ *   - `field-layout`     → stamped `data-layout="horizontal-labels"` under that direction (Field's theme hook)
  *                          (Field / field box read it; a field outside any FormLayout is vertical)
  *   - `form-optionality` → stamped `data-form-optionality="optional|required"` when set
  *                          (FieldLabel hides the indicator that restates the default)
@@ -46,6 +47,8 @@ const {themeClass, attrs} = themeProps('form-layout', {direction});
 
 const html = await stamp(await Astro.slots.render('default'), {
   'form-direction': (a) => { a['data-form-direction'] = direction; },
+  // Field's theme hook `.astryx-field[data-layout="horizontal-labels"]`; null provider otherwise.
+  'field-layout': direction === 'horizontal-labels' ? (a) => { a['data-layout'] = 'horizontal-labels'; } : null,
   'form-optionality': defaultOptionality ? (a) => { a['data-form-optionality'] = defaultOptionality; } : null,
   'form-required': defaultOptionality === 'required' ? (a) => { a['aria-required'] = 'true'; } : null,
 });

@@ -10,7 +10,7 @@
  */
 import {announce} from './runtime/announce';
 import {emit, fillMessage, fillPlural, forwardContainerClick, formatNumber, onFormReset} from './field';
-import {characterCount} from '../components/TextArea/characters';
+import {characterCount} from '../lib/characters';
 
 type Zone = 'under' | 'near' | 'over';
 const COUNTER_WARNING_THRESHOLD = 0.8;

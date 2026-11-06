@@ -61,7 +61,7 @@
  *
  * Cascade keys (lib/cascade.ts) this family uses — see docs/handoffs.md:
  *   Field root: `form-direction` (FormLayout stamps data-form-direction), `field-layout`
- *   (data-layout="horizontal-labels", needs the FormLayout change in the report),
+ *   (data-layout="horizontal-labels", stamped by FormLayout),
  *   `input-group` (InputGroup unwraps the shell); FieldLabel: `form-optionality`;
  *   native control: `form-required`; control box: `size` (any size provider).
  */

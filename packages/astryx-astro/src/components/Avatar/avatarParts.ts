@@ -15,7 +15,7 @@
  * Sizes that CSS can derive (initials, default icon, status position) read the
  * `--_ax-avatar-size` custom property instead, so a stamp only rewrites that one value.
  */
-import {firstCharacter} from './characters';
+import {firstCharacter} from '../../lib/characters';
 
 export type AvatarNamedSize = 'xsm' | 'sm' | 'md' | 'lg' | 'xl';
 export type AvatarNumericSize = 16 | 20 | 24 | 32 | 36 | 40 | 48 | 60 | 64 | 72 | 96 | 128 | 144 | 180;

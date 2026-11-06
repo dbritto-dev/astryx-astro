@@ -216,3 +216,20 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Known runtime bug (open): nested roving containers (a Toolbar containing a ButtonGroup that
   isn't first) produce two Tab stops; outer containers must sync after inner ones and every
   enclosing container must sync on focus.
+
+## Form fields (Field-composed inputs)
+
+- `routeFieldProps(component, props, {groupable?, isReadOnly?, labelIcon?, consumed?})` in
+  `Field/fieldProps.ts` (exported from the index): returns `field` (spread on `<Field>`;
+  `containerClass/Style`), `control` (`controlClass/Style` for the bordered box), `native`
+  (base props for the native control), `id`/`ids`, `describedBy(...)`, `labelledBy`,
+  `required`, `statusMessageId`, InputGroup attributes. Also `statusIconPlan()`,
+  `textEntryTraitAttributes()`, `joinAriaIDs()`, `fieldId()`. `Field/clientMessages.ts` builds
+  server-translated templates for strings elements fill in at runtime.
+- Keys: Field root `form-direction`, `field-layout` (FormLayout stamps
+  `data-layout="horizontal-labels"`), `input-group`; label `form-optionality`; native control
+  `form-required`; control box `size`. Explicit InputGroup `size` stamps via `buttonSizeStampers`.
+- Events: `astryx-change` — `{value, event}` (TextInput/TextArea), `{value: number|null}`
+  (NumberInput), `{value: File|File[]|null}` (FileInput); `astryx-enter` on TextInput/NumberInput.
+- InputGroup follows 0.7.9 code: members keep borders, overlap by one border width and square
+  inner corners; the group paints no border.
