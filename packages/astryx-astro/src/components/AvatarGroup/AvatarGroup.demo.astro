@@ -1,0 +1,74 @@
+---
+import AvatarGroup from './AvatarGroup.astro';
+import AvatarGroupOverflow from './AvatarGroupOverflow.astro';
+import Avatar, {type AvatarShape, type AvatarSize} from '../Avatar/Avatar.astro';
+import AvatarStatusDot from '../Avatar/AvatarStatusDot.astro';
+
+const photo = (a: string, b: string) =>
+  'data:image/svg+xml,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/><circle cx="48" cy="38" r="17" fill="#fff" fill-opacity=".85"/><path d="M14 96c4-22 18-32 34-32s30 10 34 32z" fill="#fff" fill-opacity=".85"/></svg>`,
+  );
+const users = [
+  {name: 'Ada Lovelace', src: photo('#6d8cff', '#b06dff')},
+  {name: 'Grace Hopper'},
+  {name: 'Linus Torvalds', src: photo('#ff9a62', '#ff5f8f')},
+  {name: 'Margaret Hamilton'},
+  {name: 'Alan Turing'},
+  {name: 'Katherine Johnson'},
+  {name: 'Dennis Ritchie'},
+];
+const sizes: AvatarSize[] = ['xsm', 'sm', 'md', 'lg', 'xl'];
+const shapes: AvatarShape[] = ['circle', 'rounded', 'square'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary);min-width:72px';
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-4)';
+---
+<div style="display:grid;gap:var(--spacing-5);color:var(--color-text-primary)">
+  {sizes.map((size) => (
+    <div style={row}>
+      <span style={caption}>{size}</span>
+      <AvatarGroup size={size}>
+        {users.slice(0, 4).map((u) => <Avatar name={u.name} src={u.src} size="xl" />)}
+        <AvatarGroupOverflow count={users.length - 4} />
+      </AvatarGroup>
+    </div>
+  ))}
+  {shapes.map((shape) => (
+    <div style={row}>
+      <span style={caption}>{shape}</span>
+      <AvatarGroup size="lg" shape={shape}>
+        {users.slice(0, 3).map((u) => <Avatar name={u.name} src={u.src} shape="circle" />)}
+        <AvatarGroupOverflow count={4912} />
+      </AvatarGroup>
+    </div>
+  ))}
+  <div style={row}>
+    <span style={caption}>status</span>
+    <AvatarGroup size="lg">
+      <Avatar name="Jane Doe"><AvatarStatusDot slot="status" variant="success" label="Online" /></Avatar>
+      <Avatar name="Sam Lee"><AvatarStatusDot slot="status" variant="neutral" label="Away" /></Avatar>
+      <Avatar name="Kim Park"><AvatarStatusDot slot="status" variant="error" label="Busy" /></Avatar>
+    </AvatarGroup>
+  </div>
+  <div style={row} data-test="avatar-group-interactive">
+    <span style={caption}>interactive</span>
+    <AvatarGroup size="md" aria-label="Project members">
+      {users.slice(0, 3).map((u) => <Avatar name={u.name} src={u.src} href="#avatar-group" />)}
+      <AvatarGroupOverflow count={users.length - 3} onClick={true} />
+    </AvatarGroup>
+  </div>
+  <div style={row}>
+    <span style={caption}>custom +N</span>
+    <AvatarGroup size="sm">
+      {users.slice(0, 2).map((u) => <Avatar name={u.name} />)}
+      <AvatarGroupOverflow count={5}>5+</AvatarGroupOverflow>
+    </AvatarGroup>
+    <span style={caption}>standalone</span>
+    <AvatarGroupOverflow count={3} />
+    <AvatarGroupOverflow count={-2} />
+    <span style={caption}>es-ES</span>
+    <AvatarGroup size="sm" locale="es-ES">
+      {users.slice(0, 2).map((u) => <Avatar name={u.name} />)}
+      <AvatarGroupOverflow count={9} locale="es-ES" />
+    </AvatarGroup>
+  </div>
+</div>

@@ -1,0 +1,74 @@
+/*
+ * Port of @astryxdesign/core FieldStatus/FieldStatus.tsx (styles, colorStyles) and
+ * hooks/useEntryAnimation.ts ('slideDown'). Rule order mirrors stylex.props():
+ * base → entry → attached | detached → color by type.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-field-status {
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    /* an echoed unbroken token (address, URL) wraps inside the field (WCAG 1.4.10) */
+    overflow-wrap: anywhere;
+    --_astryx-text-overflow-wrap: anywhere;
+  }
+  /* forced colors replace status fills with Canvas; keep the fill's shape visible */
+  @media (forced-colors: active) {
+    .astryx-field-status {
+      outline-width: 1px;
+      outline-style: solid;
+      outline-color: CanvasText;
+      outline-offset: -1px;
+    }
+  }
+
+  /* Entry (useEntryAnimation 'slideDown'): only for a status inserted after the first page
+   * paint, which the field-status behavior marks with data-ax-entering before its first
+   * style. Same values as the keyframes; none under reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    .astryx-field-status[data-ax-entering] {
+      transition-property: opacity, transform;
+      transition-duration: var(--duration-fast-max);
+      transition-timing-function: var(--ease-standard);
+    }
+    @starting-style {
+      .astryx-field-status[data-ax-entering] {
+        opacity: 0;
+        transform: translateY(calc(-1 * var(--spacing-2)));
+      }
+    }
+  }
+
+  /* attached: tucks under the bordered control above it; the overlap is visual only */
+  .astryx-field-status[data-variant="attached"] {
+    margin-top: calc(-1 * var(--_field-status-overlap, var(--spacing-1-5)));
+    padding-block-start: calc(var(--_field-status-overlap, var(--spacing-1-5)) + var(--spacing-2));
+    padding-block-end: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    border-end-start-radius: var(--radius-element);
+    border-end-end-radius: var(--radius-element);
+    pointer-events: none;
+  }
+  /* detached (and every other variant, as in Astryx) */
+  .astryx-field-status:not([data-variant="attached"]) {
+    margin-top: var(--spacing-1);
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    border-radius: var(--radius-element);
+  }
+
+  .astryx-field-status[data-type="warning"] { background-color: var(--color-warning-muted); color: var(--color-on-warning-muted); }
+  .astryx-field-status[data-type="error"] { background-color: var(--color-error-muted); color: var(--color-on-error-muted); }
+  .astryx-field-status[data-type="success"] { background-color: var(--color-success-muted); color: var(--color-on-success-muted); }
+
+  .ax-field-status-content { display: flex; align-items: flex-start; gap: var(--spacing-1); }
+  /* centre the glyph on the first text line, not the whole wrapped message */
+  .ax-field-status-icon-box {
+    display: inline-flex;
+    align-items: center;
+    height: calc(var(--text-supporting-size) * var(--text-supporting-leading));
+    flex-shrink: 0;
+  }
+}

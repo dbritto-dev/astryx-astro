@@ -1,0 +1,46 @@
+---
+/**
+ * Indicator — render a named indicator through the theme registry (Astryx
+ * `useIndicator(name)` / `getIndicator(name, theme)` + render). Port of
+ * @astryxdesign/core Indicator/useIndicator.ts and indicatorRegistry.ts.
+ *
+ * This is what form controls render, so a theme replacement reaches every one of them:
+ *   <Indicator name="checkbox" state={checked ? 'checked' : 'unchecked'} size="sm" />
+ *   <Indicator name="radio" state="checked" isDisabled />
+ *   <Indicator name="check" state="unchecked" />          (draws nothing by default)
+ *   <Indicator name="checkbox" state="checked"><Spinner … /></Indicator>   (busy content)
+ *
+ * Resolution: the active theme's entry (registerIndicatorTheme), else the built-in
+ * CheckboxIndicator / RadioIndicator / CheckIndicator. Active theme: `theme` prop →
+ * `Astro.locals.astryxTheme`. An augmented name with no entry renders nothing.
+ *
+ * Owner responsibilities (Astryx contract): render the indicator unconditionally in
+ * every state; keep role, name, focus and keyboard on the control; add the
+ * `ax-indicator-scope` class to the row whose hover should tint the indicator (only while
+ * enabled); paint focus with `ax-indicator-ring-host` + `ax-indicator-ring` (Indicator.css).
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {getIndicator, type IndicatorName, type IndicatorSize, type IndicatorState} from './indicatorRegistry';
+
+export type {IndicatorName, IndicatorSize, IndicatorState} from './indicatorRegistry';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'role' | 'aria-label' | 'aria-labelledby' | 'tabindex'> {
+  /** Indicator to resolve: 'check' | 'checkbox' | 'radio', or an augmented name. */
+  name: IndicatorName | (string & {});
+  /** State in the indicator's family ('indeterminate' only for multiSelection). */
+  state: IndicatorState;
+  /** @default 'md' */
+  size?: IndicatorSize;
+  /** Purely visual; the owner keeps the real disabled semantics. @default false */
+  isDisabled?: boolean;
+  /** Theme whose registry entry wins (port extension). Defaults to `Astro.locals.astryxTheme`; `null` forces the defaults. */
+  theme?: string | null;
+}
+
+const {name, theme, ...props} = Astro.props;
+const Resolved = getIndicator(name as IndicatorName, Astro, theme) as any;
+const children = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+---
+{Resolved && (children.trim() !== ''
+  ? <Resolved {...props}><Fragment set:html={children} /></Resolved>
+  : <Resolved {...props} />)}

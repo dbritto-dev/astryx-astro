@@ -1,0 +1,53 @@
+---
+/**
+ * CheckIndicator — the default single-selection mark: a checkmark when chosen, NOTHING
+ * when not (a listbox shows no empty box beside every row). Port of
+ * @astryxdesign/core Indicator/CheckIndicator.tsx.
+ *
+ * It renders no chrome of its own: it IS the glyph, an <Icon icon="check" size="sm">
+ * (accent, or disabled), so the class a host passes lands on the same element as
+ * `astryx-icon`, and it adds no theme target. Hosts render it in every state and pass
+ * `state`, so a replacement (registerIndicatorTheme(theme, {check: RadioIndicator})) can
+ * draw where this one draws nothing.
+ *
+ * The default slot (a pending Spinner) replaces the mark in EVERY state, inside a 1rem
+ * span that keeps the glyph's place; the caller's attributes go on that span then.
+ *
+ * @example
+ * <CheckIndicator state={isSelected ? 'checked' : 'unchecked'} size="sm" class="selector-check" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {IndicatorSize, IndicatorState} from './indicatorRegistry';
+import Icon from '../Icon/Icon.astro';
+import {cx} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Indicator.css';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'role' | 'aria-label' | 'aria-labelledby' | 'tabindex'> {
+  /** Which state to draw; unchecked draws nothing. */
+  state: IndicatorState<'singleSelection'>;
+  /** Control size, matching the other indicators (the glyph is Icon `sm` at both). @default 'md' */
+  size?: IndicatorSize;
+  /** Purely visual; the owning row keeps the real disabled semantics. @default false */
+  isDisabled?: boolean;
+}
+
+const {state, size: _size = 'md', isDisabled = false, class: className, style, ...rest} = Astro.props;
+// Both indicator sizes resolve to Icon's `sm` (1rem) box.
+const iconSize = 'sm';
+const isChecked = state === 'checked';
+const children = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const hasChildren = children.trim() !== '';
+const slotAttrs: Record<string, unknown> = {
+  ...rest,
+  'aria-hidden': 'true',
+  'data-disabled': isDisabled ? '' : undefined,
+  class: cx('ax-check-indicator-slot', className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+};
+---
+{hasChildren ? (
+  <span {...slotAttrs}><Fragment set:html={children} /></span>
+) : isChecked && (
+  <Icon {...rest} aria-hidden="true" icon="check" size={iconSize} color={isDisabled ? 'disabled' : 'accent'} class={className} style={style} />
+)}

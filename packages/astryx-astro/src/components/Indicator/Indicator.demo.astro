@@ -1,0 +1,107 @@
+---
+import Indicator from './Indicator.astro';
+import CheckboxIndicator from './CheckboxIndicator.astro';
+import RadioIndicator from './RadioIndicator.astro';
+import CheckIndicator from './CheckIndicator.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import {registerIndicatorTheme, type IndicatorSize} from './indicatorRegistry';
+
+// A theme that swaps every single-selection mark for a radio (Astryx:
+// defineTheme({indicators: {check: RadioIndicator}})).
+registerIndicatorTheme('docs-radio-check', {check: RadioIndicator});
+
+const sizes: IndicatorSize[] = ['sm', 'md'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-3)';
+const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1);min-width:72px';
+const option = 'display:flex;align-items:center;gap:var(--spacing-2);padding:var(--spacing-1) var(--spacing-2);border-radius:var(--radius-element);font-size:var(--font-size-sm);min-width:160px';
+const hidden = 'position:absolute;opacity:0;width:1px;height:1px;margin:0';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  {sizes.map((size) => (
+    <div style={row}>
+      {(['unchecked', 'checked', 'indeterminate'] as const).map((state) => (
+        <span style={cell}><CheckboxIndicator state={state} size={size} /><span style={caption}>{state} · {size}</span></span>
+      ))}
+      {(['unchecked', 'checked', 'indeterminate'] as const).map((state) => (
+        <span style={cell}><CheckboxIndicator state={state} size={size} isDisabled /><span style={caption}>disabled · {state}</span></span>
+      ))}
+    </div>
+  ))}
+  {sizes.map((size) => (
+    <div style={row}>
+      {(['unchecked', 'checked'] as const).map((state) => (
+        <span style={cell}><RadioIndicator state={state} size={size} /><span style={caption}>radio {state} · {size}</span></span>
+      ))}
+      {(['unchecked', 'checked'] as const).map((state) => (
+        <span style={cell}><RadioIndicator state={state} size={size} isDisabled /><span style={caption}>disabled · {state}</span></span>
+      ))}
+      <span style={cell}><CheckIndicator state="checked" size={size} /><span style={caption}>check · {size}</span></span>
+      <span style={cell}><CheckIndicator state="checked" size={size} isDisabled /><span style={caption}>check disabled</span></span>
+      <span style={cell}><span style="display:inline-flex;min-width:1rem;min-height:1rem;outline:1px dashed var(--color-border)"><CheckIndicator state="unchecked" size={size} /></span><span style={caption}>check unchecked (nothing)</span></span>
+    </div>
+  ))}
+
+  <div style={row}>
+    <span style={cell}><CheckboxIndicator state="checked" size="md"><Spinner size="sm" shade="inherit" aria-hidden="true" /></CheckboxIndicator><span style={caption}>busy (children)</span></span>
+    <span style={cell}><CheckboxIndicator state="unchecked" size="sm"><Spinner size="sm" shade="inherit" aria-hidden="true" /></CheckboxIndicator><span style={caption}>busy unchecked</span></span>
+    <span style={cell}><RadioIndicator state="checked"><Spinner size="sm" shade="inherit" aria-hidden="true" /></RadioIndicator><span style={caption}>radio busy</span></span>
+    <span style={cell}><CheckIndicator state="unchecked"><Spinner size="sm" shade="inherit" aria-hidden="true" /></CheckIndicator><span style={caption}>check busy</span></span>
+  </div>
+
+  <div>
+    <p style={caption}>Through the registry: &lt;Indicator name=…&gt; (default theme, then a theme mapping check → RadioIndicator)</p>
+    <div style={row}>
+      <span style={cell}><Indicator name="checkbox" state="indeterminate" /><span style={caption}>checkbox</span></span>
+      <span style={cell}><Indicator name="radio" state="checked" size="sm" /><span style={caption}>radio</span></span>
+      <span style={cell}><Indicator name="check" state="checked" /><span style={caption}>check</span></span>
+      <span style={cell}><Indicator name="check" state="checked" theme="docs-radio-check" /><span style={caption}>check → radio</span></span>
+      <span style={cell}><Indicator name="check" state="unchecked" theme="docs-radio-check" /><span style={caption}>unchosen → empty circle</span></span>
+    </div>
+  </div>
+
+  <div data-test="indicator-owner">
+    <p style={caption}>Owner contract: row hover tints (ax-indicator-scope), focus ring on the indicator (Tab to see it)</p>
+    <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-2)">
+      <label class="ax-indicator-scope ax-indicator-ring-host" style={option}>
+        <input type="checkbox" style={hidden} data-owner="checkbox" />
+        <span class="ax-indicator-ring" style="display:contents"><Indicator name="checkbox" state="unchecked" size="sm" /></span>
+        Email me updates
+      </label>
+      {['Daily', 'Weekly'].map((label, i) => (
+        <label class="ax-indicator-scope ax-indicator-ring-host" style={option}>
+          <input type="radio" name="docs-indicator-freq" style={hidden} data-owner="radio" checked={i === 0} />
+          <span class="ax-indicator-ring" style="display:contents"><Indicator name="radio" state={i === 0 ? 'checked' : 'unchecked'} size="sm" /></span>
+          {label}
+        </label>
+      ))}
+      <label class="ax-indicator-ring-host" style={option + ';opacity:1'}>
+        <input type="checkbox" style={hidden} disabled />
+        <span class="ax-indicator-ring" style="display:contents"><Indicator name="checkbox" state="checked" size="sm" isDisabled /></span>
+        <span style="color:var(--color-text-disabled)">Disabled (no hover tint)</span>
+      </label>
+    </div>
+  </div>
+</div>
+<script>
+  // Demo-only owner wiring: reflect the native input's state into its indicator.
+  document.querySelectorAll<HTMLElement>('[data-test="indicator-owner"]').forEach((root) => {
+    root.addEventListener('change', () => {
+      root.querySelectorAll<HTMLInputElement>('input[data-owner]').forEach((input) => {
+        const mark = input.parentElement?.querySelector('.astryx-checkbox-indicator, .astryx-radio-indicator');
+        if (!mark) return;
+        if (input.checked) mark.setAttribute('data-checked', 'checked');
+        else mark.removeAttribute('data-checked');
+        if (mark.classList.contains('astryx-radio-indicator')) {
+          let dot = mark.querySelector('.astryx-radio-indicator-dot');
+          if (input.checked && !dot) {
+            dot = document.createElement('span');
+            dot.className = 'astryx-radio-indicator-dot';
+            dot.setAttribute('data-size', mark.getAttribute('data-size') ?? 'md');
+            mark.append(dot);
+          } else if (!input.checked) dot?.remove();
+        }
+      });
+    });
+  });
+</script>

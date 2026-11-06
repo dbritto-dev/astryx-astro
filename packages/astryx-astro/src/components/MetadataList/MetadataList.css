@@ -1,0 +1,87 @@
+/* Port of @astryxdesign/core MetadataList/MetadataList.tsx and MetadataListItem.tsx (styles). */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-metadata-columns { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  .astryx-metadata-list { display: flex; flex-direction: column; }
+  .ax-metadata-list-title { margin-bottom: var(--spacing-3); }
+  .ax-metadata-list-dl { margin: 0; padding: 0; }
+
+  /* layouts; a fixed column count or label width sets --_ax-metadata-columns inline */
+  .ax-metadata-list-dl[data-ax-layout="single"] {
+    display: grid;
+    grid-template-columns: var(--_ax-metadata-columns, auto minmax(0, 1fr));
+    gap: var(--spacing-2) var(--spacing-4);
+    align-items: baseline;
+  }
+  .ax-metadata-list-dl[data-ax-layout="multi"] {
+    display: grid;
+    grid-template-columns: var(--_ax-metadata-columns, repeat(auto-fill, minmax(280px, 1fr)));
+    gap: var(--spacing-4);
+  }
+  .ax-metadata-list-dl[data-ax-layout="stacked-single"] {
+    display: grid;
+    grid-template-columns: var(--_ax-metadata-columns, 1fr);
+    gap: var(--spacing-3);
+  }
+  .ax-metadata-list-dl[data-ax-layout="stacked-multi"] {
+    display: grid;
+    grid-template-columns: var(--_ax-metadata-columns, repeat(auto-fill, minmax(280px, 1fr)));
+    gap: var(--spacing-4);
+  }
+  .ax-metadata-list-dl[data-ax-layout="horizontal"] {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+  }
+
+  .ax-metadata-list-toggle {
+    appearance: none;
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    padding: var(--spacing-2) 0;
+    cursor: pointer;
+    color: var(--color-text-accent);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-weight: var(--font-weight-medium);
+    font-family: inherit;
+    text-align: start;
+    align-self: flex-start;
+  }
+  .ax-metadata-list-toggle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* ── MetadataListItem ───────────────────────────────────────────────── */
+  /* stacked (label above value): the item is a wrapper <div> around its <dt>/<dd> */
+  .ax-metadata-list-stack { display: flex; flex-direction: column; gap: var(--spacing-0-5); }
+  .ax-metadata-list-label {
+    color: var(--color-text-secondary);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-weight: var(--font-weight-medium);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin: 0;
+    padding: 0;
+  }
+  .ax-metadata-list-value {
+    color: var(--color-text-primary);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    margin: 0;
+    padding: 0;
+    word-break: break-word;
+  }
+  /* side by side: the <dt>/<dd> pair sits directly in the list's grid */
+  .ax-metadata-list-label[data-ax-inline] { min-height: 24px; word-break: break-word; }
+  .ax-metadata-list-value[data-ax-inline] { min-height: 24px; }
+  .ax-metadata-list-icon { display: inline-flex; align-items: center; flex-shrink: 0; color: var(--color-text-secondary); }
+
+  /* items past maxNumOfItems stay hidden until "Show more" (the reset's [hidden] rule sits
+   * in a lower layer than the display values above) */
+  :is(.ax-metadata-list-stack, .ax-metadata-list-label, .ax-metadata-list-value)[hidden] { display: none; }
+}

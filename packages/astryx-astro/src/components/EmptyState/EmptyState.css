@@ -1,0 +1,51 @@
+/* Port of @astryxdesign/core EmptyState/EmptyState.tsx (styles; base → compact). */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--spacing-4);
+    padding-block: var(--spacing-8);
+    padding-inline: var(--spacing-6);
+  }
+  .astryx-empty-state[data-variant="compact"] {
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-4);
+    padding-inline: var(--spacing-4);
+  }
+
+  .astryx-empty-state-title {
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--text-large-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-large-leading);
+    color: var(--color-text-primary);
+  }
+  .astryx-empty-state-title[data-variant="compact"] { font-size: var(--text-label-size); }
+
+  .astryx-empty-state-description {
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--text-body-size);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-secondary);
+  }
+  .astryx-empty-state-description[data-variant="compact"] { font-size: var(--text-supporting-size); }
+
+  .ax-empty-state-text { display: flex; flex-direction: column; align-items: center; max-width: 360px; }
+
+  .ax-empty-state-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin-top: var(--spacing-1);
+  }
+  .astryx-empty-state[data-variant="compact"] > .ax-empty-state-actions { flex-direction: column; }
+}

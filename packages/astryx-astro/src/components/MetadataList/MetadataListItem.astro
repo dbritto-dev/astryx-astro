@@ -1,0 +1,42 @@
+---
+/**
+ * MetadataListItem — one labeled value in a MetadataList: a `<dt>` / `<dd>` pair. Port of
+ * @astryxdesign/core MetadataList/MetadataListItem.tsx.
+ *
+ * Layout comes from the parent (Astryx MetadataListContext): stacked (label above value)
+ * renders a wrapper <div class="astryx-metadata-list-item"> around the pair; side by side
+ * renders the bare pair with the `astryx-metadata-list-item` target, caller attributes,
+ * class and style on the <dt> (data-testid becomes `<id>-label` / `<id>-value`). The item
+ * renders the stacked form and MetadataList unwraps it when its labels sit at the start,
+ * so use items as direct children of a MetadataList.
+ *
+ * @example
+ * <MetadataListItem label="Status">Active</MetadataListItem>
+ * <MetadataListItem label="Created" icon="calendar">January 1, 2023</MetadataListItem>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './MetadataList.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Label text. */
+  label: string;
+  /** Icon before the label: a name / SVG / Astro component (Icon, sm), or the `icon` slot. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  'data-testid'?: string;
+}
+
+const {label, icon, class: className, style, ...rest} = Astro.props;
+const {themeClass} = themeProps('metadata-list-item');
+const hasIconSlot = Astro.slots.has('icon');
+const hasIcon = hasIconSlot || (icon != null && icon !== '');
+---
+<div
+  {...rest}
+  class={cx(themeClass, 'ax-metadata-list-stack', className)}
+  style={mergeStyles(style as StyleValue)}
+  data-ax-metadata-list-item=""
+><dt class="ax-metadata-list-label">{hasIcon && <span class="ax-metadata-list-icon">{hasIconSlot ? <slot name="icon" /> : <Icon icon={icon} size="sm" />}</span>}{label}</dt><dd class="ax-metadata-list-value"><slot /></dd></div>

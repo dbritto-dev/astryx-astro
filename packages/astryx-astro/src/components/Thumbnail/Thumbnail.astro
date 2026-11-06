@@ -1,0 +1,152 @@
+---
+/**
+ * Thumbnail — a 64px square preview for an image attachment: skeleton while loading, the
+ * image, or a placeholder when there is no image or it fails to load; an optional open
+ * action and an overlaid remove button. Port of @astryxdesign/core Thumbnail/Thumbnail.tsx,
+ * hooks/useContainerReveal.ts + containerReveal.stylex.ts and hooks/useBusyAnnouncement.ts.
+ *
+ * States: `isLoading` without `src` → Skeleton; `isLoading` with `src` → the image under a
+ * scrim with an onMedia Spinner (the busy start is announced once: "Loading"); a failed
+ * image swaps to the placeholder in the browser (behaviors/imageFallback.ts).
+ *
+ * Remove: revealed on hover (CSS), at once on keyboard focus inside the thumbnail, and
+ * always on touch-capable devices (`showRemoveOn="hover"`, default), or always shown. It
+ * sits on a fixed --color-overlay scrim with an --color-on-dark icon.
+ *
+ * Accessibility: `role="group"` named "{label} — {alt}" / label / alt / "Thumbnail". An image
+ * without `alt` is decorative (alt="" + role="presentation" + aria-hidden). Open and Remove
+ * stay mounted when they cannot act (disabled / loading): `aria-disabled="true"` and no
+ * handler, so a focused one keeps focus.
+ *
+ * Port notes:
+ *  - `onClick` / `onRemove`: an inline handler string (native `onclick`; the remove click
+ *    also stops propagating, as in Astryx) or `true` to render the action and attach a
+ *    listener yourself (`.ax-thumbnail-open` / `.ax-thumbnail-remove`).
+ *  - The remove control is a native stand-in for <Button variant="secondary" size="sm"
+ *    isIconOnly> with Button's theme hooks, until Button is ported.
+ *  - Astryx wraps a labelled thumbnail in a Tooltip; Tooltip is not ported yet, so the
+ *    label is only the accessible name for now.
+ *
+ * @example
+ * <Thumbnail src="/photo.jpg" alt="Vacation photo" onRemove="removeAttachment(1)" />
+ * <Thumbnail src="/preview.png" alt="Preview" label="preview.png" onClick={true} />
+ * <Thumbnail isLoading label="upload.png" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Skeleton from '../Skeleton/Skeleton.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import './Thumbnail.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'onclick'> {
+  /** Image source. Skeleton while loading, the image on success, a placeholder on error. */
+  src?: string;
+  /** Alt text; omit for a decorative image. */
+  alt?: string;
+  /** Accessible label (e.g. the file name): names the group and the actions. */
+  label?: string;
+  /** Renders the overlaid remove button: an inline handler string, or `true` to wire it yourself. */
+  onRemove?: string | true;
+  /** Renders the thumbnail as an open action: an inline handler string, or `true`. */
+  onClick?: string | true;
+  /** Skeleton (no src) or a busy scrim over the image (with src). @default false */
+  isLoading?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** When the remove button shows. @default 'hover' */
+  showRemoveOn?: 'always' | 'hover';
+  'data-testid'?: string;
+  /** Remove button name (port extension). @default translated "Remove {accessibleName}" */
+  removeLabel?: string;
+  /** Open action name (port extension). @default translated "Open {accessibleName}" */
+  openLabel?: string;
+  /** Locale for the default strings. */
+  locale?: string;
+}
+
+const {
+  src,
+  alt,
+  label,
+  onRemove,
+  onClick,
+  isLoading = false,
+  isDisabled = false,
+  showRemoveOn = 'hover',
+  'data-testid': testId,
+  removeLabel,
+  openLabel,
+  locale,
+  class: className,
+  style,
+  ...props
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const given = (v: unknown) => v != null && v !== false;
+const hasSrc = src != null;
+const showSkeleton = isLoading && !hasSrc;
+const showImage = hasSrc && !showSkeleton;
+const showUploadOverlay = isLoading && hasSrc;
+const showPlaceholder = !isLoading && !hasSrc;
+const hasOpen = given(onClick);
+const isInteractive = hasOpen && !isDisabled && !isLoading;
+const hasRemove = given(onRemove);
+const isHoverReveal = hasRemove && showRemoveOn === 'hover';
+const accessibleName = label && alt ? `${label} — ${alt}` : (label ?? alt ?? t('@astryx.thumbnail.fallbackName'));
+const isImageDecorative = !alt;
+
+if (import.meta.env.DEV && hasSrc && alt == null && label == null && props['aria-label'] == null && props['aria-labelledby'] == null) {
+  console.warn('[astryx Thumbnail] `src` is set without `alt` or `label`. The image is treated as decorative and hidden from assistive technology, and the thumbnail falls back to a generic "thumbnail" name. Pass `alt` to describe the image content, or `label` (file name) to name the thumbnail.');
+}
+
+const {themeClass} = themeProps('thumbnail');
+const placeholderSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2M8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"></path></svg>';
+const openHandler = isInteractive && typeof onClick === 'string' ? onClick : undefined;
+const removeHandler = !isDisabled && typeof onRemove === 'string' ? `event.stopPropagation();${onRemove}` : undefined;
+---
+<div
+  data-testid={testId}
+  role="group"
+  aria-label={accessibleName}
+  class={cx(themeClass, className)}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  style={mergeStyles(style as StyleValue)}
+  {...props}
+><div
+  class="ax-thumbnail-media ax-focus-within"
+  data-ax-interactive={isInteractive ? '' : undefined}
+  data-ax-reveal={isHoverReveal ? '' : undefined}
+  data-ax-image-fallback={showImage ? '' : undefined}
+>{(() => {
+  const image = showImage && <img src={src} alt={alt ?? ''} role={isImageDecorative ? 'presentation' : undefined} aria-hidden={isImageDecorative ? 'true' : undefined} class="ax-thumbnail-image" data-ax-fallback-step="0" />;
+  const fallback = showImage && <template data-ax-fallback-step="1"><div class="ax-thumbnail-placeholder" data-ax-fallback-step="1" set:html={placeholderSvg} /></template>;
+  const content = <>{image}{fallback}{showSkeleton && <Skeleton radius={2} />}{showPlaceholder && <div class="ax-thumbnail-placeholder" set:html={placeholderSvg} />}</>;
+  return hasOpen ? (
+    <button
+      type="button"
+      class="ax-thumbnail-open"
+      aria-label={openLabel ?? t('@astryx.thumbnail.open', {accessibleName})}
+      aria-disabled={isInteractive ? undefined : 'true'}
+      onclick={openHandler}
+    >{content}</button>
+  ) : content;
+})()}{showImage && <div class="ax-thumbnail-inset-border" data-ax-fallback-step="0"></div>}{showUploadOverlay && (
+  <div class="ax-thumbnail-upload" data-ax-busy-announce={t('@astryx.spinner.loading')}><Spinner size="sm" shade="onMedia" aria-hidden="true" /></div>
+)}{hasRemove && (
+  <div class="ax-thumbnail-remove-slot" data-ax-reveal-content={isHoverReveal ? '' : undefined}><button
+    type="button"
+    class="astryx-button ax-thumbnail-remove ax-focus-visible ax-overlay-image"
+    data-variant="secondary"
+    data-size="sm"
+    data-elevation="none"
+    aria-label={removeLabel ?? t('@astryx.thumbnail.remove', {accessibleName})}
+    aria-disabled={isDisabled ? 'true' : undefined}
+    onclick={removeHandler}
+  ><span class="ax-thumbnail-remove-icon"><Icon icon="close" size="xsm" /></span></button></div>
+)}</div></div>
+{showImage && <script>import '../../behaviors/imageFallback';</script>}
+{showUploadOverlay && <script>import '../../behaviors/busyAnnounce';</script>}

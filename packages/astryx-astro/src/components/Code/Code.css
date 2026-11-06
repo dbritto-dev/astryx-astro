@@ -1,0 +1,23 @@
+/* Port of @astryxdesign/core Code/Code.tsx (styles.base → colorStyles → sizeStyles). */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-code {
+    font-family: var(--font-family-code);
+    font-size: var(--text-code-size);
+    line-height: inherit;
+    background-color: var(--color-background-muted);
+    padding-inline: var(--spacing-1);
+    padding-block: var(--spacing-0);
+    border-radius: var(--radius-inner);
+    /* never break the parent layout */
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .astryx-code[data-color="primary"] { color: var(--color-text-primary); }
+  .astryx-code[data-color="secondary"] { color: var(--color-text-secondary); }
+  .astryx-code[data-color="inherit"] { color: inherit; }
+
+  .astryx-code[data-size="inherit"] { font-size: inherit; line-height: inherit; }
+}

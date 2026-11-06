@@ -1,0 +1,16 @@
+---
+import Blockquote from './Blockquote.astro';
+import Text from '../Text/Text.astro';
+---
+<div style="display:grid;gap:var(--spacing-5);max-width:640px">
+  <Blockquote>Design is not just what it looks like and feels like. Design is how it works.</Blockquote>
+  <Blockquote cite="Dieter Rams">Good design is as little design as possible.</Blockquote>
+  <Blockquote>
+    <Text as="p" display="block" color="inherit">Simplicity is a great virtue but it requires hard work to achieve it and education to appreciate it.</Text>
+    <Text as="p" display="block" color="inherit" style="margin-top:var(--spacing-2)">And to make matters worse: complexity sells better.</Text>
+    <Fragment slot="cite"><a href="#blockquote" style="color:inherit">Edsger W. Dijkstra</a>, 1984</Fragment>
+  </Blockquote>
+  <div style="max-width:240px">
+    <Blockquote cite="A narrow column">A_long_unbroken_identifier_that_wraps_instead_of_overflowing_the_quote</Blockquote>
+  </div>
+</div>

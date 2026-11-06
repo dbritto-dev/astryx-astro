@@ -1,0 +1,32 @@
+---
+/**
+ * Code — inline code: a `<code>` with the code font, a muted background and wrapping
+ * that never breaks the parent layout. Port of @astryxdesign/core Code/Code.tsx.
+ * For fenced, highlighted blocks use CodeBlock.
+ *
+ * @example
+ * <Text>Use <Code>const x = 1</Code> to declare a variable.</Text>
+ * <Text type="large">Run <Code size="inherit">pnpm build</Code> first</Text>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Code.css';
+
+/** Mirrors the primary/secondary/inherit subset of Text colors. */
+export type CodeColor = 'primary' | 'secondary' | 'inherit';
+/** `'inherit'` adopts the surrounding text's font-size and line-height. */
+export type CodeSize = 'inherit';
+
+export interface Props extends Omit<HTMLAttributes<'code'>, 'color'> {
+  /** @default 'primary' */
+  color?: CodeColor;
+  /** Set to 'inherit' to match the surrounding text size. */
+  size?: CodeSize;
+  'data-testid'?: string;
+}
+
+const {color = 'primary', size, class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('code', {color});
+---
+<code {...rest} {...attrs} data-size={size} class={cx(themeClass, className)} style={mergeStyles(style as StyleValue)}><slot /></code>

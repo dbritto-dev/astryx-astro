@@ -1,0 +1,39 @@
+---
+import ProgressBar, {type ProgressBarVariant} from './ProgressBar.astro';
+const variants: ProgressBarVariant[] = ['accent', 'success', 'warning', 'error', 'neutral'];
+const col = 'display:grid;gap:var(--spacing-4);grid-template-columns:repeat(auto-fill,minmax(260px,1fr))';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)" data-test="progress-bars">
+  <div style={col}>
+    {variants.map((variant, i) => (
+      <ProgressBar label={`${variant[0].toUpperCase()}${variant.slice(1)} progress`} variant={variant} value={20 + i * 15} hasValueLabel />
+    ))}
+  </div>
+  <div style={col}>
+    <ProgressBar data-case="custom-format" label="Disk usage" value={3.2} max={5} hasValueLabel formatValueLabel={(v, m) => `${v} GB / ${m} GB`} />
+    <ProgressBar data-case="hidden-label" label="Upload progress" value={40} isLabelHidden />
+    <ProgressBar label="Hidden label, visible value" value={66} isLabelHidden hasValueLabel />
+    <ProgressBar data-case="disabled" label="Canceled" value={30} isDisabled hasValueLabel />
+    <ProgressBar data-case="clamped" label="Over the max (clamped)" value={140} hasValueLabel />
+    <ProgressBar data-case="empty" label="Not started" value={0} hasValueLabel />
+    <ProgressBar data-case="nan" label="Unknown total (NaN → 0)" value={NaN} max={0} hasValueLabel />
+  </div>
+  <div style={col}>
+    {variants.map((variant) => (
+      <ProgressBar data-case="indeterminate" label={`Loading (${variant})`} variant={variant} isIndeterminate hasValueLabel />
+    ))}
+    <ProgressBar label="Indeterminate, disabled" isIndeterminate isDisabled />
+  </div>
+  <div style={col}>
+    <ProgressBar data-case="marks" label="Fundraiser" value={45} hasValueLabel marks={[{value: 25, label: 'Q1 target: 25%'}, {value: 80, label: 'Goal: 80%'}]} />
+    <ProgressBar label="Past the goal" variant="success" value={90} hasValueLabel marks={[{value: 50, label: 'Halfway'}, {value: 90, label: 'Goal reached'}]} />
+    <ProgressBar label="Warning marks" variant="warning" value={60} marks={[{value: 30, label: '30'}, {value: 75, label: '75'}]} />
+    <ProgressBar label="Error marks" variant="error" value={60} marks={[{value: 30, label: '30'}, {value: 75, label: '75'}]} />
+    <ProgressBar label="Neutral marks" variant="neutral" value={60} marks={[{value: 30, label: '30'}, {value: 75, label: '75'}]} />
+    <ProgressBar label="Disabled marks" value={50} isDisabled marks={[{value: 25, label: '25'}, {value: 75, label: '75'}]} />
+  </div>
+  <div dir="rtl" style={col}>
+    <ProgressBar label="تقدم التحميل" value={65} hasValueLabel marks={[{value: 80, label: 'الهدف'}]} />
+    <ProgressBar label="جارٍ التحميل" isIndeterminate />
+  </div>
+</div>

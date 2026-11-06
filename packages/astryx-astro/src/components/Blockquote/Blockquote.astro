@@ -1,0 +1,29 @@
+---
+/**
+ * Blockquote — a semantic `<blockquote>` with an inline-start rule, secondary text and an
+ * optional attribution. Port of @astryxdesign/core Blockquote/Blockquote.tsx.
+ *
+ * `cite` is the attribution CONTENT (as in Astryx), rendered in a bare `<cite>` after the
+ * quote — never wrapped in <footer>, which inside a sectioning root would map to a
+ * contentinfo landmark. Pass rich attribution in the `cite` slot.
+ *
+ * @example
+ * <Blockquote cite="Steve Jobs">Design is not just what it looks like.</Blockquote>
+ * <Blockquote><p>Quote</p><Fragment slot="cite"><a href="/talk">The talk</a>, 2003</Fragment></Blockquote>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Blockquote.css';
+
+export interface Props extends Omit<HTMLAttributes<'blockquote'>, 'cite'> {
+  /** Attribution for the quote, rendered in a <cite> after the content (or use the `cite` slot). */
+  cite?: string;
+}
+
+const {cite, class: className, style, ...rest} = Astro.props;
+const {themeClass} = themeProps('blockquote');
+const hasCiteSlot = Astro.slots.has('cite');
+const hasCite = hasCiteSlot || (cite != null && cite !== '');
+---
+<blockquote class={cx(themeClass, className)} style={mergeStyles(style as StyleValue)} {...rest}><slot />{hasCite && <cite class="ax-blockquote-cite">{hasCiteSlot ? <slot name="cite" /> : cite}</cite>}</blockquote>

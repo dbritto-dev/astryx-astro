@@ -1,0 +1,139 @@
+/*
+ * Port of @astryxdesign/core Avatar/Avatar.tsx (styles, dynamicStyles, groupStyles,
+ * shapeStyles) and Avatar/AvatarStatusDot.tsx (styles, dynamicStyles).
+ *
+ * Root rule order mirrors the root's stylex.props(): wrapper → size → interactive →
+ * group ring → group overlap → shape. `--_ax-avatar-size` (the resolved px size, set
+ * inline; an AvatarGroup restamps it) feeds every size-derived value, as StyleX dynamic
+ * styles do, so themes can still override width/height/font-size by target.
+ * `--_avatar-radius` is the one shape value every clipping surface reads; themes write it
+ * (derived from `components.avatar.*.borderRadius`).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-dot-size { syntax: "*"; inherits: false; }
+@property --_ax-dot-border { syntax: "*"; inherits: false; }
+@property --_ax-dot-icon-size { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── root ───────────────────────────────────────────────────────────── */
+  .astryx-avatar {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    border-radius: var(--_avatar-radius);
+    width: var(--_ax-avatar-size, 36px);
+    height: var(--_ax-avatar-size, 36px);
+  }
+  /* <a>/<button> root: a transparent, correctly sized wrapper carrying the focus ring */
+  .astryx-avatar:is(a, button) {
+    appearance: none;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: var(--_avatar-radius);
+  }
+  .astryx-avatar:is(a, button):is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  /* group member: an opaque surface ring, and the overlap every member takes */
+  .astryx-avatar[data-ax-grouped] {
+    border-width: 2px;
+    border-style: solid;
+    border-color: var(--color-background-surface);
+    background-color: var(--color-background-surface);
+    box-sizing: content-box;
+    margin-inline-start: var(--_avatar-group-overlap);
+  }
+  .astryx-avatar[data-shape="circle"] { --_avatar-radius: var(--radius-full); }
+  .astryx-avatar[data-shape="rounded"] { --_avatar-radius: var(--radius-element); }
+  .astryx-avatar[data-shape="square"] { --_avatar-radius: var(--radius-none); }
+
+  /* ── visuals ────────────────────────────────────────────────────────── */
+  .ax-avatar-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    user-select: none;
+    border-radius: var(--_avatar-radius);
+  }
+  .ax-avatar-image { width: 100%; height: 100%; object-fit: cover; }
+
+  .astryx-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-color: var(--color-neutral);
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-body);
+    font-weight: var(--font-weight-medium);
+    text-transform: uppercase;
+  }
+  /* initials scale with the avatar (40%); themes override per size tier */
+  .astryx-avatar-fallback.ax-avatar-initials { font-size: calc(var(--_ax-avatar-size, 36px) * 0.4); }
+  .ax-avatar-default-icon {
+    width: calc(var(--_ax-avatar-size, 36px) * 0.6);
+    height: calc(var(--_ax-avatar-size, 36px) * 0.6);
+  }
+  /* a lone avatar's plate takes the forced color around it (a grouped face keeps
+   * CanvasText on its Canvas ring) */
+  @media (forced-colors: active) {
+    .astryx-avatar:not([data-ax-grouped]) .astryx-avatar-fallback { color: currentColor; }
+  }
+
+  /* ── status slot: on the circle's edge at 45°, or in the corner ─────── */
+  .ax-avatar-status { position: absolute; }
+  .astryx-avatar[data-shape="circle"] > .ax-avatar-status {
+    /* (1 - 1/√2) / 2 of the size from each edge */
+    bottom: calc(var(--_ax-avatar-size, 36px) * 0.14644660940672624);
+    inset-inline-end: calc(var(--_ax-avatar-size, 36px) * 0.14644660940672624);
+    transform: translate(50%, 50%);
+  }
+  .astryx-avatar[data-shape="circle"] > .ax-avatar-status:is([dir="rtl"] *) { transform: translate(-50%, 50%); }
+  .astryx-avatar:not([data-shape="circle"]) > .ax-avatar-status {
+    bottom: 0;
+    inset-inline-end: 0;
+    transform: translate(25%, 25%);
+  }
+  .astryx-avatar:not([data-shape="circle"]) > .ax-avatar-status:is([dir="rtl"] *) { transform: translate(-25%, 25%); }
+
+  /* ── AvatarStatusDot ────────────────────────────────────────────────── */
+  .astryx-avatar-status-dot {
+    border-radius: var(--radius-full);
+    border-style: solid;
+    border-color: var(--color-background-surface);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* plate + ink: everything drawn on the dot paints from currentColor */
+  .astryx-avatar-status-dot[data-variant="success"] { background-color: var(--color-success); color: var(--color-on-success); }
+  /* a hollow ring only reads as hollow on a surface plate; the colour moves to the stroke */
+  .astryx-avatar-status-dot[data-variant="neutral"] { background-color: var(--color-background-surface); color: var(--color-text-secondary); }
+  .astryx-avatar-status-dot[data-variant="error"] { background-color: var(--color-error); color: var(--color-on-error); }
+  .astryx-avatar-status-dot {
+    width: var(--_ax-dot-size, 10px);
+    height: var(--_ax-dot-size, 10px);
+    border-width: var(--_ax-dot-border, 1px);
+  }
+  .ax-avatar-status-dot-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    width: var(--_ax-dot-icon-size, 12px);
+    height: var(--_ax-dot-icon-size, 12px);
+  }
+  .ax-avatar-status-dot-icon[hidden],
+  .astryx-avatar-status-dot-glyph[hidden] { display: none; }
+}

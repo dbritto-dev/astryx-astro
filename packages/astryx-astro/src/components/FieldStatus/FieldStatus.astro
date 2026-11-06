@@ -1,0 +1,62 @@
+---
+/**
+ * FieldStatus — a form field's status message: `attached` under a bordered control
+ * (Field), or `detached` with its own leading status icon (Switch, CheckboxInput).
+ * Port of @astryxdesign/core FieldStatus/FieldStatus.tsx,
+ * FieldStatus/useFieldStatusAnnouncement.ts and hooks/useEntryAnimation.ts.
+ *
+ * Accessibility as in Astryx: the element is NOT a live region. The message is spoken
+ * through the persistent page live regions — errors assertively, warnings/successes
+ * politely — when it is present (also when the server rendered it with the page) and
+ * whenever it changes (behaviors/fieldStatus.ts; see behaviors/liveAnnounce.ts). The
+ * detached icon is decorative (`aria-hidden`); the message names the status in words.
+ * The attached variant renders no icon: its control shows the status affordance.
+ *
+ * Entry animation (slide down) only when inserted after the first paint, via
+ * @starting-style; server-rendered statuses never play it; none under reduced motion.
+ * `variant="tooltip"` is deprecated in Astryx and draws a plain (detached-style) box.
+ *
+ * @example
+ * <FieldStatus type="error" message="This field is required" />
+ * <FieldStatus type="warning" variant="detached" message="This will be visible to others" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {StatusType} from '../../lib/types';
+import type {IconName} from '../Icon/iconRegistry';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './FieldStatus.css';
+
+export type FieldStatusType = StatusType;
+/** Extensible like Astryx FieldStatusVariantMap; any other value renders detached-style. */
+export type FieldStatusVariant = 'attached' | 'detached' | 'tooltip' | (string & {});
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** The type of status to display. */
+  type: FieldStatusType;
+  /** The status message. */
+  message: string;
+  id?: string;
+  /** 'attached' overlaps the control above (Field); 'detached' floats below with an icon. @default 'attached' */
+  variant?: FieldStatusVariant;
+}
+
+const statusIconMap: Record<FieldStatusType, IconName> = {warning: 'warning', error: 'error', success: 'success'};
+
+const {type, message, id, variant = 'attached', class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('field-status', {type, variant});
+const icon = themeProps('field-status-icon', {type});
+const root: Record<string, unknown> = {
+  id,
+  ...rest,
+  ...attrs,
+  'data-ax-field-status': '',
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+};
+---
+<div {...root}>{variant === 'detached' ? (
+  <span class="ax-field-status-content"><span class="ax-field-status-icon-box"><Icon icon={statusIconMap[type]} size="sm" color="inherit" class={icon.themeClass} {...icon.attrs} /></span><span>{message}</span></span>
+) : message}</div>
+<script>import '../../behaviors/fieldStatus';</script>

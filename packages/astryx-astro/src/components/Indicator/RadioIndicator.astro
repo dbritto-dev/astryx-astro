@@ -1,0 +1,49 @@
+---
+/**
+ * RadioIndicator — the default radio visual: a circle with a filled inner dot when
+ * selected. Port of @astryxdesign/core Indicator/RadioIndicator.tsx.
+ *
+ * Decorative (`aria-hidden="true"`, set after the caller's attributes). Draws in both
+ * states — an empty circle when unchecked — which is what lets a theme map the `check`
+ * indicator to it: registerIndicatorTheme(theme, {check: RadioIndicator}). Any state other
+ * than 'unchecked' reads as selected. The default slot replaces the dot.
+ *
+ * @example
+ * <RadioIndicator state="checked" size="md" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {IndicatorSize, IndicatorState} from './indicatorRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Indicator.css';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'role' | 'aria-label' | 'aria-labelledby' | 'tabindex'> {
+  /** Which state to draw. The singleSelection family has no partial state. */
+  state: IndicatorState<'singleSelection'>;
+  /** Control size: 20px or 24px. @default 'md' */
+  size?: IndicatorSize;
+  /** Purely visual; the owner keeps the real disabled semantics. @default false */
+  isDisabled?: boolean;
+}
+
+const {state, size = 'md', isDisabled = false, class: className, style, ...rest} = Astro.props;
+
+const isChecked = state !== 'unchecked';
+const children = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const hasChildren = children.trim() !== '';
+
+const {themeClass, attrs} = themeProps('radio-indicator', {
+  size,
+  checked: isChecked ? 'checked' : null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const root: Record<string, unknown> = {
+  ...rest,
+  'aria-hidden': 'true',
+  ...attrs,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+};
+const dot = themeProps('radio-indicator-dot', {size});
+---
+<span {...root}>{hasChildren ? <Fragment set:html={children} /> : isChecked && <span class={dot.themeClass} {...dot.attrs}></span>}</span>

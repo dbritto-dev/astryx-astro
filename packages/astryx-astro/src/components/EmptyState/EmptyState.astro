@@ -1,0 +1,57 @@
+---
+/**
+ * EmptyState — a placeholder for a content area with no data: an optional decorative
+ * icon or illustration, a title, an optional description and actions. Port of
+ * @astryxdesign/core EmptyState/EmptyState.tsx and hooks/AnnounceRenderedText.tsx.
+ *
+ * Not a live region. Its title and description are announced once when they appear or
+ * change after the page loaded (e.g. a list emptied by client code inserts one), never
+ * when the page first renders with them (behaviors/announceRenderedText.ts).
+ *
+ * `icon` (slot, or a semantic name / SVG / Astro component rendered as a large Icon) is
+ * aria-hidden. `actions` (slot) lay out in a row, stacked when `isCompact`. `headingLevel`
+ * only changes the tag (h1–h6) for the outline; the title size is fixed.
+ *
+ * @example
+ * <EmptyState title="No results found" description="Try adjusting your search or filters." />
+ * <EmptyState icon="search" title="No messages" description="You're all caught up!">
+ *   <Fragment slot="actions"><Button label="Compose" variant="primary" /></Fragment>
+ * </EmptyState>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './EmptyState.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'title'> {
+  /** The primary message. */
+  title: string;
+  /** Optional secondary text. */
+  description?: string;
+  /** Decorative icon above the title: a name / SVG / Astro component (rendered as a large Icon), or the `icon` slot. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Heading tag for the title (semantic only). @default 3 */
+  headingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+  /** Reduced spacing for constrained spaces; actions stack. @default false */
+  isCompact?: boolean;
+}
+
+const {title, description, icon, headingLevel = 3, isCompact = false, class: className, style, ...rest} = Astro.props;
+const HeadingTag = `h${headingLevel}` as 'h3';
+const variant = isCompact ? 'compact' : null;
+const {themeClass, attrs} = themeProps('empty-state', {variant});
+const titleProps = themeProps('empty-state-title', {variant});
+const descriptionProps = themeProps('empty-state-description', {variant});
+const hasIconSlot = Astro.slots.has('icon');
+const hasIcon = hasIconSlot || (icon != null && icon !== '');
+const hasActions = Astro.slots.has('actions');
+const hasDescription = description != null && description !== '';
+---
+<div {...rest} {...attrs} class={cx(themeClass, className)} style={mergeStyles(style as StyleValue)}>{hasIcon && (
+  <div aria-hidden="true">{hasIconSlot ? <slot name="icon" /> : <Icon icon={icon} size="lg" />}</div>
+)}<div class="ax-empty-state-text" data-ax-announce-rendered-text=""><HeadingTag class={titleProps.themeClass} {...titleProps.attrs}>{title}</HeadingTag>{hasDescription && (
+  <div class={descriptionProps.themeClass} {...descriptionProps.attrs}>{description}</div>
+)}</div>{hasActions && <div class="ax-empty-state-actions"><slot name="actions" /></div>}</div>
+<script>import '../../behaviors/announceRenderedText';</script>
