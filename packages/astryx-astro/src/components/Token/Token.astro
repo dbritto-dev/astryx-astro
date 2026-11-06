@@ -1,0 +1,185 @@
+---
+/**
+ * Token — a chip for tags, categories, selections and filters. Port of @astryxdesign/core
+ * Token/Token.tsx (styles, sizeStyles, colorStyles), Token/TokenLink.tsx,
+ * hooks/useInteractiveRole.ts, hooks/useClickableContainer.ts, utils/safeUrl.ts,
+ * utils/disabledInteraction.ts. Theme target `.astryx-token[data-color][data-size]` with
+ * the `data-disabled="disabled"` state.
+ *
+ * Element (Astryx useInteractiveRole; React's onClick / context role → `interactiveRole`):
+ *  - static: `<span>` (no focus stop);
+ *  - `href`: `<a href>` through the link component (safeHref-checked: a blocked destination
+ *    renders an `<a>` without href);
+ *  - `href` + `isRemovable`: a `<span>` container holding the link and the remove button as
+ *    siblings (a button inside an anchor is invalid); the whole surface activates the link
+ *    (Ctrl/Cmd and middle click open a new tab) — TokenLink;
+ *  - `interactiveRole="button"`: a `<span>` container with an invisible inner `<button>`
+ *    (the token's action) and a :focus-within ring on the container;
+ *  - `isDisabled` + `href`: a focusable `<a role="link" aria-disabled="true">` with no
+ *    destination, as a disabled Link (AST-085 FR1, FR5).
+ * `isRemovable` (Astryx: an onRemove callback) adds the remove button, named
+ * "Remove {label}" (translated). Its click dispatches `astryx-remove` (bubbles, composed)
+ * on the token with `detail: {event}`; removing the token is the caller's job.
+ * Behaviour: behaviors/token.ts. Disabled controls stay focusable and inert.
+ *
+ * Not ported: TokenNamingContext (internal to PowerSearch), the touch press controller.
+ *
+ * @example
+ * <Token label="Design" color="purple" />
+ * <Token label="Ada Lovelace" isRemovable><Icon slot="icon" icon="check" size="sm" /></Token>
+ * <Token label="Docs" href="/docs" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {safeHref} from '../../lib/safeUrl';
+import {translator} from '../../lib/i18n';
+import {interactiveRole, resolveLinkComponent} from '../Link/linkComponent';
+import {cleanSlotHtml} from '../Button/buttonCascade';
+import './Token.css';
+
+/** Built-in colors; themes may add more (Astryx TokenColorMap). */
+export type TokenColor =
+  | 'default' | 'red' | 'orange' | 'yellow' | 'green' | 'teal' | 'cyan' | 'blue' | 'purple' | 'pink' | 'gray'
+  | (string & {});
+export type TokenSize = 'sm' | 'md' | 'lg';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'color'> {
+  /** Text label (also the accessible name when hidden). */
+  label: string;
+  /** @default 'md' */
+  size?: TokenSize;
+  /** @default 'default' */
+  color?: TokenColor;
+  /** Leading icon: a semantic name / SVG string / Astro component, or the `icon` slot. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Reduced opacity; blocks interaction; controls stay focusable. @default false */
+  isDisabled?: boolean;
+  /** Render the remove (X) button — Astryx `onRemove`; listen for `astryx-remove`. @default false */
+  isRemovable?: boolean;
+  /** Link destination (safeHref-checked). */
+  href?: string | URL;
+  /** Astro stand-in for Astryx's onClick / InteractiveRoleContext: a clickable token. */
+  interactiveRole?: 'button';
+  /** Accessible description (aria-description on the root). */
+  description?: string;
+  /** Content after the label, before the remove button: an icon name, or the `endContent` slot. */
+  endContent?: ExtendedIconName | AstroIconComponent;
+  /** Visually hide the label (still the accessible name). @default false */
+  isLabelHidden?: boolean;
+  'data-testid'?: string;
+  /** Locale for the remove button's name. */
+  locale?: string;
+}
+
+const {
+  label,
+  size = 'md',
+  color = 'default',
+  icon,
+  isDisabled = false,
+  isRemovable = false,
+  href,
+  interactiveRole: roleProp,
+  description,
+  endContent,
+  isLabelHidden = false,
+  locale,
+  class: className,
+  style,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-haspopup': ariaHasPopup,
+  'aria-expanded': ariaExpanded,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const role = interactiveRole({href, isDisabled, role: roleProp});
+const isClickable = roleProp === 'button';
+const isDisabledLink = isDisabled && href != null && !isClickable;
+
+type Mode = 'disabled-link' | 'link' | 'link-removable' | 'button' | 'static';
+const mode: Mode = isDisabledLink && !isRemovable
+  ? 'disabled-link'
+  : role === 'link' || isDisabledLink
+    ? (isRemovable ? 'link-removable' : 'link')
+    : isClickable ? 'button' : 'static';
+
+const safe = mode === 'link' || (mode === 'link-removable' && !isDisabled) ? safeHref(href) : undefined;
+const LinkTag = safe != null ? resolveLinkComponent(undefined, Astro) : 'a';
+
+const iconHtml = Astro.slots.has('icon') ? await cleanSlotHtml(await Astro.slots.render('icon'), 'icon') : null;
+const endHtml = Astro.slots.has('endContent') ? await cleanSlotHtml(await Astro.slots.render('endContent'), 'endContent') : null;
+const hasIcon = iconHtml != null ? iconHtml.trim() !== '' : icon != null && icon !== '';
+const hasEnd = endHtml != null ? endHtml.trim() !== '' : endContent != null && endContent !== '';
+
+const labelling = {
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-haspopup': ariaHasPopup,
+  'aria-expanded': ariaExpanded,
+};
+const shared = {
+  'aria-label': isLabelHidden ? label : undefined,
+  'aria-description': description,
+};
+
+const {themeClass, attrs: themeAttrs} = themeProps('token', {
+  color,
+  size,
+  disabled: mode === 'disabled-link' || isDisabled ? 'disabled' : null,
+});
+const ring = mode === 'static' ? undefined : mode === 'link-removable' || mode === 'button' ? 'ax-focus-within' : 'ax-focus-visible';
+const overlay = mode === 'link' || mode === 'link-removable' || mode === 'button' ? 'ax-overlay-image' : undefined;
+const rootBase: Record<string, unknown> = {
+  ...themeAttrs,
+  class: cx(themeClass, ring, overlay, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+  'data-ax-interactive': mode === 'static' ? undefined : '',
+};
+const behaviourMode = mode === 'button' ? 'button' : mode === 'link-removable' ? 'link' : '';
+const needsBehaviour = isRemovable || mode === 'button' || mode === 'link-removable';
+
+let Tag: unknown = 'span';
+let rootAttrs: Record<string, unknown>;
+switch (mode) {
+  case 'disabled-link':
+    Tag = 'a';
+    rootAttrs = {role: 'link', 'aria-disabled': 'true', tabindex: 0, ...rootBase, ...rest, ...labelling, 'data-ax-disabled-interaction': '', ...shared};
+    break;
+  case 'link':
+    Tag = LinkTag;
+    rootAttrs = {href: safe, ...rootBase, ...rest, ...labelling, ...shared};
+    break;
+  case 'link-removable':
+  case 'button':
+    rootAttrs = {...rootBase, ...rest, ...shared, 'data-ax-token': behaviourMode};
+    break;
+  default:
+    rootAttrs = {...rootBase, ...rest, ...labelling, ...shared, 'data-ax-token': needsBehaviour ? '' : undefined};
+}
+const removeName = t('@astryx.token.remove', {label});
+const InnerLink = mode === 'link-removable' && !isDisabled && safe != null ? LinkTag : 'a';
+const innerLinkAttrs: Record<string, unknown> = mode === 'link-removable' && isDisabled
+  ? {role: 'link', 'aria-disabled': 'true', tabindex: 0, class: 'ax-token-action', 'data-ax-disabled-interaction': '', ...labelling}
+  : {href: safe, class: 'ax-token-action', ...labelling};
+---
+<Tag {...rootAttrs}>
+  {hasIcon && (iconHtml != null ? <Fragment set:html={iconHtml} /> : <Icon icon={icon} />)}
+  {mode === 'button' ? (
+    <button type="button" class="ax-token-action" {...labelling} aria-disabled={isDisabled ? 'true' : undefined} data-ax-disabled-interaction={isDisabled ? '' : undefined}><span class="ax-token-label" data-ax-hidden={isLabelHidden ? '' : undefined}>{label}</span></button>
+  ) : mode === 'link-removable' ? (
+    <InnerLink {...innerLinkAttrs}><span class="ax-token-label" data-ax-hidden={isLabelHidden ? '' : undefined}>{label}</span></InnerLink>
+  ) : (
+    <span class="ax-token-label" data-ax-hidden={isLabelHidden ? '' : undefined}>{label}</span>
+  )}
+  {hasEnd && (endHtml != null ? <Fragment set:html={endHtml} /> : <Icon icon={endContent} />)}
+  {isRemovable && (
+    <button type="button" class="ax-token-remove ax-focus-visible" aria-label={removeName} aria-disabled={isDisabled ? 'true' : undefined} data-ax-token-remove data-ax-disabled-interaction={isDisabled ? '' : undefined}><Icon icon="close" size="xsm" color="inherit" /></button>
+  )}
+</Tag>
+{needsBehaviour && <script>import '../../behaviors/token';</script>}
+{isDisabled && (mode !== 'static' || isRemovable) && <script>import '../../behaviors/disabledInteraction';</script>}

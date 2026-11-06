@@ -1,0 +1,16 @@
+---
+/**
+ * Demo/test fixture (private): a size provider the way ButtonGroup / Toolbar / SizeContext
+ * will be one — render the slot, then stamp the Button cascade keys (buttonCascade.ts).
+ * `size={null}` is a null provider (consumes the markers, stamps nothing).
+ */
+import type {ComponentSize} from '../../lib/types';
+import {stamp} from '../../lib/cascade';
+import {buttonSizeStampers} from './buttonCascade';
+
+interface Props {
+  size: ComponentSize | null;
+}
+const html = await stamp(await Astro.slots.render('default'), buttonSizeStampers(Astro.props.size));
+---
+<Fragment set:html={html} />

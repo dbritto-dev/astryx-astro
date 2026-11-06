@@ -1,0 +1,39 @@
+---
+import IconButton from './IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import type {ButtonVariant} from '../Button/Button.astro';
+import type {ComponentSize, Elevation} from '../../lib/types';
+
+const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-2)';
+const grid = 'display:grid;grid-template-columns:repeat(4,max-content);align-items:center;gap:var(--spacing-3)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Variants × sizes</h3>
+    <div style={grid} data-test="icon-buttons">
+      {sizes.map((size) => variants.map((variant) => <IconButton label={`Settings (${variant}, ${size})`} icon="wrench" variant={variant} size={size} />))}
+    </div>
+  </section>
+  <section>
+    <h3 style={cap}>Icon slot, states, link</h3>
+    <div style={row}>
+      <IconButton label="Close"><Icon slot="icon" icon="close" /></IconButton>
+      <IconButton label="Search" icon="search" variant="ghost" />
+      <IconButton label="Refreshing" icon="arrowsUpDown" isLoading />
+      <IconButton label="Delete" icon="close" variant="destructive" isDisabled />
+      <IconButton label="Copy (tooltip)" icon="copy" tooltip="Copy to clipboard" isDisabled />
+      <IconButton label="Open docs" icon="externalLink" href="/components/link/" variant="ghost" />
+      <IconButton label="Wide" icon="menu" width={64} />
+    </div>
+  </section>
+  <section>
+    <h3 style={cap}>Elevation (FAB)</h3>
+    <div style={row}>
+      {elevations.map((elevation) => <IconButton label={`Add (${elevation})`} icon="arrowUp" variant="primary" size="lg" elevation={elevation} />)}
+    </div>
+  </section>
+</div>

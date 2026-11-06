@@ -1,0 +1,65 @@
+---
+import Token, {type TokenColor, type TokenSize} from './Token.astro';
+import Icon from '../Icon/Icon.astro';
+import Badge from '../Badge/Badge.astro';
+
+const colors: TokenColor[] = ['default', 'red', 'orange', 'yellow', 'green', 'teal', 'cyan', 'blue', 'purple', 'pink', 'gray'];
+const sizes: TokenSize[] = ['sm', 'md', 'lg'];
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-2)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Colors</h3>
+    <div style={row}>{colors.map((color) => <Token label={color} color={color} />)}</div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes</h3>
+    <div style={row}>
+      {sizes.map((size) => <Token label={`Size ${size}`} size={size} />)}
+      {sizes.map((size) => <Token label={`Removable ${size}`} size={size} color="blue" isRemovable />)}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Icon, end content, hidden label, description</h3>
+    <div style={row}>
+      <Token label="Approved" color="green"><Icon slot="icon" icon="check" size="sm" /></Token>
+      <Token label="Filters" icon="funnel" />
+      <Token label="Inbox" color="purple"><Badge slot="endContent" label={4} variant="purple" /></Token>
+      <Token label="Status: active" isLabelHidden color="teal"><Icon slot="icon" icon="success" size="sm" /></Token>
+      <Token label="Owner" description="Can edit and delete" color="cyan" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Interactive</h3>
+    <div style={row} data-test="interactive">
+      <Token label="Ada Lovelace" isRemovable data-test="removable" />
+      <Token label="Docs" href="/components/link/" color="blue" data-test="link" />
+      <Token label="Docs (removable)" href="/components/link/" isRemovable color="blue" data-test="link-removable" />
+      <Token label="Open filter" interactiveRole="button" color="orange" data-test="clickable"><Icon slot="icon" icon="funnel" size="sm" /></Token>
+      <Token label="Clickable + remove" interactiveRole="button" isRemovable data-test="clickable-removable" />
+      <Token label="Blocked" href="javascript:alert(1)" data-test="blocked" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled</h3>
+    <div style={row} data-test="disabled">
+      <Token label="Disabled" isDisabled />
+      <Token label="Disabled removable" isDisabled isRemovable data-test="disabled-removable" />
+      <Token label="Disabled link" href="/docs" isDisabled data-test="disabled-link" />
+      <Token label="Disabled link + remove" href="/docs" isDisabled isRemovable />
+      <Token label="Disabled clickable" interactiveRole="button" isDisabled data-test="disabled-clickable" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Truncation</h3>
+    <div style="max-width:160px;border:1px dashed var(--color-border);padding:var(--spacing-2);border-radius:var(--radius-inner)">
+      <Token label="A long token label that does not fit" isRemovable />
+    </div>
+  </section>
+</div>

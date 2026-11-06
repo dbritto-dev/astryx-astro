@@ -1,0 +1,72 @@
+/*
+ * Port of @astryxdesign/core Link/Link.tsx (styles, linkColorStyles). Rule groups follow
+ * the stylex.props() order: focusOutline.focusVisible (ax-focus-visible) → base →
+ * buttonReset (button mode) → color → interactionOverlay.pressedBackgroundColor
+ * (ax-overlay-pressed-bg) → hasUnderline → standalone → disabled → truncating.
+ * Private state attributes: data-ax-underline, data-ax-standalone, data-ax-disabled,
+ * data-ax-truncating. Hover paint only under (hover: hover) and never on a disabled link.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* base */
+  .astryx-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-0-5);
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition-property: color, text-decoration;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (hover: hover) {
+    .astryx-link:hover:where(:not(:disabled, [aria-disabled="true"])) { text-decoration: underline; }
+  }
+  .astryx-link:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* buttonReset: a <button> link looks identical to an anchor */
+  .astryx-link:where(button) {
+    background-color: transparent;
+    border-style: none;
+    padding: 0;
+    text-align: inherit;
+    pointer-events: auto;
+    position: relative;
+  }
+
+  /* color (the root paints it; the label, underline and icon inherit) */
+  .astryx-link[data-color="primary"] { color: var(--color-text-primary); }
+  .astryx-link[data-color="secondary"] { color: var(--color-text-secondary); }
+  .astryx-link[data-color="disabled"] { color: var(--color-text-disabled); }
+  .astryx-link[data-color="placeholder"] { color: var(--color-text-secondary); }
+  .astryx-link[data-color="accent"] { color: var(--color-text-accent); }
+  .astryx-link[data-color="inherit"] { color: inherit; }
+  @media (hover: hover) {
+    .astryx-link[data-color="primary"]:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      color: color-mix(in srgb, var(--color-text-primary), var(--color-tint-hover) 15%);
+    }
+    .astryx-link[data-color="secondary"]:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      color: color-mix(in srgb, var(--color-text-secondary), var(--color-tint-hover) 15%);
+    }
+    .astryx-link[data-color="accent"]:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      color: color-mix(in srgb, var(--color-text-accent), var(--color-tint-hover) 15%);
+    }
+  }
+
+  /* hasUnderline: always (replaces the hover-only underline) */
+  .astryx-link[data-ax-underline] { text-decoration: underline; }
+
+  /* standalone: base font sizing outside running text */
+  .astryx-link[data-ax-standalone] { font-size: var(--text-body-size); line-height: var(--text-body-leading); }
+
+  /* disabled */
+  .astryx-link[data-ax-disabled] { cursor: default; opacity: 0.5; pointer-events: none; }
+
+  /* truncating: a box that stops at its container so the label's ellipsis engages */
+  .astryx-link[data-ax-truncating] { max-width: 100%; min-width: 0; }
+}

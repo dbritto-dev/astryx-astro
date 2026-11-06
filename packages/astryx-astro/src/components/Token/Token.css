@@ -1,0 +1,96 @@
+/*
+ * Port of @astryxdesign/core Token/Token.tsx (styles, sizeStyles, colorStyles). Rule
+ * groups follow the stylex.props() order: focus ring (ax-focus-visible on a link root,
+ * ax-focus-within on a container) → base → size → color → interactive →
+ * interactionOverlay.backgroundImage (ax-overlay-image) → disabled.
+ * The disabled state is the theme hook `data-disabled="disabled"`; data-ax-interactive
+ * marks every non-static token.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* base */
+  .astryx-token {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    padding-block: 0;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--radius-inner);
+    font-family: inherit;
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    text-decoration: none;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* size */
+  .astryx-token[data-size="sm"] { height: calc(var(--size-element-sm) - 8px); font-size: var(--text-supporting-size); padding-inline: var(--spacing-2); }
+  .astryx-token[data-size="md"] { height: calc(var(--size-element-md) - 8px); padding-inline: var(--spacing-2); }
+  .astryx-token[data-size="lg"] { height: calc(var(--size-element-lg) - 8px); padding-inline: var(--spacing-2); }
+
+  /* color */
+  .astryx-token[data-color="default"] { background-color: var(--color-neutral); color: var(--color-text-primary); }
+  .astryx-token[data-color="red"] { background-color: var(--color-background-red); color: var(--color-text-red); }
+  .astryx-token[data-color="orange"] { background-color: var(--color-background-orange); color: var(--color-text-orange); }
+  .astryx-token[data-color="yellow"] { background-color: var(--color-background-yellow); color: var(--color-text-yellow); }
+  .astryx-token[data-color="green"] { background-color: var(--color-background-green); color: var(--color-text-green); }
+  .astryx-token[data-color="teal"] { background-color: var(--color-background-teal); color: var(--color-text-teal); }
+  .astryx-token[data-color="cyan"] { background-color: var(--color-background-cyan); color: var(--color-text-cyan); }
+  .astryx-token[data-color="blue"] { background-color: var(--color-background-blue); color: var(--color-text-blue); }
+  .astryx-token[data-color="purple"] { background-color: var(--color-background-purple); color: var(--color-text-purple); }
+  .astryx-token[data-color="pink"] { background-color: var(--color-background-pink); color: var(--color-text-pink); }
+  .astryx-token[data-color="gray"] { background-color: var(--color-background-gray); color: var(--color-text-gray); }
+
+  /* interactive */
+  .astryx-token[data-ax-interactive] {
+    cursor: pointer;
+    transition-property: background-image;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-token[data-ax-interactive]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* disabled */
+  .astryx-token[data-disabled] { cursor: default; opacity: 0.5; pointer-events: none; }
+
+  /* label */
+  .ax-token-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .ax-token-label[data-ax-hidden] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* the invisible action (inner button or link): the container paints its ring */
+  .ax-token-action { cursor: inherit; color: inherit; outline: none; overflow: hidden; min-width: 0; }
+  .ax-token-action:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* remove button: 16px, a 24px hit area, never shrunk by a narrow token */
+  .ax-token-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0;
+    margin-inline-end: calc(-1 * var(--spacing-1));
+    cursor: pointer;
+    border-radius: var(--radius-full);
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: inherit;
+  }
+  .ax-token-remove:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-token-remove::after { content: ""; position: absolute; inset: -4px; }
+}

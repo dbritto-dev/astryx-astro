@@ -1,0 +1,151 @@
+---
+/**
+ * Link — a styled anchor for inline and standalone navigation. Port of
+ * @astryxdesign/core Link/Link.tsx (styles, linkColorStyles), Link/computeTargetAndRel.ts,
+ * Link/useLinkComponent.ts, hooks/useInteractiveRole.ts, utils/safeUrl.ts,
+ * utils/disabledInteraction.ts. Theme target `.astryx-link[data-color]`.
+ *
+ * Element (Astryx useInteractiveRole):
+ *  - `href` (not disabled) → `<a href>` through the link component (`as` →
+ *    Astro.locals.astryxLinkComponent → 'a'). The href goes through safeHref(); a blocked
+ *    destination renders a plain `<a>` with no href (inert, not disabled).
+ *  - no `href`, or `interactiveRole="button"` while disabled → `<button type="button">` with
+ *    link styling (Astryx renders a button for an onClick-only link; Astro has no onClick,
+ *    attach a native click listener).
+ *  - `isDisabled` with `href` → `<a role="link" aria-disabled="true" tabindex="0">` with no
+ *    href/target/rel: it keeps a tab stop and the link role (AST-085 FR1, FR5) and cancels
+ *    clicks and Enter/Space (behaviors/disabledInteraction.ts).
+ * `isExternalLink` sets target="_blank" with an `externalLink` icon and the translated
+ * "(opens in new tab)" for screen readers; target="_blank" always merges
+ * `noopener noreferrer` into rel. The label is a Text (type/size/weight/display/maxLines
+ * forwarded); a color the root paints is inherited by the label, underline and icon.
+ *
+ * LinkProvider: request-global in Astro — set `Astro.locals.astryxLinkComponent` in
+ * middleware (see linkComponent.ts). Not ported: the touch press controller; `tooltip`
+ * rendering (see TODO(tooltip)).
+ *
+ * @example
+ * <Link href="/docs">Documentation</Link>
+ * <Link href="https://github.com" isExternalLink>GitHub</Link>
+ * <Text type="large">Read our <Link href="/terms" type="inherit">terms</Link>.</Text>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Text, {type TextColor, type TextSize, type TextType, type TextWeight} from '../Text/Text.astro';
+import Icon from '../Icon/Icon.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {safeHref} from '../../lib/safeUrl';
+import {translator} from '../../lib/i18n';
+import {computeTargetAndRel, interactiveRole, resolveLinkComponent, type LinkComponentType} from './linkComponent';
+import './Link.css';
+
+export interface Props extends Omit<HTMLAttributes<'a'>, 'color'> {
+  /** Custom link component (Astro component or tag) used when `href` is set. */
+  as?: LinkComponentType;
+  /** aria-label — only for content that is not descriptive text (e.g. an icon-only link). */
+  label?: string;
+  /** Destination (safeHref-checked). Without it the link renders as a `<button>`. */
+  href?: string | URL;
+  /** Always underline (otherwise only on hover). @default false */
+  hasUnderline?: boolean;
+  /** No destination, keeps a tab stop, announced as a disabled link. @default false */
+  isDisabled?: boolean;
+  /** Opens in a new tab, with the external icon and safe rel tokens. @default false */
+  isExternalLink?: boolean;
+  /** Screen-reader text for an external link. @default translated '(opens in new tab)' */
+  newTabLabel?: string;
+  /** Overridden to "_blank" by isExternalLink; "_blank" adds noopener noreferrer to rel. */
+  target?: string;
+  rel?: string;
+  download?: string | boolean;
+  referrerPolicy?: HTMLAttributes<'a'>['referrerpolicy'];
+  /** Tooltip text (not rendered until the tooltip runtime lands). */
+  tooltip?: string;
+  /** Standalone (not inline) link: body font size. @default false */
+  isStandalone?: boolean;
+  /** Text type of the label; 'inherit' adopts the surrounding text. @default 'body' */
+  type?: TextType;
+  size?: TextSize;
+  weight?: TextWeight;
+  /** @default 'accent' */
+  color?: TextColor;
+  /** @default 'inline' */
+  display?: 'inline' | 'block';
+  /** @default 0 */
+  maxLines?: number;
+  /** Astro stand-in for Astryx's onClick / InteractiveRoleContext role (affects a disabled href). */
+  interactiveRole?: 'button';
+  /** Locale for the new-tab announcement. */
+  locale?: string;
+}
+
+const PAINTED_COLORS = new Set(['primary', 'secondary', 'disabled', 'placeholder', 'accent', 'inherit']);
+
+const {
+  as,
+  label,
+  href,
+  hasUnderline = false,
+  isDisabled = false,
+  isExternalLink = false,
+  newTabLabel: newTabLabelProp,
+  target: targetProp,
+  rel: relProp,
+  download,
+  referrerPolicy,
+  tooltip,
+  isStandalone = false,
+  type = 'body',
+  size,
+  weight,
+  color = 'accent',
+  display = 'inline',
+  maxLines = 0,
+  interactiveRole: roleProp,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const newTabLabel = newTabLabelProp ?? t('@astryx.link.newTab');
+const role = interactiveRole({href, isDisabled, role: roleProp});
+const {target, rel} = computeTargetAndRel(isExternalLink ? '_blank' : targetProp, relProp);
+const renderAsButton = role === 'button' || (role === 'inert' && href == null);
+const mode = renderAsButton ? 'button' : isDisabled ? 'disabled' : 'link';
+const safe = mode === 'link' ? safeHref(href) : undefined;
+const LinkTag = mode === 'link' && safe != null ? resolveLinkComponent(as, Astro) : 'a';
+// A color the root paints is inherited by the label.
+const labelColor: TextColor = PAINTED_COLORS.has(color) ? 'inherit' : color;
+
+const {themeClass, attrs: themeAttrs} = themeProps('link', {color});
+const common: Record<string, unknown> = {
+  'aria-label': label || undefined,
+  class: cx(themeClass, 'ax-focus-visible', !isDisabled && 'ax-overlay-pressed-bg', className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+  'data-ax-underline': hasUnderline ? '' : undefined,
+  'data-ax-standalone': isStandalone ? '' : undefined,
+  'data-ax-disabled': isDisabled ? '' : undefined,
+  'data-ax-truncating': maxLines > 0 ? '' : undefined,
+};
+let attrs: Record<string, unknown>;
+if (mode === 'button') {
+  attrs = {type: 'button', 'aria-disabled': isDisabled || undefined, ...common, ...rest, ...themeAttrs,
+    'data-ax-disabled-interaction': isDisabled ? '' : undefined};
+} else if (mode === 'disabled') {
+  // No href, target, rel or download: nothing can navigate.
+  attrs = {role: 'link', 'aria-disabled': 'true', tabindex: 0, ...common, ...rest, ...themeAttrs,
+    'data-ax-disabled-interaction': ''};
+} else {
+  attrs = {href: safe, target, rel, download, referrerpolicy: referrerPolicy, ...common, ...rest, ...themeAttrs};
+}
+const Tag = mode === 'button' ? 'button' : mode === 'disabled' ? 'a' : LinkTag;
+const showExternal = isExternalLink && !renderAsButton;
+---
+<Tag {...attrs}><Text type={type} size={size} weight={weight} color={labelColor} display={display} maxLines={maxLines}><slot /></Text>{showExternal && <Fragment><Icon icon="externalLink" size="xsm" color="inherit" /><VisuallyHidden>{newTabLabel}</VisuallyHidden></Fragment>}</Tag>
+{/* TODO(tooltip): when `tooltip` is set, Astryx wraps the link in <Tooltip content={tooltip}
+    placement="above">: render the tooltip layer here as the link's next sibling, triggered by
+    hover/focus on the element above, and wire aria-describedby on it. */}
+{isDisabled && <script>import '../../behaviors/disabledInteraction';</script>}

@@ -1,0 +1,16 @@
+---
+/**
+ * Private: the owner default for Button's icon slot (Astryx IconDefaultSizeProvider).
+ * Renders its slot and stamps every default-sized Icon with `size` (see buttonCascade.ts);
+ * `reenrol` keeps them enrolled under that key when the Button's own size is inherited.
+ */
+import type {IconSize} from '../Icon/iconRegistry';
+import {stampIconSlot} from './buttonCascade';
+
+interface Props {
+  size: IconSize;
+  reenrol?: string;
+}
+const html = await stampIconSlot(await Astro.slots.render('default'), Astro.props.size, Astro.props.reenrol);
+---
+<Fragment set:html={html} />
