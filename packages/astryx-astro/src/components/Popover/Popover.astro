@@ -1,0 +1,150 @@
+---
+/**
+ * Popover — a click-triggered overlay anchored to a button: secondary actions, inline
+ * confirmations, supplementary content. Port of @astryxdesign/core Popover/Popover.tsx and
+ * Popover/usePopover.tsx (on Layer/useLayer.tsx, hooks/useFocusTrap.ts).
+ * Behaviour: src/elements/runtime/popover.ts.
+ *
+ * Zero-JS core: the first `<button>` (or `[role="button"]`) of the default slot becomes the
+ * trigger with `popovertarget`, `aria-haspopup`, `aria-expanded`, `aria-controls` written at
+ * render time; the layer is `popover="auto"` (light dismiss + Escape) or `manual` with
+ * `hasLightDismiss={false}`; the hidden fallback close is a `popovertargetaction="hide"` button.
+ * The runtime adds anchoring, `aria-expanded` sync, initial focus, Tab containment for
+ * `aria-modal`, focus return and the shared Escape stack.
+ *
+ * The trigger sits in an inline-flex anchor wrapper (stable under pressed-state transforms),
+ * the layer is its sibling. `class` / `style` style the painted surface (`astryx-popover`,
+ * radius through `--_popover-radius`); `padding` sits on that surface so a theme's padding
+ * replaces it. Sibling mode (Astryx `anchorRef`): pass `for` with the id of a trigger
+ * rendered elsewhere and spread `attachPopover()` (./attach.ts) on it.
+ *
+ * Events: `astryx-open-change` `{isOpen, reason}` on the `<ax-popover>` element
+ * (Astryx `onOpenChange`); `isOpen` is the initial state, reflected in `data-ax-open`.
+ * Deferred: `presentation="bottom-sheet" | "adaptive"` (BottomSheet is not ported: both
+ * render the anchored popover). The fallback close button is a plain button styled like a
+ * secondary Button until Button lands.
+ *
+ * @example
+ * <Popover label="Settings"><button>Settings</button><Fragment slot="content">…</Fragment></Popover>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {LayerAlignment, LayerPlacement, SpacingStep} from '../../lib/types';
+import {cx} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {seal} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
+import '../Layer/Layer.css';
+import './Popover.css';
+
+export type PopoverPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+
+export interface Props extends Pick<HTMLAttributes<'div'>, 'class' | 'style'> {
+  /** Content inside the popover (or the `content` slot). */
+  content?: string;
+  /** Placement relative to the trigger. @default 'below' */
+  placement?: LayerPlacement;
+  /** Alignment along the placement axis. @default 'start' */
+  alignment?: LayerAlignment;
+  /** Initial open state (the element owns it afterwards). */
+  isOpen?: boolean;
+  /** When false the trigger opens nothing. @default true */
+  isEnabled?: boolean;
+  /** Width (number = px), capped to the viewport; default matches at least the trigger. @default 'auto' */
+  width?: number | string;
+  /** Surface padding as a spacing step. @default 3 */
+  padding?: SpacingStep;
+  /** Accessible name of the dialog. */
+  label?: string;
+  /** 'dialog', or 'none' when the content owns its role (a menu, a listbox). @default 'dialog' */
+  role?: 'dialog' | 'none';
+  /** `aria-modal` (with Tab containment) for role="dialog". @default true */
+  isModal?: boolean;
+  /** A visually hidden close button revealed when Tab reaches it. @default true */
+  hasCloseButton?: boolean;
+  /** @default translated "Close popover" */
+  closeButtonLabel?: string;
+  /** Move focus into the content on open. @default true */
+  hasAutoFocus?: boolean;
+  /** Close on a press outside (and the native Escape that comes with it). @default true */
+  hasLightDismiss?: boolean;
+  /** Close on Escape (full effect together with hasLightDismiss={false}). @default true */
+  hasEscapeDismiss?: boolean;
+  /** Surface choice; only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  presentation?: PopoverPresentation;
+  /** Sibling mode: id of a trigger rendered elsewhere. */
+  for?: string;
+  /** Layer id. @default generated */
+  id?: string;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const INTRINSIC = new Set(['auto', 'contain', 'fit-content', 'inherit', 'initial', 'max-content', 'min-content', 'revert', 'revert-layer', 'stretch', 'unset']);
+
+const {
+  content, placement = 'below', alignment = 'start', isOpen, isEnabled = true, width, padding = 3, label,
+  role = 'dialog', isModal = true, hasCloseButton = true, closeButtonLabel, hasAutoFocus = true,
+  hasLightDismiss = true, hasEscapeDismiss = true, for: forId, id: idProp, 'data-testid': testId, locale,
+  class: className, style,
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const id = idProp ?? layerId('ax-popover');
+const anchorId = forId ?? `${id}-anchor`;
+const isDialog = role === 'dialog';
+const haspopup = isDialog ? 'dialog' : 'true';
+
+let triggerHtml = '';
+if (!forId && Astro.slots.has('default')) {
+  const stamped = await stampTrigger(
+    await Astro.slots.render('default'),
+    (attrs, tag) => ({
+      ...(isEnabled ? (tag === 'button' ? {popovertarget: id} : {'data-ax-popover-trigger': id}) : {}),
+      'aria-haspopup': haspopup,
+      'aria-expanded': isOpen ? 'true' : 'false',
+      'aria-controls': mergeIds(attrs['aria-controls'], id),
+    }),
+    (tag, attrs) => tag === 'button' || attrs.role === 'button',
+  );
+  triggerHtml = stamped.html;
+}
+const contentHtml = Astro.slots.has('content') ? await seal(await Astro.slots.render('content')) : null;
+
+const widthValue = width == null || width === '' ? undefined
+  : typeof width === 'string' && (INTRINSIC.has(width.trim().toLowerCase()) || width.trim().startsWith('fit-content('))
+    ? width.trim()
+    : `min(${cssSize(width)}, var(--_ax-max-inline-size))`;
+---
+{!forId && <span class="ax-popover-anchor" id={anchorId}><Fragment set:html={triggerHtml} /></span>}
+<ax-popover
+  id={id}
+  popover={hasLightDismiss ? 'auto' : 'manual'}
+  class="ax-layer ax-layer-motion ax-popover-layer"
+  data-astryx-layer-root=""
+  {...placementAttrs({placement, alignment})}
+  data-ax-anchor={anchorId}
+  data-ax-escape={!hasEscapeDismiss && !hasLightDismiss ? 'none' : undefined}
+  data-ax-autofocus={hasAutoFocus ? undefined : 'false'}
+  data-ax-width={widthValue ? '' : undefined}
+  data-ax-open={isOpen ? 'true' : undefined}
+  style={mergeStyles(clearance('var(--spacing-1)'), widthValue && {width: widthValue})}
+>
+  <div
+    class={cx('astryx-popover ax-focus-visible', className)}
+    role={isDialog ? 'dialog' : undefined}
+    aria-modal={isDialog && isModal ? 'true' : undefined}
+    aria-label={isDialog ? label : undefined}
+    tabindex={isDialog ? -1 : undefined}
+    data-padding={padding}
+    style={style as StyleValue}
+  >
+    <div data-testid={testId}>{contentHtml ? <Fragment set:html={contentHtml} /> : content}</div>
+    {hasCloseButton && (
+      <div class="ax-popover-fallback-close" data-astryx-popover-fallback-close>
+        <button type="button" class="ax-popover-close ax-focus-visible" popovertarget={id} popovertargetaction="hide">{closeButtonLabel ?? t('@astryx.popover.close')}</button>
+      </div>
+    )}
+  </div>
+</ax-popover>
+<script>import '../../elements/runtime/popover';</script>

@@ -1,0 +1,52 @@
+---
+/**
+ * LayerProvider — app-level layer configuration. Port of @astryxdesign/core
+ * Layer/LayerProvider.tsx + Layer/layerInset.ts (spec:AST-059 FR6).
+ *
+ * `inset` declares a persistent bar floating over a viewport edge, once: each edge adds to
+ * the gutter every anchored layer keeps from that edge. Layers render inline, so the
+ * provider writes the `--astryx-layer-inset-*` custom properties on a `display: contents`
+ * wrapper and every layer inside inherits them; a nested provider narrows them for its
+ * subtree. An app may instead declare them on `:root` in CSS.
+ *
+ * `toast` is recorded as `data-astryx-toast-*` attributes for the Toast port (the toast
+ * viewport is not ported yet).
+ *
+ * @example
+ * <LayerProvider inset={{blockEnd: 56}}><App /></LayerProvider>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {insetVars, type LayerInset} from './layer';
+import './Layer.css';
+
+export interface LayerToastConfig {
+  /** @default 'bottomEnd' */
+  position?: 'topEnd' | 'topStart' | 'bottomEnd' | 'bottomStart';
+  /** @default 5 */
+  maxVisible?: number;
+  /** Toast-only inset that overrides the provider inset per edge. */
+  inset?: {top?: number; bottom?: number; start?: number; end?: number};
+}
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Persistent bars over viewport edges (px numbers or CSS lengths). Defaults to zero on every edge. */
+  inset?: LayerInset;
+  /** Toast viewport configuration (consumed by the Toast port). */
+  toast?: LayerToastConfig;
+}
+
+const {inset, toast, class: className, style, ...rest} = Astro.props;
+const toastInset = toast?.inset
+  ? Object.entries(toast.inset).filter(([, v]) => v != null).map(([k, v]) => `${k}:${v}`).join(' ')
+  : undefined;
+---
+<div
+  class={cx('ax-layer-provider', className)}
+  data-astryx-toast-position={toast?.position}
+  data-astryx-toast-max-visible={toast?.maxVisible}
+  data-astryx-toast-inset={toastInset}
+  style={mergeStyles(insetVars(inset), style as StyleValue)}
+  {...rest}
+><slot /></div>

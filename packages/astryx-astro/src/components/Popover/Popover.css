@@ -1,0 +1,93 @@
+/*
+ * Port of @astryxdesign/core Popover/usePopover.tsx (styles.surface, contentWrapper,
+ * closeButtonWrapper + rtlStyles.centerInline('100%'), Layout/paddingStyles) and
+ * Popover/Popover.tsx (anchorWrapper, surfaceViewportFit, surfaceScrollable, customWidth,
+ * matchTrigger). Rule order mirrors stylex.props() order: contentWrapper, surface, padding,
+ * viewport fit, scrollable.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* Stable anchor: pressed-state transforms on the trigger never move the layer. */
+  .ax-popover-anchor { display: inline-flex; }
+
+  /* Layer root sizing: an explicit width renders at its size up to the viewport cap (set
+   * inline); without one the layer is at least as wide as the trigger. A CSS minimum beats a
+   * maximum, so the minimum is clamped by the cap. The rect fallback writes --_ax-anchor-width. */
+  .ax-popover-layer:not([data-ax-width]) {
+    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
+    min-width: min(anchor-size(width), var(--_ax-max-inline-size));
+  }
+  .ax-popover-layer[data-astryx-rect]:not([data-ax-width]) { min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size)); }
+
+  .astryx-popover {
+    position: relative;
+    background-color: var(--color-background-popover);
+    --_popover-radius: var(--radius-container);
+    border-radius: var(--_popover-radius);
+    box-shadow: var(--shadow-low);
+  }
+
+  .astryx-popover[data-padding="0"] { padding: var(--spacing-0); }
+  .astryx-popover[data-padding="0.5"] { padding: var(--spacing-0-5); }
+  .astryx-popover[data-padding="1"] { padding: var(--spacing-1); }
+  .astryx-popover[data-padding="1.5"] { padding: var(--spacing-1-5); }
+  .astryx-popover[data-padding="2"] { padding: var(--spacing-2); }
+  .astryx-popover[data-padding="3"] { padding: var(--spacing-3); }
+  .astryx-popover[data-padding="4"] { padding: var(--spacing-4); }
+  .astryx-popover[data-padding="5"] { padding: var(--spacing-5); }
+  .astryx-popover[data-padding="6"] { padding: var(--spacing-6); }
+  .astryx-popover[data-padding="8"] { padding: var(--spacing-8); }
+  .astryx-popover[data-padding="10"] { padding: var(--spacing-10); }
+
+  /* surfaceViewportFit: capped with the layer runtime's one definition (AST-059 FR2, FR3). */
+  .astryx-popover {
+    box-sizing: border-box;
+    max-inline-size: var(--_ax-max-inline-size);
+    max-block-size: var(--_ax-max-block-size);
+    overflow: var(--_layer-keyboard-overflow, visible);
+  }
+  /* surfaceScrollable: only while the content overflows (runtime/popover.ts measures it). */
+  .astryx-popover[data-astryx-overflow] { overflow: auto; overscroll-behavior: contain; }
+
+  /* Hidden close button: clipped until focused, then shown centred below the surface. */
+  .ax-popover-fallback-close {
+    position: absolute;
+    bottom: 0;
+    z-index: 1;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    pointer-events: none;
+    padding-block-start: 0;
+    left: 50%;
+    transform: translate(-50%, 100%);
+  }
+  .ax-popover-fallback-close:focus-within {
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    pointer-events: auto;
+    padding-block-start: var(--spacing-1);
+  }
+
+  /* Stand-in for Button variant="secondary" (Button is ported separately). */
+  .ax-popover-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    height: var(--size-element-md);
+    padding-inline: var(--spacing-3);
+    border: var(--border-width, 1px) solid var(--color-border);
+    border-radius: var(--radius-element);
+    background-color: var(--color-background-surface);
+    color: var(--color-text-primary);
+    font: inherit;
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    box-shadow: var(--shadow-low);
+  }
+}

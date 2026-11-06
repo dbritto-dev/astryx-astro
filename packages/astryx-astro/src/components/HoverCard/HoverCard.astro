@@ -1,0 +1,120 @@
+---
+/**
+ * HoverCard — interactive content shown on hover or focus of a trigger (profile previews,
+ * link previews). Port of @astryxdesign/core HoverCard/HoverCard.tsx and
+ * HoverCard/useHoverCard.tsx (on Layer/useLayer.tsx). Behaviour: src/elements/runtime/tooltip.ts.
+ *
+ * Unlike Tooltip it stays open while the pointer or focus is inside it (200ms exit grace),
+ * opens on any focus of the trigger, and is a `popover="manual"` layer with a surface.
+ * With `label` it is a named `role="dialog"` and the trigger advertises it
+ * (`aria-haspopup="dialog"`, `aria-expanded` where the trigger's role allows it, `aria-controls`
+ * while open); without, it is an unnamed `role="group"` that describes the trigger.
+ *
+ * `class` / `style` land on the layer root, the themed surface (`astryx-hover-card`).
+ * Events: `astryx-open-change` on the `<ax-hover-card>` element (Astryx `onOpenChange`).
+ * The content wrapper is a `<span>` (display:block) so a text trigger may sit in a `<p>`;
+ * block content inside still needs a block context. Deferred (scope): touch extras beyond
+ * tap-to-open.
+ *
+ * @example
+ * <HoverCard label="Profile" content="…"><a href="/u/ada">@ada</a></HoverCard>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {LayerAlignment, LayerPlacement} from '../../lib/types';
+import {cx} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {seal} from '../../lib/cascade';
+import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
+import '../Layer/Layer.css';
+import './HoverCard.css';
+
+export type HoverCardFocusTrigger = 'auto' | 'always' | 'never';
+export type HoverCardTouchTrigger = 'auto' | 'tap' | 'none';
+
+export interface Props extends Pick<HTMLAttributes<'div'>, 'class' | 'style'> {
+  /** Content of the card. Or use the `content` slot. */
+  content?: string;
+  /** @default 'above' */
+  placement?: LayerPlacement;
+  /** @default 'center' */
+  alignment?: LayerAlignment;
+  /** Show delay on hover (ms). @default 300 */
+  delay?: number;
+  /** Hide delay after the pointer or focus leaves (ms). @default 200 */
+  hideDelay?: number;
+  /** @default 'auto' */
+  focusTrigger?: HoverCardFocusTrigger;
+  /** @default 'auto' */
+  touchTrigger?: HoverCardTouchTrigger;
+  /** @default true */
+  isEnabled?: boolean;
+  /** Accessible name: makes the card a named dialog; without it, an unnamed group. */
+  label?: string;
+  /** Dashed underline on a text trigger. @default 'auto' */
+  hasHoverIndication?: 'auto' | boolean;
+  /** Controlled: true force-shows; false keeps hover from opening it (focus still does). */
+  isOpen?: boolean;
+  /** Shown on load; still dismissible. */
+  isDefaultOpen?: boolean;
+  /** Layer id. @default generated */
+  id?: string;
+}
+
+const {
+  content, placement = 'above', alignment = 'center', delay = 300, hideDelay = 200, focusTrigger = 'auto',
+  touchTrigger = 'auto', isEnabled = true, label, hasHoverIndication = 'auto', isOpen, isDefaultOpen, id: idProp,
+  class: className, style,
+} = Astro.props;
+
+// aria-expanded only where the trigger's role takes it (ARIA 1.2, HoverCard.tsx EXPANDABLE_ROLES).
+const EXPANDABLE_ROLES = new Set(['application', 'button', 'checkbox', 'columnheader', 'combobox', 'gridcell', 'link', 'listbox', 'menuitem', 'menuitemcheckbox', 'menuitemradio', 'row', 'rowheader', 'switch', 'tab', 'treeitem']);
+const BUTTON_INPUT_TYPES = new Set(['button', 'submit', 'reset', 'image']);
+function supportsAriaExpanded(tag: string, attrs: Record<string, string>): boolean {
+  const role = attrs.role?.trim().split(/\s+/)[0];
+  if (role) return EXPANDABLE_ROLES.has(role);
+  if (tag === 'button' || tag === 'summary' || tag === 'select') return true;
+  if (tag === 'a' || tag === 'area') return 'href' in attrs;
+  if (tag === 'input') return BUTTON_INPUT_TYPES.has((attrs.type ?? '').toLowerCase());
+  return false;
+}
+
+const id = idProp ?? layerId('ax-hover-card');
+const contentHtml = Astro.slots.has('content') ? await seal(await Astro.slots.render('content')) : null;
+const stamped = await stampTrigger(await Astro.slots.render('default'), (attrs, tag) => label
+  ? {
+      'data-ax-hover-card': id,
+      'aria-haspopup': 'dialog',
+      'aria-expanded': supportsAriaExpanded(tag, attrs) ? 'false' : undefined,
+    }
+  : {'data-ax-hover-card': id, 'aria-describedby': mergeIds(attrs['aria-describedby'], id)});
+const showHoverIndication = hasHoverIndication === true || (hasHoverIndication === 'auto' && stamped.textOnly);
+const controlled = isOpen !== undefined;
+---
+{stamped.textOnly ? (
+  <span
+    class="ax-hover-card-trigger ax-focus-visible"
+    tabindex="0"
+    data-ax-hover-card={id}
+    aria-haspopup={label ? 'dialog' : undefined}
+    aria-describedby={label ? undefined : id}
+    data-hover-indication={showHoverIndication ? '' : undefined}
+  ><Fragment set:html={stamped.html} /></span>
+) : <Fragment set:html={stamped.html} />}
+<ax-hover-card
+  id={id}
+  popover="manual"
+  role={label ? 'dialog' : 'group'}
+  aria-label={label || undefined}
+  class={cx('astryx-hover-card ax-layer ax-layer-motion', className)}
+  data-astryx-layer-root=""
+  {...placementAttrs({placement, alignment})}
+  data-ax-delay={delay !== 300 ? delay : undefined}
+  data-ax-hide-delay={hideDelay !== 200 ? hideDelay : undefined}
+  data-ax-focus-trigger={focusTrigger !== 'auto' ? focusTrigger : undefined}
+  data-ax-touch-trigger={touchTrigger !== 'auto' ? touchTrigger : undefined}
+  data-ax-enabled={isEnabled ? undefined : 'false'}
+  data-ax-controlled={controlled ? '' : undefined}
+  data-ax-open={controlled ? String(isOpen) : isDefaultOpen ? 'true' : undefined}
+  style={mergeStyles(clearance('var(--spacing-1)'), style as StyleValue)}
+><span class="ax-hover-card-content">{contentHtml ? <Fragment set:html={contentHtml} /> : content}</span></ax-hover-card>
+<script>import '../../elements/runtime/tooltip';</script>

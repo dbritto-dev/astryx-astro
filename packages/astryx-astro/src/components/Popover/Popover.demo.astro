@@ -1,0 +1,103 @@
+---
+import Popover from './Popover.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachPopover} from './attach';
+
+const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer';
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const title = 'margin:0 0 var(--spacing-1);font-weight:var(--font-weight-semibold)';
+const text = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const item = 'display:block;width:100%;text-align:start;font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-2) var(--spacing-3);border:0;background:transparent;color:var(--color-text-primary);cursor:pointer';
+const sibling = attachPopover({id: 'pop-sibling'});
+---
+<div>
+  <p style={label}>Default: below / start, dialog with initial focus and a hidden close button</p>
+  <div style={row}>
+    <Popover label="Share settings" id="pop-basic">
+      <button type="button" style={btn} id="pop-basic-trigger">Share</button>
+      <Fragment slot="content">
+        <p style={title}>Share this page</p>
+        <p style={text}>Anyone with the link can view.</p>
+        <div style="display:flex;gap:var(--spacing-2);margin-top:var(--spacing-3)">
+          <button type="button" style={btn} id="pop-basic-first">Copy link</button>
+          <button type="button" style={btn}>Invite</button>
+        </div>
+      </Fragment>
+    </Popover>
+    <Popover label="Nested" id="pop-outer" width={260}>
+      <button type="button" style={btn} id="pop-outer-trigger">Nested layers</button>
+      <Fragment slot="content">
+        <p style={text}>A tooltip and a popover inside this one: Escape peels them off one at a time.</p>
+        <div style="display:flex;gap:var(--spacing-2);margin-top:var(--spacing-3)">
+          <Tooltip content="Inner tooltip"><button type="button" style={btn} id="pop-inner-tip-trigger">Hover</button></Tooltip>
+          <Popover label="Inner" id="pop-inner" placement="end" alignment="center">
+            <button type="button" style={btn} id="pop-inner-trigger">Open inner</button>
+            <Fragment slot="content"><p style={text}>Inner popover</p><button type="button" style={btn} id="pop-inner-first">OK</button></Fragment>
+          </Popover>
+        </div>
+      </Fragment>
+    </Popover>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Placement and alignment</p>
+  <div style={row}>
+    <Popover label="Above" placement="above" alignment="center" content="placement above, alignment center"><button type="button" style={btn} id="pop-above-trigger">above</button></Popover>
+    <Popover label="Below end" placement="below" alignment="end" content="placement below, alignment end"><button type="button" style={btn}>below / end</button></Popover>
+    <Popover label="Start" placement="start" content="placement start"><button type="button" style={btn}>start</button></Popover>
+    <Popover label="End" placement="end" alignment="center" content="placement end, alignment center"><button type="button" style={btn} id="pop-end-trigger">end / center</button></Popover>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Width, padding, and a content-owned role (role="none", padding 0, no auto focus)</p>
+  <div style={row}>
+    <Popover label="Wide" width={320} padding={5} content="width 320, padding 5: an explicit width renders at its size, capped to the viewport."><button type="button" style={btn}>width 320</button></Popover>
+    <Popover role="none" padding={0} hasAutoFocus={false} hasCloseButton={false} id="pop-menu">
+      <button type="button" style={btn} id="pop-menu-trigger">Sort by</button>
+      <Fragment slot="content">
+        <div role="listbox" aria-label="Sort by" style="padding-block:var(--spacing-1)">
+          <div role="option" aria-selected="true" style={item}>Newest</div>
+          <div role="option" aria-selected="false" style={item}>Oldest</div>
+          <div role="option" aria-selected="false" style={item}>Most viewed</div>
+        </div>
+      </Fragment>
+    </Popover>
+    <Popover label="Small padding" padding={1} content="padding 1"><button type="button" style={btn}>padding 1</button></Popover>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Explicit dismissal only (hasLightDismiss and hasEscapeDismiss false), non-modal, disabled</p>
+  <div style={row}>
+    <Popover label="Coachmark" id="pop-coach" hasLightDismiss={false} hasEscapeDismiss={false} placement="end">
+      <button type="button" style={btn} id="pop-coach-trigger">Coachmark</button>
+      <Fragment slot="content">
+        <p style={title}>New: saved views</p>
+        <p style={text}>Stays until you close it.</p>
+        <button type="button" style={btn + ';margin-top:var(--spacing-2)'} popovertarget="pop-coach" popovertargetaction="hide">Got it</button>
+      </Fragment>
+    </Popover>
+    <Popover label="Non-modal" isModal={false} content="aria-modal off: Tab may leave the surface."><button type="button" style={btn}>isModal false</button></Popover>
+    <Popover label="Disabled" isEnabled={false} content="never"><button type="button" style={btn}>isEnabled false</button></Popover>
+  </div>
+</div>
+
+<div>
+  <p style={label}>Triggers: role="button" element, and sibling mode (attachPopover)</p>
+  <div style={row}>
+    <Popover label="Role button" id="pop-role">
+      <span role="button" tabindex="0" style={btn} id="pop-role-trigger">role="button" trigger</span>
+      <Fragment slot="content"><p style={text}>Opened from a non-native trigger.</p></Fragment>
+    </Popover>
+    <button type="button" style={btn} {...sibling.trigger}>Sibling trigger</button>
+    <Popover {...sibling.layer} label="Sibling" content="Anchored to an external trigger." data-testid="pop-sibling-content" />
+  </div>
+</div>
+
+<div dir="rtl">
+  <p style={label}>RTL: alignment start is the right edge</p>
+  <Popover label="RTL" id="pop-rtl" alignment="start" content="תוכן"><button type="button" style={btn} id="pop-rtl-trigger">RTL start</button></Popover>
+</div>

@@ -1,0 +1,53 @@
+---
+/**
+ * InfoTip — a small "i" button that reveals help. Hover and keyboard focus preview it; a
+ * click, tap, Enter or Space pins it open until Escape, a second press, a press outside, or
+ * focus leaving (the toggletip pattern: `aria-expanded="true"` while pinned, the help is
+ * announced once when it pins). Port of @astryxdesign/core InfoTip/InfoTip.tsx on
+ * Tooltip/useTooltip.tsx; behaviour in src/elements/runtime/tooltip.ts (`data-ax-info-tip`).
+ *
+ * The icon is Astryx's default `info` artwork rendered with the `astryx-icon` hook
+ * (`data-size`, `data-color="inherit"`); switch to `<Icon icon="info">` once Icon is ported so
+ * theme icon sets replace it. The coarse-pointer hit area is the shared `ax-hit-area`.
+ *
+ * @example
+ * <InfoTip content="Editors can change this field; viewers cannot." />
+ * <InfoTip content="30-day rolling average." label="About this metric" size="md" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import './InfoTip.css';
+
+export type InfoTipSize = 'xsm' | 'sm' | 'md' | 'lg';
+
+export interface Props extends Pick<HTMLAttributes<'button'>, 'class' | 'style' | 'id'> {
+  /** The help the button reveals: short, non-interactive text (or the `content` slot). */
+  content?: string;
+  /** Accessible name of the button. @default translated "More information" */
+  label?: string;
+  /** Size of the info icon (12, 16, 20, 24px). @default 'sm' */
+  size?: InfoTipSize;
+  locale?: string;
+}
+
+const {content, label, size = 'sm', locale, class: className, style, id} = Astro.props;
+const t = translator(Astro, locale);
+const tip = attachTooltip();
+const contentHtml = Astro.slots.has('content') ? await Astro.slots.render('content') : null;
+---
+<button
+  type="button"
+  id={id}
+  class={cx('ax-info-tip ax-focus-visible ax-hit-area', className)}
+  style={style}
+  aria-label={label ?? t('@astryx.infoTip.label')}
+  aria-expanded="false"
+  data-ax-info-tip={tip.id}
+  {...tip.trigger}
+><span class="astryx-icon ax-info-tip-icon" data-size={size} data-color="inherit" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 4a1 1 0 100 2 1 1 0 000-2zm-.75 3.75a.75.75 0 011.5 0v5.5a.75.75 0 01-1.5 0v-5.5z" /></svg></span></button>
+{contentHtml != null
+  ? <Tooltip {...tip.layer}><Fragment slot="content" set:html={contentHtml} /></Tooltip>
+  : <Tooltip {...tip.layer} content={content} />}

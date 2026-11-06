@@ -1,0 +1,81 @@
+---
+import Layer from './Layer.astro';
+import LayerProvider from './LayerProvider.astro';
+
+// Triggers are plain buttons (Button is ported separately).
+const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer';
+const panel = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-background-popover);box-shadow:var(--shadow-med);font-size:var(--font-size-sm);white-space:nowrap';
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const placements = ['above', 'below', 'start', 'end'] as const;
+const alignments = ['start', 'center', 'end'] as const;
+---
+<div>
+  <p style={label}>Every placement × alignment (click a trigger; light dismiss, offset spacing-1)</p>
+  <div style="display:grid;grid-template-columns:repeat(3, max-content);gap:var(--spacing-3) var(--spacing-8);padding:var(--spacing-6) var(--spacing-12)">
+    {placements.map((p) => alignments.map((a) => (
+      <>
+        <button type="button" style={btn} popovertarget={`layer-${p}-${a}`} data-demo-trigger={`${p}-${a}`}>{p} / {a}</button>
+        <Layer id={`layer-${p}-${a}`} placement={p} alignment={a} offset="var(--spacing-1)" lightDismiss hasMotion role="dialog" label={`${p} ${a}`}>
+          <div style={panel}>{p} · {a}</div>
+        </Layer>
+      </>
+    )))}
+  </div>
+</div>
+
+<div>
+  <p style={label}>Manual layer (no light dismiss, Escape blocked → closes only via its button), flush offset</p>
+  <button type="button" style={btn} popovertarget="layer-manual" id="layer-manual-trigger">Toggle manual layer</button>
+  <Layer id="layer-manual" placement="end" alignment="center" escape="block">
+    <div style={panel}>Manual: <button type="button" style={btn} popovertarget="layer-manual" popovertargetaction="hide">Close</button></div>
+  </Layer>
+</div>
+
+<div>
+  <p style={label}>Custom positioning (anchor() insets) and fixed mode (x/y)</p>
+  <div style="display:flex;gap:var(--spacing-3)">
+    <button type="button" style={btn} popovertarget="layer-custom">Cover trigger</button>
+    <Layer id="layer-custom" positioning="custom" lightDismiss style="top:anchor(top);left:anchor(left);width:anchor-size(width);min-height:anchor-size(height)">
+      <div style={panel}>custom</div>
+    </Layer>
+    <button type="button" style={btn} popovertarget="layer-fixed">Fixed at 24, 24</button>
+    <Layer id="layer-fixed" mode="fixed" x={24} y={24} lightDismiss>
+      <div style={panel}>fixed layer</div>
+    </Layer>
+  </div>
+</div>
+
+<div>
+  <p style={label}>LayerProvider inset (blockStart 64px): the gutter grows on that edge</p>
+  <LayerProvider inset={{blockStart: 64}} toast={{position: 'bottomEnd', maxVisible: 3}}>
+    <button type="button" style={btn} popovertarget="layer-inset">Layer under a 64px bar</button>
+    <Layer id="layer-inset" placement="above" lightDismiss offset={4}>
+      <div style={panel}>inset-aware</div>
+    </Layer>
+  </LayerProvider>
+</div>
+
+<div>
+  <p style={label}>Runtime: roving focus (data-astryx-roving) — arrows, Home/End, wrap, disabled skipped</p>
+  <div role="toolbar" aria-label="Formatting" data-astryx-roving="horizontal" data-astryx-roving-items="button" id="roving-ltr" style="display:flex;gap:var(--spacing-1)">
+    <button type="button" style={btn} tabindex="0">Bold</button>
+    <button type="button" style={btn} tabindex="-1">Italic</button>
+    <button type="button" style={btn + ';opacity:.5'} tabindex="-1" aria-disabled="true">Underline</button>
+    <button type="button" style={btn} tabindex="-1">Strike</button>
+  </div>
+  <div dir="rtl" role="toolbar" aria-label="RTL" data-astryx-roving="horizontal" data-astryx-roving-items="button" data-astryx-roving-wrap="false" id="roving-rtl" style="display:flex;gap:var(--spacing-1);margin-top:var(--spacing-2)">
+    <button type="button" style={btn} tabindex="0">אחד</button>
+    <button type="button" style={btn} tabindex="-1">שתיים</button>
+    <button type="button" style={btn} tabindex="-1">שלוש</button>
+  </div>
+  <div role="menu" aria-label="Typeahead" data-astryx-roving="vertical" data-astryx-roving-typeahead id="roving-menu" style="display:grid;gap:2px;width:160px;margin-top:var(--spacing-2)">
+    <div role="menuitem" tabindex="0" style={btn}>Apple</div>
+    <div role="menuitem" tabindex="-1" style={btn}>Banana</div>
+    <div role="menuitem" tabindex="-1" style={btn}>Blueberry</div>
+    <div role="menuitem" tabindex="-1" style={btn}>Cherry</div>
+  </div>
+</div>
+<script>
+  import '../../elements/runtime/roving';
+  import '../../elements/runtime/disabledInteraction';
+</script>

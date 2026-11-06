@@ -1,0 +1,110 @@
+---
+/**
+ * Tooltip — a short text hint shown on hover or keyboard focus, anchored to its trigger.
+ * Port of @astryxdesign/core Tooltip/Tooltip.tsx and Tooltip/useTooltip.tsx (on
+ * Layer/useLayer.tsx with `keepsAnchorClear`). Behaviour: src/elements/runtime/tooltip.ts.
+ *
+ * Trigger: the first element of the default slot gets `aria-describedby` + `data-ax-tooltip`
+ * at render time (no wrapper, the role of Astryx's display:contents div). Plain text gets
+ * Astryx's focusable `<span tabindex=0>` with the dashed hover indication.
+ * Sibling mode (Astryx `anchorRef`): omit the slot; either the trigger carries the
+ * attributes from `attachTooltip()` (./attach.ts), or pass `for` with its id.
+ *
+ * The layer is `popover="hint"` (an engine without hint support reads the invalid value as
+ * `manual`, the fallback Astryx uses; a controlled tooltip is `manual` so no other hint closes
+ * it), `role="tooltip"`, never focusable, a sibling of the trigger, painted with inverted colors.
+ *
+ * Events: `astryx-open-change` `{isOpen, reason, isRequest?}` on the `<ax-tooltip>` element
+ * (Astryx `onOpenChange`); `el.pin()` / `el.unpin()` are Astryx's `show()` / `hide()`.
+ * Deferred (scope): touch extras beyond tap-to-open (useTouchTrigger), coarse-pointer press.
+ * Addition: group handoff (see runtime/tooltip.ts).
+ *
+ * @example
+ * <Tooltip content="Copy to clipboard"><button>Copy</button></Tooltip>
+ * <Tooltip content="Shown below" placement="below">Hover this text</Tooltip>
+ */
+import type {LayerAlignment, LayerPlacement} from '../../lib/types';
+import {seal} from '../../lib/cascade';
+import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
+import '../Layer/Layer.css';
+import './Tooltip.css';
+
+export type TooltipFocusTrigger = 'auto' | 'always' | 'never';
+export type TooltipTouchTrigger = 'auto' | 'tap' | 'none';
+
+export interface Props {
+  /** Tooltip content, typically short text. Or use the `content` slot. */
+  content?: string;
+  /** Position relative to the anchor (logical: start/end mirror in RTL). @default 'above' */
+  placement?: LayerPlacement;
+  /** Alignment along the placement axis. @default 'center' */
+  alignment?: LayerAlignment;
+  /** Show delay on hover (ms). @default 200 */
+  delay?: number;
+  /** Hide delay after leaving (ms); 0 keeps a 100ms bridge onto the surface. @default 0 */
+  hideDelay?: number;
+  /** Which focus opens it: the trigger itself (auto), anything inside (always), never. @default 'auto' */
+  focusTrigger?: TooltipFocusTrigger;
+  /** What a tap does where there is no hover. @default 'auto' */
+  touchTrigger?: TooltipTouchTrigger;
+  /** Enables the hover/focus triggers. @default true */
+  isEnabled?: boolean;
+  /** Dashed underline on a text trigger: 'auto' shows it for text-only children. @default 'auto' */
+  hasHoverIndication?: 'auto' | boolean;
+  /** Controlled open state: true force-shows, false force-hides; Escape reports a request. */
+  isOpen?: boolean;
+  /** Shown on load; still dismissible. */
+  isDefaultOpen?: boolean;
+  /** Sibling mode: id of a trigger rendered elsewhere (the runtime wires it). */
+  for?: string;
+  /** Layer id (stable ids for `attachTooltip`). @default generated */
+  id?: string;
+}
+
+const {
+  content, placement = 'above', alignment = 'center', delay = 200, hideDelay = 0, focusTrigger = 'auto',
+  touchTrigger = 'auto', isEnabled = true, hasHoverIndication = 'auto', isOpen, isDefaultOpen, for: forId, id: idProp,
+} = Astro.props;
+
+const id = idProp ?? layerId('ax-tooltip');
+const contentHtml = Astro.slots.has('content') ? await seal(await Astro.slots.render('content')) : null;
+let triggerHtml = '';
+let textOnly = false;
+if (!forId && Astro.slots.has('default')) {
+  const stamped = await stampTrigger(await Astro.slots.render('default'), (attrs) => ({
+    'aria-describedby': mergeIds(attrs['aria-describedby'], id),
+    'data-ax-tooltip': id,
+  }));
+  textOnly = stamped.textOnly;
+  triggerHtml = stamped.html;
+}
+const showHoverIndication = hasHoverIndication === true || (hasHoverIndication === 'auto' && textOnly);
+const controlled = isOpen !== undefined;
+---
+{textOnly ? (
+  <span
+    class="ax-tooltip-trigger ax-focus-visible"
+    tabindex="0"
+    aria-describedby={id}
+    data-ax-tooltip={id}
+    data-hover-indication={showHoverIndication ? '' : undefined}
+  ><Fragment set:html={triggerHtml} /></span>
+) : <Fragment set:html={triggerHtml} />}
+<ax-tooltip
+  id={id}
+  popover={controlled ? 'manual' : 'hint'}
+  role="tooltip"
+  class="astryx-tooltip ax-layer ax-layer-motion"
+  data-astryx-layer-root=""
+  {...placementAttrs({placement, alignment, keepsAnchorClear: true})}
+  data-ax-anchor={forId}
+  data-ax-delay={delay !== 200 ? delay : undefined}
+  data-ax-hide-delay={hideDelay !== 0 ? hideDelay : undefined}
+  data-ax-focus-trigger={focusTrigger !== 'auto' ? focusTrigger : undefined}
+  data-ax-touch-trigger={touchTrigger !== 'auto' ? touchTrigger : undefined}
+  data-ax-enabled={isEnabled ? undefined : 'false'}
+  data-ax-controlled={controlled ? '' : undefined}
+  data-ax-open={controlled ? String(isOpen) : isDefaultOpen ? 'true' : undefined}
+  style={clearance('var(--spacing-1)')}
+><span class="ax-tooltip-content">{contentHtml ? <Fragment set:html={contentHtml} /> : content}</span></ax-tooltip>
+<script>import '../../elements/runtime/tooltip';</script>

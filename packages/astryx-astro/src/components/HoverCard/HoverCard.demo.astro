@@ -1,0 +1,55 @@
+---
+import HoverCard from './HoverCard.astro';
+
+const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer';
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-4);align-items:center';
+const avatar = 'display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--color-accent-muted);color:var(--color-text-accent);font-weight:var(--font-weight-semibold)';
+---
+<div>
+  <p style={label}>Named card (role="dialog") on a link, interactive content stays open while hovered</p>
+  <p style="margin:0">
+    Reviewed by{' '}
+    <HoverCard label="Ada Lovelace" id="hc-profile">
+      <a href="#ada" id="hc-profile-trigger">@ada</a>
+      <span slot="content" style="display:flex;gap:var(--spacing-3);align-items:center;width:240px">
+        <span style={avatar}>AL</span>
+        <span style="display:grid;gap:2px">
+          <strong>Ada Lovelace</strong>
+          <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">Analyst · London</span>
+          <a href="#follow" id="hc-profile-link" style="font-size:var(--font-size-sm)">Follow</a>
+        </span>
+      </span>
+    </HoverCard>{' '}
+    and two others.
+  </p>
+</div>
+
+<div>
+  <p style={label}>Text trigger (unnamed role="group", describes its trigger, dashed indication)</p>
+  <p style="margin:0">
+    Last edited <HoverCard content="Edited by Grace Hopper on 3 November 2026, 14:02." id="hc-text">3 days ago</HoverCard>.
+  </p>
+</div>
+
+<div>
+  <p style={label}>Placement, alignment and timing</p>
+  <div style={row}>
+    <HoverCard content="Below, aligned to the start" placement="below" alignment="start"><button type="button" style={btn}>below / start</button></HoverCard>
+    <HoverCard content="Start side" placement="start"><button type="button" style={btn}>start</button></HoverCard>
+    <HoverCard content="End side, aligned to the end" placement="end" alignment="end"><button type="button" style={btn}>end / end</button></HoverCard>
+    <HoverCard content="Fast: 0ms in, 50ms out" delay={0} hideDelay={50}><button type="button" style={btn}>delay 0</button></HoverCard>
+    <HoverCard content="Hover only" focusTrigger="never" hasHoverIndication={false}><button type="button" style={btn}>focusTrigger never</button></HoverCard>
+    <HoverCard content="Disabled" isEnabled={false}><button type="button" style={btn}>isEnabled false</button></HoverCard>
+    <HoverCard content="Tap to open on touch" touchTrigger="tap"><button type="button" style={btn}>touchTrigger tap</button></HoverCard>
+  </div>
+</div>
+
+<div style="padding-block:var(--spacing-10) var(--spacing-2)">
+  <p style={label}>Controlled open (isOpen), styled surface (class / style), isDefaultOpen</p>
+  <div style={row}>
+    <HoverCard content="Controlled: always shown, with a custom surface style" isOpen style="--_hovercard-radius:var(--radius-element)" class="demo-hover-card"><button type="button" style={btn} id="hc-controlled-trigger">isOpen</button></HoverCard>
+    <span style="width:var(--spacing-12)"></span>
+    <HoverCard content="Open on load" isDefaultOpen placement="end"><button type="button" style={btn}>isDefaultOpen</button></HoverCard>
+  </div>
+</div>
