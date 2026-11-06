@@ -1,0 +1,63 @@
+---
+import FileInput from './FileInput.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Input mode</h3>
+    <div style={grid}>
+      <FileInput label="Resume" accept=".pdf" description="PDF only" name="resume" data-test="compact" />
+      <FileInput label="Attachments" isMultiple maxFiles={2} maxSize={1024 * 50} description="Up to 2 files, 50 KB each" data-test="multiple" />
+      <FileInput label="Avatar" accept="image/*" statusVariant="tooltip" data-test="tooltip-variant" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Dropzone mode</h3>
+    <div style={grid}>
+      <FileInput label="Photos" mode="dropzone" accept="image/*" isMultiple maxFiles={3} statusVariant="detached" data-test="dropzone" />
+      <FileInput label="Contract" mode="dropzone" accept=".pdf" statusVariant="detached" isRequired />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status, disabled, loading</h3>
+    <div style={grid}>
+      <FileInput label="Invoice" status={{type: 'error', message: 'Upload an invoice to continue'}} />
+      <FileInput label="Invoice (warning)" status={{type: 'warning', message: 'Scans may be rejected'}} statusVariant="detached" />
+      <FileInput label="Receipt" status={{type: 'success', message: 'Receipt verified'}} />
+      <FileInput label="Dropzone error" mode="dropzone" status={{type: 'error', message: 'File is required'}} statusVariant="tooltip" />
+      <FileInput label="Disabled" isDisabled disabledMessage="Uploads are locked until your profile is verified" data-test="disabled" />
+      <FileInput label="Uploading" isLoading />
+      <FileInput label="Uploading (dropzone)" mode="dropzone" isLoading />
+      <FileInput label="Disabled dropzone" mode="dropzone" isDisabled />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>In a form and a FormLayout (required by default)</h3>
+    <form data-test="form" style="max-width:560px;display:grid;gap:var(--spacing-3)">
+      <FormLayout direction="horizontal-labels" defaultOptionality="required">
+        <FileInput label="ID document" name="document" accept=".pdf,image/*" data-test="form-file" />
+        <FileInput label="Extra" name="extra" isOptional mode="dropzone" isMultiple statusVariant="detached" />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const entries = [...new FormData(form)].map(([k, v]) => [k, v instanceof File ? v.name : v]);
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(entries);
+    });
+  });
+</script>

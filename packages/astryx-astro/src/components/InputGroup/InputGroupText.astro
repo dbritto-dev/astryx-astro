@@ -1,0 +1,21 @@
+---
+/**
+ * InputGroupText — a fixed prefix/suffix cell inside InputGroup ("$", "https://", "kg" or a
+ * decorative icon). Plain text, not a control and not part of the input's name: put what a
+ * screen reader needs in the input's own label. Joins its neighbours' borders and corners.
+ * Port of @astryxdesign/core InputGroup/InputGroupText.tsx (styles in InputGroup.css).
+ *
+ * @example
+ * <InputGroup label="Website"><InputGroupText>https://</InputGroupText><TextInput label="URL" isLabelHidden /></InputGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './InputGroup.css';
+
+export interface Props extends HTMLAttributes<'div'> {}
+
+const {class: className, style, ...rest} = Astro.props;
+const {themeClass} = themeProps('input-group-text');
+---
+<div {...rest} data-astryx-input-group-item="" class={cx(themeClass, className as string | undefined)} style={mergeStyles(style as StyleValue)}><slot /></div>

@@ -1,0 +1,191 @@
+---
+/**
+ * TextArea — multi-line text entry with label, description, status, loading and an
+ * optional grapheme-aware character counter. Port of @astryxdesign/core
+ * TextArea/TextArea.tsx with utils/characters.ts (characterCount), Field/inputStyles.stylex.ts,
+ * Field/inputDisabledFocus.ts, Field/textEntryTraits.ts, Field/fieldParts.ts,
+ * hooks/useInputContainer.ts, hooks/useInputStatusIcon.tsx, hooks/useResolvedRequired.ts and
+ * hooks/useAnnounce.ts. Behaviour: src/elements/text-area.ts.
+ *
+ * - The wrapper is a bare positioning context (padding 0) so the native resize grip sits in
+ *   the true corner; the `<textarea>` (`.astryx-text-area-control`) spans it and carries the
+ *   inset `--_textarea-inline-padding` (themes set it); start icon, spinner/status and the
+ *   counter are overlays aligned to that inset, and the text reserves room for each.
+ * - Height comes from `rows` (default 3), not `size` (lg only adds block padding). Resizable
+ *   vertically. Astryx 0.7.9 has no auto-grow, so neither does this port.
+ * - `maxLength` shows `count/limit` (`.astryx-text-area-counter`, user-perceived characters:
+ *   an emoji or flag is one) and does not enforce the limit natively. Over the limit the
+ *   counter turns error-colored with a warning glyph and the textarea is `aria-invalid`;
+ *   crossing into "near" (≥80%) or "over" is announced (polite / assertive) once per zone.
+ * - Disabled = `aria-disabled` + `readonly` (focusable, not submitted); `disabledMessage`
+ *   tooltip; `isReadOnly` keeps full opacity and submits; `isLoading` = aria-busy + Spinner.
+ *   Not an InputGroup member (Astryx guidance).
+ *
+ * Events (on `<ax-text-area>`): `astryx-change` `{value, event}` per edit (Astryx onChange).
+ * Native `input`/`change`/`paste`/`focus`/`blur` work on the `<textarea>`. `el.value`.
+ * Not available: `changeAction`, callback props (use events).
+ * Deferred touch extras: keyboard riding (contract #10).
+ *
+ * @example
+ * <TextArea label="Bio" rows={4} maxLength={160} />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {messageTemplate, pluralTemplates} from '../Field/clientMessages';
+import {
+  routeFieldProps,
+  statusIconPlan,
+  textEntryTraitAttributes,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+  type TextEntryTraitProps,
+} from '../Field/fieldProps';
+import {characterCount} from './characters';
+import '../Field/Field.css';
+import './TextArea.css';
+
+export type TextAreaSize = InputSize;
+export type TextAreaStatus = InputStatus;
+export type TextAreaStatusType = InputStatus['type'];
+
+export interface Props extends FieldComposedProps, TextEntryTraitProps {
+  /** Initial value (the element owns it afterwards). @default '' */
+  value?: string;
+  /** Placeholder shown while empty. */
+  placeholder?: string;
+  /** Visible rows. @default 3 */
+  rows?: number;
+  /** Read-only: full opacity, still submitted. @default false */
+  isReadOnly?: boolean;
+  /** Why the textarea is disabled (tooltip; also describes it). */
+  disabledMessage?: string;
+  /** Icon at the start (name / SVG string / Astro component) or the `startIcon` slot. */
+  startIcon?: LabelIcon;
+  /** Native spellcheck. @default true */
+  hasSpellCheck?: boolean;
+  /** Character limit shown as a counter (grapheme-aware; not enforced). */
+  maxLength?: number;
+  /** Focus on load. @default false */
+  hasAutoFocus?: boolean;
+  /** Internal padding; height comes from rows. Explicit, else a size provider's, else 'md'. */
+  size?: TextAreaSize;
+  /** Busy: aria-busy + spinner. @default false */
+  isLoading?: boolean;
+  /** Form field name (`name` works too). Dropped while disabled. */
+  htmlName?: string;
+  name?: string;
+  /** Native `autocomplete`. */
+  autoComplete?: string;
+}
+
+const {
+  value = '',
+  placeholder,
+  rows = 3,
+  isReadOnly = false,
+  disabledMessage,
+  startIcon,
+  hasSpellCheck = true,
+  maxLength,
+  hasAutoFocus = false,
+  size: sizeProp,
+  isLoading = false,
+  htmlName,
+  name,
+  autoComplete,
+  enterKeyHint,
+  inputMode,
+  autoCapitalize,
+  hasAutoCorrect,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('TextArea', props as Props & Record<string, unknown>, {isReadOnly});
+const {isDisabled, status, statusVariant} = r;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const size: TextAreaSize = sizeProp ?? 'md';
+const plan = statusIconPlan(status, statusVariant);
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const counterId = maxLength != null ? r.ids.make('counter') : undefined;
+const startIconHtml = Astro.slots.has('startIcon') ? await Astro.slots.render('startIcon') : null;
+const hasStartIcon = !!startIconHtml?.trim() || (startIcon != null && startIcon !== '');
+const valueLength = maxLength != null ? characterCount(value) : 0;
+const isOver = maxLength != null && valueLength > maxLength;
+const {themeClass, attrs: themeAttrs} = themeProps('text-area', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+  readonly: isReadOnly ? 'readonly' : null,
+});
+const control = themeProps('text-area-control');
+const counter = themeProps('text-area-counter');
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, plan.tooltipId, counterId, disabledTip?.id);
+const hasEndSlot = isLoading || plan.renders;
+---
+<Field {...r.field}>
+  <ax-text-area
+    class={cx(themeClass, 'ax-input', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-max-length={maxLength}
+    data-locale={maxLength != null ? locale : undefined}
+    data-counter-text={maxLength != null ? messageTemplate(t, locale, '@astryx.textArea.counter', {limit: maxLength}, ['count']) : undefined}
+    data-remaining-text={maxLength != null ? pluralTemplates(t, locale, '@astryx.textArea.charactersRemaining', 'count') : undefined}
+    data-over-text={maxLength != null ? pluralTemplates(t, locale, '@astryx.textArea.charactersOverLimit', 'count') : undefined}
+  >
+    {hasStartIcon && <span class="ax-text-area-start">{startIconHtml ? <Fragment set:html={startIconHtml} /> : <Icon icon={startIcon} size="sm" color="secondary" />}</span>}
+    <textarea
+      {...r.native}
+      {...r.required}
+      class={cx(control.themeClass, 'ax-text-area-native')}
+      {...control.attrs}
+      id={r.id}
+      name={isDisabled ? undefined : (htmlName ?? name)}
+      placeholder={placeholder}
+      rows={rows}
+      {...textEntryTraitAttributes({enterKeyHint, inputMode, autoCapitalize, hasAutoCorrect})}
+      aria-disabled={isDisabled ? 'true' : undefined}
+      readonly={isReadOnly || isDisabled || undefined}
+      spellcheck={hasSpellCheck ? 'true' : 'false'}
+      autocomplete={autoComplete}
+      autofocus={hasAutoFocus || undefined}
+      data-autofocus={hasAutoFocus ? '' : undefined}
+      aria-labelledby={r.labelledBy}
+      aria-describedby={describedBy}
+      aria-invalid={status?.type === 'error' || isOver ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      data-ax-start-icon={hasStartIcon ? '' : undefined}
+      data-ax-end={hasEndSlot ? (isLoading && plan.renders ? 'busy-status' : 'one') : undefined}
+      data-ax-counter={maxLength != null ? '' : undefined}
+    >{'\n' + value}</textarea>
+    {hasEndSlot && (
+      <span class="ax-text-area-end">
+        {isLoading && <Spinner size="sm" aria-hidden="true" />}
+        <InputStatusIcon status={status} plan={plan} locale={r.locale} />
+      </span>
+    )}
+    {maxLength != null && (
+      <div id={counterId} class={counter.themeClass} {...counter.attrs} data-ax-over={isOver ? '' : undefined}>
+        <Icon icon="warning" size="sm" class="ax-text-area-counter-icon" />
+        <span data-ax-counter-text>{t('@astryx.textArea.counter', {count: valueLength, limit: maxLength})}</span>
+      </div>
+    )}
+  </ax-text-area>
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/text-area';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

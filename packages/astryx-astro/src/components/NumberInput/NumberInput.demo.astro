@@ -1,0 +1,75 @@
+---
+import NumberInput, {type NumberInputSize} from './NumberInput.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: NumberInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Must be at least 1', warning: 'Large orders ship later', success: 'In stock'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Sizes, steppers and units</h3>
+    <div style={grid}>
+      {sizes.map((size) => <NumberInput label={`Quantity (${size})`} size={size} value={2} min={0} max={10} hasNumberSteppers />)}
+      <NumberInput label="Storage" value={128} units="GB" step={64} min={64} max={1024} hasNumberSteppers data-test="units" />
+      <NumberInput label="Clamped 0–10" value={10} min={0} max={10} hasNumberSteppers description="ArrowUp/Down step, PageUp/Down ×10, Home/End go to the bounds" data-test="clamped" />
+      <NumberInput label="Integer only" value={3} isIntegerOnly step={1} data-test="integer" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <NumberInput label={`${type} ${size}`} size={size} value={0} status={{type, message: messages[type]}} hasNumberSteppers />
+      )))}
+      <NumberInput label="Tooltip status" value={0} status={{type: 'error', message: messages.error}} statusVariant="tooltip" />
+      <NumberInput label="Detached status" value={0} status={{type: 'warning', message: messages.warning}} statusVariant="detached" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Formatting, locale, clear</h3>
+    <div style={grid}>
+      <NumberInput label="Price" value={1234.5} step={0.01} min={0} formatValue={{style: 'currency', currency: 'USD'}} htmlName="price" data-test="currency" />
+      <NumberInput label="Betrag (de-DE)" locale="de-DE" value={1234.5} step={0.5} description="Type 1.234,5 or 1,5" data-test="locale" />
+      <NumberInput label="Optional amount" value={42} hasClear placeholder="None" data-test="clearable" />
+      <NumberInput label="Wheel disabled" value={5} isWheelEnabled={false} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, read-only</h3>
+    <div style={grid}>
+      <NumberInput label="Disabled" value={8} isDisabled hasNumberSteppers htmlName="disabled-qty" data-test="disabled" />
+      <NumberInput label="Disabled with reason" value={8} isDisabled disabledMessage="Locked while the order ships" />
+      <NumberInput label="Read-only" value={8} isReadOnly hasNumberSteppers data-test="readonly" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>In a form and a FormLayout</h3>
+    <form data-test="form" style="max-width:520px;display:grid;gap:var(--spacing-3)">
+      <FormLayout direction="horizontal-labels">
+        <NumberInput label="Seats" htmlName="seats" value={3} min={1} max={50} hasNumberSteppers isRequired />
+        <NumberInput label="Discount" htmlName="discount" value={0.15} step={0.05} formatValue={{style: 'percent'}} isOptional />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+    });
+  });
+</script>

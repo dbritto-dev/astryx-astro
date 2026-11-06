@@ -1,0 +1,89 @@
+/*
+ * Port of @astryxdesign/core InputGroup/InputGroup.tsx (styles, sizeStyles),
+ * InputGroup/InputGroupText.tsx (styles.text) and InputGroup/groupStyles.ts
+ * (groupStyles.inGroup for compatible inputs, groupStyles.buttonAddon for Buttons).
+ *
+ * Members carry `data-astryx-input-group-item` (added by InputGroup, groupMembers.ts).
+ * Ends are found structurally: the first member is `:first-child`; the last is
+ * `:nth-last-child(1 of :not([popover]):not(template):not(dialog))`, so a trailing tooltip or
+ * popover layer never counts as a follower (and stays linear in WebKit, ButtonGroup FR3).
+ * Contract #9: members adopt the group height, connect their borders (a -1 border overlap)
+ * and drop the inner corners; the focused member raises its z-index above its neighbours.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-input-group {
+    display: inline-flex;
+    align-items: stretch;
+    background-color: transparent;
+  }
+  .astryx-input-group[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-input-group[data-size="md"] { height: var(--size-element-md); }
+  .astryx-input-group[data-size="lg"] { height: var(--size-element-lg); }
+  .astryx-input-group[aria-disabled="true"] { cursor: default; opacity: 0.5; }
+
+  /* compatible inputs (groupStyles.inGroup); the box is any Field-composed control box */
+  .astryx-input-group [data-ax-group-control][data-astryx-input-group-item] {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    margin-inline-start: calc(-1 * var(--border-width));
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+  .astryx-input-group [data-ax-group-control][data-astryx-input-group-item]:first-child {
+    margin-inline-start: 0;
+    border-start-start-radius: var(--radius-element);
+    border-end-start-radius: var(--radius-element);
+  }
+  .astryx-input-group [data-ax-group-control][data-astryx-input-group-item]:nth-last-child(1 of :not([popover]):not(template):not(dialog)) {
+    border-start-end-radius: var(--radius-element);
+    border-end-end-radius: var(--radius-element);
+  }
+  /* input boxes sit at z-index 1; a focused member goes one higher so its ring shows */
+  .astryx-input-group [data-ax-group-control][data-astryx-input-group-item]:focus-within { z-index: 2; }
+
+  /* Button addons (groupStyles.buttonAddon): direct children only, so a clear button or
+   * stepper inside an input keeps its own shape */
+  .astryx-button[data-astryx-input-group-item][data-size]:where(.astryx-input-group > *) { height: 100%; }
+  .astryx-button[data-astryx-input-group-item]:where(.astryx-input-group > *):not(:first-child) {
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+  }
+  .astryx-button[data-astryx-input-group-item]:where(.astryx-input-group > *):not(:nth-last-child(1 of :not([popover]):not(template):not(dialog))) {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+  }
+  .astryx-button[data-astryx-input-group-item]:where(.astryx-input-group > *):focus-visible { z-index: 2; }
+
+  /* InputGroupText */
+  .astryx-input-group-text {
+    display: flex;
+    align-items: center;
+    padding-inline: var(--spacing-2);
+    background-color: var(--color-background-muted);
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--color-border-emphasized);
+    margin-inline-start: calc(-1 * var(--border-width));
+    border-radius: 0;
+  }
+  .astryx-input-group-text:first-child {
+    margin-inline-start: 0;
+    border-start-start-radius: var(--radius-element);
+    border-end-start-radius: var(--radius-element);
+  }
+  .astryx-input-group-text:last-child {
+    border-start-end-radius: var(--radius-element);
+    border-end-end-radius: var(--radius-element);
+  }
+}

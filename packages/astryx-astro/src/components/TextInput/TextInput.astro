@@ -1,0 +1,184 @@
+---
+/**
+ * TextInput — single-line text entry with label, description, status, clear button and
+ * loading state. Port of @astryxdesign/core TextInput/TextInput.tsx with
+ * Field/inputStyles.stylex.ts, Field/inputDisabledFocus.ts, Field/textEntryTraits.ts,
+ * Field/fieldParts.ts, InputGroup/groupStyles.ts, hooks/useInputContainer.ts,
+ * hooks/useInputStatusIcon.tsx, hooks/useResolvedRequired.ts, hooks/useBusyAnnouncement.ts,
+ * utils/inputAria.ts and utils/ime.ts. Behaviour: src/elements/text-input.ts.
+ *
+ * Field-composed (contract #8, ../Field/fieldProps.ts): base props (`id`, `aria-*`,
+ * `data-*`, `name`, native attributes) go to the `<input>`; `containerClass/Style` → Field
+ * box, `controlClass/Style` → the bordered `.astryx-text-input` box; root `class`/`style`
+ * are ignored (dev warning).
+ *
+ * - `isDisabled` keeps the tab stop (contract #2): `aria-disabled` + `readonly`, no `name`
+ *   (left out of form data), Enter cannot submit; `disabledMessage` adds a tooltip on the box
+ *   (hover and keyboard focus) that also describes the input.
+ * - `isReadOnly`: full opacity, still submits. `isLoading`: aria-busy + decorative Spinner
+ *   inward of the clear button (geometry kept), "Loading" announced once.
+ * - `hasClear`: the shared InputClearButton ("Clear" tooltip, "Clear <label>" name), shown
+ *   while there is a value; clears, fires `input` + `astryx-change`, keeps focus.
+ * - Search inputs: pass `type="search"` (+ `enterKeyHint="search"`, `hasAutoCorrect={false}`,
+ *   contract #10). iOS-only 16px font floor (no focus zoom).
+ * - Inside an InputGroup the group unwraps the Field shell: the input is named by the group
+ *   label + its own (hidden) label and described by the group description/status.
+ * - Size: explicit `size`, else a size provider's (cascade `size`: InputGroup, ButtonGroup …),
+ *   else 'md'. FormLayout: `form-required` (aria-required), `form-direction`, `form-optionality`.
+ *
+ * Events (on the `<ax-text-input>` box, bubbling): `astryx-change` `{value, event}` on every
+ * edit (Astryx onChange) and clear, `astryx-enter` `{}` on Enter (not during IME composition;
+ * Astryx onEnter). Native `input` / `change` / `keydown` work on the `<input>`.
+ * Element API: `el.value` (get/set), `el.clear()`, `el.focus()`.
+ * Not available: `changeAction` (server actions / optimistic value), `onChange`/`onEnter`
+ * callbacks (use the events).
+ * Deferred touch extras (AGENTS.md scope): keyboard riding (contract #10 "fields stay above
+ * the on-screen keyboard" — use `interactive-widget=resizes-content`), the coarse-pointer
+ * press controller.
+ *
+ * @example
+ * <TextInput label="Name" value="Ada" />
+ * <TextInput label="Search" isLabelHidden type="search" enterKeyHint="search" hasAutoCorrect={false} hasClear startIcon="search" />
+ * <TextInput label="Email" type="email" status={{type: 'error', message: 'Enter a valid email'}} />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  statusIconPlan,
+  textEntryTraitAttributes,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+  type TextEntryTraitProps,
+} from '../Field/fieldProps';
+import '../Field/Field.css';
+import './TextInput.css';
+
+export type TextInputType = 'text' | 'password' | 'email' | 'search' | 'tel' | 'url';
+export type TextInputSize = InputSize;
+export type TextInputStatus = InputStatus;
+
+export interface Props extends FieldComposedProps, TextEntryTraitProps {
+  /** HTML input type (`email`/`tel`/`url` pick the touch keyboard; `search` = search box). @default 'text' */
+  type?: TextInputType;
+  /** Initial value (the element owns it afterwards). @default '' */
+  value?: string;
+  /** Placeholder text shown while empty. */
+  placeholder?: string;
+  /** Read-only: full opacity, still submitted, not editable. @default false */
+  isReadOnly?: boolean;
+  /** Why the input is disabled (tooltip on hover/focus; also describes the input). */
+  disabledMessage?: string;
+  /** Icon at the start: a name / SVG string / Astro component, or the `startIcon` slot. */
+  startIcon?: LabelIcon;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: TextInputSize;
+  /** Busy: aria-busy + spinner. @default false */
+  isLoading?: boolean;
+  /** Clear button while there is a value. @default false */
+  hasClear?: boolean;
+  /** Focus on load (`autofocus` + `data-autofocus`). @default false */
+  hasAutoFocus?: boolean;
+  /** Form field name (`name` works too). Dropped while disabled. */
+  htmlName?: string;
+  name?: string;
+  /** Native `autocomplete`. */
+  autoComplete?: string;
+  /** Native `spellcheck`; unset lets the browser decide. */
+  hasSpellCheck?: boolean;
+}
+
+const {
+  type = 'text',
+  value = '',
+  placeholder,
+  isReadOnly = false,
+  disabledMessage,
+  startIcon,
+  size: sizeProp,
+  isLoading = false,
+  hasClear = false,
+  hasAutoFocus = false,
+  htmlName,
+  name,
+  autoComplete,
+  hasSpellCheck,
+  enterKeyHint,
+  inputMode,
+  autoCapitalize,
+  hasAutoCorrect,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('TextInput', props as Props & Record<string, unknown>, {groupable: true, isReadOnly});
+const {isDisabled, status, statusVariant} = r;
+const t = translator(Astro, r.locale);
+const size: TextInputSize = sizeProp ?? 'md';
+const plan = statusIconPlan(status, statusVariant);
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+// renderIconSlot: a name/component gets sm + secondary; slot markup renders as given.
+const startIconHtml = Astro.slots.has('startIcon') ? await Astro.slots.render('startIcon') : null;
+const {themeClass, attrs: themeAttrs} = themeProps('text-input', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+  readonly: isReadOnly ? 'readonly' : null,
+});
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, plan.tooltipId, disabledTip?.id);
+const fieldName = isDisabled ? undefined : (htmlName ?? name);
+const showsClear = hasClear && !isDisabled && !isReadOnly;
+---
+<Field {...r.field}>
+  <ax-text-input
+    class={cx(themeClass, 'ax-input', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+  >
+    {startIconHtml ? <Fragment set:html={startIconHtml} /> : startIcon && <Icon icon={startIcon} size="sm" color="secondary" />}
+    <span {...r.groupLabel}>{r.label}</span>
+    <input
+      {...r.native}
+      {...r.required}
+      {...r.groupInput}
+      class="ax-input-native"
+      id={r.id}
+      name={fieldName}
+      type={type}
+      {...textEntryTraitAttributes({enterKeyHint, inputMode, autoCapitalize, hasAutoCorrect})}
+      spellcheck={hasSpellCheck == null ? undefined : hasSpellCheck ? 'true' : 'false'}
+      autocomplete={autoComplete}
+      value={value}
+      placeholder={placeholder}
+      aria-disabled={isDisabled ? 'true' : undefined}
+      readonly={isReadOnly || isDisabled || undefined}
+      autofocus={hasAutoFocus || undefined}
+      data-autofocus={hasAutoFocus ? '' : undefined}
+      aria-describedby={describedBy}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      aria-labelledby={r.labelledBy}
+    />
+    {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    {showsClear && <InputClearButton label={t('@astryx.textInput.clearLabel', {label: r.label})} isHidden={value === ''} locale={r.locale} {...{[GROUP_DROP_DISABLED]: ''}} />}
+    <InputStatusIcon status={status} plan={plan} locale={r.locale} />
+  </ax-text-input>
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/text-input';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}
