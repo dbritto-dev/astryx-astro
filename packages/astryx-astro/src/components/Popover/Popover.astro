@@ -21,8 +21,9 @@
  * Events: `astryx-open-change` `{isOpen, reason}` on the `<ax-popover>` element
  * (Astryx `onOpenChange`); `isOpen` is the initial state, reflected in `data-ax-open`.
  * Deferred: `presentation="bottom-sheet" | "adaptive"` (BottomSheet is not ported: both
- * render the anchored popover). The fallback close button is a plain button styled like a
- * secondary Button until Button lands.
+ * render the anchored popover). The fallback close is a secondary `<Button>` (usePopover's
+ * `<Button variant="secondary" label={closeButtonLabel} onClick={layer.hide}>`) closing through
+ * `popovertargetaction="hide"`; it renders at md, the size a layer's reset SizeContext gives it.
  *
  * @example
  * <Popover label="Settings"><button>Settings</button><Fragment slot="content">…</Fragment></Popover>
@@ -34,6 +35,7 @@ import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
 import {seal} from '../../lib/cascade';
 import {translator} from '../../lib/i18n';
 import {clearance, layerId, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
+import Button from '../Button/Button.astro';
 import '../Layer/Layer.css';
 import './Popover.css';
 
@@ -142,7 +144,7 @@ const widthValue = width == null || width === '' ? undefined
     <div data-testid={testId}>{contentHtml ? <Fragment set:html={contentHtml} /> : content}</div>
     {hasCloseButton && (
       <div class="ax-popover-fallback-close" data-astryx-popover-fallback-close>
-        <button type="button" class="ax-popover-close ax-focus-visible" popovertarget={id} popovertargetaction="hide">{closeButtonLabel ?? t('@astryx.popover.close')}</button>
+        <Button variant="secondary" size="md" label={closeButtonLabel ?? t('@astryx.popover.close')} {...{popovertarget: id, popovertargetaction: 'hide'}} locale={locale} />
       </div>
     )}
   </div>

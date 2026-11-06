@@ -68,7 +68,7 @@ const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:v
 
   <div style={row}>
     <span style={cell}><Avatar name="Link Person" size="lg" href="#avatar" src={photo('#7f7fd5', '#86a8e7')} /><span style={caption}>href (link)</span></span>
-    <span style={cell}><Avatar name="Button Person" size="lg" onClick={true} /><span style={caption}>onClick (button)</span></span>
+    <span style={cell}><Avatar name="Button Person" size="lg" isClickable data-case="clickable" /><span style={caption}>isClickable (button)</span></span>
     <span style={cell}><Avatar name="jsmith" tooltip="Jane Smith, Staff Engineer" size="lg" /><span style={caption}>custom tooltip (describes)</span></span>
     <span style={cell}><Avatar name="No Tooltip" tooltip={false} size="lg" /><span style={caption}>tooltip=false (no tab stop)</span></span>
     <span style={cell}><Avatar name="Blocked Link" href="javascript:alert(1)" size="lg" /><span style={caption}>blocked href → static</span></span>

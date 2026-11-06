@@ -238,3 +238,79 @@ export function announceText(element: Element, options: {politeness?: AnnouncePo
   if (!text) return () => {};
   return announce(text, {politeness: options.politeness ?? 'polite', from: element});
 }
+
+const LIVE_CONTAINER = '[role="log"], [role="status"], [role="alert"], [aria-live="polite"], [aria-live="assertive"]';
+
+/**
+ * Each child element's rendered text as its own block, joined by spaces; text placed directly
+ * in the element beside its child elements counts as a block too (useAnnounceRenderedText
+ * blockText: a status bar is an icon followed by its bare message).
+ */
+export function blockText(element: Element): string {
+  return Array.from(element.childNodes)
+    .map((child) => {
+      if (child.nodeType === Node.TEXT_NODE) return (child.textContent ?? '').replace(/\s+/g, ' ').trim();
+      if (child.nodeType === Node.ELEMENT_NODE) return (child as Element).matches(HIDDEN) ? '' : renderedText(child as Element);
+      return '';
+    })
+    .filter((part) => part !== '')
+    .join(' ');
+}
+
+export interface RenderedTextAnnouncerOptions {
+  /**
+   * Text present or changing while the document loads is silent (part of the page the person
+   * arrived at); text that appears or changes later is spoken once. A mounted live container
+   * speaks its own content, and each child is read as a block.
+   */
+  skipFirstRender?: boolean;
+  /** @default 'polite' */
+  politeness?: AnnouncePoliteness;
+  /** Spoken when the element renders no text: its aria-labelledby targets, else this. */
+  fallbackText?: string;
+}
+
+/**
+ * Port of hooks/useAnnounceRenderedText.ts for an element that is already in the DOM: call
+ * `sync()` whenever its text may have changed (a MutationObserver, a re-render) and it speaks
+ * the rendered text once per occasion. `sync(false)` (not shown) stays silent and re-arms, as
+ * does an element hidden from assistive technology. Created once per element: the first call
+ * decides whether the element was rendered with the page.
+ */
+export function createRenderedTextAnnouncer(element: HTMLElement, options: RenderedTextAnnouncerOptions = {}) {
+  const {skipFirstRender = false, politeness = 'polite', fallbackText} = options;
+  // Captured once: an element present before the document finished loading is part of the page.
+  const renderedWithPage = element.ownerDocument.readyState !== 'complete';
+  let isFirstRun = true;
+  let spoken: string | null = null;
+  return {
+    sync(isShown = true, occasion = ''): void {
+      const first = isFirstRun;
+      isFirstRun = false;
+      if (!isShown || element.closest(HIDDEN) || element.checkVisibility?.() === false) {
+        spoken = null;
+        return;
+      }
+      if (skipFirstRender && element.parentElement?.closest(LIVE_CONTAINER)) return;
+      let text = skipFirstRender ? blockText(element) : renderedText(element);
+      if (text === '' && fallbackText !== undefined) {
+        text = (element.getAttribute('aria-labelledby') ?? '')
+          .split(/\s+/)
+          .map((id) => {
+            const target = id ? element.ownerDocument.getElementById(id) : null;
+            return target == null ? '' : renderedText(target);
+          })
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim() || fallbackText;
+      }
+      if (text === '') return;
+      const key = `${occasion}\u0000${text}`;
+      if (spoken === key) return;
+      spoken = key;
+      const isPageLoad = (first && renderedWithPage) || element.ownerDocument.readyState !== 'complete';
+      if (skipFirstRender && isPageLoad) return;
+      announce(text, {politeness, from: element});
+    },
+  };
+}

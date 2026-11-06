@@ -1,0 +1,150 @@
+---
+import Toolbar from './Toolbar.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import ButtonGroup from '../ButtonGroup/ButtonGroup.astro';
+import Divider from '../Divider/Divider.astro';
+import Badge from '../Badge/Badge.astro';
+import Card from '../Card/Card.astro';
+import Text from '../Text/Text.astro';
+import type {ComponentSize} from '../../lib/types';
+
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const frame = 'border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container);overflow:hidden';
+const input = 'font:inherit;font-size:var(--text-label-size);height:100%;min-height:var(--size-element-sm);padding-inline:var(--spacing-2);border-radius:var(--radius-element);border:var(--border-width) solid var(--color-border-emphasized);background:var(--color-background-surface);color:var(--color-text-primary);width:160px';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Start and end (one Tab stop; arrow keys move, Home/End jump)</h3>
+    <div style={frame}>
+      <Toolbar label="Document actions" dividers={['bottom']} data-test="basic">
+        <Fragment slot="startContent">
+          <Button label="Back" variant="ghost" icon="chevronLeft" />
+          <Text type="body" weight="bold">Quarterly report</Text>
+        </Fragment>
+        <Fragment slot="endContent">
+          <IconButton label="Search" icon="search" variant="ghost" />
+          <Button label="Share" />
+          <Button label="Publish" variant="primary" />
+        </Fragment>
+      </Toolbar>
+      <div style="padding:var(--spacing-4);color:var(--color-text-secondary);font-size:var(--font-size-sm)">Content below the toolbar.</div>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes (buttons and their icons follow the toolbar)</h3>
+    <div style="display:grid;gap:var(--spacing-3)" data-test="sizes">
+      {sizes.map((size) => (
+        <div style={frame}>
+          <Toolbar label={`Toolbar ${size}`} size={size} data-case={size}>
+            <Fragment slot="startContent">
+              <Button label="Filter" icon="funnel" variant="ghost" />
+              <IconButton label="Columns" icon="viewColumns" variant="ghost" />
+            </Fragment>
+            <Fragment slot="endContent">
+              <Button label="Explicit sm" size="sm" data-explicit />
+              <Button label="New item" variant="primary" />
+            </Fragment>
+          </Toolbar>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Center content (1fr auto 1fr grid), groups and separators</h3>
+    <div style={frame}>
+      <Toolbar label="Editor" size="sm" variant="muted" dividers={['bottom']} data-test="center">
+        <Fragment slot="startContent">
+          <ButtonGroup label="History" data-case="group">
+            <IconButton label="Undo" icon="chevronLeft" />
+            <IconButton label="Redo" icon="chevronRight" />
+          </ButtonGroup>
+          <Divider orientation="vertical" style="height:var(--size-element-sm)" />
+          <Button label="Format" variant="ghost" tooltip="Format the selection" />
+        </Fragment>
+        <Fragment slot="centerContent">
+          <Text type="body" weight="bold" maxLines={1}>Untitled document</Text>
+        </Fragment>
+        <Fragment slot="endContent">
+          <Badge label="Draft" />
+          <IconButton label="More" icon="moreHorizontal" variant="ghost" />
+        </Fragment>
+      </Toolbar>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Start only, end only, gap, a text field (caret keys stay in the field)</h3>
+    <div style="display:grid;gap:var(--spacing-3)">
+      <div style={frame}>
+        <Toolbar label="Bulk actions" variant="section" gap={3} data-test="start-only">
+          <Fragment slot="startContent">
+            <Button label="Select all" variant="ghost" />
+            <Button label="Archive" />
+            <Button label="Delete" variant="destructive" />
+          </Fragment>
+        </Toolbar>
+      </div>
+      <div style={frame}>
+        <Toolbar label="Search" gap={2} data-test="end-only">
+          <Fragment slot="endContent">
+            <input type="search" aria-label="Search rows" placeholder="Search…" style={input} data-test-input />
+            <Button label="Apply" variant="primary" />
+          </Fragment>
+        </Toolbar>
+      </div>
+      <div style={frame}>
+        <Toolbar label="Disabled items" data-test="disabled-items">
+          <Fragment slot="startContent">
+            <Button label="One" />
+            <Button label="Unavailable" isDisabled />
+            <Button label="Locked" isDisabled tooltip="Requires edit access" />
+            <Button label="Four" />
+          </Fragment>
+        </Toolbar>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>In a card header (edge compensation pulls ghost buttons to the padding)</h3>
+    <Card style="max-width:520px" data-test="card">
+      <Toolbar label="Card actions" size="sm" dividers={['bottom']}>
+        <Fragment slot="startContent"><Button label="Members" variant="ghost" /></Fragment>
+        <Fragment slot="endContent"><IconButton label="Add member" icon="arrowUp" variant="ghost" /></Fragment>
+      </Toolbar>
+      <div style="padding-block:var(--spacing-3);color:var(--color-text-secondary);font-size:var(--font-size-sm)">Card body</div>
+    </Card>
+  </section>
+
+  <section>
+    <h3 style={cap}>Vertical (↑ ↓ navigate; the slots stack, each slot stays a row)</h3>
+    <div style={`${frame};display:inline-block`}>
+      <Toolbar label="Tools" orientation="vertical" dividers={['end']} data-test="vertical">
+        <Fragment slot="startContent">
+          <IconButton label="Select" icon="check" variant="ghost" />
+          <IconButton label="Search" icon="search" variant="ghost" />
+        </Fragment>
+        <Fragment slot="endContent">
+          <IconButton label="Settings" icon="wrench" variant="ghost" />
+        </Fragment>
+      </Toolbar>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Right-to-left (arrow keys follow the reading direction)</h3>
+    <div style={frame} dir="rtl">
+      <Toolbar label="RTL toolbar" data-test="rtl">
+        <Fragment slot="startContent">
+          <Button label="First" />
+          <Button label="Second" />
+          <Button label="Third" />
+        </Fragment>
+      </Toolbar>
+    </div>
+  </section>
+</div>

@@ -11,6 +11,11 @@
  * `--_button-radius`, public vars `--button-focus-offset`, `--button-icon-only-aspect`.
  * Ghost buttons carry `data-astryx-edge-comp` (containers pull their slot margin in).
  *
+ * Tooltip (Astryx useTooltip on the button itself, placement "above"): the `<Tooltip>` layer
+ * renders as the trigger's next sibling (never inside it; ButtonGroup's end-cap selector
+ * skips `[popover]`), the trigger carries `data-ax-tooltip="<layer id>"`, and the layer id is
+ * composed into `aria-describedby` unless the tooltip repeats the accessible name.
+ *
  * Element and state (Astryx rules, contracts #1–#4):
  *  - `href` (and not truly disabled) → `<a>` (or `as` / Astro.locals.astryxLinkComponent,
  *    see Link/linkComponent.ts). The href goes through safeHref(); a blocked destination
@@ -23,7 +28,7 @@
  *    native disabled, so focus stays), a Spinner over the content, the content kept in
  *    place but transparent and aria-hidden (geometry unchanged), `aria-label={label}` so
  *    the name survives, and "Loading" in the button's polite live region. aria-disabled
- *    controls cancel clicks and Enter/Space (behaviors/disabledInteraction.ts, AST-085).
+ *    controls cancel clicks and Enter/Space (elements/runtime/disabledInteraction.ts, AST-085).
  *  - `isInterruptible` keeps a loading button fully interactive; its spinner reveal is
  *    delayed by --duration-medium-min, like an action-driven pending state.
  *
@@ -34,29 +39,37 @@
  *  - stamps `icon-size` onto the `icon` slot (sm for sm/md, md for lg) and, when its own
  *    size is inherited, re-enrols those Icons as `button-icon-size` for the provider;
  *  - `endContent` gets no owner default, exactly as Astryx (an unsized Icon there is md).
+ *  - always enrols in `button-group` (Astryx useButtonGroup): ButtonGroup stamps its members
+ *    with `data-ax-group="<orientation>"` (connected geometry, no press scale, elevation
+ *    "none") and, when the group is disabled, the truly-disabled state (see
+ *    ButtonGroup/groupCascade.ts).
  * Private markers: data-ax-icon-only, data-ax-disabled (truly disabled), data-ax-tooltip
- * (tooltip trigger; providers that disable members use aria-disabled there),
- * data-ax-disabled-interaction (AST-085 behaviour while aria-disabled="true").
+ * (tooltip trigger, value = the layer id; providers that disable members use aria-disabled
+ * there), data-ax-disabled-interaction (AST-085 behaviour while aria-disabled="true"),
+ * data-ax-group (ButtonGroup member orientation, stamped by the group).
  *
  * Not ported (documented omissions):
  *  - `onClick` / `clickAction`: event props do not exist server-side. A native click
  *    listener works on the rendered element. Astryx's clickAction (a React transition
  *    that shows the pending state and dedupes fire-once clicks) has no server-side
  *    equivalent; render `isLoading` for a pending state.
- *  - `tooltip` rendering: see TODO(tooltip) below; the trigger-side semantics are in place.
- *  - ButtonGroup / InputGroup member geometry and the group-disabled cascade belong to those
- *    providers (ported separately); touch extras (data-astryx-press controller, slide-across
- *    press groups) are deferred, so coarse pointers keep the native :active paint.
+ *  - InputGroup member geometry belongs to that provider (ported separately); touch extras
+ *    (data-astryx-press controller, slide-across press groups) are deferred, so coarse
+ *    pointers keep the native :active paint.
  *
  * @example
  * <Button label="Save" variant="primary" />
  * <Button label="Settings" icon="wrench" variant="ghost" isIconOnly />
  * <Button label="Messages"><Badge slot="endContent" label={3} /></Button>
  * <Button label="Docs" href="/docs" />
+ * <Button label="Archive" tooltip="Moves the thread out of your inbox" />
  */
 import type {HTMLAttributes} from 'astro/types';
 import Icon from '../Icon/Icon.astro';
 import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {mergeIds} from '../Layer/layer';
 import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
 import IconSlot from './_ButtonIconSlot.astro';
 import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
@@ -67,7 +80,7 @@ import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
 import {safeHref} from '../../lib/safeUrl';
 import {translator} from '../../lib/i18n';
 import {resolveLinkComponent, type LinkComponentType} from '../Link/linkComponent';
-import {DEFAULT_BUTTON_CASCADE_KEYS, ICON_SIZE_BY_BUTTON_SIZE, cleanSlotHtml, stampIconSlot, type ButtonCascadeKeys} from './buttonCascade';
+import {BUTTON_GROUP_KEY, DEFAULT_BUTTON_CASCADE_KEYS, ICON_SIZE_BY_BUTTON_SIZE, stampIconSlot, type ButtonCascadeKeys} from './buttonCascade';
 import './Button.css';
 
 /** Built-in variants; themes may add more (Astryx ButtonVariantMap). */
@@ -112,7 +125,11 @@ export interface Props extends Omit<HTMLAttributes<'button'>, 'type' | 'name' | 
    * for `<Icon icon=… />`) or markup in the `endContent` slot (an Icon or a Badge).
    */
   endContent?: ExtendedIconName | AstroIconComponent;
-  /** Tooltip text. Today: trigger semantics only (aria-disabled instead of disabled). */
+  /**
+   * Tooltip text shown above the button on hover and keyboard focus; it describes the button
+   * (aria-describedby) unless it repeats the name. A disabled button with a tooltip uses
+   * aria-disabled so it stays focusable.
+   */
   tooltip?: string;
   /** Renders a link with button styling (safeHref-checked). */
   href?: string | URL;
@@ -184,13 +201,13 @@ const LinkTag = renderAsLink && safe != null ? resolveLinkComponent(as, Astro) :
 const iconReenrol = isSizeInherited ? cascadeKeys.iconSize : undefined;
 const hasIconSlot = Astro.slots.has('icon');
 const iconHtml = hasIconSlot
-  ? await stampIconSlot(await cleanSlotHtml(await Astro.slots.render('icon'), 'icon'), iconSize, iconReenrol)
+  ? await stampIconSlot(await Astro.slots.render('icon'), iconSize, iconReenrol)
   : null;
 const hasIcon = hasIconSlot ? iconHtml!.trim() !== '' : icon != null && icon !== '';
 const childrenHtml = Astro.slots.has('default') ? await Astro.slots.render('default') : null;
 const hasChildren = childrenHtml != null && childrenHtml.trim() !== '';
 const hasEndSlot = Astro.slots.has('endContent');
-const endHtml = !isIconOnly && hasEndSlot ? await cleanSlotHtml(await Astro.slots.render('endContent'), 'endContent') : null;
+const endHtml = !isIconOnly && hasEndSlot ? await Astro.slots.render('endContent') : null;
 const hasEnd = !isIconOnly && (hasEndSlot ? endHtml!.trim() !== '' : endContent != null && endContent !== '');
 
 const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -214,12 +231,11 @@ const accessibleName = rest['aria-labelledby'] != null
     : ((rest['aria-label'] as string | undefined) ?? (addsNoName(iconHtml) && addsNoName(endHtml) ? label : undefined));
 // A tooltip that repeats the name adds nothing to the description.
 const isTooltipName = tooltip != null && accessibleName != null && tooltip.trim() === accessibleName.trim();
-// TODO(tooltip): the tooltip runtime supplies the layer id; compose it into aria-describedby
-// (unless isTooltipName) once the tooltip element below is rendered. Until then no dangling
-// IDREF is emitted.
-const tooltipDescribedBy: string | undefined = undefined;
-const describedBy = tooltip != null && !isTooltipName && tooltipDescribedBy
-  ? [rest['aria-describedby'], tooltipDescribedBy].filter(Boolean).join(' ') || undefined
+// Astryx renders the layer only for a non-empty tooltip (`if (tooltip)`); the trigger semantics
+// (aria-disabled instead of disabled) follow `tooltip != null`.
+const tip = tooltip ? attachTooltip() : null;
+const describedBy = tip && !isTooltipName
+  ? mergeIds(rest['aria-describedby'] as string | undefined, tip.id)
   : (rest['aria-describedby'] as string | undefined);
 
 const {themeClass, attrs: themeAttrs} = themeProps('button', {variant, size, elevation});
@@ -230,10 +246,10 @@ const attrs: Record<string, unknown> = {
   ...themeAttrs,
   class: cx(themeClass, 'ax-focus-visible', 'ax-overlay-image', className as string | undefined),
   style: mergeStyles({width: cssSize(width)}, style as StyleValue),
-  'data-ax-inherit': inherits({[cascadeKeys.size]: isSizeInherited, ...extraInherit}),
+  'data-ax-inherit': inherits({[cascadeKeys.size]: isSizeInherited, [BUTTON_GROUP_KEY]: true, ...extraInherit}),
   'data-ax-icon-only': isIconOnly ? '' : undefined,
   'data-ax-disabled': isTrueDisabled ? '' : undefined,
-  'data-ax-tooltip': tooltip != null ? '' : undefined,
+  'data-ax-tooltip': tooltip != null ? (tip?.id ?? '') : undefined,
   'aria-label': needsAriaLabel ? label : rest['aria-label'],
   'aria-describedby': describedBy,
   'data-astryx-edge-comp': variant === 'ghost' ? '' : undefined,
@@ -256,9 +272,6 @@ const loadingText = isLoadingState ? t('@astryx.button.loading') : '';
   </span>
   <VisuallyHidden role="status" aria-live="polite" data-ax-button-live={isLoadingState ? loadingText : undefined}></VisuallyHidden>
 </Tag>
-{/* TODO(tooltip): render the tooltip layer here, as the trigger's next sibling (never inside
-    the <button>/<a>), when `tooltip` is set: placement "above", hover/focus triggers on the
-    element above (it carries data-ax-tooltip), and its id composed into aria-describedby
-    unless isTooltipName. */}
-{useAriaDisabled && <script>import '../../behaviors/disabledInteraction';</script>}
+{tip && <Tooltip {...tip.layer} content={tooltip} placement="above" />}
+{useAriaDisabled && <script>import '../../elements/runtime/disabledInteraction';</script>}
 {isLoadingState && <script>import '../../behaviors/buttonLive';</script>}

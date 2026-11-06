@@ -29,7 +29,7 @@
  * Not ported: `pressedChangeAction` (a React Action transition with an optimistic pressed
  * state); listen for `astryx-pressed-change` and render `isLoading` while work is pending.
  * The docs mention an automatic tooltip for icon-only toggles; the 0.7.9 source passes only
- * `tooltip`, which is what this port does. Tooltip rendering: see Button's TODO(tooltip).
+ * `tooltip`, which is what this port does; Button renders the tooltip layer.
  *
  * @example
  * <ToggleButton label="Bold" icon="check" isIconOnly isPressed />
@@ -41,7 +41,6 @@ import Icon from '../Icon/Icon.astro';
 import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
 import type {ComponentSize, Elevation} from '../../lib/types';
 import {cx} from '../../lib/themeProps';
-import {cleanSlotHtml} from '../Button/buttonCascade';
 import './ToggleButton.css';
 
 export interface Props extends Omit<HTMLAttributes<'button'>, 'type' | 'value' | 'disabled'> {
@@ -63,7 +62,7 @@ export interface Props extends Omit<HTMLAttributes<'button'>, 'type' | 'value' |
   isIconOnly?: boolean;
   /** Icon shown while pressed (name / SVG / component, or the `pressedIcon` slot); falls back to `icon`. */
   pressedIcon?: ExtendedIconName | AstroIconComponent;
-  /** Tooltip text (trigger semantics only until the tooltip runtime lands). */
+  /** Tooltip text (Button's tooltip: shown above on hover / keyboard focus). */
   tooltip?: string;
   /** Identifier inside a ToggleButtonGroup (required there). */
   value?: string;
@@ -91,8 +90,8 @@ const {
 const isPressed = isPressedProp;
 const pressed = isPressed ? 'true' : 'false';
 
-const iconSlot = Astro.slots.has('icon') ? await cleanSlotHtml(await Astro.slots.render('icon'), 'icon') : null;
-const pressedSlot = Astro.slots.has('pressedIcon') ? await cleanSlotHtml(await Astro.slots.render('pressedIcon'), 'pressedIcon') : null;
+const iconSlot = Astro.slots.has('icon') ? await Astro.slots.render('icon') : null;
+const pressedSlot = Astro.slots.has('pressedIcon') ? await Astro.slots.render('pressedIcon') : null;
 const hasIcon = iconSlot != null ? iconSlot.trim() !== '' : icon != null && icon !== '';
 const hasPressedIcon = pressedSlot != null ? pressedSlot.trim() !== '' : pressedIcon != null && pressedIcon !== '';
 const hasChildren = Astro.slots.has('default');

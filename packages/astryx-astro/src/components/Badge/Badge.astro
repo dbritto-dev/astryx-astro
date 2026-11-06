@@ -37,7 +37,9 @@ export interface Props extends HTMLAttributes<'span'> {
   icon?: ExtendedIconName | AstroIconComponent;
 }
 
-const {variant = 'neutral', label, icon, class: className, style, ...rest} = Astro.props;
+// `slot` only routes the Badge into its owner's named slot (Astro forwards it as a prop);
+// keep it off the element.
+const {variant = 'neutral', label, icon, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
 
 const labelTitle = typeof label === 'number' ? String(label) : typeof label === 'string' && label.length > 0 ? label : undefined;
 const hasLabelSlot = Astro.slots.has('label');

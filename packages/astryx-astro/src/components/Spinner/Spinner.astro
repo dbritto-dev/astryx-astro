@@ -8,11 +8,13 @@
  * translated "@astryx.spinner.loading". A caller `aria-hidden` or non-progressbar `role`
  * wins (composed spinners inside an owner should pass aria-hidden="true").
  *
- * Not reproduced: Astryx also speaks the name through its shared polite live region when a
- * spinner appears after page load (useAnnounceRenderedText, skipFirstRender). A spinner
- * present when the page loads is silent there too, so server-rendered output matches; a
- * spinner inserted later by client code is not announced until the announce runtime
- * (src/elements/runtime/announce) is wired in.
+ * Announcement (Astryx useAnnounceRenderedText, skipFirstRender): a standalone spinner that
+ * appears after page load (inserted by client code) speaks its rendered label — or, with none,
+ * its accessible name — once through the runtime's polite live region
+ * (behaviors/announceRenderedText.ts on elements/runtime/announce.ts); one present when the
+ * page loads is silent. A spinner a component composes is silent: pass `aria-hidden="true"`
+ * (or sit inside an aria-hidden owner); a caller `role` other than progressbar also keeps it
+ * silent, as Astryx shipped.
  *
  * Geometry is themeable through --spinner-diameter / --spinner-stroke-width /
  * --spinner-color / --spinner-track-color / --spinner-arc-fraction, declared on the
@@ -83,6 +85,11 @@ const resolvedAriaLabel = ariaLabel ?? (typeof label === 'string' ? label : unde
 const labelId = namedByVisibleLabel ? `ax-spinner-label-${Math.random().toString(36).slice(2, 10)}` : undefined;
 
 const {themeClass, attrs: themeAttrs} = themeProps('spinner', {size, shade});
+// Only a standalone Spinner announces (Astryx: not composed, not aria-hidden, no other role).
+const isHidden = rest['aria-hidden'] === true || rest['aria-hidden'] === 'true';
+const callerRole = rest.role as string | undefined;
+const announces = !isHidden && !(callerRole != null && callerRole !== 'progressbar');
+const announceAttrs = announces ? {'data-ax-announce-rendered-text': '', 'data-ax-announce-fallback': resolvedAriaLabel} : {};
 const boxSize = {width: `var(--_spinner-box-size, ${frameSize}px)`, height: `var(--_spinner-box-size, ${frameSize}px)`};
 
 // The progressbar box. Without a label it is the root and carries the theme target, the
@@ -92,6 +99,7 @@ const boxAttrs: Record<string, unknown> = hasLabel
   : {
       'data-testid': testId,
       ...rest,
+      ...announceAttrs,
       ...themeAttrs,
       class: cx(themeClass, 'ax-spinner-box', className as string | undefined),
       style: mergeStyles(style as StyleValue, boxSize),
@@ -99,6 +107,7 @@ const boxAttrs: Record<string, unknown> = hasLabel
 const wrapperAttrs: Record<string, unknown> = {
   'data-testid': testId,
   ...rest,
+  ...announceAttrs,
   ...themeAttrs,
   class: cx(themeClass, 'ax-spinner-labelled', className as string | undefined),
   style: mergeStyles(style as StyleValue),
@@ -122,3 +131,4 @@ const ring = `<svg width="0" height="0" aria-hidden="true" class="ax-spinner-rin
   <span {...progressbarAttrs} set:html={ring} />
 )}
 <script>import '../../behaviors/spinnerRotor';</script>
+{announces && <script>import '../../behaviors/announceRenderedText';</script>}

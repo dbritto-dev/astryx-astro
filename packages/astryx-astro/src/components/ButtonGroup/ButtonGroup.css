@@ -1,0 +1,23 @@
+/*
+ * Port of @astryxdesign/core ButtonGroup/ButtonGroup.tsx (styles.group, styles.vertical,
+ * elevationStyles). Rule order mirrors stylex.props(): group → vertical → elevation.
+ * The member geometry (groupStyles: shared dividers, outer-only radius, IS_LAST_ITEM) lives in
+ * Button.css, keyed on the `data-ax-group` attribute the group stamps on its members, as Astryx
+ * keeps it in Button.tsx.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-button-group {
+    display: inline-flex;
+    align-items: stretch;
+  }
+  .astryx-button-group[data-orientation="vertical"] { flex-direction: column; }
+
+  /* The connected buttons share one surface: the shadow sits on the group and follows its
+   * rounded outer corners. */
+  .astryx-button-group[data-elevation="none"] { box-shadow: none; }
+  .astryx-button-group[data-elevation="low"] { box-shadow: var(--shadow-low); border-radius: var(--radius-element); }
+  .astryx-button-group[data-elevation="med"] { box-shadow: var(--shadow-med); border-radius: var(--radius-element); }
+  .astryx-button-group[data-elevation="high"] { box-shadow: var(--shadow-high); border-radius: var(--radius-element); }
+}

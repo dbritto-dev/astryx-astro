@@ -12,16 +12,17 @@
  * Accessibility: a static avatar with a name (`alt` || `name`, composed with a status dot's
  * label: "Jane Doe, Online") is `role="img"` + `aria-label`; with no name it is decorative
  * (`role="presentation"` + `aria-hidden`). Caller aria-* / role win. `href` renders an
- * <a> (safeHref), `onClick` a <button type="button">; those carry only the aria-label.
+ * <a> (safeHref), `isClickable` a <button type="button">; those carry only the aria-label.
  *
- * `onClick` (port note): a server component has no callbacks. Pass an inline handler
- * string (rendered as the native `onclick`) or `true` to render the button and attach a
- * listener yourself.
+ * Events: `isClickable` (Astryx `onClick`) renders the button and dispatches `astryx-click`
+ * (bubbles, composed) with `detail: {event}` on every click (on a link avatar too, which
+ * Astryx hands the same `onClick`); behaviors/clickEvent.ts.
  *
- * Tooltip (port note): Astryx shows the name (or a custom `tooltip` string) in a Tooltip on
- * hover/focus. Tooltip is not ported yet, so no tooltip is drawn; the markup is kept —
- * a static avatar with a tooltip is a tab stop (except in an AvatarGroup), and a custom
- * string still describes the avatar (aria-describedby → its text).
+ * Tooltip (Astryx useTooltip on the root, placement "above"): the name, or a custom `tooltip`
+ * string, shows in a Tooltip layer rendered as the root's next sibling on hover and keyboard
+ * focus. A static avatar with a tooltip is a tab stop (except in an AvatarGroup, which owns a
+ * roving stop); only a custom string describes the avatar (aria-describedby → the layer), the
+ * default name tooltip repeats the name and stays visual.
  *
  * Inside an AvatarGroup the group's size and shape win over this avatar's own props.
  *
@@ -30,6 +31,7 @@
  * <Avatar name="Jane Smith" size="xl" shape="rounded" />
  * <Avatar name="Jane Doe" size="lg"><AvatarStatusDot slot="status" variant="success" label="Online" /></Avatar>
  * <Avatar name="John Doe" href="/users/john" />
+ * <Avatar name="Jane Smith" isClickable />   (el.addEventListener('astryx-click', …))
  */
 import type {HTMLAttributes} from 'astro/types';
 import {cx, themeProps} from '../../lib/themeProps';
@@ -37,12 +39,15 @@ import {inherits, stamp} from '../../lib/cascade';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {safeHref} from '../../lib/safeUrl';
 import {translator} from '../../lib/i18n';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {mergeIds} from '../Layer/layer';
 import {decodeEntities, getInitials, meaningful, resolveSize, stampDotPart, type AvatarShape, type AvatarSize} from './avatarParts';
 import './Avatar.css';
 
 export type {AvatarShape, AvatarSize, AvatarNamedSize, AvatarNumericSize} from './avatarParts';
 
-export interface Props extends Omit<HTMLAttributes<'div'>, 'onclick'> {
+export interface Props extends HTMLAttributes<'div'> {
   /** Alt text / accessible name. Falls back to `name`. */
   alt?: string;
   /** Image used when `src` fails to load; if it fails too, initials from `name` show. */
@@ -65,8 +70,11 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'onclick'> {
   target?: string;
   /** Link rel (with `href`). */
   rel?: string;
-  /** Renders a <button type="button">: an inline handler string, or `true` to wire it yourself. */
-  onClick?: string | true;
+  /**
+   * Renders a <button type="button"> (Astryx `onClick`); each click dispatches `astryx-click`
+   * with `detail: {event}`. With `href` the link dispatches it too. @default false
+   */
+  isClickable?: boolean;
   'data-testid'?: string;
   /** Locale for the composed "name, status" accessible name. */
   locale?: string;
@@ -85,7 +93,7 @@ const {
   as: LinkComponent,
   target,
   rel,
-  onClick,
+  isClickable = false,
   locale,
   class: className,
   style,
@@ -120,15 +128,17 @@ const accessibleName = nameLabel && statusLabel
 const tooltipContent = tooltip === false ? undefined : typeof tooltip === 'string' ? tooltip : meaningfulName;
 const trimmedTooltip = tooltipContent?.trim();
 const showTooltip = trimmedTooltip != null && trimmedTooltip !== '';
-const isCustomTooltip = typeof tooltip === 'string' && showTooltip;
-const tooltipId = isCustomTooltip ? `ax-avatar-tip-${Math.random().toString(36).slice(2, 10)}` : undefined;
-const describedBy = isCustomTooltip
-  ? [props['aria-describedby'], tooltipId].filter(Boolean).join(' ')
+// Only a consumer-authored string describes the avatar; the default name tooltip repeats the
+// root's aria-label (Astryx OQ-4).
+const isCustomTooltip = typeof tooltip === 'string';
+const tip = showTooltip ? attachTooltip() : null;
+const describedBy = tip && isCustomTooltip
+  ? mergeIds(props['aria-describedby'] as string | undefined, tip.id)
   : undefined;
 
 const href = rawHref != null ? safeHref(rawHref) : undefined;
 const renderAsLink = href != null;
-const renderAsButton = !renderAsLink && onClick != null && (onClick as unknown) !== false;
+const renderAsButton = !renderAsLink && isClickable;
 const isInteractive = renderAsLink || renderAsButton;
 if (import.meta.env.DEV && isInteractive && !nameLabel && meaningful(props['aria-label']) == null && meaningful(props['aria-labelledby']) == null) {
   console.warn('[astryx Avatar] an interactive avatar (with `href` or `onClick`) needs a meaningful accessible name. Pass `alt` or `name`.');
@@ -152,8 +162,10 @@ if (isInteractive) {
     ...(accessibleName ? {'aria-label': accessibleName} : {}),
     ...props,
     ...(describedBy ? {'aria-describedby': describedBy} : {}),
-    ...(renderAsLink ? {href, target, rel} : {type: 'button', onclick: typeof onClick === 'string' ? onClick : undefined}),
+    ...(renderAsLink ? {href, target, rel} : {type: 'button'}),
     'data-avatar-item': '',
+    'data-ax-click-event': isClickable ? '' : undefined,
+    'data-ax-tooltip': tip?.id,
     'data-testid': testId,
     ...shared,
   };
@@ -165,6 +177,7 @@ if (isInteractive) {
     tabindex: showTooltip ? '0' : undefined,
     'data-testid': testId,
     ...(describedBy ? {'aria-describedby': describedBy} : {}),
+    'data-ax-tooltip': tip?.id,
     ...shared,
   };
 }
@@ -197,5 +210,6 @@ const Root = renderAsLink ? (LinkComponent ?? 'a') : renderAsButton ? 'button' :
   <template data-ax-fallback-step={plateStep}><div {...plate}>{initials !== '' ? initials : <svg class="ax-avatar-default-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>}</div></template>
 ) : (
   <div {...plate}>{initials !== '' ? initials : <svg class="ax-avatar-default-icon" width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>}</div>
-)}</div>{hasStatus && <div class="ax-avatar-status"><Fragment set:html={statusHtml} /></div>}</Root>{isCustomTooltip && <span id={tooltipId} hidden>{trimmedTooltip}</span>}
+)}</div>{hasStatus && <div class="ax-avatar-status"><Fragment set:html={statusHtml} /></div>}</Root>{tip && <Tooltip {...tip.layer} content={trimmedTooltip} placement="above" />}
 {usesImage && <script>import '../../behaviors/imageFallback';</script>}
+{isClickable && isInteractive && <script>import '../../behaviors/clickEvent';</script>}

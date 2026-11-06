@@ -7,9 +7,9 @@
  * (WCAG 1.4.1): pair it with visible text or pass a distinct `icon` per status, drawn in
  * the variant's ink (`currentColor`). `isPulsing` respects prefers-reduced-motion.
  *
- * Deferred: `tooltip` renders through Astryx's Tooltip, which is not ported yet; until it
- * is, the text is exposed as a native `title` (hover hint + accessible description, the
- * role Tooltip's aria-describedby plays).
+ * `tooltip`: Astryx wraps the dot in `<Tooltip content={tooltip}>` — the dot is the trigger
+ * (`data-ax-tooltip`, the layer id composed into `aria-describedby`), the tooltip layer is its
+ * next sibling and shows on hover (the dot is not focusable, as in Astryx).
  *
  * @example
  * <StatusDot variant="success" label="Online" />
@@ -21,6 +21,8 @@ import Icon from '../Icon/Icon.astro';
 import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
 import './StatusDot.css';
 
 export type StatusDotVariant = 'success' | 'warning' | 'error' | 'accent' | 'neutral' | (string & {});
@@ -31,7 +33,7 @@ export interface Props extends HTMLAttributes<'span'> {
   label: string;
   /** Pulse to show activity (off under prefers-reduced-motion). @default false */
   isPulsing?: boolean;
-  /** Hint explaining the status (native title until Tooltip is ported). */
+  /** Hint explaining the status, shown in a Tooltip on hover (describes the dot). */
   tooltip?: string;
   /**
    * Icon drawn inside the 8px dot in the variant's ink: a semantic name / SVG string /
@@ -45,6 +47,7 @@ const {variant, label, isPulsing = false, tooltip, icon, class: className, style
 const showsSlotIcon = Astro.slots.has('icon');
 const showsIcon = showsSlotIcon || (icon != null && icon !== '');
 const {themeClass, attrs: themeAttrs} = themeProps('status-dot', {variant});
+const tip = tooltip ? attachTooltip({describedBy: rest['aria-describedby'] as string | undefined}) : null;
 const attrs: Record<string, unknown> = {
   role: 'img',
   'aria-label': label,
@@ -52,10 +55,11 @@ const attrs: Record<string, unknown> = {
   class: cx(themeClass, className as string | undefined),
   style: mergeStyles(style as StyleValue),
   'data-pulsing': isPulsing ? '' : undefined,
-  title: tooltip || undefined,
   ...rest,
+  ...tip?.trigger,
 };
 ---
 <span {...attrs}>{showsIcon && (
   <span aria-hidden="true" class="ax-status-dot-icon">{showsSlotIcon ? <slot name="icon" /> : <Icon icon={icon} style="width:8px;height:8px;font-size:8px" />}</span>
 )}</span>
+{tip && <Tooltip {...tip.layer} content={tooltip} />}

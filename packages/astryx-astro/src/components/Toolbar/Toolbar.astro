@@ -1,0 +1,146 @@
+---
+/**
+ * Toolbar — a bar of contextual actions with start, optional center and end areas, one Tab
+ * stop with arrow-key navigation, and a size every Button inside follows. Port of
+ * @astryxdesign/core Toolbar/Toolbar.tsx (on Section/Section.tsx), hooks/useListFocus.ts,
+ * hooks/useKeyboardHint.tsx, SizeContext/SizeContext.ts and Layout/edgeCompensation.stylex.ts.
+ * Theme target `.astryx-toolbar[data-size]` (the `role="toolbar"` row; `class` / `style` style
+ * the Section around it).
+ *
+ * Layout: start / end slots in a space-between flex row (a lone start slot fills, a lone end
+ * slot is pushed to the end); with `centerContent` a `1fr auto 1fr` grid whose center track
+ * may shrink below its content. `orientation="vertical"` stacks the slots. `gap` spaces items
+ * inside each slot (and the slots). Section supplies the surface (`variant`, default
+ * transparent), the block padding (spacing-2) and `dividers`; with a bottom divider a nested
+ * TabList's indicator drops onto it (`--_tab-indicator-bottom`).
+ *
+ * Edge compensation (contract #15): a slot whose first / last child is edge-compensatable
+ * (`data-astryx-edge-comp`: ghost Buttons, Tabs) pulls its own inline margin in by the
+ * container's inline padding minus the toolbar's block padding, so a ghost button sits as far
+ * from the edge as from the top.
+ *
+ * Size (SizeProvider): every Button / IconButton (and a ButtonGroup) without its own size takes
+ * `size` (cascade keys `size` + `button-icon-size`, `buttonSizeStampers`); layers inside end the
+ * cascade. ToggleButtons keep their own group's size, as in Astryx.
+ *
+ * Keyboard (useListFocus): one Tab stop over `button, input, a[href], [tabindex]`, arrows along
+ * `orientation` (RTL-aware), Home/End, wrap, disabled items skipped, a caret guard so arrows
+ * edit a text field first; nested toolbars and layers (`[role="toolbar"], [popover]`) keep their
+ * own keys (elements/runtime/roving.ts). A keyboard hint ("← → to navigate", aria-hidden)
+ * appears below the item on the first keyboard entry and goes on the first arrow, after 3 s or
+ * when focus leaves (behaviors/keyboardHint.ts).
+ *
+ * Groups and separators: Astryx 0.7.9 has no Toolbar sub-components; group related actions with
+ * a ButtonGroup (its own roving group inside the row) and separate areas with a vertical
+ * Divider (a non-focusable `role="separator"`).
+ *
+ * @example
+ * <Toolbar label="Table actions" size="sm" dividers={['bottom']}>
+ *   <Button slot="startContent" label="Back" variant="ghost" />
+ *   <Button slot="endContent" label="New item" variant="primary" />
+ * </Toolbar>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {ComponentSize, SpacingStep} from '../../lib/types';
+import Section, {type SectionDivider, type SectionVariant} from '../Section/Section.astro';
+import Layer from '../Layer/Layer.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {layerId} from '../Layer/layer';
+import {buttonSizeStampers} from '../Button/buttonCascade';
+import {fromAttrStampers, stampOutsideLayers} from '../ButtonGroup/groupCascade';
+import './Toolbar.css';
+
+export type ToolbarSize = ComponentSize;
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'aria-label' | 'aria-orientation'> {
+  /** Accessible label for the toolbar (aria-label on the `role="toolbar"` row). */
+  label: string;
+  /**
+   * sm / md / lg: the default size of every Button, IconButton and ButtonGroup inside
+   * (28 / 32 / 36px elements). @default 'md'
+   */
+  size?: ToolbarSize;
+  /** Gap between items within each slot (spacing step). @default 1 */
+  gap?: SpacingStep;
+  /** Arrow-key direction (and a stacked layout for 'vertical'). @default 'horizontal' */
+  orientation?: 'horizontal' | 'vertical';
+  /** Section surface. @default 'transparent' */
+  variant?: SectionVariant;
+  /** Sides that draw a divider border (Section). */
+  dividers?: SectionDivider[];
+  /** Locale for the keyboard hint. */
+  locale?: string;
+}
+
+const {
+  label,
+  size = 'md',
+  gap = 1,
+  orientation = 'horizontal',
+  variant = 'transparent',
+  dividers,
+  locale,
+  class: className,
+  style,
+  // Astryx owns these on the toolbar row.
+  role: _role,
+  'aria-label': _ariaLabel,
+  'aria-orientation': _ariaOrientation,
+  ...rest
+} = Astro.props as Props & {role?: string; 'aria-label'?: string; 'aria-orientation'?: string};
+
+const t = translator(Astro, locale);
+const hasStart = Astro.slots.has('startContent');
+const hasCenter = Astro.slots.has('centerContent');
+const hasEnd = Astro.slots.has('endContent');
+const hasBottomDivider = dividers?.includes('bottom') ?? false;
+
+const stampers = fromAttrStampers(buttonSizeStampers(size));
+const slot = async (name: string) => (Astro.slots.has(name) ? stampOutsideLayers(await Astro.slots.render(name), stampers) : '');
+const startHtml = await slot('startContent');
+const centerHtml = await slot('centerContent');
+const endHtml = await slot('endContent');
+
+const hintId = layerId('ax-keyboard-hint');
+const hintKeys = orientation === 'vertical' ? ['up', 'down'] : ['left', 'right'];
+const {themeClass, attrs: themeAttrs} = themeProps('toolbar', {size});
+---
+<Section variant={variant} paddingBlock={2} dividers={dividers} class={className} style={style as StyleValue}>
+  <div
+    role="toolbar"
+    aria-label={label}
+    aria-orientation={orientation}
+    {...themeAttrs}
+    class={themeClass}
+    data-ax-layout={hasCenter ? 'grid' : 'flex'}
+    data-ax-orientation={orientation === 'vertical' ? 'vertical' : undefined}
+    style={mergeStyles({
+      '--_ax-toolbar-gap': spacing(gap),
+      // Only with a bottom divider does a nested TabList's indicator drop through the block
+      // padding onto it; otherwise it keeps hugging its tab.
+      '--_tab-indicator-bottom': hasBottomDivider ? 'calc(-1 * (var(--spacing-2) + 1px))' : undefined,
+    })}
+    data-astryx-roving={orientation}
+    data-astryx-roving-items="button, input, a[href], [tabindex]"
+    data-astryx-roving-boundary='[role="toolbar"], [popover]'
+    data-astryx-roving-caret
+    data-ax-keyboard-hint={hintId}
+    {...rest}
+  >{hasCenter ? (
+    <Fragment>
+      <div class="ax-toolbar-slot ax-toolbar-start" set:html={startHtml} />
+      <div class="ax-toolbar-slot ax-toolbar-center" set:html={centerHtml} />
+      <div class="ax-toolbar-slot ax-toolbar-end" set:html={endHtml} />
+    </Fragment>
+  ) : (
+    <Fragment>
+      {hasStart && <div class="ax-toolbar-slot ax-toolbar-start" data-ax-only={hasEnd ? undefined : ''} set:html={startHtml} />}
+      {hasEnd && <div class="ax-toolbar-slot ax-toolbar-end" data-ax-only={hasStart ? undefined : ''} set:html={endHtml} />}
+    </Fragment>
+  )}<Layer id={hintId} placement="below" alignment="start" offset="var(--spacing-2)" class="ax-keyboard-hint"><span aria-hidden="true"><span class="ax-keyboard-hint-keys">{hintKeys.map((key) => <Kbd keys={key} locale={locale} />)}</span><span class="ax-keyboard-hint-label">{t('@astryx.keyboardHint.toNavigate')}</span></span></Layer></div>
+</Section>
+<script>import '../../elements/runtime/roving';</script>
+<script>import '../../behaviors/keyboardHint';</script>

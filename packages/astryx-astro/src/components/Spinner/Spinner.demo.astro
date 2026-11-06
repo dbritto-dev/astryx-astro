@@ -31,4 +31,17 @@ const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:v
     <span style={cell}><Spinner aria-label="Uploading attachment" /><span style={caption}>aria-label only</span></span>
     <span style={cell}><Spinner locale="es-ES" /><span style={caption}>locale es-ES</span></span>
   </div>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-3)" data-test="spinner-insert">
+    <button type="button" data-insert style="font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border-radius:var(--radius-element);border:var(--border-width) solid var(--color-border-emphasized);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer">Load comments</button>
+    <template data-labelled><Spinner size="sm" label="Loading comments" /></template>
+    <template data-unlabelled><Spinner size="sm" /></template>
+    <span style={caption}>inserted after load: announced once through the polite live region</span>
+  </div>
 </div>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-test="spinner-insert"]').forEach((root) => {
+    root.querySelector('[data-insert]')?.addEventListener('click', () => {
+      for (const tpl of root.querySelectorAll('template')) tpl.after(tpl.content.cloneNode(true));
+    });
+  });
+</script>

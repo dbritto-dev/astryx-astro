@@ -81,8 +81,11 @@ const {
   theme,
   class: className,
   style,
+  // `slot` only routes the Icon into its owner's named slot (Astro forwards it as a prop);
+  // keep it off the element.
+  slot: _slot,
   ...rest
-} = Astro.props;
+} = Astro.props as Props & {slot?: string};
 
 const size: IconSize = sizeProp ?? 'md';
 const isLabelled = label != null && label !== '';

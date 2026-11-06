@@ -11,7 +11,7 @@ const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-5)
   <div style={row}>{variants.map((v) => <span style={item}><StatusDot variant={v} label={`${labels[v]}, live`} isPulsing />pulsing</span>)}</div>
   <div style={row}>{variants.map((v) => <span style={item}><StatusDot variant={v} label={labels[v]} icon={icons[v]} />icon “{icons[v]}”</span>)}</div>
   <div style={row}>
-    <span style={item}><StatusDot variant="success" label="Online" tooltip="Connected to the build server" />with tooltip (native title)</span>
+    <span style={item}><StatusDot variant="success" label="Online" tooltip="Connected to the build server" />with tooltip</span>
     <span style={item}><StatusDot variant="error" label="Failed"><svg slot="icon" viewBox="0 0 8 8" width="8" height="8" fill="currentColor"><rect x="3.25" y="1.5" width="1.5" height="5" rx="0.75"></rect></svg></StatusDot>icon slot</span>
   </div>
 </div>

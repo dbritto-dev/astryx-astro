@@ -15,43 +15,48 @@
  *
  * Accessibility: `role="group"` named "{label} — {alt}" / label / alt / "Thumbnail". An image
  * without `alt` is decorative (alt="" + role="presentation" + aria-hidden). Open and Remove
- * stay mounted when they cannot act (disabled / loading): `aria-disabled="true"` and no
- * handler, so a focused one keeps focus.
+ * stay mounted when they cannot act (disabled / loading): `aria-disabled="true"`, inert
+ * (elements/runtime/disabledInteraction.ts cancels clicks and Enter/Space), so a focused one
+ * keeps focus. A labelled thumbnail is wrapped in a Tooltip showing the label on hover (the
+ * group root is the trigger; the layer is its next sibling).
  *
- * Port notes:
- *  - `onClick` / `onRemove`: an inline handler string (native `onclick`; the remove click
- *    also stops propagating, as in Astryx) or `true` to render the action and attach a
- *    listener yourself (`.ax-thumbnail-open` / `.ax-thumbnail-remove`).
- *  - The remove control is a native stand-in for <Button variant="secondary" size="sm"
- *    isIconOnly> with Button's theme hooks, until Button is ported.
- *  - Astryx wraps a labelled thumbnail in a Tooltip; Tooltip is not ported yet, so the
- *    label is only the accessible name for now.
+ * The remove control is `<Button variant="secondary" size="sm" isIconOnly>` with an xsm close
+ * Icon and Thumbnail's overrides (fixed --color-overlay scrim, --color-on-dark icon, 20px).
+ *
+ * Events (Astryx callbacks → `isClickable` / `isRemovable` + DOM events, behaviors/thumbnail.ts),
+ * dispatched on the thumbnail root (bubbles, composed), `detail: {event}` (the native click):
+ *  - `isClickable` (Astryx `onClick`): renders the Open action; `astryx-click` while it can act;
+ *  - `isRemovable` (Astryx `onRemove`): renders the Remove button; `astryx-remove`. The remove
+ *    click goes no further than the button (Astryx stopPropagation), so it never opens.
  *
  * @example
- * <Thumbnail src="/photo.jpg" alt="Vacation photo" onRemove="removeAttachment(1)" />
- * <Thumbnail src="/preview.png" alt="Preview" label="preview.png" onClick={true} />
+ * <Thumbnail src="/photo.jpg" alt="Vacation photo" isRemovable />
+ * <Thumbnail src="/preview.png" alt="Preview" label="preview.png" isClickable />
  * <Thumbnail isLoading label="upload.png" />
  */
 import type {HTMLAttributes} from 'astro/types';
 import Icon from '../Icon/Icon.astro';
 import Skeleton from '../Skeleton/Skeleton.astro';
 import Spinner from '../Spinner/Spinner.astro';
+import Button from '../Button/Button.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import './Thumbnail.css';
 
-export interface Props extends Omit<HTMLAttributes<'div'>, 'onclick'> {
+export interface Props extends HTMLAttributes<'div'> {
   /** Image source. Skeleton while loading, the image on success, a placeholder on error. */
   src?: string;
   /** Alt text; omit for a decorative image. */
   alt?: string;
-  /** Accessible label (e.g. the file name): names the group and the actions. */
+  /** Accessible label (e.g. the file name): names the group and the actions; shown in a Tooltip. */
   label?: string;
-  /** Renders the overlaid remove button: an inline handler string, or `true` to wire it yourself. */
-  onRemove?: string | true;
-  /** Renders the thumbnail as an open action: an inline handler string, or `true`. */
-  onClick?: string | true;
+  /** Renders the overlaid remove button (Astryx `onRemove`); clicks dispatch `astryx-remove` {event}. @default false */
+  isRemovable?: boolean;
+  /** Renders the thumbnail as an open action (Astryx `onClick`); clicks dispatch `astryx-click` {event}. @default false */
+  isClickable?: boolean;
   /** Skeleton (no src) or a busy scrim over the image (with src). @default false */
   isLoading?: boolean;
   /** @default false */
@@ -71,8 +76,8 @@ const {
   src,
   alt,
   label,
-  onRemove,
-  onClick,
+  isRemovable = false,
+  isClickable = false,
   isLoading = false,
   isDisabled = false,
   showRemoveOn = 'hover',
@@ -86,15 +91,14 @@ const {
 } = Astro.props;
 
 const t = translator(Astro, locale);
-const given = (v: unknown) => v != null && v !== false;
 const hasSrc = src != null;
 const showSkeleton = isLoading && !hasSrc;
 const showImage = hasSrc && !showSkeleton;
 const showUploadOverlay = isLoading && hasSrc;
 const showPlaceholder = !isLoading && !hasSrc;
-const hasOpen = given(onClick);
+const hasOpen = isClickable;
 const isInteractive = hasOpen && !isDisabled && !isLoading;
-const hasRemove = given(onRemove);
+const hasRemove = isRemovable;
 const isHoverReveal = hasRemove && showRemoveOn === 'hover';
 const accessibleName = label && alt ? `${label} — ${alt}` : (label ?? alt ?? t('@astryx.thumbnail.fallbackName'));
 const isImageDecorative = !alt;
@@ -105,8 +109,9 @@ if (import.meta.env.DEV && hasSrc && alt == null && label == null && props['aria
 
 const {themeClass} = themeProps('thumbnail');
 const placeholderSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2M8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"></path></svg>';
-const openHandler = isInteractive && typeof onClick === 'string' ? onClick : undefined;
-const removeHandler = !isDisabled && typeof onRemove === 'string' ? `event.stopPropagation();${onRemove}` : undefined;
+// Astryx `if (label != null) <Tooltip content={label}>`: the wrapper describes the group root.
+const tip = label != null ? attachTooltip({describedBy: props['aria-describedby'] as string | undefined}) : null;
+const hasInert = (hasOpen && !isInteractive) || (hasRemove && isDisabled);
 ---
 <div
   data-testid={testId}
@@ -114,8 +119,10 @@ const removeHandler = !isDisabled && typeof onRemove === 'string' ? `event.stopP
   aria-label={accessibleName}
   class={cx(themeClass, className)}
   data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-thumbnail={hasOpen || hasRemove ? '' : undefined}
   style={mergeStyles(style as StyleValue)}
   {...props}
+  {...tip?.trigger}
 ><div
   class="ax-thumbnail-media ax-focus-within"
   data-ax-interactive={isInteractive ? '' : undefined}
@@ -131,22 +138,25 @@ const removeHandler = !isDisabled && typeof onRemove === 'string' ? `event.stopP
       class="ax-thumbnail-open"
       aria-label={openLabel ?? t('@astryx.thumbnail.open', {accessibleName})}
       aria-disabled={isInteractive ? undefined : 'true'}
-      onclick={openHandler}
     >{content}</button>
   ) : content;
 })()}{showImage && <div class="ax-thumbnail-inset-border" data-ax-fallback-step="0"></div>}{showUploadOverlay && (
   <div class="ax-thumbnail-upload" data-ax-busy-announce={t('@astryx.spinner.loading')}><Spinner size="sm" shade="onMedia" aria-hidden="true" /></div>
 )}{hasRemove && (
-  <div class="ax-thumbnail-remove-slot" data-ax-reveal-content={isHoverReveal ? '' : undefined}><button
-    type="button"
-    class="astryx-button ax-thumbnail-remove ax-focus-visible ax-overlay-image"
-    data-variant="secondary"
-    data-size="sm"
-    data-elevation="none"
-    aria-label={removeLabel ?? t('@astryx.thumbnail.remove', {accessibleName})}
+  <div class="ax-thumbnail-remove-slot" data-ax-reveal-content={isHoverReveal ? '' : undefined}><Button
+    label={removeLabel ?? t('@astryx.thumbnail.remove', {accessibleName})}
+    variant="secondary"
+    size="sm"
+    isIconOnly
+    class="ax-thumbnail-remove"
     aria-disabled={isDisabled ? 'true' : undefined}
-    onclick={removeHandler}
-  ><span class="ax-thumbnail-remove-icon"><Icon icon="close" size="xsm" /></span></button></div>
+    data-ax-disabled-interaction={isDisabled ? '' : undefined}
+    data-ax-thumbnail-remove
+    locale={locale}
+  ><Icon slot="icon" icon="close" size="xsm" /></Button></div>
 )}</div></div>
+{tip && <Tooltip {...tip.layer} content={label} />}
 {showImage && <script>import '../../behaviors/imageFallback';</script>}
 {showUploadOverlay && <script>import '../../behaviors/busyAnnounce';</script>}
+{(hasOpen || hasRemove) && <script>import '../../behaviors/thumbnail';</script>}
+{hasInert && <script>import '../../elements/runtime/disabledInteraction';</script>}

@@ -1,0 +1,102 @@
+---
+/**
+ * ButtonGroup — joins related Buttons / IconButtons into one connected control (shared
+ * dividers, outer-only radius), horizontal or vertical. Port of @astryxdesign/core
+ * ButtonGroup/ButtonGroup.tsx, ButtonGroup/ButtonGroupContext.ts, the member side of
+ * Button/Button.tsx (groupStyles, IS_LAST_ITEM, the group branches of the state derivation),
+ * SizeContext/SizeContext.ts and hooks/useListFocus.ts. Theme target
+ * `.astryx-button-group[data-size][data-orientation][data-elevation]`.
+ *
+ * Context → cascade (ButtonGroup/groupCascade.ts; stops at layer roots like Astryx's
+ * layer-scoped contexts):
+ *  - `button-group` (every Button root enrols): members get `data-ax-group="<orientation>"`
+ *    → connected geometry in Button.css (a member's own tooltip layer after it is skipped by the
+ *    trailing end cap, `:nth-last-child(1 of :not([popover]):not(template):not(dialog))`), no
+ *    press scale, `data-elevation="none"` (the group's shadow lifts them as one surface,
+ *    contract #5). With `isDisabled` every member is truly disabled: native `disabled` +
+ *    `data-ax-disabled` (50% opacity), `aria-disabled` for tooltip triggers, link members
+ *    render `<button>` (handoffs.md "Group-disabled").
+ *  - size (SizeProvider): an explicit `size` stamps `buttonSizeStampers(size)` on members
+ *    without their own size (and their icon slot's default). Without `size` the group itself
+ *    inherits (Astryx `useSize(sizeProp, 'md')`): it enrols in `size` and leaves its members'
+ *    markers to the nearest outer provider (a Toolbar), so both follow it; with none, 'md'.
+ *
+ * Keyboard (useListFocus): one Tab stop; arrows along the orientation (horizontal arrows
+ * follow the computed direction, RTL), Home/End, wrap, disabled members skipped; items
+ * `button, a[href], [tabindex]`, bounded by `[role="group"], [popover]` (a member's open layer
+ * keeps its own keys) — elements/runtime/roving.ts. The group is `role="group"` named by
+ * `label`, with `aria-disabled` when disabled.
+ *
+ * Deferred (AGENTS.md scope): the touch press tracking (useGroupPressTracking: slide across
+ * members, lift to act, 44px finger targets) — a coarse pointer gets plain native buttons.
+ *
+ * @example
+ * <ButtonGroup label="Clipboard">
+ *   <Button label="Copy" />
+ *   <Button label="Cut" />
+ *   <Button label="Paste" />
+ * </ButtonGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {ComponentSize, Elevation} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {BUTTON_GROUP_KEY, BUTTON_SIZE_KEY, buttonSizeStampers} from '../Button/buttonCascade';
+import {fromAttrStampers, groupMemberStamper, stampOutsideLayers, type GroupOrientation} from './groupCascade';
+import './ButtonGroup.css';
+
+export type ButtonGroupOrientation = GroupOrientation;
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'aria-label'> {
+  /** Accessible label for the group (aria-label). Name it for what its buttons act on. */
+  label: string;
+  /** Layout direction (and arrow keys). @default 'horizontal' */
+  orientation?: ButtonGroupOrientation;
+  /** Default size for members without their own; else an outer provider's; else 'md'. */
+  size?: ComponentSize;
+  /** Resting shadow for the whole group (one surface lifts as a unit). @default 'none' */
+  elevation?: Elevation;
+  /** Disables every member. @default false */
+  isDisabled?: boolean;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  orientation = 'horizontal',
+  size: sizeProp,
+  elevation = 'none',
+  isDisabled = false,
+  'data-testid': testId,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const size: ComponentSize = sizeProp ?? 'md';
+const isSizeInherited = sizeProp === undefined;
+
+const html = await stampOutsideLayers(await Astro.slots.render('default'), {
+  [BUTTON_GROUP_KEY]: groupMemberStamper({orientation, isDisabled}),
+  ...(isSizeInherited ? {} : fromAttrStampers(buttonSizeStampers(size))),
+});
+
+const {themeClass, attrs: themeAttrs} = themeProps('button-group', {size, orientation, elevation});
+---
+<div
+  {...rest}
+  {...themeAttrs}
+  class={cx(themeClass, className as string | undefined)}
+  style={mergeStyles(style as StyleValue)}
+  role="group"
+  aria-label={label}
+  aria-disabled={isDisabled ? 'true' : undefined}
+  data-testid={testId}
+  data-ax-inherit={inherits({[BUTTON_SIZE_KEY]: isSizeInherited})}
+  data-astryx-roving={orientation}
+  data-astryx-roving-items="button, a[href], [tabindex]"
+  data-astryx-roving-boundary='[role="group"], [popover]'
+><Fragment set:html={html} /></div>
+<script>import '../../elements/runtime/roving';</script>
+{isDisabled && <script>import '../../elements/runtime/disabledInteraction';</script>}

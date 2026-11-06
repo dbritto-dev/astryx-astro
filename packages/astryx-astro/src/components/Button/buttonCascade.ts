@@ -12,6 +12,7 @@
  *                      Button's size is not explicit. Button has already stamped them with
  *                      the owner default for its own effective size; a provider that changes
  *                      the Button's size must restamp them to follow (sm/md → sm, lg → md).
+ *   'button-group'     on every Button root: ButtonGroup's context (orientation, disabled).
  *
  * A size provider stamps both in one pass with `buttonSizeStampers()`:
  *   const html = await stamp(await Astro.slots.render('default'), {...buttonSizeStampers(size)});
@@ -29,6 +30,11 @@ const ATTR = 'data-ax-inherit';
 
 export const BUTTON_SIZE_KEY = 'size';
 export const BUTTON_ICON_SIZE_KEY = 'button-icon-size';
+/**
+ * Group membership (Astryx useButtonGroup): every Button root enrols; only ButtonGroup stamps
+ * it (orientation, group-disabled), see ButtonGroup/groupCascade.ts.
+ */
+export const BUTTON_GROUP_KEY = 'button-group';
 
 /** Astryx iconSizeByButtonSize: the owner default of the icon slot. */
 export const ICON_SIZE_BY_BUTTON_SIZE: Record<ComponentSize, IconSize> = {sm: 'sm', md: 'sm', lg: 'md'};
@@ -55,20 +61,6 @@ export function buttonSizeStampers(
     [keys.size]: (a) => { a['data-size'] = size; },
     [keys.iconSize]: (a) => { a['data-size'] = ICON_SIZE_BY_BUTTON_SIZE[size]; },
   };
-}
-
-/**
- * Drop the `slot="<name>"` attribute Astro forwards as a prop to a slotted component
- * (`<Icon slot="icon" …/>`, `<Badge slot="endContent" …/>`), which spread it onto their
- * root. Only top-level elements of the slot are touched.
- */
-export async function cleanSlotHtml(html: string, name: string): Promise<string> {
-  if (!html || !html.includes(`slot="${name}"`)) return html;
-  const ast = parse(html);
-  for (const node of ast.children ?? []) {
-    if (node.type === ELEMENT_NODE && (node.attributes as Attrs).slot === name) delete (node.attributes as Attrs).slot;
-  }
-  return render(ast);
 }
 
 /**

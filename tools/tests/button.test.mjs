@@ -177,9 +177,11 @@ for (const [kase, [button, h, icon, px]] of Object.entries(expectSizes)) {
   check(`icon-size ${kase}: button ${button} (${h}px), icon ${icon} (${px}px)`,
     s && s.button === button && Math.round(s.h) === h && s.icon === icon && Math.round(s.iconPx) === px, JSON.stringify(s));
 }
-check('only an inherited Button keeps its markers (size / button-icon-size)',
-  sizes.default.marker === 'size' && sizes.default.iconMarker === 'button-icon-size' && sizes.sm.marker === null
-  && sizes['provider-lg'].marker === null && sizes['provider-lg'].iconMarker === null, JSON.stringify(sizes.default));
+// Every Button root stays enrolled in `button-group` (only a ButtonGroup stamps it); the size
+// markers remain only while the size is inherited.
+check('only an inherited Button keeps its size markers (size / button-icon-size); all keep button-group',
+  sizes.default.marker === 'size button-group' && sizes.default.iconMarker === 'button-icon-size' && sizes.sm.marker === 'button-group'
+  && sizes['provider-lg'].marker === 'button-group' && sizes['provider-lg'].iconMarker === null, JSON.stringify(sizes.default));
 check('icon box follows the button size (16px sm/md, 20px lg)', sizes.sm.box === 16 && sizes.md.box === 16 && sizes.lg.box === 20 && sizes['provider-lg'].box === 20, JSON.stringify([sizes.sm.box, sizes.lg.box]));
 
 // 7. edge compensation marker and icon-only geometry

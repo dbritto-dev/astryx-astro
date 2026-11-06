@@ -37,7 +37,6 @@ import {mergeStyles, type StyleValue} from '../../lib/style';
 import {safeHref} from '../../lib/safeUrl';
 import {translator} from '../../lib/i18n';
 import {interactiveRole, resolveLinkComponent} from '../Link/linkComponent';
-import {cleanSlotHtml} from '../Button/buttonCascade';
 import './Token.css';
 
 /** Built-in colors; themes may add more (Astryx TokenColorMap). */
@@ -111,8 +110,8 @@ const mode: Mode = isDisabledLink && !isRemovable
 const safe = mode === 'link' || (mode === 'link-removable' && !isDisabled) ? safeHref(href) : undefined;
 const LinkTag = safe != null ? resolveLinkComponent(undefined, Astro) : 'a';
 
-const iconHtml = Astro.slots.has('icon') ? await cleanSlotHtml(await Astro.slots.render('icon'), 'icon') : null;
-const endHtml = Astro.slots.has('endContent') ? await cleanSlotHtml(await Astro.slots.render('endContent'), 'endContent') : null;
+const iconHtml = Astro.slots.has('icon') ? await Astro.slots.render('icon') : null;
+const endHtml = Astro.slots.has('endContent') ? await Astro.slots.render('endContent') : null;
 const hasIcon = iconHtml != null ? iconHtml.trim() !== '' : icon != null && icon !== '';
 const hasEnd = endHtml != null ? endHtml.trim() !== '' : endContent != null && endContent !== '';
 
@@ -182,4 +181,4 @@ const innerLinkAttrs: Record<string, unknown> = mode === 'link-removable' && isD
   )}
 </Tag>
 {needsBehaviour && <script>import '../../behaviors/token';</script>}
-{isDisabled && (mode !== 'static' || isRemovable) && <script>import '../../behaviors/disabledInteraction';</script>}
+{isDisabled && (mode !== 'static' || isRemovable) && <script>import '../../elements/runtime/disabledInteraction';</script>}

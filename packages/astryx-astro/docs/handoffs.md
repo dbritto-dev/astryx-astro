@@ -10,6 +10,8 @@ introduces a provider/consumer key, slot convention or runtime API.
 | `icon-size` | Icon without explicit `size` (renders `data-size="md"`) | owner sets `data-size` (Button: sm for sm/md, md for lg) | Icon |
 | `form-direction`, `form-optionality`, `form-required` | Field-composed inputs | FormLayout (see header of `FormLayout.astro`) | FormLayout |
 | Layout region settings | LayoutHeader/Content/Panel/Footer | Layout | Layout |
+| `size`, `button-icon-size` | Button (inherited size), its default-sized slot Icons; ButtonGroup root without `size` | ButtonGroup (explicit size), Toolbar — `buttonSizeStampers()` | Button |
+| `button-group` | every Button root | ButtonGroup (`groupMemberStamper`) | ButtonGroup |
 
 ## Icons
 
@@ -67,7 +69,8 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
 
 ## Stand-ins to replace when their owner lands
 
-- Popover's hidden close button is a styled stand-in → Button/IconButton.
+None open: Popover's fallback close is a real secondary `<Button>` (size md, the layer's reset
+SizeContext), closing through `popovertarget` + `popovertargetaction="hide"`.
 
 ## Button family
 
@@ -84,6 +87,29 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
   (`aria-disabled` when they are tooltip triggers); link members become `<button>`; members
   show `data-elevation="none"` and lose the press-scale effect.
 - `clickAction` / `pressedChangeAction` (server functions) are not available in Astro.
+- Every Button root enrols in cascade key `button-group` (`BUTTON_GROUP_KEY`), so its
+  `data-ax-inherit` is `button-group` (plus `size` while inherited). Only ButtonGroup stamps it:
+  `data-ax-group="horizontal|vertical"` → member geometry in Button.css (outer-only radius,
+  dividers, on-accent divider for primary/destructive, trailing cap
+  `:nth-last-child(1 of :not([popover]):not(template):not(dialog):not(script))` — `script`
+  added because Astro renders a component's `<script>` in place), no press scale,
+  `data-elevation="none"`, and the group-disabled state above.
+- Button `tooltip` renders the Tooltip layer as the button's next sibling (`data-ax-tooltip` =
+  layer id; aria-describedby composed unless the tooltip repeats the name). Link, StatusDot,
+  Avatar (custom string describes, name tooltip does not), Thumbnail (label) and ProgressBar
+  marks (`focusTrigger="always"`) use the same attachment.
+- Group providers (ButtonGroup, Toolbar) stamp with `stampOutsideLayers()`
+  (`ButtonGroup/groupCascade.ts`): `stamp()` that never enters `[data-astryx-layer-root]`, so
+  a Button a layer renders itself (Popover's close) is not stamped; node appliers may rename
+  the tag. `fromAttrStampers(buttonSizeStampers(size))` adapts the size stampers.
+- ButtonGroup without `size` enrols its own root in `size` and leaves members' size markers to
+  the nearest outer provider (Astryx `useSize(sizeProp, 'md')`). Toolbar always stamps its size
+  (default md). Both use the runtime roving: ButtonGroup items `button, a[href], [tabindex]`
+  bounded by `[role="group"], [popover]`; Toolbar items `button, input, a[href], [tabindex]`
+  bounded by `[role="toolbar"], [popover]` with the caret guard.
+- Toolbar slots: `startContent`, `centerContent`, `endContent`; container-side edge compensation
+  on the start/end slots. Keyboard hint: `behaviors/keyboardHint.ts`
+  (`data-ax-keyboard-hint="<ax-layer id>"` on any roving container).
 
 ## Indicators (form controls build on these)
 
@@ -96,10 +122,24 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
   indicator paints the focus ring on the indicator.
 - Theme attrs: `data-size`, `data-checked` (`checked`/`indeterminate`), `data-disabled`.
 
-## Stand-ins to replace (from the content batch)
+## Content batch (stand-ins replaced)
 
-- `behaviors/liveAnnounce.ts` → runtime `announce.ts`.
-- Tooltips on Avatar, Thumbnail labels, ProgressBar marks → tooltip attachment contract.
-- AvatarGroup renders `data-astryx-roving="horizontal"` (items `[data-avatar-item]`) → wire runtime roving.
-- Thumbnail remove button native stand-in → IconButton.
-- Inline handler-string `onClick`/`onRemove` props on Avatar/Thumbnail → events per AGENTS.md.
+- Announcements go through the runtime only (`elements/runtime/announce.ts`); the
+  `behaviors/liveAnnounce.ts` stand-in is gone. `behaviors/announceRenderedText.ts`
+  (`data-ax-announce-rendered-text`, optional `data-ax-announce-fallback`,
+  `data-ax-announce-politeness`) wraps the runtime's `createRenderedTextAnnouncer()`; a
+  standalone Spinner uses it (silent at load, spoken when inserted later; aria-hidden or a
+  non-progressbar role silences it).
+- One disabled-interaction listener: `elements/runtime/disabledInteraction.ts` (the behaviour
+  copy is deleted). Controls = native controls, `[tabindex]`, widget roles and
+  `[data-ax-disabled-interaction]`; an aria-disabled `role="group"`/toolbar no longer swallows
+  its content's clicks.
+- Icon and Badge drop Astro's forwarded `slot` prop; `cleanSlotHtml` is gone.
+- Callback props → booleans + events (dispatched with `detail: {event}`, bubbling, composed):
+  Avatar `isClickable` (button; also on a link avatar) and AvatarGroupOverflow `isClickable` →
+  `astryx-click` (`behaviors/clickEvent.ts`, `data-ax-click-event`); Thumbnail `isClickable` →
+  `astryx-click`, `isRemovable` → `astryx-remove`, both on the thumbnail root
+  (`behaviors/thumbnail.ts`; Remove stops propagation). `onClick` / `onRemove` handler strings
+  no longer exist.
+- AvatarGroup roves over `[data-avatar-item]` (runtime roving, horizontal, managed tab stop).
+- Thumbnail's Remove is `<Button variant="secondary" size="sm" isIconOnly class="ax-thumbnail-remove">`.

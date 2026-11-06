@@ -11,11 +11,11 @@
  * in other markup.
  *
  * Accessibility: `role="group"` named by `aria-label` (default: translated "Avatars").
- * When a member is interactive (an Avatar with `href`/`onClick`, or a clickable overflow,
- * all marked `data-avatar-item`), Astryx makes the group one Tab stop with arrow-key roving
- * focus and describes it with a keyboard hint. Port status: the hint and the
- * `data-astryx-roving="horizontal"` hook are rendered, but the shared roving runtime is
- * not wired yet, so members keep their native Tab order until it lands.
+ * When a member is interactive (an Avatar with `href`/`isClickable`, or a clickable overflow,
+ * all marked `data-avatar-item`), the group is one Tab stop with arrow-key roving focus
+ * (Astryx useListFocus: `itemSelector: '[data-avatar-item]'`, horizontal, RTL-aware arrows,
+ * Home/End, wrap, disabled members skipped, managed tabindex) through the shared runtime
+ * (elements/runtime/roving.ts), and it is described by a keyboard hint.
  *
  * @example
  * <AvatarGroup size="lg">
@@ -78,7 +78,9 @@ const {themeClass, attrs} = themeProps('avatar-group', {size, shape});
   aria-describedby={describedBy}
   data-testid={testId}
   data-astryx-roving={hasInteractiveItems ? 'horizontal' : undefined}
+  data-astryx-roving-items={hasInteractiveItems ? '[data-avatar-item]' : undefined}
   {...attrs}
   class={cx(themeClass, className)}
   style={mergeStyles({'--_avatar-group-overlap': `${-overlap}px`}, style as StyleValue)}
 ><Fragment set:html={html} />{hasInteractiveItems && <VisuallyHidden id={hintId}>{keyboardHintLabel ?? t('@astryx.avatarGroup.keyboardHint')}</VisuallyHidden>}</div>
+{hasInteractiveItems && <script>import '../../elements/runtime/roving';</script>}

@@ -2,8 +2,9 @@
  * data-ax-field-status — port of @astryxdesign/core FieldStatus/useFieldStatusAnnouncement.ts
  * and hooks/useEntryAnimation.ts for the server-rendered FieldStatus.
  *
- *  - Speaks the message through the persistent live regions (errors assertively, warnings
- *    and successes politely) when it is first present — including a status the server
+ *  - Speaks the message through the runtime's persistent live regions
+ *    (elements/runtime/announce.ts; errors assertively, warnings and successes politely)
+ *    when it is first present — including a status the server
  *    rendered with the page — and again whenever its text or `data-type` changes. The
  *    element itself is not a live region (one mounted with its content is not reliably
  *    announced).
@@ -13,7 +14,7 @@
  *    Server-rendered statuses never play it (Astryx AST-013 FR13).
  */
 import {defineBehavior} from '../elements/behavior';
-import {announce} from './liveAnnounce';
+import {announce} from '../elements/runtime/announce';
 
 let initialPaintComplete = false;
 if (typeof window !== 'undefined') {
@@ -31,7 +32,7 @@ defineBehavior('field-status', (el) => {
     const key = `${type}\u0000${message}`;
     if (!message || key === spoken) return;
     spoken = key;
-    announce(message, type === 'error' ? 'assertive' : 'polite', el);
+    announce(message, {politeness: type === 'error' ? 'assertive' : 'polite', from: el});
   };
   speak();
   const observer = new MutationObserver(speak);
