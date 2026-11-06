@@ -18,6 +18,8 @@ const lines = [
   "export type * from './lib/types';",
   "export {registerIcons, registerIconTheme, resolveIcon, getIcon, getExtendedIcon, getIconRegistry, resolveComponentIcon, resetIcons} from './components/Icon/iconRegistry';",
   "export type * from './components/Icon/iconRegistry';",
+  "export {attachTooltip, attachHoverCard} from './components/Tooltip/attach';",
+  "export {attachPopover} from './components/Popover/attach';",
   '',
 ];
 const seen = new Set();

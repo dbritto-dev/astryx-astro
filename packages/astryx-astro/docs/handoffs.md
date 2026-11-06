@@ -36,3 +36,35 @@ introduces a provider/consumer key, slot convention or runtime API.
 ## Shared classes
 
 - `.ax-layout-root-reset` (Layout.css) — for AppShell's root.
+
+## Client runtime (`src/elements/runtime/`, see its README.md)
+
+- `modality.ts` (`<html data-astryx-modality>`, `focusForLastInput`, `returnFocusForLastInput`),
+  `announce.ts` (`announce(text, {politeness, from})` → withdraw fn; routes into open
+  `dialog:modal`; `announceText`, `createAnnouncer`), `layerStack.ts`
+  (`registerLayer({element, escape, outsidePress, isInside, isPresent, dismiss})`),
+  `anchor.ts` (`anchorLayer` before show, `settleLayer` after, `releaseLayer` after exit),
+  `layer.ts` (`LayerElement` base class, `<ax-layer>`, `show/hide/open/close/toggle`,
+  `astryx-open-change`), `tooltip.ts` (`<ax-tooltip>`, `<ax-hover-card>`), `popover.ts`
+  (`<ax-popover>`), `roving.ts` (`data-astryx-roving*`, manages tabindex, click moves the
+  stop), `typeahead.ts`, `disabledInteraction.ts`.
+- Build new layered widgets (menus, comboboxes, dialogs, sheets) on `LayerElement` +
+  `registerLayer`; never add another document Escape/outside listener.
+
+## Attaching a tooltip / hover card / popover to a trigger you render
+
+```astro
+---
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+const tip = tooltip ? attachTooltip({describedBy: rest['aria-describedby']}) : null;
+---
+<button {...rest} {...tip?.trigger}>…</button>
+{tip && <Tooltip {...tip.layer} content={tooltip} />}
+```
+A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
+`attachHoverCard` / `attachPopover` (Popover/attach.ts) work the same way.
+
+## Stand-ins to replace when their owner lands
+
+- Popover's hidden close button is a styled stand-in → Button/IconButton.
