@@ -1,0 +1,153 @@
+/*
+ * Port of @astryxdesign/core Toast/Toast.tsx (styles.root, variantDefault, inner, variantError,
+ * content, exiting, endContent), theme/MediaTheme.tsx (root, active) and
+ * Toast/ToastViewport.tsx (rootOutlet, viewport, viewportInlineSpan, positions, toastWrapper*,
+ * toastWrapperInner*). Rule groups follow the stylex.props() order of each element.
+ *
+ * Private vars kept for themes and the deferred swipe port: --_toast-slide-y (set per row from
+ * the placement), --_toast-swipe-y / -opacity / -scale / -exit-y (at rest),
+ * --_toast-start-opacity / --_toast-start-slide (the entry's start; a row that has entered sets
+ * them to 1 / 0px so a move between modal outlets renders the card at rest).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Toast card ─────────────────────────────────────────────────────────── */
+  .astryx-toast {
+    display: block;
+    padding-block: var(--spacing-4);
+    padding-inline: var(--spacing-4);
+    border-radius: var(--radius-container);
+    box-sizing: border-box;
+    width: 400px;
+    max-width: 100%;
+    box-shadow: var(--shadow-med);
+    opacity: var(--_toast-swipe-opacity, 1);
+    font-family: var(--font-family-body);
+    font-size: var(--font-size-base);
+    line-height: 1.4286;
+    transform: translateY(var(--_toast-swipe-y, 0px)) scale(var(--_toast-swipe-scale, 1));
+    transition-property: opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-toast { transition-duration: 0.01ms; }
+  }
+  @starting-style {
+    .astryx-toast {
+      opacity: var(--_toast-start-opacity, 0);
+      transform: translateY(var(--_toast-start-slide, var(--_toast-slide-y, var(--spacing-2))));
+    }
+  }
+  .astryx-toast { background-color: var(--color-background-inverted); }
+  .astryx-toast[data-type="error"] { background-color: var(--color-background-error-inverted); }
+  .astryx-toast[data-ax-exiting] {
+    opacity: 0;
+    transform: translateY(var(--_toast-swipe-exit-y, var(--_toast-swipe-y, var(--_toast-slide-y, var(--spacing-2))))) scale(var(--_toast-swipe-scale, 1));
+  }
+
+  /* MediaTheme: no box; while a side is chosen the text takes the surface's primary color. */
+  .ax-toast-media { display: contents; }
+  .ax-toast-media[data-astryx-media] { color: var(--color-text-primary); }
+
+  .ax-toast-inner {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: var(--spacing-3);
+    width: 100%;
+  }
+  .ax-toast-content {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    /* Text inside keeps `anywhere` too (Text FR3). */
+    --_astryx-text-overflow-wrap: anywhere;
+  }
+  /* Trailing controls centre on the first 20px body line, however the body wraps. */
+  .ax-toast-end {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    block-size: calc(var(--font-size-base) * 1.4286);
+    margin-inline-end: calc(var(--spacing-1) * -1);
+  }
+
+  /* ── Viewport ───────────────────────────────────────────────────────────── */
+  .ax-toast-home { display: contents; }
+
+  .ax-toast-viewport {
+    position: fixed;
+    z-index: 500;
+    display: flex;
+    box-sizing: border-box;
+    flex-direction: column;
+    padding-block-start: max(var(--spacing-4), env(safe-area-inset-top, 0px));
+    padding-block-end: max(var(--spacing-4), env(safe-area-inset-bottom, 0px));
+    padding-inline-start: max(var(--spacing-4), env(safe-area-inset-left, 0px));
+    padding-inline-end: max(var(--spacing-4), env(safe-area-inset-right, 0px));
+    pointer-events: none;
+    /* Reset the popover UA box: the viewport spans the inline axis and aligns within itself. */
+    inset: unset;
+    width: auto;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    overflow: visible;
+    /* viewportInlineSpan: the app-declared inset (LayerProvider, spec:AST-059 FR6). */
+    inset-inline-start: var(--astryx-layer-inset-inline-start, 0px);
+    inset-inline-end: var(--astryx-layer-inset-inline-end, 0px);
+  }
+  .ax-toast-viewport:dir(rtl) {
+    padding-inline-start: max(var(--spacing-4), env(safe-area-inset-right, 0px));
+    padding-inline-end: max(var(--spacing-4), env(safe-area-inset-left, 0px));
+  }
+  .ax-toast-viewport[data-position="bottomEnd"] { bottom: var(--astryx-layer-inset-block-end, 0px); align-items: flex-end; }
+  .ax-toast-viewport[data-position="bottomStart"] { bottom: var(--astryx-layer-inset-block-end, 0px); align-items: flex-start; }
+  .ax-toast-viewport[data-position="topEnd"] { top: var(--astryx-layer-inset-block-start, 0px); align-items: flex-end; flex-direction: column-reverse; }
+  .ax-toast-viewport[data-position="topStart"] { top: var(--astryx-layer-inset-block-start, 0px); align-items: flex-start; flex-direction: column-reverse; }
+
+  /* toastWrapper: a grid row that opens and collapses with its track. */
+  .ax-toast-row {
+    pointer-events: auto;
+    display: grid;
+    width: 100%;
+    max-width: 400px;
+    min-width: 0;
+    grid-template-rows: 1fr;
+    transition-property: grid-template-rows, padding;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    --_toast-slide-y: var(--spacing-2);
+    /* The inter-toast gap is padding, so it collapses with the track; the row nearest the
+     * edge drops it. */
+    padding-block-end: var(--spacing-2);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-toast-row { transition-duration: 0.01ms; }
+  }
+  /* Bottom stacks: the last row sits on the edge. Top stacks (column-reverse) drift and
+   * leave upward, and the first row sits on the edge. */
+  .ax-toast-row:last-child { padding-block-end: 0; }
+  .ax-toast-viewport[data-position^="top"] > .ax-toast-row { --_toast-slide-y: calc(-1 * var(--spacing-2)); padding-block-end: var(--spacing-2); }
+  .ax-toast-viewport[data-position^="top"] > .ax-toast-row:first-child { padding-block-end: 0; }
+  .ax-toast-viewport > .ax-toast-row[data-ax-exiting] { grid-template-rows: 0fr; padding-block-end: 0; }
+  /* A row opens from a closed track only when it first renders (a move renders it again). */
+  @starting-style {
+    .ax-toast-viewport > .ax-toast-row:not([data-ax-entered]) { grid-template-rows: 0fr; padding-block-end: 0; }
+  }
+
+  /* toastWrapperInner: clipped while the track moves; released once open so the shadow paints. */
+  .ax-toast-row-inner {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .ax-toast-row[data-ax-settled]:not([data-ax-exiting]) > .ax-toast-row-inner { overflow: visible; }
+  .ax-toast-row[data-ax-entered] > .ax-toast-row-inner { --_toast-start-opacity: 1; --_toast-start-slide: 0px; }
+}

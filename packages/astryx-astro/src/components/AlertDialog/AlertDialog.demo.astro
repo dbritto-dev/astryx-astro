@@ -1,0 +1,62 @@
+---
+import AlertDialog from './AlertDialog.astro';
+import {attachDialog} from '../Dialog/attach';
+import Button from '../Button/Button.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const del = attachDialog({id: 'alert-delete', triggerId: 'alert-delete-trigger'});
+const discard = attachDialog({id: 'alert-discard', triggerId: 'alert-discard-trigger'});
+---
+<div>
+  <p style={label}>Inline preview (isInline: role="group", no modal behaviour)</p>
+  <AlertDialog
+    isInline
+    isOpen
+    title="Delete item?"
+    description="This action cannot be undone. The item and all its data will be permanently removed."
+    actionLabel="Delete"
+  />
+</div>
+
+<div>
+  <p style={label}>Modal: role="alertdialog", Cancel takes focus, Escape cancels, the backdrop does not dismiss; the action reports astryx-action and shows its spinner while the work runs</p>
+  <div style={row}>
+    <Button {...del.trigger} label="Delete project" variant="destructive" />
+    <Button {...discard.trigger} label="Discard changes" />
+    <output id="alert-log" style="font-size:var(--font-size-sm);color:var(--color-text-secondary)"></output>
+  </div>
+</div>
+
+<AlertDialog
+  {...del.layer}
+  title="Delete project?"
+  description="The project, its 24 files and their history are removed for everyone. This cannot be undone."
+  actionLabel="Delete project"
+/>
+
+<AlertDialog
+  {...discard.layer}
+  title="Discard unsaved changes?"
+  description="Your edits since 10:42 are lost."
+  actionLabel="Discard"
+  actionVariant="primary"
+  cancelLabel="Keep editing"
+  width={480}
+/>
+
+<script>
+  type AlertHost = HTMLElement & {actionLoading: boolean; hide(): void};
+  const log = document.getElementById('alert-log');
+  for (const id of ['alert-delete', 'alert-discard']) {
+    const host = document.getElementById(id)?.parentElement as AlertHost | null;
+    host?.addEventListener('astryx-action', () => {
+      host.actionLoading = true;
+      setTimeout(() => {
+        host.actionLoading = false;
+        host.hide();
+        if (log) log.textContent = `${id}: confirmed`;
+      }, 900);
+    });
+  }
+</script>

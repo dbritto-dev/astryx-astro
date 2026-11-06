@@ -1,0 +1,61 @@
+---
+/**
+ * @internal The toast card (Astryx ToastSurface): the static Toast renders it in place and
+ * ToastViewport renders an empty one into its `<template>` for the client to clone.
+ * `html` carries the caller's rendered slots: body, `endContent`, `content` (replaces the whole
+ * layout, no dismiss button).
+ */
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+
+export interface Props {
+  type?: 'info' | 'error';
+  isAutoHide?: boolean;
+  autoHideDuration?: number;
+  /** Whether the card is its own live region (false inside a viewport, which announces). */
+  isLiveRegion?: boolean;
+  body?: string;
+  dismissLabel?: string;
+  locale?: string;
+  html?: {body?: string; endContent?: string; content?: string};
+  class?: string;
+  style?: string;
+  [key: string]: unknown;
+}
+
+const {
+  type = 'info', isAutoHide, autoHideDuration = 5000, isLiveRegion = true, body, dismissLabel, locale,
+  html = {}, class: className, slot: _slot, ...rest
+} = Astro.props;
+const t = translator(Astro, locale);
+const isError = type === 'error';
+const autoHide = isAutoHide ?? !isError;
+const filled = (v: string | undefined): v is string => v != null && v.trim() !== '';
+const hasCustom = filled(html.content);
+---
+<ax-toast
+  {...rest}
+  class={cx('astryx-toast', className)}
+  data-type={type}
+  data-ax-auto-hide={String(autoHide)}
+  data-ax-duration={autoHideDuration}
+  role={isLiveRegion ? (isError ? 'alert' : 'status') : undefined}
+  aria-live={isLiveRegion ? (isError ? 'assertive' : 'polite') : undefined}
+  aria-atomic={isLiveRegion ? 'true' : undefined}
+>
+  <div class="ax-toast-media" data-astryx-media="dark">
+    {hasCustom ? <Fragment set:html={html.content} /> : (
+      <div class="ax-toast-inner">
+        <div class="ax-toast-content">{filled(html.body) ? <Fragment set:html={html.body} /> : body}</div>
+        <div class="ax-toast-end">
+          {filled(html.endContent) && <Fragment set:html={html.endContent} />}
+          <IconButton variant="ghost" size="sm" label={dismissLabel ?? t('@astryx.toast.dismiss')} data-ax-toast-dismiss="">
+            <Icon slot="icon" icon="close" size="sm" color="inherit" />
+          </IconButton>
+        </div>
+      </div>
+    )}
+  </div>
+</ax-toast>

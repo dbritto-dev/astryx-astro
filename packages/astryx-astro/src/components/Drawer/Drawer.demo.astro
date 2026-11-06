@@ -1,0 +1,96 @@
+---
+import Drawer from './Drawer.astro';
+import DrawerHeader from './DrawerHeader.astro';
+import {attachDrawer} from './attach';
+import Layout from '../Layout/Layout.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import LayoutFooter from '../Layout/LayoutFooter.astro';
+import HStack from '../Stack/HStack.astro';
+import VStack from '../Stack/VStack.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import Text from '../Text/Text.astro';
+import Badge from '../Badge/Badge.astro';
+import ToastViewport from '../Toast/ToastViewport.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const end = attachDrawer({id: 'drawer-end', triggerId: 'drawer-end-trigger'});
+const start = attachDrawer({id: 'drawer-start', triggerId: 'drawer-start-trigger'});
+const inspector = attachDrawer({id: 'drawer-inspector', triggerId: 'drawer-inspector-trigger', hasScrim: false});
+const required = attachDrawer({id: 'drawer-required', triggerId: 'drawer-required-trigger'});
+const rtl = attachDrawer({id: 'drawer-rtl', triggerId: 'drawer-rtl-trigger'});
+---
+<div>
+  <p style={label}>Modal with a scrim (end and start sides), non-modal inspector (the page stays interactive), required (role="alertdialog"), and an RTL region</p>
+  <div style={row}>
+    <Button {...end.trigger} label="Host details (end)" />
+    <Button {...start.trigger} label="Filters (start)" />
+    <Button {...inspector.trigger} label="Inspector (no scrim)" />
+    <Button {...required.trigger} label="Required" variant="destructive" />
+    <div dir="rtl" style="display:contents"><Button {...rtl.trigger} label="RTL: end" /></div>
+  </div>
+</div>
+
+<Drawer {...end.layer} label="Host details: web-01">
+  <Layout>
+    <DrawerHeader slot="header" title="web-01" subtitle="us-east-1 · t3.large" hasCloseButton hasDivider>
+      <Fragment slot="startContent"><IconButton label="Back" icon="chevronLeft" variant="ghost" class="ax-mirror-rtl" /></Fragment>
+      <Fragment slot="endContent"><Badge label="Healthy" /></Fragment>
+    </DrawerHeader>
+    <LayoutContent>
+      <VStack gap={3}>
+        <Text type="body">CPU 42% · Memory 61% · Uptime 18 days</Text>
+        <Text type="body" color="secondary">Escape or a press on the scrim closes the drawer; focus returns to the button that opened it.</Text>
+        <HStack gap={2}><Button label="Restart" id="drawer-end-first" data-autofocus /><Button label="Notify" variant="ghost" id="drawer-end-toast" /></HStack>
+      </VStack>
+    </LayoutContent>
+    <LayoutFooter slot="footer" hasDivider>
+      <HStack gap={2} hAlign="end"><Button {...end.close} label="Close" variant="primary" /></HStack>
+    </LayoutFooter>
+  </Layout>
+</Drawer>
+
+<Drawer {...start.layer} label="Filters" side="start" width={320} purpose="form">
+  <Layout>
+    <DrawerHeader slot="header" title="Filters" hasCloseButton />
+    <LayoutContent><Text type="body">purpose="form": Escape closes, the scrim does not.</Text></LayoutContent>
+  </Layout>
+</Drawer>
+
+<Drawer {...inspector.layer} label="Inspector" hasScrim={false} width="22rem" padding={6}>
+  <Layout>
+    <DrawerHeader slot="header" title="Inspector" hasCloseButton />
+    <LayoutContent>
+      <VStack gap={3}>
+        <Text type="body">A non-modal panel: the page behind stays interactive and Escape still closes it.</Text>
+        <Button label="Notify" id="drawer-inspector-toast" />
+      </VStack>
+    </LayoutContent>
+  </Layout>
+</Drawer>
+
+<Drawer {...required.layer} label="Confirm your identity" purpose="required" experimental={{isFullWidthOnMobile: true}}>
+  <Layout>
+    <DrawerHeader slot="header" title="Confirm your identity" />
+    <LayoutContent><Text type="body">Neither Escape nor the scrim closes a required drawer.</Text></LayoutContent>
+    <LayoutFooter slot="footer"><HStack gap={2} hAlign="end"><Button {...required.close} label="Done" variant="primary" id="drawer-required-done" /></HStack></LayoutFooter>
+  </Layout>
+</Drawer>
+
+<div dir="rtl" style="display:contents">
+  <Drawer {...rtl.layer} label="RTL drawer">
+    <Layout>
+      <DrawerHeader slot="header" title="מגירה" hasCloseButton />
+      <LayoutContent><Text type="body">side="end" sits on the left in RTL.</Text></LayoutContent>
+    </Layout>
+  </Drawer>
+</div>
+
+<ToastViewport />
+
+<script>
+  import {toast} from '../../elements/toast';
+  document.getElementById('drawer-end-toast')?.addEventListener('click', () => toast({body: 'Restart scheduled'}));
+  document.getElementById('drawer-inspector-toast')?.addEventListener('click', () => toast({body: 'Inspector updated'}));
+</script>

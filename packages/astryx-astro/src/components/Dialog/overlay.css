@@ -1,0 +1,82 @@
+/*
+ * Shared by the native-dialog layers (Dialog, AlertDialog, Drawer) and the toast viewport.
+ *
+ * Ports @astryxdesign/core Layer/layerTextReset.stylex.ts, Layer/layerStructureReset.stylex.ts
+ * and Layout/overlayPaddingReset.stylex.ts (the content boundary at an overlay root), plus the
+ * header row of Dialog/DialogHeader.tsx and Drawer/DrawerHeader.tsx (identical styles).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* Host elements (<ax-dialog>, <ax-alert-dialog>, <ax-drawer>) add no box. */
+  .ax-overlay-host { display: contents; }
+
+  /* Content boundary, zero specificity: every component and theme rule on the root wins, as
+   * the resets come first in Astryx's stylex.props() order. */
+  :where(.ax-overlay-root) {
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    font-weight: var(--text-body-weight);
+    line-height: var(--text-body-leading);
+    font-style: normal;
+    text-align: start;
+    text-align-last: auto;
+    text-indent: 0;
+    text-transform: none;
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-shadow: none;
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+    hyphens: manual;
+    --step-connector-gap: initial;
+    --_astryx-text-overflow-wrap: initial;
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+    --layout-padding-outer-x: initial;
+    --layout-padding-outer-y: initial;
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    --layout-padding-inner-x: initial;
+    --layout-padding-inner-y: initial;
+    --_section-padding-propagated: initial;
+  }
+
+  /* ── DialogHeader / DrawerHeader (styles.container, actions, titleWrapper, compensation) ── */
+  .astryx-dialog-header,
+  .astryx-drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+  }
+  .astryx-dialog-header-start-content,
+  .astryx-dialog-header-end-content,
+  .astryx-drawer-header-start-content,
+  .astryx-drawer-header-end-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex-shrink: 0;
+  }
+  /* Compensate for the medium icon button's visual padding on the end slot. */
+  .astryx-dialog-header-end-content[data-ax-comp-block],
+  .astryx-drawer-header-end-content[data-ax-comp-block] { margin-block: calc(-1 * var(--spacing-2)); }
+  .astryx-dialog-header-end-content[data-ax-comp-inline],
+  .astryx-drawer-header-end-content[data-ax-comp-inline] { margin-inline-end: calc(-1 * var(--spacing-2)); }
+  .astryx-dialog-header-title-block,
+  .astryx-drawer-header-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0);
+    flex: 1;
+    min-width: 0;
+    /* Title centre on the close button centre: size-element-md/2 − spacing-2 − heading line/2. */
+    margin-block: calc(var(--size-element-md) / 2 - var(--spacing-2) - var(--text-heading-2-size) * var(--text-heading-2-leading) / 2);
+  }
+  /* The focusable title (tabindex=-1) takes focus on open without a ring. */
+  .ax-dialog-header-title { outline: none; }
+}

@@ -1,0 +1,184 @@
+---
+/**
+ * Dialog — a modal overlay on the native `<dialog>` element that blocks the page until the
+ * user responds. Port of @astryxdesign/core Dialog/Dialog.tsx (+ DialogContext.ts,
+ * Layer/useLayerDismissal.ts, Layer/useBackdropPress.ts, Layer/modalOutlet.ts,
+ * hooks/useScrollLock.ts, hooks/useFocusTrap.ts containment, hooks/ModalAnnounceProvider.tsx,
+ * Layout/container.stylex.ts). Behaviour: src/elements/dialog.ts (`<ax-dialog>`).
+ *
+ * Markup: `<ax-dialog>` (display: contents) holds `<dialog class="astryx-dialog"
+ * data-variant>` (the root: `id`, `class`, `style`, ARIA and the rest go here) and its inner
+ * container `.ax-dialog-inner`, which takes the padding and publishes it to Layout regions,
+ * Section and bleed children (contract #14). Content is sealed (cascades end at the layer root).
+ *
+ * Opening: `isOpen` is the initial state (opened on connect, settled, no entry motion); the
+ * element owns state afterwards. Open it from a button with `attachDialog()` (./attach.ts:
+ * a `commandfor` / `command="show-modal"` invoker, zero JS), or call `show()` / `hide()` on the
+ * host element. A DialogHeader title names the dialog (aria-labelledby) unless `aria-label` /
+ * `aria-labelledby` is passed, and takes focus on open unless something carries
+ * `data-autofocus`. Focus returns to the opener without scrolling.
+ *
+ * Dismissal (`purpose`): `info` — Escape and a backdrop press that starts and ends on the
+ * backdrop; `form` — Escape only; `required` — neither (role="alertdialog"; Escape is consumed).
+ * Escape goes through the shared layer stack (a popover open inside closes first; IME never
+ * dismisses). The page behind is inert, Tab wraps inside, page scroll is locked
+ * (`data-ax-scroll-lock`), announcements route into the dialog's own live region, and the toast
+ * viewport moves inside while it is open so toasts paint above it.
+ *
+ * Events: `astryx-open-change` `{isOpen, reason}` on the host (Astryx `onOpenChange`).
+ * `isInline` renders the visual dialog in flow for documentation previews only (no `<dialog>`,
+ * no modality, no focus), and only while `isOpen`.
+ *
+ * Not ported: `useImperativeDialog` (a React state hook): render a Dialog and call the host's
+ * `show()` / `hide()` / `isOpen`. Deferred (touch extra): the coarse-pointer entrance input hold.
+ *
+ * @example
+ * ---
+ * const dlg = attachDialog({id: 'rename'});
+ * ---
+ * <button {...dlg.trigger}>Rename</button>
+ * <Dialog {...dlg.layer} purpose="form">
+ *   <Layout>
+ *     <DialogHeader slot="header" title="Rename file" hasCloseButton />
+ *     <LayoutContent>…</LayoutContent>
+ *     <LayoutFooter slot="footer">…</LayoutFooter>
+ *   </Layout>
+ * </Dialog>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {layerId} from '../Layer/layer';
+import {prepareLayerContent} from './content';
+import './overlay.css';
+import './Dialog.css';
+
+/** Built-in variants; themes may add more (Astryx DialogVariantMap). */
+export type DialogVariant = 'standard' | 'fullscreen' | (string & {});
+export type DialogPurpose = 'required' | 'form' | 'info';
+
+/** Static position. Logical `start`/`end` map to inset-inline-* and mirror under RTL. */
+export interface DialogPosition {
+  top?: number | string;
+  bottom?: number | string;
+  start?: number | string;
+  end?: number | string;
+}
+
+export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open'> {
+  /** Initial open state: opened on connect (the host element owns it afterwards). @default false */
+  isOpen?: boolean;
+  /** Render the dialog's visuals in flow, without `<dialog>` or modal behaviour (previews only). @default false */
+  isInline?: boolean;
+  /** Preferred width (number = px), clamped to the container and the viewport gutters. @default 400 */
+  width?: number | string;
+  /** Maximum height (number = px). @default '75dvh' */
+  maxHeight?: number | string;
+  /** Static position; centered when omitted. Ignored for fullscreen. */
+  position?: DialogPosition;
+  /** @default 'standard' */
+  variant?: DialogVariant;
+  /** Dismissal: `info` Escape + backdrop, `form` Escape only, `required` neither. @default 'info' */
+  purpose?: DialogPurpose;
+  /** Inner padding as a spacing step; omitted uses the theme's dialog padding (--spacing-4). */
+  padding?: SpacingStep;
+  /** The `<dialog>` id (invokers target it). @default generated */
+  id?: string;
+  'data-testid'?: string;
+}
+
+/** @internal AlertDialog renders through Dialog with its own host element. */
+interface InternalProps {
+  __hostTag?: 'ax-dialog' | 'ax-alert-dialog';
+}
+
+const {
+  isOpen = false,
+  isInline = false,
+  width = 400,
+  maxHeight = '75dvh',
+  position,
+  variant = 'standard',
+  purpose = 'info',
+  padding,
+  id: idProp,
+  class: className,
+  style,
+  open: _open,
+  slot: _slot,
+  __hostTag: HostTag = 'ax-dialog',
+  ...rest
+} = Astro.props as Props & InternalProps & {open?: unknown; slot?: unknown};
+
+const id = idProp ?? layerId('ax-dialog');
+const isFullscreen = variant === 'fullscreen';
+const usesThemePadding = padding == null;
+const {themeClass, attrs: themeAttrs} = themeProps('dialog', {variant});
+
+const raw = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const {html: content, titleId} = await prepareLayerContent(raw, {id, closeCommand: isInline ? null : 'close'});
+
+// Consumer labels win over the DialogHeader default (modal path only, as in Astryx).
+const hasConsumerName = rest['aria-label'] != null || rest['aria-labelledby'] != null;
+const labelledBy = isInline ? rest['aria-labelledby'] : (rest['aria-labelledby'] ?? (hasConsumerName ? undefined : titleId));
+if (import.meta.env.DEV && !isInline && !hasConsumerName && !titleId) {
+  console.warn('[astryx] Dialog: open dialog has no accessible name. Add a DialogHeader with a `title`, or pass `aria-label`/`aria-labelledby`.');
+}
+
+const sizing = isFullscreen ? {} : {'--_ax-dialog-width': cssSize(width), '--_ax-dialog-max-height': cssSize(maxHeight)};
+const hasPosition = position != null && !isFullscreen && !isInline;
+const positionVars = hasPosition
+  ? {
+      '--_ax-dialog-top': cssSize(position.top),
+      '--_ax-dialog-bottom': cssSize(position.bottom),
+      '--_ax-dialog-start': cssSize(position.start),
+      '--_ax-dialog-end': cssSize(position.end),
+    }
+  : {};
+const innerStyle = mergeStyles({
+  '--_ax-pad': spacing(padding),
+  '--container-max-height': isFullscreen ? undefined : cssSize(maxHeight),
+} as StyleValue);
+// Zero-JS dismissal: native light dismiss for info, close requests for form, none for required.
+const closedby = purpose === 'info' ? 'any' : purpose === 'form' ? 'closerequest' : 'none';
+const nativeAttrs = {closedby};
+---
+{isInline ? (
+  isOpen && (
+    <div
+      {...rest}
+      class={cx(themeClass, 'ax-overlay-root', className)}
+      {...themeAttrs}
+      data-ax-inline=""
+      aria-labelledby={labelledBy}
+      style={mergeStyles(sizing as StyleValue, style as StyleValue)}
+    >
+      <div class="ax-dialog-inner" data-ax-safe-area={isFullscreen && usesThemePadding ? '' : undefined} style={innerStyle}>
+        <Fragment set:html={content} />
+      </div>
+    </div>
+  )
+) : (
+  <HostTag class="ax-overlay-host" data-ax-purpose={purpose} data-ax-open={isOpen ? 'true' : undefined}>
+    <dialog
+      {...rest}
+      {...nativeAttrs}
+      id={id}
+      class={cx(themeClass, 'ax-overlay-root', 'ax-focus-visible', className)}
+      {...themeAttrs}
+      data-astryx-layer-root=""
+      data-ax-scroll-lock=""
+      data-ax-positioned={hasPosition ? '' : undefined}
+      aria-modal="true"
+      aria-labelledby={labelledBy}
+      role={purpose === 'required' ? 'alertdialog' : rest.role}
+      style={mergeStyles(sizing as StyleValue, positionVars as StyleValue, style as StyleValue)}
+    >
+      <div class="ax-dialog-inner" data-ax-safe-area={isFullscreen && usesThemePadding ? '' : undefined} style={innerStyle}>
+        <Fragment set:html={content} />
+      </div>
+    </dialog>
+  </HostTag>
+)}
+{!isInline && HostTag === 'ax-dialog' && <script>import '../../elements/dialog';</script>}

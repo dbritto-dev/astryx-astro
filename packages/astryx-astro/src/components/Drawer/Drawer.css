@@ -1,0 +1,143 @@
+/*
+ * Port of @astryxdesign/core Drawer/Drawer.tsx (styles.dialog, rendered, end/endOpen,
+ * start/startOpen, openSettled, scrim/scrimOpen, content, contentSafeArea,
+ * dynamicStyles.inlineSize) and Layout/container.stylex.ts (container({useThemeDefault:
+ * 'drawer'})). Rule groups follow the stylex.props() order.
+ *
+ * Astryx owns `display` from React state (rendered while open and through the slide-out). Here
+ * it follows the native host, which the runtime (elements/drawer.ts) keeps open through the
+ * slide-out and hides in the same task the exit ends; `data-ax-closing` targets the closed
+ * transform during the exit. Without JS a native invoker still slides the panel in.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-pad { syntax: "*"; inherits: false; }
+@property --_ax-drawer-width { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* styles.dialog: the dialog element is the panel. */
+  .astryx-drawer {
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    border-radius: 0;
+    max-width: none;
+    max-height: none;
+    box-sizing: border-box;
+    flex-direction: column;
+    background-color: var(--color-background-surface);
+    box-shadow: var(--shadow-high);
+    /* clip, not hidden: no scroll container, so the page beside a non-modal drawer scrolls. */
+    overflow: clip;
+    outline: none;
+    inset-block-start: 0;
+    inset-block-end: 0;
+    height: 100dvh;
+    display: none;
+    transition-property: transform;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-drawer { transition-duration: 0.01s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-drawer { transition-duration: 0.01s; }
+
+  /* rendered */
+  .astryx-drawer:is([open], :popover-open) { display: flex; }
+
+  /* side (logical; directionality from the nearest effective `dir`) */
+  .astryx-drawer[data-side="end"] {
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+    border-inline-start-width: var(--border-width);
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--color-border);
+    transform: translateX(100%);
+  }
+  .astryx-drawer[data-side="end"]:dir(rtl) { transform: translateX(-100%); }
+  .astryx-drawer[data-side="start"] {
+    inset-inline-start: 0;
+    inset-inline-end: auto;
+    border-inline-end-width: var(--border-width);
+    border-inline-end-style: solid;
+    border-inline-end-color: var(--color-border);
+    transform: translateX(-100%);
+  }
+  .astryx-drawer[data-side="start"]:dir(rtl) { transform: translateX(100%); }
+
+  /* dynamicStyles.inlineSize: the width budget; below 640px a 56px reveal of the page. */
+  .astryx-drawer {
+    width: var(--_ax-drawer-width, 400px);
+    max-width: 100dvw;
+  }
+  @media (max-width: 640px) {
+    .astryx-drawer { width: min(var(--_ax-drawer-width, 400px), calc(100dvw - 56px)); }
+    .astryx-drawer[data-ax-full-width-mobile] { width: 100dvw; }
+  }
+
+  /* endOpen / startOpen: at rest while open; slides from its edge when it opens. */
+  .astryx-drawer:is([open], :popover-open):not([data-ax-closing]) { transform: translateX(0); }
+  @starting-style {
+    .astryx-drawer[data-side="end"]:is([open], :popover-open) { transform: translateX(100%); }
+    .astryx-drawer[data-side="end"]:is([open], :popover-open):dir(rtl) { transform: translateX(-100%); }
+    .astryx-drawer[data-side="start"]:is([open], :popover-open) { transform: translateX(-100%); }
+    .astryx-drawer[data-side="start"]:is([open], :popover-open):dir(rtl) { transform: translateX(100%); }
+  }
+
+  /* scrim: the browser's ::backdrop (top layer), no blur. */
+  .astryx-drawer[data-ax-scrim]::backdrop {
+    background-color: var(--color-overlay);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-drawer[data-ax-scrim]::backdrop { transition-duration: 0.01s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-drawer[data-ax-scrim]::backdrop { transition-duration: 0.01s; }
+  .astryx-drawer[data-ax-scrim][open]:not([data-ax-closing])::backdrop { opacity: 1; }
+  @starting-style {
+    .astryx-drawer[data-ax-scrim][open]::backdrop { opacity: 0; }
+  }
+
+  /* openSettled: a drawer open on page load opens where it rests (spec:AST-013 FR13). */
+  .astryx-drawer[data-ax-settled],
+  .astryx-drawer[data-ax-settled]::backdrop { transition-duration: 0.01s; }
+
+  /* content: the scrolling area is the drawer's container (padding published to Layout,
+   * Section and bleed children) and paints the surface so the panel edge stays uniform. */
+  .ax-drawer-content {
+    flex-grow: 1;
+    min-height: 0;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    outline: none;
+    background-color: var(--color-background-surface);
+    box-sizing: border-box;
+    --container-padding-inline-start: var(--_ax-pad, var(--astryx-drawer-padding-inline-start, var(--astryx-drawer-padding-inline, var(--astryx-drawer-padding, var(--spacing-4)))));
+    --container-padding-inline-end: var(--_ax-pad, var(--astryx-drawer-padding-inline-end, var(--astryx-drawer-padding-inline, var(--astryx-drawer-padding, var(--spacing-4)))));
+    --container-padding-block-start: var(--_ax-pad, var(--astryx-drawer-padding-block-start, var(--astryx-drawer-padding, var(--spacing-4))));
+    --container-padding-block-end: var(--_ax-pad, var(--astryx-drawer-padding-block-end, var(--astryx-drawer-padding, var(--spacing-4))));
+    --layout-padding-outer-x: var(--_ax-pad, var(--astryx-drawer-padding-inline-start, var(--astryx-drawer-padding-inline, var(--astryx-drawer-padding, var(--spacing-4)))));
+    --layout-padding-outer-y: var(--_ax-pad, var(--astryx-drawer-padding-block-start, var(--astryx-drawer-padding, var(--spacing-4))));
+    --layout-padding-inner-x: var(--_ax-pad, var(--astryx-drawer-padding-inline-start, var(--astryx-drawer-padding-inline, var(--astryx-drawer-padding, var(--spacing-4)))));
+    --layout-padding-inner-y: var(--_ax-pad, var(--astryx-drawer-padding-block-start, var(--astryx-drawer-padding, var(--spacing-4))));
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    padding-inline-start: var(--container-padding-inline-start);
+    padding-inline-end: var(--container-padding-inline-end);
+    padding-block-start: var(--container-padding-block-start);
+    padding-block-end: var(--container-padding-block-end);
+  }
+  /* contentSafeArea: the home indicator's inset on top of the published padding. */
+  .ax-drawer-content {
+    padding-block-end: calc(var(--container-padding-block-end, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+}

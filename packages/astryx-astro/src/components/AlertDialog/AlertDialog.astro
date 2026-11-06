@@ -1,0 +1,112 @@
+---
+/**
+ * AlertDialog — a modal confirmation for destructive or irreversible actions (WAI-ARIA APG
+ * Alert Dialog). Port of @astryxdesign/core AlertDialog/AlertDialog.tsx on Dialog
+ * (../Dialog/Dialog.astro). Behaviour: src/elements/alert-dialog.ts (`<ax-alert-dialog>`).
+ *
+ * `role="alertdialog"` named by the title (aria-labelledby, an h2) and described by the
+ * consequence (aria-describedby); `purpose="form"`: Escape cancels, a backdrop press does not.
+ * Cancel (ghost, translated `@astryx.alertDialog.cancel`, override with `cancelLabel`) takes
+ * initial focus (`data-autofocus`, the least destructive action) and closes with zero JS. The
+ * action (default variant destructive) does not close the dialog: listen for `astryx-action`
+ * (Astryx `onAction`) on the host, do the work, then `hide()`; set `actionLoading` on the host
+ * meanwhile (Astryx `isActionLoading`, also the initial state here).
+ *
+ * Above 640px the actions are horizontal, end-aligned and may wrap; at 640px and below the
+ * destructive action sits above Cancel and both fill the width (DOM order follows; the
+ * breakpoint is the available width). `isInline` renders a non-modal preview with
+ * role="group" instead (documentation only).
+ *
+ * Events: `astryx-open-change` `{isOpen, reason}`, `astryx-action` on the host.
+ * Not ported: `useImperativeAlertDialog` (React state hook): render an AlertDialog and call
+ * the host's `show()` / `hide()`. Deferred (touch extra): the slide-across press group.
+ *
+ * @example
+ * ---
+ * const confirm = attachDialog({id: 'delete-project'});
+ * ---
+ * <Button {...confirm.trigger} label="Delete project" variant="destructive" />
+ * <AlertDialog {...confirm.layer} title="Delete project?" description="This cannot be undone." actionLabel="Delete" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Dialog from '../Dialog/Dialog.astro';
+import Layout from '../Layout/Layout.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import LayoutFooter from '../Layout/LayoutFooter.astro';
+import Stack from '../Stack/Stack.astro';
+import Heading from '../Text/Heading.astro';
+import Text from '../Text/Text.astro';
+import Button, {type ButtonVariant} from '../Button/Button.astro';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {layerId} from '../Layer/layer';
+import './AlertDialog.css';
+
+export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open' | 'title'> {
+  /** Dialog title; names the dialog (aria-labelledby). */
+  title: string;
+  /** What happens if the user confirms; describes the dialog (aria-describedby). */
+  description: string;
+  /** The confirming action's label. */
+  actionLabel: string;
+  /** @default translated "Cancel" (`@astryx.alertDialog.cancel`) */
+  cancelLabel?: string;
+  /** @default 'destructive' */
+  actionVariant?: ButtonVariant;
+  /** The action shows its spinner (initial state; `actionLoading` on the host afterwards). */
+  isActionLoading?: boolean;
+  /** Initial open state: opened on connect. @default false */
+  isOpen?: boolean;
+  /** Non-modal preview (role="group"), for documentation only. @default false */
+  isInline?: boolean;
+  /** Requested width (number = px), clamped like Dialog. @default 400 */
+  width?: number | string;
+  /** The `<dialog>` id. @default generated */
+  id?: string;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  title, description, actionLabel, cancelLabel, actionVariant = 'destructive', isActionLoading = false,
+  isOpen = false, isInline = false, width = 400, id: idProp, locale, class: className, ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const cancel = cancelLabel ?? t('@astryx.alertDialog.cancel');
+const id = idProp ?? layerId('ax-alert-dialog');
+const titleId = `${id}-title`;
+const descriptionId = `${id}-description`;
+---
+<Dialog
+  {...rest}
+  id={id}
+  isOpen={isOpen}
+  isInline={isInline}
+  width={width}
+  purpose="form"
+  role={isInline ? 'group' : 'alertdialog'}
+  aria-labelledby={titleId}
+  aria-describedby={descriptionId}
+  class={cx('astryx-alert-dialog', className)}
+  __hostTag="ax-alert-dialog"
+>
+  <Layout>
+    <LayoutContent>
+      <Heading level={2} id={titleId}>{title}</Heading>
+      <Text type="body" color="secondary" id={descriptionId}>{description}</Text>
+    </LayoutContent>
+    <LayoutFooter slot="footer">
+      <Stack direction="horizontal" gap={2} hAlign="end" wrap="wrap" class="ax-alert-dialog-actions" data-ax-alert-actions="">
+        <Button variant="ghost" label={cancel} class="ax-alert-dialog-action" data-autofocus="" data-ax-alert-cancel="" data-ax-dialog-close="" locale={locale} />
+        <Button variant={actionVariant} label={actionLabel} isLoading={isActionLoading} class="ax-alert-dialog-action" data-ax-alert-action="" locale={locale} />
+      </Stack>
+      {!isInline && (
+        <template data-ax-alert-action-alt>
+          <Button variant={actionVariant} label={actionLabel} isLoading={!isActionLoading} class="ax-alert-dialog-action" data-ax-alert-action="" locale={locale} />
+        </template>
+      )}
+    </LayoutFooter>
+  </Layout>
+</Dialog>
+{!isInline && <script>import '../../elements/alert-dialog';</script>}

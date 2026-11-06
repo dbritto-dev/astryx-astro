@@ -1,0 +1,60 @@
+---
+import Toast from './Toast.astro';
+import ToastViewport from './ToastViewport.astro';
+import Button from '../Button/Button.astro';
+import Text from '../Text/Text.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const stack = 'display:grid;gap:var(--spacing-3);justify-items:start';
+---
+<div>
+  <p style={label}>Static toasts (in place): info, error (persists, role="alert"), with an action, custom content</p>
+  <div style={stack}>
+    <Toast body="Changes saved" isAutoHide={false} id="toast-static-info" />
+    <Toast type="error" body="Upload failed: the file is larger than 25 MB." id="toast-static-error" />
+    <Toast body="Message archived" isAutoHide={false}>
+      <Button slot="endContent" label="Undo" variant="ghost" size="sm" />
+    </Toast>
+    <Toast isAutoHide={false}>
+      <div slot="content" style="display:flex;gap:var(--spacing-3);align-items:center">
+        <Text type="body" weight="semibold">3 files uploaded</Text>
+        <Button label="View" size="sm" variant="secondary" />
+      </div>
+    </Toast>
+  </div>
+</div>
+
+<div>
+  <p style={label}>toast(): stacks bottom-end (max 3 visible), pauses on hover and focus, F6 moves focus in</p>
+  <div style={row}>
+    <Button label="Info toast" id="toast-info" />
+    <Button label="Error toast" id="toast-error" variant="destructive" />
+    <Button label="With Undo" id="toast-undo" />
+    <Button label="Save (uniqueID)" id="toast-unique" />
+    <Button label="Burst of 5" id="toast-burst" />
+  </div>
+  <template id="toast-undo-action"><Button label="Undo" variant="ghost" size="sm" data-toast-undo /></template>
+</div>
+
+<ToastViewport maxVisible={3} id="toast-viewport" />
+
+<script>
+  import {toast} from '../../elements/toast';
+  const on = (id: string, fn: () => void) => document.getElementById(id)?.addEventListener('click', fn);
+  let n = 0;
+  on('toast-info', () => toast({body: `Changes saved (${++n})`}));
+  on('toast-error', () => toast({body: 'Could not reach the server', type: 'error'}));
+  on('toast-undo', () => {
+    // A server-rendered Button cloned from a <template>, wired before it is handed over.
+    const template = document.getElementById('toast-undo-action') as HTMLTemplateElement;
+    const undo = document.importNode(template.content, true).querySelector('button')!;
+    const dismiss = toast({body: 'Message archived', endContent: undo, isAutoHide: false});
+    undo.addEventListener('click', () => {
+      dismiss();
+      toast({body: 'Message restored'});
+    });
+  });
+  on('toast-unique', () => toast({body: `Saved at ${new Date().toLocaleTimeString()}`, uniqueID: 'save'}));
+  on('toast-burst', () => { for (let i = 1; i <= 5; i++) toast({body: `Notification ${i} of 5`}); });
+</script>

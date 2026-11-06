@@ -1,0 +1,144 @@
+---
+import Dialog from './Dialog.astro';
+import DialogHeader from './DialogHeader.astro';
+import {attachDialog} from './attach';
+import Layout from '../Layout/Layout.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import LayoutFooter from '../Layout/LayoutFooter.astro';
+import HStack from '../Stack/HStack.astro';
+import VStack from '../Stack/VStack.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import Text from '../Text/Text.astro';
+import Heading from '../Text/Heading.astro';
+import Popover from '../Popover/Popover.astro';
+import ToastViewport from '../Toast/ToastViewport.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const btn = 'font:inherit;font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer';
+
+const info = attachDialog({id: 'dlg-info', triggerId: 'dlg-info-trigger'});
+const form = attachDialog({id: 'dlg-form', triggerId: 'dlg-form-trigger'});
+const required = attachDialog({id: 'dlg-required', triggerId: 'dlg-required-trigger'});
+const fullscreen = attachDialog({id: 'dlg-full', triggerId: 'dlg-full-trigger'});
+const positioned = attachDialog({id: 'dlg-pos', triggerId: 'dlg-pos-trigger'});
+const nested = attachDialog({id: 'dlg-nested', triggerId: 'dlg-nested-trigger'});
+---
+<div>
+  <p style={label}>Inline preview (isInline): header with start/end content and a close button, content, footer</p>
+  <Dialog isInline isOpen width={440} data-testid="dlg-inline">
+    <Layout height="auto">
+      <DialogHeader slot="header" title="Invite teammates" subtitle="They get edit access to this project." hasCloseButton hasDivider>
+        <Fragment slot="startContent"><IconButton label="Back" icon="chevronLeft" variant="ghost" class="ax-mirror-rtl" /></Fragment>
+        <Fragment slot="endContent"><Button label="Help" variant="ghost" size="sm" /></Fragment>
+      </DialogHeader>
+      <LayoutContent>
+        <Text type="body" color="secondary">Send an invite by email. People outside your organization need an approval from an admin.</Text>
+      </LayoutContent>
+      <LayoutFooter slot="footer" hasDivider>
+        <HStack gap={2} hAlign="end"><Button label="Cancel" variant="ghost" /><Button label="Send invite" variant="primary" /></HStack>
+      </LayoutFooter>
+    </Layout>
+  </Dialog>
+</div>
+
+<div>
+  <p style={label}>Modal dialogs: purpose info (Escape + backdrop), form (Escape only), required (neither; role=alertdialog), fullscreen, positioned (logical start/top), a popover inside</p>
+  <div style={row}>
+    <Button {...info.trigger} label="Info dialog" />
+    <Button {...form.trigger} label="Form dialog" />
+    <Button {...required.trigger} label="Required dialog" variant="destructive" />
+    <Button {...fullscreen.trigger} label="Fullscreen" />
+    <Button {...positioned.trigger} label="Positioned" />
+    <Button {...nested.trigger} label="With a popover" />
+    <button type="button" style={btn} id="dlg-api-trigger">Open with show()</button>
+  </div>
+</div>
+
+<Dialog {...info.layer} data-testid="dlg-info-root">
+  <Layout>
+    <DialogHeader slot="header" title="Project archived" subtitle="You can restore it from Settings." hasCloseButton />
+    <LayoutContent>
+      <VStack gap={3}>
+        <Text type="body">Archived projects keep their history. Members lose edit access until the project is restored.</Text>
+        <HStack gap={2}><Button label="View archive" id="dlg-info-first" /><Button label="Notify members" id="dlg-info-toast" variant="ghost" /></HStack>
+      </VStack>
+    </LayoutContent>
+    <LayoutFooter slot="footer" hasDivider>
+      <HStack gap={2} hAlign="end"><Button {...info.close} label="Done" variant="primary" id="dlg-info-done" /></HStack>
+    </LayoutFooter>
+  </Layout>
+</Dialog>
+
+<Dialog {...form.layer} purpose="form" width={560} padding={6}>
+  <Layout>
+    <DialogHeader slot="header" title="Rename file" hasCloseButton />
+    <LayoutContent>
+      <label style="display:grid;gap:var(--spacing-1)">
+        <Text type="label">File name</Text>
+        <input id="dlg-form-input" value="Quarterly report.pdf" data-autofocus style="font:inherit;padding:var(--spacing-1) var(--spacing-2);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary)" />
+      </label>
+    </LayoutContent>
+    <LayoutFooter slot="footer">
+      <HStack gap={2} hAlign="end"><Button {...form.close} label="Cancel" variant="ghost" /><Button {...form.close} label="Save" variant="primary" /></HStack>
+    </LayoutFooter>
+  </Layout>
+</Dialog>
+
+<Dialog {...required.layer} purpose="required">
+  <Layout>
+    <DialogHeader slot="header" title="Accept the updated terms" />
+    <LayoutContent><Text type="body">To keep using the workspace, accept the terms that take effect on 1 December.</Text></LayoutContent>
+    <LayoutFooter slot="footer"><HStack gap={2} hAlign="end"><Button {...required.close} label="Accept" variant="primary" id="dlg-required-accept" /></HStack></LayoutFooter>
+  </Layout>
+</Dialog>
+
+<Dialog {...fullscreen.layer} variant="fullscreen">
+  <Layout>
+    <DialogHeader slot="header" title="Edit document" subtitle="Draft saved" hasCloseButton hasDivider />
+    <LayoutContent><Text type="body">A fullscreen dialog fills the dynamic viewport and keeps its default padding clear of the safe areas.</Text></LayoutContent>
+  </Layout>
+</Dialog>
+
+<Dialog {...positioned.layer} position={{top: 24, start: 24}} width={320}>
+  <Layout>
+    <DialogHeader slot="header" title="Positioned" hasCloseButton />
+    <LayoutContent><Text type="body">position top 24, start 24: mirrors under RTL.</Text></LayoutContent>
+  </Layout>
+</Dialog>
+
+<Dialog {...nested.layer} aria-label="Sharing options">
+  <Layout>
+    <LayoutContent>
+      <VStack gap={3}>
+        <Heading level={3}>Sharing</Heading>
+        <Text type="body">Escape closes the popover first, then the dialog.</Text>
+        <Popover label="Link settings" id="dlg-pop">
+          <button type="button" style={btn} id="dlg-pop-trigger">Link settings</button>
+          <Fragment slot="content"><button type="button" style={btn} id="dlg-pop-first">Copy link</button></Fragment>
+        </Popover>
+      </VStack>
+    </LayoutContent>
+  </Layout>
+</Dialog>
+
+<Dialog id="dlg-api" width={360}>
+  <Layout>
+    <DialogHeader slot="header" title="Opened from code" hasCloseButton />
+    <LayoutContent><Text type="body">document.getElementById('dlg-api').parentElement.show()</Text></LayoutContent>
+  </Layout>
+</Dialog>
+
+<ToastViewport />
+
+<script>
+  import {toast} from '../../elements/toast';
+  document.getElementById('dlg-api-trigger')?.addEventListener('click', (event) => {
+    const host = document.getElementById('dlg-api')?.parentElement as (HTMLElement & {show(o?: {source?: HTMLElement}): boolean}) | null;
+    host?.show({source: event.currentTarget as HTMLElement});
+  });
+  document.getElementById('dlg-info-toast')?.addEventListener('click', () => {
+    toast({body: 'Members notified'});
+  });
+</script>

@@ -1,0 +1,118 @@
+---
+/**
+ * Drawer — a full-height side panel that floats above the page: inspectors and detail views.
+ * Port of @astryxdesign/core Drawer/Drawer.tsx and Drawer/useDrawerDialogPresence.ts (on the
+ * Dialog machinery: Layer/useLayerDismissal.ts, Layer/useBackdropPress.ts, hooks/useFocusTrap.ts,
+ * hooks/useScrollLock.ts, Layer/modalOutlet.ts, Layout/container.stylex.ts).
+ * Behaviour: src/elements/drawer.ts (`<ax-drawer>`).
+ *
+ * Markup: `<ax-drawer>` (display: contents) holds `<dialog class="astryx-drawer" data-side>`
+ * (the panel and root: `id`, `class`, `style`, ARIA and the rest go here) and its scrollable
+ * content area `.ax-drawer-content` (tabindex="-1"), which is the container: `padding`, else
+ * the theme's drawer padding (--spacing-4), published to Layout regions, Section and bleed
+ * children. Content is sealed.
+ *
+ * `hasScrim` (default): `showModal()` — scrim, page inert, Tab contained, page scroll locked,
+ * the toast viewport moves inside. `hasScrim={false}`: `popover="manual"` — the page stays
+ * interactive; Escape still closes it through the shared stack. `side` start/end is logical
+ * (mirrors under RTL). `width` is the desktop budget; at 640px and below the panel keeps a
+ * 56px reveal of the page (`experimental.isFullWidthOnMobile` covers it). It slides in and out
+ * (no travel under reduced motion: 0.01s).
+ *
+ * Opening: `isOpen` is the initial state (opened on connect, settled). Open it from a button
+ * with `attachDrawer()` (./attach.ts: a `commandfor` invoker, zero JS), or `show()` / `hide()`
+ * on the host. Dismissal follows `purpose` like Dialog (info: Escape + a scrim press that starts
+ * and ends on the scrim; form: Escape; required: neither, role="alertdialog" when modal).
+ * Focus moves to `[data-autofocus]` (else the panel body) and returns to the opener.
+ * Events: `astryx-open-change` `{isOpen, reason}` on the host.
+ *
+ * Deferred (touch extra): the coarse-pointer entrance input hold.
+ *
+ * @example
+ * ---
+ * const details = attachDrawer({id: 'host-details'});
+ * ---
+ * <button {...details.trigger}>Details</button>
+ * <Drawer {...details.layer} label="Host details">
+ *   <Layout><DrawerHeader slot="header" title="web-01" hasCloseButton /><LayoutContent>…</LayoutContent></Layout>
+ * </Drawer>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {layerId} from '../Layer/layer';
+import {prepareLayerContent} from '../Dialog/content';
+import '../Dialog/overlay.css';
+import './Drawer.css';
+
+export type DrawerPurpose = 'required' | 'form' | 'info';
+
+export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open'> {
+  /** Accessible name (required: the drawer has no heading to derive one from). */
+  label: string;
+  /** Initial open state: opened on connect (the host element owns it afterwards). @default false */
+  isOpen?: boolean;
+  /** Edge it slides from: 'end' (right in LTR) or 'start'. @default 'end' */
+  side?: 'start' | 'end';
+  /** Desktop width budget (number = px, string = CSS length). @default 400 */
+  width?: number | string;
+  /** Experimental options; may change in a patch release. */
+  experimental?: {isFullWidthOnMobile?: boolean};
+  /** Modal scrim (`showModal()`); false is a non-modal `popover="manual"` panel. @default true */
+  hasScrim?: boolean;
+  /** Dismissal, as Dialog. @default 'info' */
+  purpose?: DrawerPurpose;
+  /** Content padding as a spacing step; omitted uses the theme's drawer padding (--spacing-4). */
+  padding?: SpacingStep;
+  /** The `<dialog>` id (invokers target it). @default generated */
+  id?: string;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  isOpen = false,
+  side = 'end',
+  width = 400,
+  experimental,
+  hasScrim = true,
+  purpose = 'info',
+  padding,
+  id: idProp,
+  class: className,
+  style,
+  open: _open,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {open?: unknown; slot?: unknown};
+
+const id = idProp ?? layerId('ax-drawer');
+const {themeClass, attrs: themeAttrs} = themeProps('drawer', {side});
+const raw = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const {html: content} = await prepareLayerContent(raw, {id, closeCommand: hasScrim ? 'close' : 'hide-popover'});
+const nativeAttrs = hasScrim ? {closedby: purpose === 'info' ? 'any' : purpose === 'form' ? 'closerequest' : 'none'} : {};
+---
+<ax-drawer class="ax-overlay-host" data-ax-purpose={purpose} data-ax-modal={hasScrim ? '' : undefined} data-ax-open={isOpen ? 'true' : undefined}>
+  <dialog
+    {...rest}
+    {...nativeAttrs}
+    id={id}
+    class={cx(themeClass, 'ax-overlay-root', className)}
+    {...themeAttrs}
+    popover={hasScrim ? undefined : 'manual'}
+    aria-label={label}
+    aria-modal={hasScrim ? 'true' : undefined}
+    role={purpose === 'required' && hasScrim ? 'alertdialog' : rest.role}
+    data-astryx-layer-root=""
+    data-ax-scrim={hasScrim ? '' : undefined}
+    data-ax-scroll-lock={hasScrim ? '' : undefined}
+    data-ax-full-width-mobile={experimental?.isFullWidthOnMobile ? '' : undefined}
+    style={mergeStyles({'--_ax-drawer-width': cssSize(width)} as StyleValue, style as StyleValue)}
+  >
+    <div class="ax-drawer-content" tabindex="-1" style={mergeStyles({'--_ax-pad': spacing(padding)} as StyleValue)}>
+      <Fragment set:html={content} />
+    </div>
+  </dialog>
+</ax-drawer>
+<script>import '../../elements/drawer';</script>
