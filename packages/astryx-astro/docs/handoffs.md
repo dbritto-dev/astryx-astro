@@ -308,3 +308,13 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Astro passes arguments to slot functions only through `<template slot="name">{(arg) => …}</template>`;
   `<Fragment slot>` silently drops them. Use `<template slot>` for every render-prop-style slot.
 - Give grid/flex children `min-width: 0` around wide content (tables, code) or the track widens.
+
+## Checkbox, radio, switch, slider
+
+- Events: CheckboxInput/Switch `astryx-change` {isChecked, event}; RadioList `astryx-change`
+  {value}; Slider `astryx-change` {value} (number or [start, end], on change) and
+  `astryx-change-end` {value} (drag end / each handled key).
+- RadioList passes context to items via the subtree locals key `astryxRadioList`.
+- Indicator state on the client: `CheckboxInput/_IndicatorStates.astro` + `elements/indicator-state.ts`
+  (built-ins updated in place; theme replacements rendered per state into `<template>`s and
+  swapped). Reuse for CheckboxList and menu checkbox items.
