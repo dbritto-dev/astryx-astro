@@ -1,0 +1,28 @@
+---
+import Text from './Text.astro';
+import Heading from './Heading.astro';
+---
+<div style="display:grid;gap:var(--spacing-3)">
+  <Text type="display-1" as="h1">Display 1</Text>
+  <Text type="display-2">Display 2</Text>
+  <Text type="display-3">Display 3</Text>
+  <Text type="large" display="block">Large body text</Text>
+  <Text display="block">Body text — the default type.</Text>
+  <Text type="label" display="block">Label text</Text>
+  <Text type="supporting" display="block">Supporting text is secondary by default.</Text>
+  <Text type="code" display="block">const answer = 42;</Text>
+  <Text color="accent" weight="semibold" display="block">Accent, semibold</Text>
+  <Text hasStrikethrough>Strikethrough</Text>
+  <Text size="xl" display="block">Explicit size xl</Text>
+  <Heading level={1}>Heading 1</Heading>
+  <Heading level={2}>Heading 2</Heading>
+  <Heading level={3} color="secondary">Heading 3, secondary</Heading>
+  <Heading level={4} weight="bold">Heading 4, bold</Heading>
+  <Heading level={5}>Heading 5</Heading>
+  <Heading level={6} accessibilityLevel={2}>Heading 6 announced as level 2</Heading>
+  <Heading level={2} type="display-2">Heading with display-2 type</Heading>
+  <div style="max-width:280px">
+    <Text maxLines={1}>Single-line truncation keeps a long sentence on one line with an ellipsis and a tooltip.</Text>
+    <Text maxLines={2} type="supporting">Two-line clamp: this longer supporting paragraph is cut after its second line, and hovering or focusing it shows the full text.</Text>
+  </div>
+</div>

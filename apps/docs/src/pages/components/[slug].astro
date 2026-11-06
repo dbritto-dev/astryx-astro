@@ -1,0 +1,60 @@
+---
+import Docs from '../../layouts/Docs.astro';
+import {components, demoByName, propsSource, slug, subComponentsOf, type ManifestEntry} from '../../lib/catalog';
+
+export function getStaticPaths() {
+  return components.map((c) => ({params: {slug: slug(c.name)}, props: {entry: c}}));
+}
+
+const {entry} = Astro.props as {entry: ManifestEntry};
+const Demo = demoByName.get(entry.name) as any;
+const subs = subComponentsOf(entry.name);
+const api = [entry, ...subs].map((e) => ({name: e.name, source: propsSource(e.name)})).filter((a) => a.source);
+const hooks = [entry, ...subs].flatMap((e) => e.theming);
+---
+<Docs title={entry.displayName} current={entry.name}>
+  <p class="eyebrow">{entry.category}</p>
+  <h1>{entry.displayName}</h1>
+  <p class="lede">{entry.description}</p>
+
+  {Demo ? (
+    <section class="demo" aria-label="Examples"><Demo /></section>
+  ) : (
+    <p class="pending">Not ported yet.</p>
+  )}
+
+  {api.length > 0 && (
+    <section>
+      <h2>Astro API</h2>
+      {api.map((a) => (
+        <>
+          {api.length > 1 && <h3>{a.name}</h3>}
+          <pre><code>{a.source}</code></pre>
+        </>
+      ))}
+    </section>
+  )}
+
+  {hooks.length > 0 && (
+    <section>
+      <h2>Theme hooks</h2>
+      <ul class="hooks">
+        {hooks.map((h) => (
+          <li><code>.{h.className}</code>{h.visualProps.map((p) => <code>[data-{p.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()}]</code>)}</li>
+        ))}
+      </ul>
+    </section>
+  )}
+</Docs>
+
+<style>
+  .eyebrow { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+  h1 { margin: var(--spacing-1) 0 var(--spacing-2); }
+  .lede { max-width: 68ch; color: var(--color-text-secondary); margin: 0 0 var(--spacing-6); }
+  .demo { display: grid; gap: var(--spacing-6); padding: var(--spacing-6); border: 1px solid var(--color-border); border-radius: var(--radius-container); background: var(--color-background-surface); }
+  .pending { color: var(--color-text-secondary); }
+  section > h2 { margin: var(--spacing-8) 0 var(--spacing-3); }
+  pre { overflow: auto; padding: var(--spacing-4); border-radius: var(--radius-element); background: var(--color-background-muted); font-size: var(--font-size-sm); }
+  .hooks { list-style: none; padding: 0; display: grid; gap: var(--spacing-1); }
+  .hooks code { font-size: var(--font-size-sm); }
+</style>

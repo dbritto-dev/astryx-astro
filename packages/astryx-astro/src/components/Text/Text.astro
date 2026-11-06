@@ -1,0 +1,99 @@
+---
+/**
+ * Text — semantic text with type-based styling from the theme.
+ * Port of @astryxdesign/core Text (Text.tsx, text.stylex.ts).
+ *
+ * @example
+ * <Text type="supporting">Helper text</Text>
+ * <Text type="display-1" as="h1">Hero</Text>
+ * <Text maxLines={2}>Clamped text with a tooltip when truncated</Text>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {TooltipPlacement} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Text.css';
+
+export type TextType = 'body' | 'large' | 'label' | 'supporting' | 'code' | 'display-1' | 'display-2' | 'display-3' | 'inherit' | (string & {});
+export type TextSize = '4xs' | '3xs' | '2xs' | 'xsm' | 'sm' | 'base' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl';
+export type TextColor = 'primary' | 'secondary' | 'disabled' | 'placeholder' | 'accent' | 'inherit' | (string & {});
+export type TextWeight = 'normal' | 'medium' | 'semibold' | 'bold';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'color'> {
+  /** Semantic text type; sets size, weight and leading from the theme. @default 'body' */
+  type?: TextType;
+  /** Explicit font-size override. Prefer `type` alone. */
+  size?: TextSize;
+  /** Text color. @default 'secondary' for supporting, else 'primary' */
+  color?: TextColor;
+  /** Font-weight override. */
+  weight?: TextWeight;
+  /** @default 'inline' — forced to 'block' when maxLines > 0 or hasCapsize */
+  display?: 'inline' | 'block';
+  /** Lines before truncation; 0 disables. @default 0 */
+  maxLines?: number;
+  /** Tooltip with the full text when truncated: true, false, or a placement. @default true */
+  hasTruncateTooltip?: boolean | TooltipPlacement;
+  /** @default 'break-all' when maxLines = 1, else 'break-word' */
+  wordBreak?: 'break-word' | 'break-all';
+  textWrap?: 'wrap' | 'nowrap' | 'balance' | 'pretty';
+  /** Logical alignment. @default 'start' */
+  justify?: 'start' | 'center' | 'end';
+  /** Optical alignment with text-box-trim; forces block. */
+  hasCapsize?: boolean;
+  hasStrikethrough?: boolean;
+  hasTabularNumbers?: boolean;
+  /** Element to render. @default 'span' */
+  as?: 'span' | 'p' | 'div' | 'label' | 'h1' | 'h2' | 'h3';
+}
+
+const defaultColorByType: Record<string, TextColor> = {
+  body: 'primary', large: 'primary', label: 'primary', supporting: 'secondary', code: 'primary',
+  'display-1': 'primary', 'display-2': 'primary', 'display-3': 'primary', inherit: 'inherit',
+};
+
+const {
+  type = 'body',
+  size,
+  color,
+  weight,
+  display = 'inline',
+  maxLines = 0,
+  hasTruncateTooltip = true,
+  wordBreak,
+  textWrap,
+  justify = 'start',
+  hasCapsize = false,
+  hasStrikethrough = false,
+  hasTabularNumbers = false,
+  as: Tag = 'span',
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const resolvedColor = color ?? defaultColorByType[type] ?? 'primary';
+const truncation = maxLines === 1 ? 'single' : maxLines > 1 ? 'multi' : undefined;
+const tooltip = maxLines > 0 && hasTruncateTooltip !== false
+  ? (typeof hasTruncateTooltip === 'string' ? hasTruncateTooltip : 'above')
+  : undefined;
+
+const {themeClass, attrs} = themeProps('text', {type, size, color: resolvedColor});
+---
+<Tag
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-weight={weight}
+  data-display={maxLines > 0 || hasCapsize ? 'block' : display}
+  data-truncate={truncation}
+  data-word-break={maxLines > 0 ? (wordBreak ?? (maxLines === 1 ? 'break-all' : 'break-word')) : undefined}
+  data-text-wrap={textWrap}
+  data-justify={justify !== 'start' ? justify : undefined}
+  data-capsize={hasCapsize ? '' : undefined}
+  data-strikethrough={hasStrikethrough ? '' : undefined}
+  data-tabular-numbers={hasTabularNumbers ? '' : undefined}
+  data-truncate-tooltip={tooltip}
+  style={mergeStyles(maxLines > 1 && `-webkit-line-clamp:${maxLines}`, style as StyleValue)}
+  {...rest}
+><slot /></Tag>
+{tooltip && <script>import '../../behaviors/truncateTooltip';</script>}

@@ -1,0 +1,30 @@
+---
+import Stack from './Stack.astro';
+import HStack from './HStack.astro';
+import VStack from './VStack.astro';
+import StackItem from './StackItem.astro';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+---
+<HStack gap={2}>
+  <div style={box}>One</div><div style={box}>Two</div><div style={box}>Three</div>
+</HStack>
+<HStack gap={2} justify="between" align="center" padding={3} style="border:1px dashed var(--color-border);border-radius:var(--radius-element)">
+  <div style={box}>Start</div>
+  <div style={box}>Space between</div>
+  <div style={box}>End</div>
+</HStack>
+<HStack gap={2}>
+  <StackItem size="fill"><div style={box}>StackItem size="fill"</div></StackItem>
+  <div style={box}>static</div>
+</HStack>
+<VStack gap={1} align="start">
+  <div style={box}>VStack, align start</div><div style={box}>gap 1</div>
+</VStack>
+<Stack direction="horizontal" gap={2} wrap="wrap" maxWidth={320}>
+  {Array.from({length: 8}, (_, i) => <div style={box}>wrap {i + 1}</div>)}
+</Stack>
+<HStack gap={2} height={96}>
+  <StackItem isScrollable style="flex:1;border:1px solid var(--color-border);border-radius:var(--radius-inner)">
+    <VStack gap={1} padding={2}>{Array.from({length: 8}, (_, i) => <div>Scrollable row {i + 1}</div>)}</VStack>
+  </StackItem>
+</HStack>

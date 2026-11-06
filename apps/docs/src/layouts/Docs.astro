@@ -1,0 +1,126 @@
+---
+import 'astryx-astro/astryx.css';
+import 'astryx-astro/themes/neutral.css';
+import 'astryx-astro/themes/butter.css';
+import 'astryx-astro/themes/chocolate.css';
+import 'astryx-astro/themes/gothic.css';
+import 'astryx-astro/themes/matcha.css';
+import 'astryx-astro/themes/stone.css';
+import 'astryx-astro/themes/y2k.css';
+import {byCategory, demoByName, slug, astryxVersion} from '../lib/catalog';
+
+interface Props {
+  title: string;
+  current?: string;
+}
+const {title, current} = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const themes = ['neutral', 'butter', 'chocolate', 'gothic', 'matcha', 'stone', 'y2k'];
+const fonts = [
+  'Figtree:wght@400;500;600;700', 'JetBrains+Mono:wght@400;500;600;700', 'Outfit:wght@400;500;600;700', 'Sarina',
+  'Albert+Sans:wght@400;500;600;700', 'Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700', 'Fustat:wght@400;500;600;700',
+  'Manufacturing+Consent', 'UnifrakturMaguntia', 'DM+Sans:wght@400;500;600;700', 'Playwrite+US+Trad', 'Montserrat:wght@400;500;600;700',
+  'Crimson+Text:wght@400;600;700', 'Poppins:wght@400;500;600;700',
+];
+const fontHref = `https://fonts.googleapis.com/css2?${fonts.map((f) => `family=${f}`).join('&')}&display=swap`;
+---
+<!doctype html>
+<html lang="en" data-astryx-theme="neutral">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · Astryx for Astro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href={fontHref} />
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('docs-theme');
+        const m = localStorage.getItem('docs-mode');
+        if (t) document.documentElement.dataset.astryxTheme = t;
+        if (m) document.documentElement.dataset.theme = m;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div class="docs">
+      <aside class="docs-nav">
+        <a class="docs-brand" href={`${base}/`}>Astryx <span>for Astro</span></a>
+        <p class="docs-version">Port of Astryx {astryxVersion}</p>
+        <nav aria-label="Components">
+          {byCategory().map(([category, items]) => (
+            <section>
+              <h2>{category}</h2>
+              <ul>
+                {items.map((c) => (
+                  <li>
+                    <a
+                      href={`${base}/components/${slug(c.name)}/`}
+                      aria-current={current === c.name ? 'page' : undefined}
+                      data-ported={demoByName.has(c.name) ? '' : undefined}
+                    >{c.displayName}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </nav>
+      </aside>
+      <div class="docs-main">
+        <header class="docs-toolbar">
+          <label>Theme
+            <select id="docs-theme">
+              {themes.map((t) => <option value={t}>{t}</option>)}
+            </select>
+          </label>
+          <label>Mode
+            <select id="docs-mode">
+              <option value="">system</option>
+              <option value="light">light</option>
+              <option value="dark">dark</option>
+            </select>
+          </label>
+        </header>
+        <main class="docs-content">
+          <slot />
+        </main>
+      </div>
+    </div>
+    <script>
+      const root = document.documentElement;
+      const theme = document.querySelector<HTMLSelectElement>('#docs-theme')!;
+      const mode = document.querySelector<HTMLSelectElement>('#docs-mode')!;
+      theme.value = root.dataset.astryxTheme ?? 'neutral';
+      mode.value = root.dataset.theme ?? '';
+      const save = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
+      theme.addEventListener('change', () => { root.dataset.astryxTheme = theme.value; save('docs-theme', theme.value); });
+      mode.addEventListener('change', () => {
+        if (mode.value) root.dataset.theme = mode.value; else delete root.dataset.theme;
+        save('docs-mode', mode.value);
+      });
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  body { margin: 0; background: var(--color-background-body); color: var(--color-text-primary); font-family: var(--font-family-body); }
+  .docs { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100dvh; }
+  .docs-nav { position: sticky; top: 0; height: 100dvh; overflow: auto; padding: var(--spacing-4); border-inline-end: 1px solid var(--color-border); background: var(--color-background-surface); box-sizing: border-box; }
+  .docs-brand { display: block; font-weight: var(--font-weight-bold); font-size: var(--font-size-lg); color: var(--color-text-primary); text-decoration: none; }
+  .docs-brand span { color: var(--color-text-secondary); font-weight: var(--font-weight-medium); }
+  .docs-version { margin: var(--spacing-1) 0 var(--spacing-4); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+  .docs-nav h2 { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); margin: var(--spacing-4) 0 var(--spacing-1); text-transform: uppercase; letter-spacing: 0.04em; }
+  .docs-nav ul { list-style: none; margin: 0; padding: 0; }
+  .docs-nav a { display: block; padding: var(--spacing-1) var(--spacing-2); border-radius: var(--radius-inner); color: var(--color-text-disabled); text-decoration: none; font-size: var(--font-size-base); }
+  .docs-nav a[data-ported] { color: var(--color-text-primary); }
+  .docs-nav a:hover { background: var(--color-overlay-hover); }
+  .docs-nav a[aria-current="page"] { background: var(--color-accent-muted); color: var(--color-text-accent); }
+  .docs-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: var(--spacing-4); justify-content: flex-end; padding: var(--spacing-2) var(--spacing-6); background: var(--color-background-body); border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+  .docs-toolbar select { margin-inline-start: var(--spacing-1); font: inherit; color: var(--color-text-primary); }
+  .docs-content { padding: var(--spacing-8) var(--spacing-6) var(--spacing-12); max-width: 1040px; }
+  @media (max-width: 760px) {
+    .docs { grid-template-columns: 1fr; }
+    .docs-nav { position: static; height: auto; max-height: 40dvh; border-inline-end: 0; border-bottom: 1px solid var(--color-border); }
+    .docs-content { padding: var(--spacing-6) var(--spacing-4); }
+  }
+</style>

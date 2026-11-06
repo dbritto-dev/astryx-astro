@@ -1,0 +1,17 @@
+/*
+ * astryx-astro — global entry stylesheet.
+ *
+ * Layer order matches Astryx: reset → astryx-base (tokens + components) → astryx-theme.
+ * Unlayered consumer CSS always wins. Component stylesheets are imported by each
+ * .astro component, so a page only ships the CSS of the components it renders.
+ *
+ * Usage (layout frontmatter):
+ *   import 'astryx-astro/astryx.css';
+ *   import 'astryx-astro/themes/neutral.css';
+ *   <html data-astryx-theme="neutral">
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@import './reset.css';
+@import './tokens.css';
+@import './shared.css';

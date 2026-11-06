@@ -1,0 +1,74 @@
+/* Port of @astryxdesign/core Text/text.stylex.ts. Rule order mirrors stylex.props() order in Text.tsx. */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* color (built-in colors; custom theme colors come from :is(.astryx-text, .astryx-heading)[data-color]) */
+  .astryx-text, .astryx-heading { color: var(--color-text-primary); }
+  :is(.astryx-text, .astryx-heading)[data-color="secondary"],
+  :is(.astryx-text, .astryx-heading)[data-color="placeholder"] { color: var(--color-text-secondary); }
+  :is(.astryx-text, .astryx-heading)[data-color="disabled"] { color: var(--color-text-disabled); }
+  :is(.astryx-text, .astryx-heading)[data-color="accent"] { color: var(--color-text-accent); }
+  :is(.astryx-text, .astryx-heading)[data-color="inherit"] { color: inherit; }
+
+  /* size + leading by type (custom types fall back to body) */
+  .astryx-text { font-size: var(--text-body-size); line-height: var(--text-body-leading); font-weight: var(--text-body-weight); }
+  .astryx-text[data-type="large"] { font-size: var(--text-large-size); line-height: var(--text-large-leading); font-weight: var(--text-large-weight); }
+  .astryx-text[data-type="label"] { font-size: var(--text-label-size); line-height: var(--text-label-leading); font-weight: var(--text-label-weight); }
+  .astryx-text[data-type="code"] { font-size: var(--text-code-size); line-height: var(--text-code-leading); font-weight: var(--text-code-weight); font-family: var(--font-family-code); }
+  .astryx-text[data-type="supporting"] { font-size: var(--text-supporting-size); line-height: var(--text-supporting-leading); font-weight: var(--text-supporting-weight); }
+  :is(.astryx-text, .astryx-heading)[data-type="display-1"] { font-size: var(--text-display-1-size); line-height: var(--text-display-1-leading); font-weight: var(--text-display-1-weight); }
+  :is(.astryx-text, .astryx-heading)[data-type="display-2"] { font-size: var(--text-display-2-size); line-height: var(--text-display-2-leading); font-weight: var(--text-display-2-weight); }
+  :is(.astryx-text, .astryx-heading)[data-type="display-3"] { font-size: var(--text-display-3-size); line-height: var(--text-display-3-leading); font-weight: var(--text-display-3-weight); }
+  .astryx-text[data-type="inherit"] { font-size: inherit; line-height: inherit; font-weight: inherit; }
+
+  /* Heading: size/leading/weight by level unless a built-in display type is set */
+  .astryx-heading[data-level="1"]:not([data-builtin-type]) { font-size: var(--text-heading-1-size); line-height: var(--text-heading-1-leading); font-weight: var(--text-heading-1-weight); }
+  .astryx-heading[data-level="2"]:not([data-builtin-type]) { font-size: var(--text-heading-2-size); line-height: var(--text-heading-2-leading); font-weight: var(--text-heading-2-weight); }
+  .astryx-heading[data-level="3"]:not([data-builtin-type]) { font-size: var(--text-heading-3-size); line-height: var(--text-heading-3-leading); font-weight: var(--text-heading-3-weight); }
+  .astryx-heading[data-level="4"]:not([data-builtin-type]) { font-size: var(--text-heading-4-size); line-height: var(--text-heading-4-leading); font-weight: var(--text-heading-4-weight); }
+  .astryx-heading[data-level="5"]:not([data-builtin-type]) { font-size: var(--text-heading-5-size); line-height: var(--text-heading-5-leading); font-weight: var(--text-heading-5-weight); }
+  .astryx-heading[data-level="6"]:not([data-builtin-type]) { font-size: var(--text-heading-6-size); line-height: var(--text-heading-6-leading); font-weight: var(--text-heading-6-weight); }
+  .astryx-heading { display: block; overflow-wrap: var(--_astryx-text-overflow-wrap, break-word); margin: 0; }
+
+  /* explicit size override */
+  .astryx-text[data-size="4xs"] { font-size: var(--font-size-4xs); }
+  .astryx-text[data-size="3xs"] { font-size: var(--font-size-3xs); }
+  .astryx-text[data-size="2xs"] { font-size: var(--font-size-2xs); }
+  .astryx-text[data-size="xsm"] { font-size: var(--font-size-xs); }
+  .astryx-text[data-size="sm"] { font-size: var(--font-size-sm); }
+  .astryx-text[data-size="base"] { font-size: var(--font-size-base); }
+  .astryx-text[data-size="lg"] { font-size: var(--font-size-lg); }
+  .astryx-text[data-size="xl"] { font-size: var(--font-size-xl); }
+  .astryx-text[data-size="2xl"] { font-size: var(--font-size-2xl); }
+  .astryx-text[data-size="3xl"] { font-size: var(--font-size-3xl); }
+  .astryx-text[data-size="4xl"] { font-size: var(--font-size-4xl); }
+
+  /* weight override */
+  :is(.astryx-text, .astryx-heading)[data-weight="normal"] { font-weight: var(--font-weight-normal); }
+  :is(.astryx-text, .astryx-heading)[data-weight="medium"] { font-weight: var(--font-weight-medium); }
+  :is(.astryx-text, .astryx-heading)[data-weight="semibold"] { font-weight: var(--font-weight-semibold); }
+  :is(.astryx-text, .astryx-heading)[data-weight="bold"] { font-weight: var(--font-weight-bold); }
+
+  /* display (non-truncated text wraps long tokens; containers may set --_astryx-text-overflow-wrap) */
+  .astryx-text { display: inline; overflow-wrap: var(--_astryx-text-overflow-wrap, break-word); }
+  :is(.astryx-text, .astryx-heading)[data-display="inline"] { display: inline; }
+  :is(.astryx-text, .astryx-heading)[data-display="block"] { display: block; }
+
+  /* truncation */
+  :is(.astryx-text, .astryx-heading)[data-truncate="single"] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  :is(.astryx-text, .astryx-heading)[data-truncate="multi"] { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; }
+  :is(.astryx-text, .astryx-heading)[data-word-break="break-word"] { word-break: normal; overflow-wrap: break-word; }
+  :is(.astryx-text, .astryx-heading)[data-word-break="break-all"] { word-break: break-all; }
+
+  :is(.astryx-text, .astryx-heading)[data-text-wrap="wrap"] { text-wrap: wrap; }
+  :is(.astryx-text, .astryx-heading)[data-text-wrap="nowrap"] { text-wrap: nowrap; }
+  :is(.astryx-text, .astryx-heading)[data-text-wrap="balance"] { text-wrap: balance; }
+  :is(.astryx-text, .astryx-heading)[data-text-wrap="pretty"] { text-wrap: pretty; }
+
+  :is(.astryx-text, .astryx-heading)[data-justify="center"] { text-align: center; }
+  :is(.astryx-text, .astryx-heading)[data-justify="end"] { text-align: end; }
+
+  :is(.astryx-text, .astryx-heading)[data-capsize] { text-box-edge: cap alphabetic; text-box-trim: trim-both; display: block; }
+  :is(.astryx-text, .astryx-heading)[data-strikethrough] { text-decoration: line-through; }
+  :is(.astryx-text, .astryx-heading)[data-tabular-numbers] { font-variant-numeric: tabular-nums; }
+}

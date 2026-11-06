@@ -1,0 +1,15 @@
+{
+  "name": "astryx-astro-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "tokens": "pnpm -F astryx-astro tokens",
+    "dev": "pnpm -F docs dev",
+    "build": "pnpm -F docs build",
+    "check": "pnpm -F docs check"
+  },
+  "devDependencies": {
+    "node-html-parser": "^9.0.7"
+  }
+}

@@ -1,0 +1,8 @@
+---
+/** HStack — horizontal Stack. `justify` = horizontal, `align` = vertical alignment. */
+import Stack, {type Props as StackProps} from './Stack.astro';
+
+export type Props = Omit<StackProps, 'direction'>;
+const {justify, align, hAlign, vAlign, ...rest} = Astro.props;
+---
+<Stack {...rest} direction="horizontal" hAlign={hAlign ?? justify} vAlign={vAlign ?? align}><slot /></Stack>

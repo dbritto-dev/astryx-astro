@@ -1,0 +1,65 @@
+---
+/**
+ * Stack — flex layout with token spacing. Port of @astryxdesign/core Stack.
+ * HStack / VStack are direction presets; StackItem controls a child's sizing.
+ *
+ * @example
+ * <Stack direction="horizontal" gap={2} vAlign="center"><Button label="Save" /></Stack>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {paddingVars, splitPadding, type PaddingProps} from '../../lib/padding';
+import './Stack.css';
+
+export type StackDirection = 'horizontal' | 'vertical';
+export type StackMainAlignment = 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly';
+export type StackCrossAlignment = 'start' | 'center' | 'end' | 'stretch';
+export type StackAlignment = StackMainAlignment | StackCrossAlignment;
+export type StackWrap = 'nowrap' | 'wrap' | 'wrap-reverse';
+
+export interface Props extends HTMLAttributes<'div'>, PaddingProps {
+  /** @default 'vertical' */
+  direction?: StackDirection;
+  /** Horizontal alignment (main axis when horizontal, cross axis when vertical). */
+  hAlign?: StackAlignment;
+  /** Vertical alignment (cross axis when horizontal, main axis when vertical). */
+  vAlign?: StackAlignment;
+  /** Main-axis alias (used when hAlign/vAlign are not set). */
+  justify?: StackMainAlignment;
+  /** Cross-axis alias (used when hAlign/vAlign are not set). */
+  align?: StackCrossAlignment;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  minHeight?: SizeValue;
+  /** Gap between children as a spacing step. */
+  gap?: SpacingStep;
+  isScrollable?: boolean;
+  wrap?: StackWrap;
+  /** Element to render. @default 'div' */
+  as?: string;
+}
+
+const [pad, props] = splitPadding(Astro.props);
+const {
+  direction = 'vertical', hAlign, vAlign, justify, align, width, height, maxWidth, minHeight,
+  gap, isScrollable, wrap, as: Tag = 'div', class: className, style, ...rest
+} = props;
+
+const h = hAlign ?? (direction === 'horizontal' ? justify : align);
+const v = vAlign ?? (direction === 'horizontal' ? align : justify);
+const mainAlign = direction === 'horizontal' ? h : v;
+const crossAlign = direction === 'horizontal' ? v : h;
+const {themeClass, attrs} = themeProps('stack', {direction, gap, wrap});
+---
+<Tag
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-main-align={mainAlign}
+  data-cross-align={crossAlign}
+  data-scrollable={isScrollable ? '' : undefined}
+  style={mergeStyles(paddingVars(pad), {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)}, style as StyleValue)}
+  {...rest}
+><slot /></Tag>

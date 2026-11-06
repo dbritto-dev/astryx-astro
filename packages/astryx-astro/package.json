@@ -1,0 +1,47 @@
+{
+  "name": "astryx-astro",
+  "version": "0.1.0",
+  "description": "Astryx design system re-implemented as Astro components with light-DOM web components. Unofficial port of Meta's Astryx.",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "src",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./components/*": "./src/components/*",
+    "./styles/*": "./src/styles/*",
+    "./astryx.css": "./src/styles/astryx.css",
+    "./themes/*.css": "./src/styles/themes/*.css"
+  },
+  "keywords": [
+    "astro",
+    "astro-component",
+    "web-components",
+    "design-system",
+    "astryx"
+  ],
+  "scripts": {
+    "tokens": "node scripts/build-tokens.mjs"
+  },
+  "peerDependencies": {
+    "astro": ">=5"
+  },
+  "devDependencies": {
+    "@astryxdesign/cli": "0.7.9",
+    "@astryxdesign/core": "0.7.9",
+    "@astryxdesign/theme-butter": "0.7.9",
+    "@astryxdesign/theme-chocolate": "0.7.9",
+    "@astryxdesign/theme-gothic": "0.7.9",
+    "@astryxdesign/theme-matcha": "0.7.9",
+    "@astryxdesign/theme-neutral": "0.7.9",
+    "@astryxdesign/theme-stone": "0.7.9",
+    "@astryxdesign/theme-y2k": "0.7.9",
+    "astro": "^7.4.7"
+  },
+  "dependencies": {
+    "intl-messageformat": "^12.1.4"
+  }
+}

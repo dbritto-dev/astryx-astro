@@ -1,0 +1,72 @@
+---
+/**
+ * Heading — semantic h1–h6 with theme type scale. Port of @astryxdesign/core Heading.
+ *
+ * @example
+ * <Heading level={2}>Section title</Heading>
+ * <Heading level={1} type="display-1">Hero</Heading>
+ * <Heading level={3} accessibilityLevel={2}>Visually h3, announced as level 2</Heading>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {TooltipPlacement} from '../../lib/types';
+import type {TextColor, TextWeight} from './Text.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Text.css';
+
+export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
+export type HeadingType = 'display-1' | 'display-2' | 'display-3' | (string & {});
+
+export interface Props extends Omit<HTMLAttributes<'h1'>, 'color'> {
+  /** Heading level; renders h1–h6. */
+  level: HeadingLevel;
+  /** Display type; overrides the level's size and weight. */
+  type?: HeadingType;
+  weight?: TextWeight;
+  /** Level announced to assistive tech when it differs from the visual level. */
+  accessibilityLevel?: HeadingLevel;
+  /** @default 'primary' */
+  color?: TextColor;
+  /** @default 'block' */
+  display?: 'inline' | 'block';
+  maxLines?: number;
+  hasTruncateTooltip?: boolean | TooltipPlacement;
+  wordBreak?: 'break-word' | 'break-all';
+  textWrap?: 'wrap' | 'nowrap' | 'balance' | 'pretty';
+  justify?: 'start' | 'center' | 'end';
+  hasCapsize?: boolean;
+  hasStrikethrough?: boolean;
+}
+
+const builtinTypes = new Set(['display-1', 'display-2', 'display-3']);
+const {
+  level, type, weight, accessibilityLevel, color = 'primary', display = 'block', maxLines = 0,
+  hasTruncateTooltip = true, wordBreak, textWrap, justify = 'start', hasCapsize = false,
+  hasStrikethrough = false, class: className, style, ...rest
+} = Astro.props;
+
+const Tag = `h${level}` as const;
+const truncation = maxLines === 1 ? 'single' : maxLines > 1 ? 'multi' : undefined;
+const tooltip = maxLines > 0 && hasTruncateTooltip !== false
+  ? (typeof hasTruncateTooltip === 'string' ? hasTruncateTooltip : 'above')
+  : undefined;
+// Custom (theme-defined) types keep the level's baseline; theme CSS styles them.
+const {themeClass, attrs} = themeProps('heading', {level, color, type, weight});
+---
+<Tag
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-builtin-type={type && builtinTypes.has(type) ? '' : undefined}
+  data-display={maxLines > 0 || hasCapsize ? 'block' : display}
+  data-truncate={truncation}
+  data-word-break={maxLines > 0 ? (wordBreak ?? (maxLines === 1 ? 'break-all' : 'break-word')) : undefined}
+  data-text-wrap={textWrap}
+  data-justify={justify !== 'start' ? justify : undefined}
+  data-capsize={hasCapsize ? '' : undefined}
+  data-strikethrough={hasStrikethrough ? '' : undefined}
+  data-truncate-tooltip={tooltip}
+  aria-level={accessibilityLevel && accessibilityLevel !== level ? accessibilityLevel : undefined}
+  style={mergeStyles(maxLines > 1 && `-webkit-line-clamp:${maxLines}`, style as StyleValue)}
+  {...rest}
+><slot /></Tag>
+{tooltip && <script>import '../../behaviors/truncateTooltip';</script>}

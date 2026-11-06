@@ -1,0 +1,30 @@
+---
+/** StackItem — sizing and self-alignment for a Stack child. Port of @astryxdesign/core StackItem. */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import './Stack.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  crossAlignSelf?: 'start' | 'center' | 'end' | 'stretch';
+  /** 'fill' grows into free space; 'static' keeps its intrinsic size. @default 'static' */
+  size?: 'fill' | 'static';
+  /** Scroll overflow. A scrollable div/span is exposed as a labelled group while it overflows. */
+  isScrollable?: boolean;
+  as?: string;
+}
+
+const {crossAlignSelf, size, isScrollable, as: Tag = 'div', class: className, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('stack-item', {size});
+const scrollRegion = isScrollable && (Tag === 'div' || Tag === 'span') && rest.role == null;
+const t = translator(Astro);
+---
+<Tag
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-cross-align-self={crossAlignSelf}
+  data-scrollable={isScrollable ? '' : undefined}
+  data-ax-scroll-region={scrollRegion ? t('@astryx.scrollRegion.label') : undefined}
+  {...rest}
+><slot /></Tag>
+{scrollRegion && <script>import '../../behaviors/scrollRegion';</script>}
