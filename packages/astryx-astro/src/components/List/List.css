@@ -1,0 +1,202 @@
+/*
+ * List family — port of @astryxdesign/core List/List.tsx (styles, dynamicStyles) and
+ * List/ListItem.tsx (styles, markerStyles, taskMarkerStyles), with the coarse-pointer parts of
+ * utils/touchHitArea.stylex.ts.
+ *
+ * Rule groups follow stylex.props() order: list → numberColumns → withDividers →
+ * reachesContainerPadding → counter; rows (applied after Item's own styles, as ListItem's
+ * xstyle is) numberColumns → withCounter → withDivider → noRadius → touch layer → bandRaised →
+ * swipeRaised → edgeFlush → edgeOutset → edgeBleed.
+ *
+ * Row rules sit on `.astryx-list-item.astryx-item[…]` (two classes + attribute) so they win over
+ * Item.css (`.astryx-item[data-density]`, one class + attribute) whatever order the two
+ * stylesheets load in; themes (astryx-theme layer) still override both. StyleX gives a longhand
+ * priority over its shorthand regardless of order: the numbered list's `column-gap` therefore
+ * survives the divided list's `gap: 0`, written after it here.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-list-start { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── List (<ul> / <ol>) ───────────────────────────────────────────────── */
+  .astryx-list {
+    margin: 0;
+    padding-inline-start: 0;
+    list-style-type: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    /* A row dragged aside for its swipe actions paints past the list's inline edge unless the
+       list clips. `clip`, never `hidden` (no scroll container). StyleX emits the physical
+       longhand of this axis. */
+    overflow-x: clip;
+  }
+  @media (pointer: coarse) {
+    /* The isolation boundary for what rises inside the list under a finger. */
+    .astryx-list { isolation: isolate; }
+  }
+
+  /* numberColumns: subgridded numbered rows share one intrinsic marker column. */
+  .astryx-list[data-list-style="decimal"] {
+    display: flex;
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  @supports (grid-template-columns: subgrid) {
+    .astryx-list[data-list-style="decimal"] { display: grid; }
+  }
+
+  .astryx-list[data-ax-dividers] { gap: 0; }
+  .astryx-list[data-list-style="decimal"] { column-gap: var(--spacing-2); }
+
+  /* reachesContainerPadding ('outset' and 'bleed'): the list reaches the container's padding
+     edge on each inline edge (so its clip moves out with the rows); each row then places itself
+     inside it. Missing or reset container padding resolves to zero. */
+  .astryx-list:is([data-ax-edge="outset"], [data-ax-edge="bleed"]) {
+    margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
+    margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
+    width: calc(100% + var(--container-padding-inline-start, 0px) + var(--container-padding-inline-end, 0px));
+  }
+
+  /* withCounter / counterStart (start - 1, set inline as --_ax-list-start). */
+  .astryx-list:not([data-list-style="none"]) { counter-reset: astryx-list var(--_ax-list-start, 0); }
+
+  /* Header wrapper (styles.root / styles.header). */
+  .ax-list-root {
+    display: flex;
+    flex-direction: column;
+  }
+  .ax-list-header { margin-bottom: var(--spacing-2); }
+
+  /* ── Rows (ListItem xstyle on Item) ───────────────────────────────────── */
+  .astryx-list-item.astryx-item[data-ax-numbered] {
+    display: flex;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
+  @supports (grid-template-columns: subgrid) {
+    .astryx-list-item.astryx-item[data-ax-numbered] { display: grid; }
+  }
+
+  .astryx-list-item.astryx-item[data-ax-counter] { counter-increment: astryx-list; }
+
+  /* withDivider + noRadius. The last row (Astro may render a component's <script> after it)
+     drops its divider. */
+  .astryx-list-item.astryx-item[data-ax-divided] {
+    border-block-end-width: var(--border-width);
+    border-block-end-style: solid;
+    border-block-end-color: var(--color-border);
+    border-radius: 0;
+  }
+  .astryx-list-item.astryx-item[data-ax-divided]:nth-last-child(1 of :not(script, template)) { border-block-end-width: 0; }
+
+  @media (pointer: coarse) {
+    /* The touch hit layer's band starts past the divider (its insets are measured from the
+       padding box); the width sits on the layer itself, so the row's content never inherits it. */
+    .astryx-list-item[data-ax-divided].ax-hit-area::before {
+      --_hit-border-bottom: var(--border-width);
+      bottom: calc(var(--astryx-hit-inset-block, min(0px, calc((100% - 44px) / 2))) - var(--_hit-border-bottom));
+    }
+    .astryx-list-item[data-ax-divided].ax-hit-area:nth-last-child(1 of :not(script, template))::before { --_hit-border-bottom: 0px; }
+    /* bandRaised: a later row is positioned with no z-index and would cover the band. */
+    .astryx-list-item[data-ax-in-list].ax-hit-area::before { z-index: 1; }
+    /* swipeRaised: a swipeable row is a stacking context at rest; the row itself rises. */
+    .astryx-list-item[data-ax-in-list][data-ax-swipe].ax-hit-area { z-index: 1; }
+  }
+
+  /* Edge treatments: each reads --_item-inset-inline (Item derives padding-inline from it) on
+     the row itself, against its own edge's container padding (RTL via logical properties). */
+  .astryx-list-item.astryx-item[data-ax-edge="flush"] { --_item-inset-inline: 0px; }
+  .astryx-list-item.astryx-item[data-ax-edge="outset"] {
+    margin-inline-start: max(var(--container-padding-inline-start, 0px) - var(--_item-inset-inline), 0px);
+    margin-inline-end: max(var(--container-padding-inline-end, 0px) - var(--_item-inset-inline), 0px);
+  }
+  .astryx-list-item.astryx-item[data-ax-edge="bleed"] {
+    padding-inline-start: max(var(--container-padding-inline-start, 0px), var(--_item-inset-inline));
+    padding-inline-end: max(var(--container-padding-inline-end, 0px), var(--_item-inset-inline));
+    border-radius: 0;
+  }
+
+  /* ── Markers ──────────────────────────────────────────────────────────── */
+  .ax-list-marker {
+    align-self: baseline;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--spacing-4);
+    margin-top: calc((1em * var(--text-body-leading) - 6px) / 2);
+  }
+  .ax-list-marker-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--color-text-primary);
+  }
+  .ax-list-marker-circle {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--color-text-primary);
+    background-color: transparent;
+  }
+  .ax-list-marker-square {
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-text-primary);
+  }
+
+  /* Number markers end where the marker ends (periods line up), tabular figures; a counter
+     wider than the marker first hangs into the row's inline inset, then widens the column. */
+  .ax-list-number {
+    align-self: baseline;
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    color: var(--color-text-primary);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-variant-numeric: tabular-nums;
+    min-width: var(--spacing-4);
+    width: auto;
+    white-space: nowrap;
+  }
+  .ax-list-number[data-marker="decimal"]::before {
+    content: counter(astryx-list) ".";
+    margin-inline-start: calc(-1 * var(--_item-inset-inline));
+  }
+  .ax-list-number[data-marker="lower-alpha"]::before {
+    content: counter(astryx-list, lower-alpha) ".";
+    margin-inline-start: calc(-1 * var(--_item-inset-inline));
+  }
+  .ax-list-number[data-marker="lower-roman"]::before {
+    content: counter(astryx-list, lower-roman) ".";
+    margin-inline-start: calc(-1 * var(--_item-inset-inline));
+  }
+  /* gutterHang (Markdown's outside counters keep the themed column, may paint beyond it). */
+  .ax-list-number[data-ax-gutter] { width: var(--spacing-4); }
+  .ax-list-number[data-ax-gutter]::before {
+    margin-inline-start: 0;
+    flex-shrink: 0;
+  }
+
+  /* A task item's checkbox stands where the marker would, centered on the first line. */
+  .ax-list-task {
+    align-self: flex-start;
+    display: flex;
+    flex-shrink: 0;
+    margin-top: calc((1em * var(--text-body-leading) - 20px) / 2);
+  }
+
+  /* Port extension: a caller's own marker (the `marker` slot) in the marker's place. */
+  .ax-list-marker-custom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: var(--spacing-4);
+  }
+}

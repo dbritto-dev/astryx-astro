@@ -1,0 +1,198 @@
+---
+import List, {type ListDensity, type ListEdge, type ListStyle} from './List.astro';
+import ListItem from './ListItem.astro';
+import ListMarkerScope from './_ListMarkerScope.astro';
+import Avatar from '../Avatar/Avatar.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Card from '../Card/Card.astro';
+import Section from '../Section/Section.astro';
+import Text from '../Text/Text.astro';
+
+const densities: ListDensity[] = ['compact', 'balanced', 'spacious'];
+const styles: ListStyle[] = ['disc', 'circle', 'decimal'];
+const edges: ListEdge[] = ['padded', 'flush', 'outset', 'bleed'];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const box = 'border:1px dashed var(--color-border);border-radius:var(--radius-element)';
+const heading = 'margin:0 0 var(--spacing-2);font-size:var(--text-body-size);font-weight:var(--font-weight-semibold)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Slots and header</h3>
+    <div style={grid}>
+      <List header="Team" data-test="header-prop">
+        <ListItem label="Ada Lovelace" description="Analytical Engine programmer">
+          <Avatar slot="startContent" name="Ada Lovelace" size="sm" />
+          <Badge slot="endContent" label="Admin" variant="blue" />
+        </ListItem>
+        <ListItem label="Grace Hopper" description="Compiler pioneer">
+          <Avatar slot="startContent" name="Grace Hopper" size="sm" />
+          <Badge slot="endContent" label="3" />
+        </ListItem>
+        <ListItem>
+          <span slot="label"><strong>Rich</strong> label markup</span>
+          <span slot="description">A <em>description</em> slot, with wrapping left to its content</span>
+          <Icon slot="startContent" icon="info" size="sm" color="secondary" />
+        </ListItem>
+      </List>
+      <List data-test="header-slot">
+        <Text slot="header" type="body"><strong>Header slot</strong> labels the list</Text>
+        <ListItem label="Notifications" description="Manage your alerts"><Icon slot="startContent" icon="info" size="sm" /></ListItem>
+        <ListItem label="Privacy" description="Control your data"><Icon slot="startContent" icon="eyeSlash" size="sm" /></ListItem>
+        <ListItem label="Security" description="Password and 2FA"><Icon slot="startContent" icon="wrench" size="sm" /></ListItem>
+      </List>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Density × dividers</h3>
+    <div style={grid}>
+      {densities.map((density) => (
+        <List density={density} hasDividers={density !== 'balanced'} style={box} data-test={`density-${density}`}>
+          <ListItem label={`density="${density}"`} description={density !== 'balanced' ? 'hasDividers' : 'no dividers'} />
+          <ListItem label="Second row" description="Supporting text" />
+          <ListItem label="Third row" description="Supporting text" />
+        </List>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Markers (listStyle), start, custom marker slot</h3>
+    <div style={grid}>
+      {styles.map((listStyle) => (
+        <List listStyle={listStyle} data-test={`style-${listStyle}`}>
+          <ListItem label={`listStyle="${listStyle}"`} />
+          <ListItem label="Second item" description="Markers sit on the first line" />
+          <ListItem label="Third item" />
+        </List>
+      ))}
+      <List listStyle="decimal" start={8} data-test="decimal-start">
+        <ListItem label="start={8}: the eighth step" />
+        <ListItem label="Ninth step" />
+        <ListItem label="Tenth step — the column widens once, for every row" />
+        <ListItem label="Eleventh step" />
+      </List>
+      <List listStyle="decimal" data-test="custom-marker">
+        <ListItem label="Numbered row" />
+        <ListItem label="marker slot (port extension)" description="Replaces this row's marker in the shared column">
+          <Icon slot="marker" icon="check" size="sm" color="accent" />
+        </ListItem>
+        <ListItem label="Numbered row" />
+      </List>
+      <List listStyle="disc" data-test="nested">
+        <ListItem label="Nested lists">
+          <Fragment slot="description">
+            <List listStyle="circle" density="compact" data-test="nested-inner">
+              <ListItem label="Inner item" />
+              <ListItem label="Inner item" />
+            </List>
+          </Fragment>
+        </ListItem>
+        <ListItem label="Outer item" />
+      </List>
+      <List listStyle="decimal" data-test="nested-decimal">
+        <ListItem label="Plan">
+          <Fragment slot="description">
+            <List listStyle="decimal" density="compact">
+              <ListItem label="Draft" />
+              <ListItem label="Review" />
+            </List>
+          </Fragment>
+        </ListItem>
+        <ListItem label="Ship" />
+      </List>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Markers Markdown uses (internal ListMarkerScope: square, letters, roman, task)</h3>
+    <div style={grid}>
+      <List listStyle="disc"><ListMarkerScope marker="square"><ListItem label="Square marker" /><ListItem label="Square marker" /></ListMarkerScope></List>
+      <List listStyle="decimal"><ListMarkerScope marker="lower-alpha"><ListItem label="Letter counter" /><ListItem label="Letter counter" /></ListMarkerScope></List>
+      <List listStyle="decimal" start={3}><ListMarkerScope marker="lower-roman" hasMarkerGutter><ListItem label="Roman counter (gutter)" /><ListItem label="Roman counter (gutter)" /></ListMarkerScope></List>
+      <List listStyle="disc" data-test="task">
+        <ListMarkerScope marker="disc" task={{isChecked: true, label: 'Write the spec'}}><ListItem label="Write the spec" /></ListMarkerScope>
+        <ListMarkerScope marker="disc" task={{isChecked: false, label: 'Ship it'}}><ListItem label="Ship it" /></ListMarkerScope>
+      </List>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Edge inside a Card: padded · flush · outset · bleed (and deprecated edgeCompensation)</h3>
+    <div style={grid}>
+      {edges.map((edge) => (
+        <Card data-test={`edge-card-${edge}`}>
+          <h4 style={heading} data-test="edge-heading">edge="{edge}"</h4>
+          <List edge={edge} hasDividers data-test={`edge-${edge}`}>
+            <ListItem label="Inbox" description="12 unread" interactiveRole="button"><Icon slot="startContent" icon="info" size="sm" /></ListItem>
+            <ListItem label="Archive" isSelected interactiveRole="button"><Icon slot="startContent" icon="checkDouble" size="sm" /></ListItem>
+            <ListItem label="Trash" interactiveRole="button"><Icon slot="startContent" icon="close" size="sm" /></ListItem>
+          </List>
+        </Card>
+      ))}
+      <Card data-test="edge-card-compensation">
+        <h4 style={heading}>edgeCompensation="inline"</h4>
+        <List edgeCompensation="inline" data-test="edge-compensation">
+          <ListItem label="Same as outset" interactiveRole="button" />
+          <ListItem label="Second row" interactiveRole="button" />
+        </List>
+      </Card>
+      <Section variant="transparent" padding={4} data-test="edge-section">
+        <h4 style={heading}>Transparent Section, outset</h4>
+        <List edge="outset" density="spacious">
+          <ListItem label="Sidebar row" href="#list-target" />
+          <ListItem label="Sidebar row" href="#list-target" isSelected />
+        </List>
+      </Section>
+    </div>
+  </section>
+
+  <section data-test="interactive">
+    <h3 style={cap}>Interactive rows: button, link, delegate, selected, disabled, align, swipe</h3>
+    <div style={grid}>
+      <List hasDividers data-test="interactive-list">
+        <ListItem label="Button row" description={'interactiveRole="button"'} interactiveRole="button" data-test="button-row">
+          <Icon slot="startContent" icon="wrench" size="sm" />
+          <Icon slot="endContent" icon="chevronRight" size="sm" class="ax-mirror-rtl" />
+        </ListItem>
+        <ListItem label="Link row" description="href → invisible link" href="#list-target" data-test="link-row" />
+        <ListItem label="External link" description={'target="_blank"'} href="https://example.com" target="_blank" rel="external" data-test="external-row">
+          <Icon slot="endContent" icon="externalLink" size="sm" />
+        </ListItem>
+        <ListItem label="Delegate row" description="interactiveRef → the checkbox owns the action" interactiveRef="input" data-test="delegate-row">
+          <input slot="startContent" type="checkbox" aria-label="Delegate row" data-ax-inherit="item-description" data-test="delegate-input" />
+        </ListItem>
+        <ListItem label="Selected row" description={'aria-current="true"'} isSelected interactiveRole="button" data-test="selected-row" />
+        <ListItem label="Disabled row" isDisabled interactiveRole="button" data-test="disabled-row" />
+      </List>
+      <List>
+        <ListItem align="first-line">
+          <span slot="label">align="first-line" keeps a small mark level with the first line of a wrapped (slot) label</span>
+          <span slot="startContent" style="width:8px;height:8px;border-radius:50%;background:var(--color-accent)" />
+          <span slot="endContent" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)">9:41</span>
+        </ListItem>
+        <ListItem align="start" label="Message from Ada" description={'align="start" top-aligns the avatar'}>
+          <Avatar slot="startContent" name="Ada Lovelace" size="md" />
+        </ListItem>
+        <ListItem
+          label="Swipe actions"
+          description="Panels render at rest (gesture deferred)"
+          interactiveRole="button"
+          swipeActions={{leading: [{label: 'Unread', icon: 'checkDouble', variant: 'neutral'}], trailing: [{label: 'Archive'}, {label: 'Delete', icon: 'close', variant: 'destructive'}]}}
+        />
+        <ListItem label="Commit swipe" swipeBehavior="commit" swipeActions={{trailing: [{label: 'Delete', variant: 'destructive', hasRemoval: true}]}} />
+      </List>
+    </div>
+    <p id="list-target" style="margin:var(--spacing-2) 0 0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)">Last click: <output data-test="log">none</output></p>
+  </section>
+</div>
+<script>
+  const log = document.querySelector('[data-test="log"]');
+  document.querySelector('[data-test="interactive"]')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const row = target.closest('.astryx-list-item');
+    if (log) log.textContent = `${target.tagName.toLowerCase()} in ${row?.getAttribute('data-test') ?? '?'}`;
+  });
+</script>

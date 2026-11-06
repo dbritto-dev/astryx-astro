@@ -1,0 +1,17 @@
+/*
+ * Port of @astryxdesign/core CheckboxList/CheckboxListItem.tsx (styles.selected). CheckboxList
+ * itself adds no styles (Field, List and CheckboxInput paint everything).
+ *
+ * A checked, enabled row keeps the accent-muted fill: in Astryx the row's `backgroundColor`
+ * xstyle replaces the whole property of Item's overlay (hover and press included), so a checked
+ * row shows no hover or press paint. Here the overlay lives in shared.css
+ * (`.ax-overlay-bg:where(…):hover:active`, 0-3-0), so the rule carries four classes/attributes to
+ * win regardless of stylesheet order; themes still override it from the astryx-theme layer.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-list-item.astryx-item.ax-checkbox-list-row[data-selected] {
+    background-color: var(--color-accent-muted);
+  }
+}

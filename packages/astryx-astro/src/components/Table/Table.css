@@ -410,6 +410,12 @@
   .ax-table-tree-spacer { display: inline-block; width: 24px; height: 24px; flex-shrink: 0; }
   .ax-table-tree-header { display: inline-flex; align-items: center; gap: var(--spacing-1); min-width: 0; }
 
+  /* ── Selection (useTableSelection selectionColumnStyles; TableSelectionToolbar) ── */
+  .ax-table-selection-center { display: flex; align-items: center; justify-content: center; }
+  /* The toolbar's host adds no box; without a selection it renders nothing (Astryx: null). */
+  ax-table-selection-toolbar { display: contents; }
+  ax-table-selection-toolbar[hidden] { display: none; }
+
   /* ── Row index (useTableRowIndex) ──────────────────────────────────────── */
   .ax-table-row-index {
     font-family: var(--font-family-code);

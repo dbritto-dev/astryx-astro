@@ -248,6 +248,8 @@ export interface TablePluginContext<T extends Record<string, unknown> = Record<s
   data: readonly T[] | undefined;
   /** Whether the Table received this named slot (for `slot()` placeholders). */
   hasSlot: (name: string) => boolean;
+  /** The row key the Table's `idKey` gives a data row (its index without `idKey`). */
+  rowKey: (item: T, index: number) => string;
 }
 
 /**

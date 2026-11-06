@@ -1,0 +1,173 @@
+---
+import CheckboxList from './CheckboxList.astro';
+import CheckboxListItem from './CheckboxListItem.astro';
+import List from '../List/List.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Link from '../Link/Link.astro';
+import type {ListDensity} from '../List/listContext';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const densities: ListDensity[] = ['compact', 'balanced', 'spacious'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Choose at least one channel',
+  warning: 'SMS may incur charges',
+  success: 'Preferences saved',
+};
+const documents = [
+  {id: 'transactions', label: 'Transaction history'},
+  {id: 'statements', label: 'Account statements'},
+  {id: 'tax', label: 'Tax documents'},
+  {id: 'invoices', label: 'Invoices'},
+];
+const exported = ['transactions'];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Collection mode (value), descriptions, rich label, end content</h3>
+    <div style={grid}>
+      <CheckboxList label="Notifications" description="Where we reach you" value={['email', 'push']} data-test="notify">
+        <CheckboxListItem label="Email" value="email" description="Daily digest" />
+        <CheckboxListItem label="SMS" value="sms" description="Standard rates apply" />
+        <CheckboxListItem label="Push" value="push" description="On your devices" />
+      </CheckboxList>
+      <CheckboxList label="Plan add-ons" value={['pro']} hasDividers data-test="rich">
+        <CheckboxListItem value="pro" aria-label="Pro plan Recommended option">
+          <span slot="label">Pro plan <Badge label="Recommended" variant="blue" /></span>
+        </CheckboxListItem>
+        <CheckboxListItem value="support" description="Replies within 4 hours">
+          <span slot="label">Priority support, see <Link href="#checkbox-list-terms">terms</Link></span>
+        </CheckboxListItem>
+        <CheckboxListItem label="Audit log" value="audit" align="first-line">
+          <Icon slot="endContent" icon="info" size="sm" color="secondary" />
+        </CheckboxListItem>
+      </CheckboxList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Density (compact uses the small checkbox) × dividers</h3>
+    <div style={grid}>
+      {densities.map((density) => (
+        <CheckboxList label={`density="${density}"`} density={density} hasDividers={density !== 'balanced'} value={['a']} data-test={`density-${density}`}>
+          <CheckboxListItem label="Option A" value="a" />
+          <CheckboxListItem label="Option B" value="b" description="With a description" />
+          <CheckboxListItem label="Option C" value="c" />
+        </CheckboxList>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Select all (port extension isSelectAll) — standalone and collection mode</h3>
+    <div style={grid}>
+      <CheckboxList label="Include in export" hasDividers data-test="select-all-standalone">
+        <CheckboxListItem label="Select all" isSelectAll isChecked="indeterminate" data-test="select-all" />
+        {documents.map((doc) => <CheckboxListItem label={doc.label} value={doc.id} isChecked={exported.includes(doc.id)} />)}
+      </CheckboxList>
+      <CheckboxList label="Columns" value={['name', 'email']} data-test="select-all-collection">
+        <CheckboxListItem label="All columns" isSelectAll isChecked="indeterminate" data-test="select-all" />
+        <CheckboxListItem label="Name" value="name" />
+        <CheckboxListItem label="Email" value="email" />
+        <CheckboxListItem label="Role" value="role" />
+        <CheckboxListItem label="ID (always shown)" value="id" isDisabled />
+      </CheckboxList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status (detached message, aria-invalid), optional, required, hidden label, width</h3>
+    <div style={grid}>
+      {statuses.map((type) => (
+        <CheckboxList label={`Channels (${type})`} status={{type, message: messages[type]}} value={type === 'error' ? [] : ['email']} isRequired={type === 'error'} data-test={`status-${type}`}>
+          <CheckboxListItem label="Email" value="email" />
+          <CheckboxListItem label="SMS" value="sms" />
+        </CheckboxList>
+      ))}
+      <CheckboxList label="Optional extras" isOptional value={[]}>
+        <CheckboxListItem label="Gift wrap" value="wrap" />
+        <CheckboxListItem label="Card" value="card" />
+      </CheckboxList>
+      <CheckboxList label="Hidden label" isLabelHidden value={['a']} width={220} containerClass="docs-checkbox-container" controlStyle="padding-block:var(--spacing-1)" data-test="hidden-label">
+        <CheckboxListItem label="Option A" value="a" />
+        <CheckboxListItem label="Option B" value="b" />
+      </CheckboxList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled group, disabled with reason (tooltip), read-only, disabled and loading items</h3>
+    <div style={grid}>
+      <CheckboxList label="Disabled group" isDisabled value={['a']} data-test="disabled">
+        <CheckboxListItem label="Option A" value="a" />
+        <CheckboxListItem label="Option B" value="b" />
+      </CheckboxList>
+      <CheckboxList label="Disabled with reason" isDisabled disabledMessage="Managed by your organization" value={['a']} data-test="disabled-message">
+        <CheckboxListItem label="Option A" value="a" description="Explained by the tooltip" />
+        <CheckboxListItem label="Option B" value="b" />
+      </CheckboxList>
+      <CheckboxList label="Read-only" isReadOnly value={['a']} data-test="read-only">
+        <CheckboxListItem label="Option A" value="a" />
+        <CheckboxListItem label="Option B" value="b" />
+      </CheckboxList>
+      <CheckboxList label="Per item" value={['b']} data-test="per-item">
+        <CheckboxListItem label="Disabled item" value="a" isDisabled />
+        <CheckboxListItem label="Disabled, checked" value="b" isDisabled />
+        <CheckboxListItem label="Saving…" value="c" isLoading />
+        <CheckboxListItem label="Enabled" value="d" />
+      </CheckboxList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Standalone items in a plain List (isChecked, astryx-check)</h3>
+    <div style={grid}>
+      <List hasDividers data-test="plain-list">
+        <CheckboxListItem label="Accept the terms" isChecked={false} data-test="terms" />
+        <CheckboxListItem label="Subscribe" description="Weekly product news" isChecked />
+        <CheckboxListItem label="Partially applied" isChecked="indeterminate" />
+      </List>
+    </div>
+    <p id="checkbox-list-terms" style="margin:var(--spacing-2) 0 0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)">Last event: <output data-test="log">none</output></p>
+  </section>
+
+  <section>
+    <h3 style={cap}>Native form: htmlName (port extension), required group, FormLayout, reset</h3>
+    <form data-test="form" style="display:grid;gap:var(--spacing-3);max-width:620px">
+      <FormLayout direction="horizontal-labels">
+        <CheckboxList label="Toppings" htmlName="toppings" isRequired value={[]} data-test="form-toppings">
+          <CheckboxListItem label="Cheese" value="cheese" />
+          <CheckboxListItem label="Basil" value="basil" />
+          <CheckboxListItem label="Olives (sold out)" value="olives" isDisabled />
+        </CheckboxList>
+        <CheckboxList label="Sides" htmlName="sides" value={['fries']} isOptional data-test="form-sides">
+          <CheckboxListItem label="Fries" value="fries" />
+          <CheckboxListItem label="Salad" value="salad" />
+        </CheckboxList>
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  const log = document.querySelector('[data-test="log"]');
+  document.addEventListener('astryx-check', (event) => {
+    const row = (event.target as HTMLElement).closest('[data-test]');
+    if (log) log.textContent = `astryx-check ${JSON.stringify((event as CustomEvent).detail)} from ${row?.getAttribute('data-test') ?? 'row'}`;
+  });
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify({toppings: data.getAll('toppings'), sides: data.getAll('sides')});
+    });
+  });
+</script>

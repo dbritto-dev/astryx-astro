@@ -16,7 +16,8 @@
  * `reorderBody(compare)` (sorts rows within group sections and tree sibling sets, keeping
  * detail panels after their row), `updateVisibility()` (collapsed groups, collapsed tree
  * ancestors, closed panels → `hidden`) and `renumber()` (row-index cells, aria-rowindex).
- * Feature APIs: `sort`, `columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds`.
+ * Feature APIs: `sort`, `columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds`,
+ * `selectedKeys` + `clearSelection()` (selection).
  */
 import {AxScrollableArea} from './scrollable-area';
 
@@ -271,6 +272,11 @@ export class AxTable extends AxScrollableArea {
   set collapsedGroups(value) { this.api.get('grouped')?.set(value); }
   get expandedIds() { return this.api.get('tree')?.get(); }
   set expandedIds(value) { this.api.get('tree')?.set(value); }
+  /** Row selection (useTableSelection): the complete selected-key list; setting dispatches no astryx event. */
+  get selectedKeys() { return this.api.get('selection')?.get(); }
+  set selectedKeys(value) { this.api.get('selection')?.set(value); }
+  /** Clear the complete selection (TableSelectionToolbar's Clear); dispatches `astryx-selection-change`. */
+  clearSelection() { (this.api.get('selection') as (TableFeatureApi & {clear?: () => void}) | undefined)?.clear?.(); }
 }
 
 if (typeof customElements !== 'undefined' && !customElements.get('ax-table')) {
