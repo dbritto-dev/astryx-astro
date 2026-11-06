@@ -86,8 +86,8 @@ const {
   disabledMessage,
   isReadOnly = false,
   htmlName,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const {statusVariant: _ignoredVariant, labelTooltip: _ignoredTooltip, ...routed} = props as Props & {statusVariant?: unknown; labelTooltip?: unknown};
 const r = routeFieldProps('CheckboxList', {...(routed as FieldComposedProps & Record<string, unknown>), statusVariant: 'detached'});

@@ -14,7 +14,7 @@ import './Table.css';
 
 export interface Props extends HTMLAttributes<'tbody'> {}
 
-const {class: className, ...rest} = Astro.props;
+const {class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('table-body');
 ---
 <tbody {...rest} class={cx(themeClass, className)}><slot /></tbody>

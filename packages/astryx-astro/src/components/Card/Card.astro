@@ -45,8 +45,8 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const {
   width, height, maxWidth, minHeight, padding, variant = 'default', elevation = 'none',
-  class: className, style, ...rest
-} = Astro.props;
+  class: className, style, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 const hasFixedHeight = height != null && height !== 'auto';
 const {themeClass, attrs} = themeProps('card', {variant, elevation});
 ---

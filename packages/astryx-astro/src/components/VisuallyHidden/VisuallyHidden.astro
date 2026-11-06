@@ -21,7 +21,7 @@ export interface Props extends Omit<HTMLAttributes<'span'>, 'class' | 'style' | 
   as?: string;
 }
 
-const {as: Tag = 'span', ...props} = Astro.props;
+const {as: Tag = 'span', slot: _slot, ...props} = Astro.props as typeof Astro.props & {slot?: string};
 // Strip styling props even when passed through a cast, as Astryx does: a consumer `style`
 // would get the last word on `position` and un-hide the node.
 const {class: _class, style: _style, 'class:list': _classList, xstyle: _xstyle, ...rest} = props as typeof props & Record<string, unknown>;

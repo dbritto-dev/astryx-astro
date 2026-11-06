@@ -69,8 +69,8 @@ export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open' | 'title'> 
 
 const {
   title, description, actionLabel, cancelLabel, actionVariant = 'destructive', isActionLoading = false,
-  isOpen = false, isInline = false, width = 400, id: idProp, locale, class: className, ...rest
-} = Astro.props;
+  isOpen = false, isInline = false, width = 400, id: idProp, locale, class: className, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const t = translator(Astro, locale);
 const cancel = cancelLabel ?? t('@astryx.alertDialog.cancel');

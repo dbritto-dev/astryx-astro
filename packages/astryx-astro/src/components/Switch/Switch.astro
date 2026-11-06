@@ -125,8 +125,8 @@ const {
   class: className,
   style,
   locale,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 // Shared Field ids (the switch's base props go to the field root here, as in Astryx).
 const r = routeFieldProps('Switch', {label, isDisabled, status, 'aria-describedby': ariaDescribedBy} as FieldComposedProps & Record<string, unknown>);

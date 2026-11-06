@@ -100,8 +100,8 @@ const {
   class: className,
   style,
   id: idProp,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const t = translator(Astro, locale);
 const label = labelProp ?? t('@astryx.contextMenu.label');

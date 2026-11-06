@@ -16,6 +16,6 @@ import './DropdownMenu.css';
 
 export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'aria-orientation'> {}
 
-const {class: className, ...rest} = Astro.props;
+const {class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 ---
 <Divider {...rest} class={cx('astryx-dropdown-menu-divider', className as string | undefined)} />

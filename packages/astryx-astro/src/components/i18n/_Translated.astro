@@ -9,7 +9,7 @@ interface Props {
   message: string;
   values?: Record<string, unknown>;
 }
-const {message, values, ...rest} = Astro.props as Props & Record<string, unknown>;
+const {message, values, slot: _slot, ...rest} = Astro.props as Props & Record<string, unknown> & {slot?: string};
 const t = translator(Astro);
 const locals = (Astro.locals ?? {}) as Record<string, unknown>;
 ---

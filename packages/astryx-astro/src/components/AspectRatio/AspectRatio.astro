@@ -27,7 +27,7 @@ export interface Props extends HTMLAttributes<'div'> {
   fit?: AspectRatioFit;
 }
 
-const {ratio, shape = 'rectangle', fit, class: className, style, ...rest} = Astro.props;
+const {ratio, shape = 'rectangle', fit, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass, attrs} = themeProps('aspect-ratio', {shape});
 ---
 <div

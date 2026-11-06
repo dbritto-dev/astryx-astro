@@ -37,7 +37,7 @@ export interface Props extends HTMLAttributes<'div'> {
   toast?: LayerToastConfig;
 }
 
-const {inset, toast, class: className, style, ...rest} = Astro.props;
+const {inset, toast, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const toastInset = toast?.inset
   ? Object.entries(toast.inset).filter(([, v]) => v != null).map(([k, v]) => `${k}:${v}`).join(' ')
   : undefined;

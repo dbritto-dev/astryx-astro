@@ -176,8 +176,8 @@ const {
   presentation: _presentation = 'popover',
   isDefaultOpen = false,
   statusVariant: statusVariantProp = 'attached',
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && statusVariantProp === 'attached' ? 'detached' : statusVariantProp;
 const r = routeFieldProps('MultiSelector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>, {groupable: true, isReadOnly});

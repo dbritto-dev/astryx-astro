@@ -42,8 +42,8 @@ const builtinTypes = new Set(['display-1', 'display-2', 'display-3']);
 const {
   level, type, weight, accessibilityLevel, color = 'primary', display = 'block', maxLines = 0,
   hasTruncateTooltip = true, wordBreak, textWrap, justify = 'start', hasCapsize = false,
-  hasStrikethrough = false, class: className, style, ...rest
-} = Astro.props;
+  hasStrikethrough = false, class: className, style, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const Tag = `h${level}` as const;
 const truncation = maxLines === 1 ? 'single' : maxLines > 1 ? 'multi' : undefined;

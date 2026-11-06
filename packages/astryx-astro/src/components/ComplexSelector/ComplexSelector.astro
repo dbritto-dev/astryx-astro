@@ -121,8 +121,8 @@ const {
   contentStyle,
   isDefaultOpen = false,
   statusVariant: statusVariantProp = 'attached',
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && statusVariantProp === 'attached' ? 'detached' : statusVariantProp;
 const r = routeFieldProps('ComplexSelector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>);

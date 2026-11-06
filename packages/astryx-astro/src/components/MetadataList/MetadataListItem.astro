@@ -29,7 +29,7 @@ export interface Props extends HTMLAttributes<'div'> {
   'data-testid'?: string;
 }
 
-const {label, icon, class: className, style, ...rest} = Astro.props;
+const {label, icon, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('metadata-list-item');
 const hasIconSlot = Astro.slots.has('icon');
 const hasIcon = hasIconSlot || (icon != null && icon !== '');

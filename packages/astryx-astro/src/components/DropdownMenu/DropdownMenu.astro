@@ -113,8 +113,8 @@ const {
   class: className,
   style,
   __sizeFromTrigger = false,
-  ...rest
-} = Astro.props as Props & InternalProps;
+  slot: _slot, ...rest
+} = Astro.props as Props & InternalProps & {slot?: string};
 
 const t = translator(Astro, locale);
 const button: DropdownMenuButtonProps = buttonProp ?? {label: t('@astryx.dropdownMenu.label')};

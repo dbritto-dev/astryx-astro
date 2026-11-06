@@ -31,7 +31,7 @@ export interface Props extends HTMLAttributes<'div'> {
   group?: string;
 }
 
-const {item, icon, description, isDisabled = false, group: _group, class: className, ...rest} = Astro.props;
+const {item, icon, description, isDisabled = false, group: _group, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const iconHtml = Astro.slots.has('icon') ? (await Astro.slots.render('icon')).trim() : '';
 ---
 <div {...rest} class={cx('astryx-typeahead-item', className as string | undefined)} data-ax-disabled={isDisabled ? '' : undefined}>

@@ -77,8 +77,8 @@ const {
   locale,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const size: InputGroupSize = sizeProp ?? 'md';
 const base = fieldId('input-group');

@@ -68,8 +68,8 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
 const {
   id: idProp, mode = 'context', anchor, placement = 'above', alignment = 'center', positioning = 'anchor',
   offset, x = 0, y = 0, role, label, lightDismiss = false, escape, hasMotion = false, isDefaultOpen,
-  class: className, style, ...rest
-} = Astro.props;
+  class: className, style, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const id = idProp ?? layerId('ax-layer');
 const html = await seal(await Astro.slots.render('default'));

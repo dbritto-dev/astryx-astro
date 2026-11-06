@@ -21,7 +21,7 @@ export interface Props extends HTMLAttributes<'tr'> {
   isHeaderRow?: boolean;
 }
 
-const {isHeaderRow = false, class: className, ...rest} = Astro.props;
+const {isHeaderRow = false, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('table-row');
 ---
 <tr {...rest} class={cx(themeClass, className)} data-ax-header-row={isHeaderRow ? '' : undefined}><slot /></tr>

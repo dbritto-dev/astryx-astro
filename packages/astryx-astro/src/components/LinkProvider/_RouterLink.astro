@@ -8,6 +8,6 @@ interface Props {
   to?: string;
   [attr: string]: unknown;
 }
-const {href, to, ...rest} = Astro.props as Props;
+const {href, to, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
 ---
 <a {...rest} href={to ?? href} data-router-link="" data-astro-prefetch="hover"><slot /> <span aria-hidden="true">↗</span></a>

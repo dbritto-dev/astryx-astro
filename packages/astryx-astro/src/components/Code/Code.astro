@@ -26,7 +26,7 @@ export interface Props extends Omit<HTMLAttributes<'code'>, 'color'> {
   'data-testid'?: string;
 }
 
-const {color = 'primary', size, class: className, style, ...rest} = Astro.props;
+const {color = 'primary', size, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass, attrs} = themeProps('code', {color});
 ---
 <code {...rest} {...attrs} data-size={size} class={cx(themeClass, className)} style={mergeStyles(style as StyleValue)}><slot /></code>

@@ -72,8 +72,8 @@ const {
   hasCloseOnSelect = true,
   variant = 'default',
   class: className,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
 const iconHtml = await slot('icon');

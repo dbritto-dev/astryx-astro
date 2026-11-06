@@ -431,3 +431,28 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   (class → `astryx-bottom-sheet`, full-viewport with `::backdrop`, gestures on the surface);
   `'popover'` never reads the query. DropdownMenu, Selector, DateInput can adopt it.
 - Scroll lock matches `[data-ax-scroll-lock][data-ax-open="true"]` (values are "true"/"false").
+
+## Lists
+
+- Context via subtree locals: `astryxList` (density, dividers, edge, listStyle, marker),
+  `astryxCheckboxList`. Keys on the item checkbox: `checkbox-list-item` (item), and
+  `checkbox-list-reason`, `checkbox-list-state`, `checkbox-list-required` (list).
+- ListItem: `interactiveRole="button"`, `interactiveRef`, `href`, slots `label`/`description`/
+  `startContent`/`endContent`/`marker`. Markdown uses `listStyle` + `List/_ListMarkerScope.astro`
+  for square/letter/roman/task markers.
+- CheckboxList `astryx-change` {values} (collection mode); standalone rows `astryx-check` {isChecked}; `el.value`.
+- Table selection: `useTableSelection`, `useTableSelectionState` (exported); events
+  `astryx-select-item` {key, isSelected}, `astryx-select-all` {isAllSelected} (cancelable), then
+  `astryx-selection-change` {selectedKeys, selectedCount, hasSelection}; `table.selectedKeys`,
+  `table.clearSelection()`; TableSelectionToolbar `for=<table id>` + `selectionLabel` function slot;
+  plugin context `rowKey(item, index)`.
+
+## Final integration backlog (lead)
+
+- Layer roots should reset layer-scoped subtree-locals contexts (`astryxList`,
+  `astryxCheckboxList`, `astryxRadioList`, Stepper) — not Theme/locale/link contexts.
+- CheckboxInput drops `aria-labelledby` (consumed by routeFieldProps, never applied).
+- Tooltip: let a layer's `data-ax-anchor` override the trigger as anchor (removes CheckboxInput/Switch workarounds).
+- Adopt the `presentation` contract in DropdownMenu, Selector, DateInput.
+- Table: filtering, pagination, context-menu rows, column settings plugins.
+- LayerProvider could render a ToastViewport from its toast config.

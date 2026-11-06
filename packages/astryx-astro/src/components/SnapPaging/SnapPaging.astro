@@ -36,7 +36,7 @@ export interface Props extends HTMLAttributes<'div'> {
   label?: string;
 }
 
-const {pages = 'viewport', gap, defaultIndex = 0, label, class: className, ...rest} = Astro.props;
+const {pages = 'viewport', gap, defaultIndex = 0, label, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const gapValue = gap === undefined || gap === 0 ? undefined : cssSize(gap);
 ---
 <ax-snap-paging

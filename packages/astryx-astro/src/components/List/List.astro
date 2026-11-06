@@ -79,8 +79,8 @@ const {
   start,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 if (edgeProp != null && edgeCompensation != null) {
   devWarn('List', '`edge` and the deprecated `edgeCompensation` are both set; `edge` wins. Remove `edgeCompensation`.');

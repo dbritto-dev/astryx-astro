@@ -53,7 +53,7 @@ export interface Props extends HTMLAttributes<'div'> {
   defaultHasDividers?: boolean;
 }
 
-const {height = 'fill', contentWidth, padding, defaultHasDividers, class: className, ...rest} = Astro.props;
+const {height = 'fill', contentWidth, padding, defaultHasDividers, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 
 /** Internal alignment subtracts contentWidth in CSS; intrinsic values and bare vars cannot. */
 function supportsInternalContentWidthAlignment(width: SizeValue | undefined): boolean {

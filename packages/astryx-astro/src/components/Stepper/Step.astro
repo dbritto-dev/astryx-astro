@@ -76,8 +76,8 @@ const {
   density: densityProp,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const t = translator(Astro, ctx.locale);
 const {activeStep, orientation, indicatorPosition, isNonLinear} = ctx;

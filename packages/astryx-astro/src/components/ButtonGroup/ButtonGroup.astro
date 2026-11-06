@@ -71,8 +71,8 @@ const {
   'data-testid': testId,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const size: ComponentSize = sizeProp ?? 'md';
 const isSizeInherited = sizeProp === undefined;

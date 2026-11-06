@@ -28,7 +28,7 @@ export interface Props extends HTMLAttributes<'input'> {
   locale?: string;
 }
 
-const {label, clearLabel, placeholder, rowAttrs = {}, locale, class: className, ...input} = Astro.props;
+const {label, clearLabel, placeholder, rowAttrs = {}, locale, class: className, slot: _slot, ...input} = Astro.props as typeof Astro.props & {slot?: string};
 ---
 <div {...rowAttrs} class={cx('ax-panel-search', className as string | undefined)} data-ax-panel-search>
   <div class="ax-panel-search-field">

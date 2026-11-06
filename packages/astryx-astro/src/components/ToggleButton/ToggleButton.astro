@@ -84,8 +84,8 @@ const {
   tooltip,
   value,
   class: className,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const isPressed = isPressedProp;
 const pressed = isPressed ? 'true' : 'false';

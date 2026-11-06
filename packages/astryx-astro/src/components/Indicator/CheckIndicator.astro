@@ -32,7 +32,7 @@ export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'rol
   isDisabled?: boolean;
 }
 
-const {state, size: _size = 'md', isDisabled = false, class: className, style, ...rest} = Astro.props;
+const {state, size: _size = 'md', isDisabled = false, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 // Both indicator sizes resolve to Icon's `sm` (1rem) box.
 const iconSize = 'sm';
 const isChecked = state === 'checked';

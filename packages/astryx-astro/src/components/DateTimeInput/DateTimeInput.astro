@@ -146,8 +146,8 @@ const {
   nativePicker: _nativePicker,
   htmlName,
   name,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const r = routeFieldProps('DateTimeInput', {...(props as Props & Record<string, unknown>), statusVariant: 'detached'});
 const {isDisabled, status} = r;

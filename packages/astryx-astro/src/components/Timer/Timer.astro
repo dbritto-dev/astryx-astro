@@ -55,8 +55,8 @@ const {
   locale: localeProp,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const locale = resolveLocale(Astro, localeProp);
 const resolvedFormat = resolveFormat(format);

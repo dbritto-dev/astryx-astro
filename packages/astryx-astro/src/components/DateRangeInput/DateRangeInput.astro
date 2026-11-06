@@ -132,8 +132,8 @@ const {
   name,
   'aria-label': ariaLabelProp,
   'aria-labelledby': ariaLabelledByProp,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const r = routeFieldProps('DateRangeInput', props as Props & Record<string, unknown>);
 const {isDisabled, status, statusVariant} = r;

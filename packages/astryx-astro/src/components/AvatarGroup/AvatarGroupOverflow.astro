@@ -34,7 +34,7 @@ export interface Props extends HTMLAttributes<'span'> {
   locale?: string;
 }
 
-const {count, isClickable = false, label: labelProp, locale, class: className, style, ...rest} = Astro.props;
+const {count, isClickable = false, label: labelProp, locale, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const t = translator(Astro, locale);
 const safeCount = Math.max(0, Number.isFinite(count) ? count : 0);
 const label = labelProp ?? t('@astryx.avatarGroup.overflow', {count: safeCount});

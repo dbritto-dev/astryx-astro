@@ -47,8 +47,8 @@ export interface Props extends Omit<HTMLAttributes<'button'>, 'value'> {
 
 const {
   value, label, isLabelHidden = false, icon, isDisabled = false, tooltip,
-  class: className, 'aria-describedby': describedBy, ...rest
-} = Astro.props;
+  class: className, 'aria-describedby': describedBy, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const hasIcon = Astro.slots.has('icon') || (icon != null && icon !== '');
 const iconHtml = Astro.slots.has('icon') ? await Astro.slots.render('icon') : icon;

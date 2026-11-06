@@ -64,8 +64,8 @@ const {
   size = 'sm',
   variant = 'muted',
   locale: localeProp,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const t = translator(Astro, localeProp);
 const locale = resolveLocale(Astro, localeProp);

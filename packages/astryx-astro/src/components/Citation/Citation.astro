@@ -50,7 +50,7 @@ export interface Props extends HTMLAttributes<'a'> {
   locale?: string;
 }
 
-const {source, number, variant = 'label', locale, class: className, ...rest} = Astro.props;
+const {source, number, variant = 'label', locale, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const t = translator(Astro, locale);
 const title = source.title ?? String(number);
 const href = source.url != null ? safeHref(source.url) : undefined;

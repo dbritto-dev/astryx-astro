@@ -65,8 +65,8 @@ const {
   isDisabled: isItemDisabled = false,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const context = readRadioListContext(Astro);
 if (!context) throw new Error('RadioListItem must be used within an RadioList');

@@ -87,8 +87,8 @@ const {
   locale,
   class: className,
   style,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const t = translator(Astro, locale);
 const hasSrc = src != null;

@@ -129,8 +129,8 @@ const {
   name,
   autoComplete,
   hasAutoFocus = false,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const r = routeFieldProps('NumberInput', props as Props & Record<string, unknown>, {groupable: true, isReadOnly, labelIcon});
 const {isDisabled, status, statusVariant} = r;

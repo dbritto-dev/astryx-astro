@@ -43,7 +43,7 @@ export interface Props extends HTMLAttributes<'span'> {
   icon?: ExtendedIconName | AstroIconComponent;
 }
 
-const {variant, label, isPulsing = false, tooltip, icon, class: className, style, ...rest} = Astro.props;
+const {variant, label, isPulsing = false, tooltip, icon, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const showsSlotIcon = Astro.slots.has('icon');
 const showsIcon = showsSlotIcon || (icon != null && icon !== '');
 const {themeClass, attrs: themeAttrs} = themeProps('status-dot', {variant});

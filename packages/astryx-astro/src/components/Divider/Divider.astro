@@ -35,8 +35,8 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const {
   orientation = 'horizontal', label, variant = 'subtle', isFullBleed = false,
-  class: className, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, ...rest
-} = Astro.props;
+  class: className, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const hasLabelSlot = Astro.slots.has('label');
 const hasLabel = hasLabelSlot || (label != null && label !== '' && typeof label !== 'boolean');

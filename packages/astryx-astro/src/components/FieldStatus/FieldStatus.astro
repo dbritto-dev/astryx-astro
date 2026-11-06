@@ -44,7 +44,7 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const statusIconMap: Record<FieldStatusType, IconName> = {warning: 'warning', error: 'error', success: 'success'};
 
-const {type, message, id, variant = 'attached', class: className, style, ...rest} = Astro.props;
+const {type, message, id, variant = 'attached', class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass, attrs} = themeProps('field-status', {type, variant});
 const icon = themeProps('field-status-icon', {type});
 const root: Record<string, unknown> = {

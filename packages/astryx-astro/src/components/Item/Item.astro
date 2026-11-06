@@ -174,8 +174,8 @@ const {
   __markerColumns: hasMarkerColumns = false,
   class: className,
   style,
-  ...rest
-} = Astro.props as Props & InternalProps;
+  slot: _slot, ...rest
+} = Astro.props as Props & InternalProps & {slot?: string};
 
 const Root = asProp ?? 'div';
 const isDelegate = interactiveRef != null && interactiveRef !== '';

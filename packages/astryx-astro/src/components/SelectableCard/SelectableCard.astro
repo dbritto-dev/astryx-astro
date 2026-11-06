@@ -59,8 +59,8 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const {
   label, isSelected = false, isDisabled = false, padding, variant = 'default', elevation = 'none',
-  width, height, maxWidth, type = 'checkbox', name, value, class: className, ...rest
-} = Astro.props;
+  width, height, maxWidth, type = 'checkbox', name, value, class: className, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const {themeClass, attrs} = themeProps('selectable-card', {variant, selected: isSelected ? 'true' : 'false'});
 ---

@@ -89,8 +89,8 @@ const {
   role: _role,
   'aria-label': _ariaLabel,
   'aria-orientation': _ariaOrientation,
-  ...rest
-} = Astro.props as Props & {role?: string; 'aria-label'?: string; 'aria-orientation'?: string};
+  slot: _slot, ...rest
+} = Astro.props as Props & {role?: string & {slot?: string}; 'aria-label'?: string; 'aria-orientation'?: string};
 
 const t = translator(Astro, locale);
 const hasStart = Astro.slots.has('startContent');

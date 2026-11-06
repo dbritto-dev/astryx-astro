@@ -49,8 +49,8 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const {
   columns, rowHeight, width, height, maxWidth, minHeight, gap, rowGap, columnGap, align, justify,
-  class: className, style, ...rest
-} = Astro.props;
+  class: className, style, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const spacingVarNames: Record<string, string> = {
   0: '--spacing-0', 0.5: '--spacing-0-5', 1: '--spacing-1', 1.5: '--spacing-1-5', 2: '--spacing-2', 3: '--spacing-3',

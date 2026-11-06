@@ -33,7 +33,7 @@ export interface Props extends HTMLAttributes<'div'> {
 const DELAY_TIME = 1000;
 const STAGGER_TIME = 100;
 
-const {width = '100%', height = '100%', radius = 3, index = 0, 'data-testid': testId, class: className, style, ...rest} = Astro.props;
+const {width = '100%', height = '100%', radius = 3, index = 0, 'data-testid': testId, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('skeleton');
 const attrs: Record<string, unknown> = {
   'aria-hidden': 'true',

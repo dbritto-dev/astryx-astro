@@ -15,7 +15,7 @@ import './InputGroup.css';
 
 export interface Props extends HTMLAttributes<'div'> {}
 
-const {class: className, style, ...rest} = Astro.props;
+const {class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('input-group-text');
 ---
 <div {...rest} data-astryx-input-group-item="" class={cx(themeClass, className as string | undefined)} style={mergeStyles(style as StyleValue)}><slot /></div>

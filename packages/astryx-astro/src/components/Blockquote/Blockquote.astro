@@ -21,7 +21,7 @@ export interface Props extends Omit<HTMLAttributes<'blockquote'>, 'cite'> {
   cite?: string;
 }
 
-const {cite, class: className, style, ...rest} = Astro.props;
+const {cite, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('blockquote');
 const hasCiteSlot = Astro.slots.has('cite');
 const hasCite = hasCiteSlot || (cite != null && cite !== '');

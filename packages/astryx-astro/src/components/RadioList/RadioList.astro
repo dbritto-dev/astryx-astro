@@ -72,8 +72,8 @@ const {
   htmlName,
   disabledMessage,
   size = 'md',
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const {statusVariant: _ignoredVariant, ...routed} = props as Props & {statusVariant?: unknown};
 const r = routeFieldProps('RadioList', {...(routed as FieldComposedProps & Record<string, unknown>), statusVariant: 'detached'});

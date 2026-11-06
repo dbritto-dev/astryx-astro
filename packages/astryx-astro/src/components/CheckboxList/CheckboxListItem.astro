@@ -91,8 +91,8 @@ const {
   isSelectAll: isSelectAllProp = false,
   locale,
   class: className,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const ctx = readCheckboxListContext(Astro);
 const listCtx = readListContext(Astro);

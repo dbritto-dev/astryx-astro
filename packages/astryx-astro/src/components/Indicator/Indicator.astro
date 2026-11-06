@@ -37,7 +37,7 @@ export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'rol
   theme?: string | null;
 }
 
-const {name, theme, ...props} = Astro.props;
+const {name, theme, slot: _slot, ...props} = Astro.props as typeof Astro.props & {slot?: string};
 const Resolved = getIndicator(name as IndicatorName, Astro, theme) as any;
 const children = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
 ---

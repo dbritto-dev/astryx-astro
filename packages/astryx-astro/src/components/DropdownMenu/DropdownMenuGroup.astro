@@ -23,7 +23,7 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
   title?: string;
 }
 
-const {title, 'aria-labelledby': ariaLabelledBy, ...rest} = Astro.props;
+const {title, 'aria-labelledby': ariaLabelledBy, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const titleHtml = Astro.slots.has('title') ? (await Astro.slots.render('title')).trim() : '';
 const hasTitle = titleHtml !== '' || (title != null && title !== '');
 const headingId = hasTitle ? uid(Astro, 'ax-dropdown-menu-group') : undefined;

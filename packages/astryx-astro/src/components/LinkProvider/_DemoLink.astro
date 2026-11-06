@@ -11,7 +11,7 @@ interface Props {
   as?: LinkComponentType;
   [attr: string]: unknown;
 }
-const {href, as, ...rest} = Astro.props as Props;
+const {href, as, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
 const Tag = resolveLinkComponent(Astro, as) as any;
 const dest = linkDestination(href);
 const isNative = typeof Tag === 'string';

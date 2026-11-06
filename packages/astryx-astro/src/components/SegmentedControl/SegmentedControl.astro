@@ -69,8 +69,8 @@ export interface Props extends HTMLAttributes<'div'> {
 
 const {
   value, label, size: sizeProp, layout = 'hug', isDisabled = false, disabledMessage, locale,
-  class: className, 'aria-describedby': describedBy, ...rest
-} = Astro.props;
+  class: className, 'aria-describedby': describedBy, slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const size: SegmentedControlSize = sizeProp ?? 'md';
 const t = translator(Astro, locale);

@@ -29,7 +29,7 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
   hasCloseOnSelect?: boolean;
 }
 
-const {value, label, hasCloseOnSelect = true, class: className, ...rest} = Astro.props;
+const {value, label, hasCloseOnSelect = true, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const html = await stampRadioGroup(Astro.slots.has('default') ? await Astro.slots.render('default') : '', value, hasCloseOnSelect);
 ---
 <div

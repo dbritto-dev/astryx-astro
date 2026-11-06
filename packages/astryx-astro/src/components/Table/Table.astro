@@ -115,8 +115,8 @@ const {
   rowCount,
   emptyState: emptyStateProp,
   locale: localeProp,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const locale = resolveLocale(Astro, localeProp);
 const t = translator(Astro, localeProp);

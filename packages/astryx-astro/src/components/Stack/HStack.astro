@@ -3,6 +3,6 @@
 import Stack, {type Props as StackProps} from './Stack.astro';
 
 export type Props = Omit<StackProps, 'direction'>;
-const {justify, align, hAlign, vAlign, ...rest} = Astro.props;
+const {justify, align, hAlign, vAlign, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 ---
 <Stack {...rest} direction="horizontal" hAlign={hAlign ?? justify} vAlign={vAlign ?? align}><slot /></Stack>

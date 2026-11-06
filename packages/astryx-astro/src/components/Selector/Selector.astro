@@ -166,8 +166,8 @@ const {
   statusVariant: statusVariantProp = 'attached',
   renderOption,
   renderValue,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && statusVariantProp === 'attached' ? 'detached' : statusVariantProp;
 const r = routeFieldProps('Selector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>, {groupable: true, isReadOnly});

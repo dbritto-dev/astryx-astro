@@ -103,8 +103,8 @@ const {
   'data-testid': testId,
   class: className,
   style,
-  ...rest
-} = Astro.props;
+  slot: _slot, ...rest
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const labelId = uid(Astro, 'ax-progress-label');
 const safeValue = Number.isFinite(value) ? value : 0;

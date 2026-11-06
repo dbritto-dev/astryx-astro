@@ -26,7 +26,7 @@ export interface Props extends Omit<HTMLAttributes<'span'>, 'aria-hidden' | 'rol
   isDisabled?: boolean;
 }
 
-const {state, size = 'md', isDisabled = false, class: className, style, ...rest} = Astro.props;
+const {state, size = 'md', isDisabled = false, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 
 const isChecked = state !== 'unchecked';
 const children = Astro.slots.has('default') ? await Astro.slots.render('default') : '';

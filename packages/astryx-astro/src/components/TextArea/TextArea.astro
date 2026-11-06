@@ -107,8 +107,8 @@ const {
   inputMode,
   autoCapitalize,
   hasAutoCorrect,
-  ...props
-} = Astro.props;
+  slot: _slot, ...props
+} = Astro.props as typeof Astro.props & {slot?: string};
 
 const r = routeFieldProps('TextArea', props as Props & Record<string, unknown>, {isReadOnly});
 const {isDisabled, status, statusVariant} = r;

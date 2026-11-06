@@ -18,7 +18,7 @@ export interface Props extends HTMLAttributes<'div'> {
   rows?: number;
 }
 
-const {columns, rows, class: className, style, ...rest} = Astro.props;
+const {columns, rows, class: className, style, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass, attrs} = themeProps('grid-span');
 ---
 <div
