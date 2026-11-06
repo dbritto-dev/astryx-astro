@@ -28,7 +28,7 @@
  * edit a text field first; nested toolbars and layers (`[role="toolbar"], [popover]`) keep their
  * own keys (elements/runtime/roving.ts). A keyboard hint ("← → to navigate", aria-hidden)
  * appears below the item on the first keyboard entry and goes on the first arrow, after 3 s or
- * when focus leaves (behaviors/keyboardHint.ts).
+ * when focus leaves (elements/runtime/keyboardHint.ts).
  *
  * Groups and separators: Astryx 0.7.9 has no Toolbar sub-components; group related actions with
  * a ButtonGroup (its own roving group inside the row) and separate areas with a vertical
@@ -143,4 +143,4 @@ const {themeClass, attrs: themeAttrs} = themeProps('toolbar', {size});
   )}<Layer id={hintId} placement="below" alignment="start" offset="var(--spacing-2)" class="ax-keyboard-hint"><span aria-hidden="true"><span class="ax-keyboard-hint-keys">{hintKeys.map((key) => <Kbd keys={key} locale={locale} />)}</span><span class="ax-keyboard-hint-label">{t('@astryx.keyboardHint.toNavigate')}</span></span></Layer></div>
 </Section>
 <script>import '../../elements/runtime/roving';</script>
-<script>import '../../behaviors/keyboardHint';</script>
+<script>import '../../elements/runtime/keyboardHint';</script>

@@ -18,6 +18,7 @@ listener.** Register with these modules instead.
 | `tooltip.ts` | Tooltip/useTooltip.tsx, HoverCard/useHoverCard.tsx, InfoTip, utils/triggerFocus.ts |
 | `popover.ts` | Popover/usePopover.tsx, Popover/Popover.tsx, useFocusTrap containment |
 | `roving.ts` | hooks/useListFocus.ts, hooks/isRtlElement.ts |
+| `keyboardHint.ts` | hooks/useKeyboardHint.tsx |
 | `typeahead.ts` | utils/typeaheadMatch.ts, hooks/useTypeahead.ts |
 | `disabledInteraction.ts` | utils/disabledInteraction.ts (AST-085) |
 | `dom.ts` | utils/ime.ts, hooks/focusableSelector.ts, utils/isFocusDetached.ts |
@@ -207,7 +208,62 @@ Skips `aria-disabled="true"`/`disabled` items and items under a `hidden`/`inert`
 horizontal arrows follow the computed direction (RTL). A component handler that
 `preventDefault()`s a key wins. Imperative: `createRovingFocus(container, options)` →
 `{getItems, ownsEvent, handleKeyDown, handleFocus, focusItem, focusFirst, focusLast,
-syncTabStops}`; `rovingFor(container)`; `syncRovingTabStops(root)`.
+syncTabStops}`; `rovingFor(container)`.
+
+| Export | |
+|---|---|
+| `syncRovingTabStops(root?)` | stamp the stop of every container under `root` **and every container enclosing it**, inner first; call it after placing a stop yourself (SegmentedControl, `data-astryx-roving-tabindex="false"`) |
+| `onRovingKeyDown(container, fn)` | run `fn` for keydowns the delegated pass brings to `container`: after nested lists, only while not `defaultPrevented`, before its arrows / typeahead (where a composite's extra key handlers run, e.g. the keyboard hint); `preventDefault()` keeps the container from handling the key; returns unsubscribe |
+
+**Nested lists** (a ButtonGroup inside a Toolbar) follow useListFocus under React's order:
+
+- An outer list sweeps the inner list's items into its own order unless its boundary stops at
+  the inner container. A Toolbar (`[role="toolbar"], [popover]`) does not stop at a
+  ButtonGroup (`role="group"`), so the group's members are Toolbar items too; a nested
+  Toolbar or a layer is its own list.
+- Keydown: innermost container first, then each enclosing one while nothing has prevented the
+  key. An arrow the group consumes (←/→/Home/End in a horizontal group, wrapping inside it)
+  never reaches the Toolbar; one it ignores (↓ in a horizontal group inside a vertical
+  Toolbar) moves through the Toolbar's order.
+- Tab stops: inner containers sync before the ones enclosing them (a child's layout effect
+  runs before its parent's) on load, for DOM changes (an item added, disabled, hidden; a
+  group inserted) and after every focus or tab-stop move; an outer sync keeps the first item
+  already at `tabindex="0"`, so the whole composite keeps one stop. On load a Toolbar
+  containing a ButtonGroup therefore stops on the group's first member, as in Astryx.
+
+## keyboardHint.ts — useKeyboardHint
+
+An ephemeral "← → to navigate" badge for roving composites (Toolbar, SegmentedControl,
+TabList). It shows below the focused item on the first keyboard focus (`:focus-visible`) that
+enters the composite from outside, follows focus within, and is spent — never shown again for
+that composite — by the first arrow key, after 3 s, or when focus leaves. Focus inside one of
+the composite's own layers (`[popover]`) neither shows nor spends it. On a roving container
+the arrow check runs through `onRovingKeyDown`, so an arrow a nested list consumed (a
+ButtonGroup inside a Toolbar) leaves the Toolbar's hint up, re-anchored, as in Astryx.
+
+Markup (render it inside the composite; strings come from the server, the layer is
+`aria-hidden` content):
+
+```astro
+<div role="toolbar" data-astryx-roving="horizontal" data-ax-keyboard-hint={hintId}>
+  …items…
+  <Layer id={hintId} class="ax-keyboard-hint" placement="below" alignment="start" offset="var(--spacing-2)">
+    <span aria-hidden="true"><span class="ax-keyboard-hint-keys"><Kbd keys="left" /><Kbd keys="right" /></span><span class="ax-keyboard-hint-label">{t('@astryx.keyboardHint.toNavigate')}</span></span>
+  </Layer>
+</div>
+<script>import '../../elements/runtime/keyboardHint';</script>
+```
+
+Attribute wiring: `data-ax-keyboard-hint="<layer id>"` on the composite (+ optional
+`data-ax-keyboard-hint-ms`); importing the module wires every such element, later ones too.
+An empty value is not a composite (SegmentedControl marks its layer that way and drives it).
+
+| Export | |
+|---|---|
+| `createKeyboardHint(container, {layer, dismissAfterMs = 3000, isEnabled?})` | a controller for a custom element: `layer` is the `<ax-layer>` or a finder; `isEnabled()` is read on every focus entry (SegmentedControl: `!isDisabled`) |
+| `hint.attach()` | adds `focusin` / `focusout` / `astryx-open-change` on the container and the keydown (via `onRovingKeyDown`, else a container listener); returns `detach` (removes them, hides the hint). The spent state survives detach/attach (an element that is moved keeps it) |
+| `hint.handleFocusIn / handleFocusOut / handleKeyDown(e)` | the handlers, for callers that route events themselves |
+| `hint.dismiss()`, `hint.isVisible`, `hint.isDismissed` | |
 
 ## typeahead.ts
 

@@ -49,7 +49,8 @@ introduces a provider/consumer key, slot convention or runtime API.
   `layer.ts` (`LayerElement` base class, `<ax-layer>`, `show/hide/open/close/toggle`,
   `astryx-open-change`), `tooltip.ts` (`<ax-tooltip>`, `<ax-hover-card>`), `popover.ts`
   (`<ax-popover>`), `roving.ts` (`data-astryx-roving*`, manages tabindex, click moves the
-  stop), `typeahead.ts`, `disabledInteraction.ts`.
+  stop; nested lists sync inner first and every enclosing list re-syncs; `onRovingKeyDown`),
+  `keyboardHint.ts` (useKeyboardHint), `typeahead.ts`, `disabledInteraction.ts`.
 - Build new layered widgets (menus, comboboxes, dialogs, sheets) on `LayerElement` +
   `registerLayer`; never add another document Escape/outside listener.
 
@@ -108,8 +109,12 @@ SizeContext), closing through `popovertarget` + `popovertargetaction="hide"`.
   bounded by `[role="group"], [popover]`; Toolbar items `button, input, a[href], [tabindex]`
   bounded by `[role="toolbar"], [popover]` with the caret guard.
 - Toolbar slots: `startContent`, `centerContent`, `endContent`; container-side edge compensation
-  on the start/end slots. Keyboard hint: `behaviors/keyboardHint.ts`
-  (`data-ax-keyboard-hint="<ax-layer id>"` on any roving container).
+  on the start/end slots. Keyboard hint: `elements/runtime/keyboardHint.ts`
+  (`data-ax-keyboard-hint="<ax-layer id>"` on any roving container; `behaviors/keyboardHint.ts`
+  is gone).
+- Toolbar > ButtonGroup (useListFocus nesting): the group's members are Toolbar items too; the
+  composite keeps one Tab stop, on load the group's first member; ←/→/Home/End inside a
+  horizontal group stay in the group (wrapping), keys it ignores move through the Toolbar.
 
 ## Indicators (form controls build on these)
 
@@ -179,8 +184,10 @@ Root theme: spread `themeRootAttributes(name, mode)` (theme/themeRoot.ts) on `<h
   the control (ButtonGroup/Toolbar, cascade key `size`) sizes the root and its segments.
 - Keyboard hint (useKeyboardHint): `<Layer class="ax-keyboard-hint" placement="below"
   alignment="start" offset="var(--spacing-2)" data-ax-keyboard-hint>` inside the composite,
-  shown by the element on keyboard focus entry (`elements/segmented-control.ts`) — reusable for
-  TabList / Toolbar once lifted into the runtime.
+  driven by the element through the runtime (`createKeyboardHint(this, {layer, isEnabled})` in
+  `elements/runtime/keyboardHint.ts`). TabList: use the same module (attribute or imperative).
+- The element places its own stop (`data-astryx-roving-tabindex="false"`) and then calls
+  `syncRovingTabStops(this)`, so a Toolbar that sweeps the segments into its items keeps one stop.
 
 ## Syntax tokens
 
@@ -233,3 +240,6 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   (NumberInput), `{value: File|File[]|null}` (FileInput); `astryx-enter` on TextInput/NumberInput.
 - InputGroup follows 0.7.9 code: members keep borders, overlap by one border width and square
   inner corners; the group paints no border.
+- Fixed: nested roving containers (a Toolbar containing a ButtonGroup that isn't first) produced
+  two Tab stops. Containers now sync inner first and every enclosing container re-syncs on
+  focus, keyboard moves and DOM changes (`tools/tests/roving-nested.test.mjs`).

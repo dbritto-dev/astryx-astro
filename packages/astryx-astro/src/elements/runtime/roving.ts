@@ -21,6 +21,19 @@
  *   data-astryx-roving-focus="last-input"           move focus with the last input's ring
  *   data-astryx-roving-typeahead                    type-to-focus by item text (typeahead.ts)
  *
+ * Nested lists (a ButtonGroup inside a Toolbar) follow React's order for nested composites,
+ * as useListFocus sees it:
+ *  - Items: an outer list sweeps the inner list's items into its own order unless its boundary
+ *    selector stops at the inner container (a Toolbar's `[role="toolbar"], [popover]` does not
+ *    stop at a ButtonGroup's `role="group"`, so the group's members are Toolbar items too).
+ *  - Keys: the innermost container handles a keydown first; each enclosing container runs
+ *    only while nothing has prevented the key (Astryx composites skip a defaultPrevented key),
+ *    so an arrow the inner list consumed never reaches the outer one, and a key it ignores (an
+ *    ArrowDown in a horizontal group inside a vertical toolbar) moves through the outer list.
+ *  - Tab stops: containers sync inner first, then each enclosing one (a child's layout effect
+ *    runs before its parent's), on load, on DOM changes and after every focus or tab-stop move;
+ *    the outer sync keeps the first item already holding `tabindex="0"`, so one stop remains.
+ *
  * Deviation: when an item takes focus by a click or by script, it becomes the tab stop (APG);
  * Astryx keeps the previous stop until the next arrow key.
  */
@@ -166,6 +179,9 @@ export function createRovingFocus(container: HTMLElement, options: RovingOptions
     if (o.hasRovingTabIndex) for (const el of items) setTabIndex(el, el === target ? 0 : -1);
     if (o.focusFollowsLastInput) focusForLastInput(target);
     else target.focus();
+    // The stop moved inside this list: every enclosing list re-syncs (the focusin pass does
+    // too, but not when focus could not land on the target).
+    syncEnclosing(container);
   };
 
   const focusItem = (index: number) => {
@@ -265,6 +281,7 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
 
 // ── Attribute-driven containers: one delegated listener set per document ──
 const instances = new WeakMap<HTMLElement, RovingFocus & {typeahead?: Typeahead}>();
+const keyListeners = new WeakMap<HTMLElement, Set<(event: KeyboardEvent) => void>>();
 
 /** The roving controller for a `[data-astryx-roving]` container (created on demand). */
 export function rovingFor(container: HTMLElement): RovingFocus {
@@ -276,6 +293,22 @@ export function rovingFor(container: HTMLElement): RovingFocus {
   return r;
 }
 
+/**
+ * Run `listener` for each keydown the delegated roving pass brings to `container` (a
+ * `[data-astryx-roving]` element): after nested lists had their turn, only while no handler has
+ * prevented the key, and right before the container's own arrow / typeahead handling — where
+ * an Astryx composite calls its extra key handlers (useKeyboardHint's `onKeyDown`) before
+ * useListFocus's. Calling `preventDefault()` keeps the container from handling the key.
+ * Returns the unsubscribe function.
+ */
+export function onRovingKeyDown(container: HTMLElement, listener: (event: KeyboardEvent) => void): () => void {
+  let set = keyListeners.get(container);
+  if (!set) keyListeners.set(container, (set = new Set()));
+  set.add(listener);
+  return () => { set.delete(listener); };
+}
+
+/** `[data-astryx-roving]` containers from `target` outward: the innermost first. */
 function containersFrom(target: EventTarget | null): HTMLElement[] {
   const out: HTMLElement[] = [];
   let node = target instanceof Element ? target.closest<HTMLElement>(`[${ATTR}]`) : null;
@@ -283,6 +316,26 @@ function containersFrom(target: EventTarget | null): HTMLElement[] {
     out.push(node);
     node = node.parentElement?.closest<HTMLElement>(`[${ATTR}]`) ?? null;
   }
+  return out;
+}
+
+/** Sync each container once, every container before the ones enclosing it (reverse document order). */
+function syncInOrder(containers: Iterable<HTMLElement>): void {
+  const list = [...new Set(containers)].filter((c) => c.isConnected);
+  list.sort((a, b) => (a === b ? 0 : a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? 1 : -1));
+  for (const c of list) rovingFor(c).syncTabStops();
+}
+
+/** Re-sync the lists enclosing `container` (the closest first), after its stop moved. */
+function syncEnclosing(container: HTMLElement): void {
+  for (const c of containersFrom(container.parentElement)) rovingFor(c).syncTabStops();
+}
+
+/** `root` (when it is a container), the containers inside it, and the ones enclosing it. */
+function containersAround(root: ParentNode, out: HTMLElement[] = []): HTMLElement[] {
+  if (root instanceof HTMLElement && root.matches(`[${ATTR}]`)) out.push(root);
+  out.push(...root.querySelectorAll<HTMLElement>(`[${ATTR}]`));
+  if (root instanceof Element) out.push(...containersFrom(root.parentElement));
   return out;
 }
 
@@ -301,11 +354,14 @@ function typeaheadFor(container: HTMLElement, roving: RovingFocus & {typeahead?:
   return roving.typeahead;
 }
 
-/** Stamp the tab stop of every roving container under `root` (runs on load and for added nodes). */
+/**
+ * Stamp the tab stop of every roving container under `root` and of every container enclosing
+ * it — inner containers first — so nested lists keep one stop. Runs on load, for DOM changes
+ * and after focus moves; call it after moving a stop yourself (e.g. a list with
+ * `data-astryx-roving-tabindex="false"` that places its own stop).
+ */
 export function syncRovingTabStops(root: ParentNode = document): void {
-  const list = root instanceof HTMLElement && root.matches(`[${ATTR}]`) ? [root] : [];
-  list.push(...root.querySelectorAll<HTMLElement>(`[${ATTR}]`));
-  for (const c of list) rovingFor(c).syncTabStops();
+  syncInOrder(containersAround(root));
 }
 
 const LISTENING = Symbol.for('astryx-astro/roving/v1');
@@ -315,9 +371,13 @@ function listen(doc: Document) {
   if (holder[LISTENING]) return;
   Object.defineProperty(holder, LISTENING, {value: true});
   doc.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented) return;
-    // The innermost container that owns the event handles it (a nested list stops here).
+    // Innermost container first, as React bubbles a keydown through nested composites; a
+    // level runs only while nothing prevented the key (a nested list that moved focus did).
     for (const container of containersFrom(event.target)) {
+      if (event.defaultPrevented) return;
+      const listeners = keyListeners.get(container);
+      if (listeners) for (const listener of [...listeners]) listener(event);
+      if (event.defaultPrevented) return;
       const roving = rovingFor(container);
       if (!roving.ownsEvent(event)) continue;
       if (container.hasAttribute('data-astryx-roving-typeahead') && typeaheadFor(container, roving).onKeyDown(event)) {
@@ -325,38 +385,38 @@ function listen(doc: Document) {
         return;
       }
       roving.handleKeyDown(event);
-      return;
     }
   });
   doc.addEventListener('focusin', (event) => {
-    for (const container of containersFrom(event.target)) {
-      const roving = rovingFor(container);
-      if (roving.getItems().some((item) => item === event.target || item.contains(event.target as Node))) {
-        roving.handleFocus(event);
-        return;
-      }
-    }
+    // Every enclosing list syncs (each composite's onFocus runs handleFocus), innermost first.
+    for (const container of containersFrom(event.target)) rovingFor(container).handleFocus(event);
   });
   const start = () => {
     syncRovingTabStops(doc);
     if (typeof MutationObserver === 'undefined') return;
-    let pending = new Set<HTMLElement>();
+    let pending: HTMLElement[] = [];
     let queued = false;
     new MutationObserver((records) => {
       for (const r of records) {
-        const host = (r.target instanceof Element ? r.target : r.target.parentElement)?.closest<HTMLElement>(`[${ATTR}]`);
-        if (host) pending.add(host);
+        if (r.type === 'attributes') {
+          // An item toggled disabled / hidden, or a wrapper hid a part of a list (or a list).
+          if (r.target instanceof HTMLElement) containersAround(r.target, pending);
+          continue;
+        }
+        const target = r.target instanceof Element ? r.target : r.target.parentElement;
+        const host = target?.closest<HTMLElement>(`[${ATTR}]`);
+        if (host) pending.push(host, ...containersFrom(host.parentElement));
         r.addedNodes.forEach((n) => {
-          if (n instanceof HTMLElement && (n.matches(`[${ATTR}]`) || n.querySelector(`[${ATTR}]`))) pending.add(n);
+          if (n instanceof HTMLElement && (n.matches(`[${ATTR}]`) || n.querySelector(`[${ATTR}]`))) containersAround(n, pending);
         });
       }
-      if (queued || pending.size === 0) return;
+      if (queued || pending.length === 0) return;
       queued = true;
       queueMicrotask(() => {
         queued = false;
         const batch = pending;
-        pending = new Set();
-        for (const el of batch) if (el.isConnected) syncRovingTabStops(el);
+        pending = [];
+        syncInOrder(batch);
       });
     }).observe(doc.documentElement, {subtree: true, childList: true, attributes: true, attributeFilter: ['disabled', 'aria-disabled', 'hidden', 'inert', ATTR]});
   };
