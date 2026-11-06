@@ -1,0 +1,18 @@
+/*
+ * Port of @astryxdesign/core AlertDialog/AlertDialog.tsx (styles.action, styles.stackedAction).
+ * The dialog surface is Dialog's (../Dialog/Dialog.css); `astryx-alert-dialog` is the theme
+ * target on the same root. The runtime (elements/alert-dialog.ts) writes the narrow layout
+ * (`data-ax-stacked`, the vertical Stack attributes, action above Cancel); without it the
+ * media query below stacks the row visually (action above Cancel), so the layout holds.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-alert-dialog-action { max-width: 100%; min-width: 0; }
+  .ax-alert-dialog-actions[data-ax-stacked] > .ax-alert-dialog-action { width: 100%; }
+
+  @media (max-width: 640px) {
+    .ax-alert-dialog-actions:not([data-ax-stacked]) { flex-direction: column-reverse; align-items: stretch; flex-wrap: nowrap; }
+    .ax-alert-dialog-actions:not([data-ax-stacked]) > .ax-alert-dialog-action { width: 100%; }
+  }
+}

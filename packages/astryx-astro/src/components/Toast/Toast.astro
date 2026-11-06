@@ -1,0 +1,54 @@
+---
+/**
+ * Toast — a brief, non-blocking notification card, rendered in place. Port of
+ * @astryxdesign/core Toast/Toast.tsx (+ theme/MediaTheme.tsx, hooks/useAutoMediaMode.ts).
+ * Behaviour: src/elements/toast.ts (`<ax-toast>`).
+ *
+ * For production use, raise toasts with `toast({...})` from src/elements/toast.ts (Astryx
+ * `useToast()`): ToastViewport stacks them, times them out and announces them. This component
+ * renders one card inline for previews, documentation and static showcases.
+ *
+ * The card is an inverted surface (`--color-background-inverted`, error:
+ * `--color-background-error-inverted`) with a MediaTheme wrapper whose `data-astryx-media`
+ * side is measured from the painted colors on the client (server fallback: dark). It is its
+ * own live region (role="status", or role="alert" for errors). The auto-hide timer (default on
+ * for info, off for error; 5000ms) pauses while the pointer is over it, focus is inside, the
+ * window is blurred or the page is hidden.
+ *
+ * Events: `astryx-dismiss` `{reason: 'auto' | 'manual'}` (bubbles) when the timer ends or the
+ * dismiss button is pressed (Astryx `onDismiss`); the card stays until you remove it.
+ * Slots: default (body, or the `body` prop), `endContent` (a short action), `content`
+ * (Astryx `renderContent`: replaces the whole layout; compose your own close control).
+ * `uniqueID`, `collisionBehavior` and `onHide` belong to the viewport queue: pass them to
+ * `toast()`. Deferred (touch extra): swipe-to-dismiss.
+ *
+ * @example
+ * <Toast body="Changes saved" />
+ * <Toast type="error" body="Upload failed"><Button slot="endContent" label="Retry" size="sm" /></Toast>
+ */
+import Card from './_ToastCard.astro';
+import './Toast.css';
+
+export interface Props {
+  /** Primary message (or the default slot). */
+  body?: string;
+  /** @default 'info' */
+  type?: 'info' | 'error';
+  /** Auto-dismiss; defaults to true for info, false for error. */
+  isAutoHide?: boolean;
+  /** Milliseconds before auto-dismiss. @default 5000 */
+  autoHideDuration?: number;
+  /** @default translated "Dismiss notification" (`@astryx.toast.dismiss`) */
+  dismissLabel?: string;
+  locale?: string;
+  class?: string;
+  style?: string;
+  id?: string;
+  'data-testid'?: string;
+}
+
+const slot = async (name: string) => (Astro.slots.has(name) ? await Astro.slots.render(name) : undefined);
+const html = {body: await slot('default'), endContent: await slot('endContent'), content: await slot('content')};
+---
+<Card {...Astro.props} html={html} />
+<script>import '../../elements/toast';</script>

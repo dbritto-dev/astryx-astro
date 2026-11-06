@@ -1,0 +1,77 @@
+---
+/**
+ * ToastViewport — the stack `toast()` shows notifications in. Port of @astryxdesign/core
+ * Toast/ToastViewport.tsx (+ Layer/toastHost.tsx, Layer/modalOutlet.ts, Layer/layerInset.ts).
+ * Behaviour: src/elements/toast.ts (`<ax-toast-viewport>`). Render it once, in the app layout
+ * (LayerProvider's `toast` config maps to these props); `toast()` creates a fallback viewport
+ * when the page has none.
+ *
+ * The viewport is a `popover="manual"` top-layer region (role="region", named by the
+ * translated "Notifications" while it holds toasts), fixed to a corner inside the safe-area
+ * gutters plus `--astryx-layer-inset-*` (LayerProvider inset, or `layerInset` here; `inset`
+ * overrides per edge for toasts only). While a native modal is open it moves into the latest
+ * one so toasts paint above it and stay operable (`isTopLayer={false}` renders in place).
+ * Toasts never take focus: F6 moves focus into the newest one, and focus a dismissed toast held
+ * goes to its neighbour or back where it came from. Each toast is announced once (assertive
+ * for errors), in the open modal's own live region when one is open.
+ *
+ * Server markup: the viewport plus a `<template>` holding the card with the translated dismiss
+ * label (elements never translate in the browser).
+ *
+ * @example
+ * <ToastViewport position="topEnd" maxVisible={3} />
+ * <script>import {toast} from 'astryx-astro/…/elements/toast'; toast({body: 'Saved'});</script>
+ */
+import Card from './_ToastCard.astro';
+import {mergeStyles, cssSize, type StyleValue} from '../../lib/style';
+import {insetVars, type LayerInset} from '../Layer/layer';
+import {translator} from '../../lib/i18n';
+import '../Dialog/overlay.css';
+import './Toast.css';
+
+export type ToastPosition = 'topEnd' | 'topStart' | 'bottomEnd' | 'bottomStart';
+
+export interface Props {
+  /** Corner the stack grows from. @default 'bottomEnd' */
+  position?: ToastPosition;
+  /** Maximum visible toasts; older ones wait. 0 shows all. @default 5 */
+  maxVisible?: number;
+  /** Toast-only offsets (px) that override the layer inset per edge. */
+  inset?: {top?: number; bottom?: number; start?: number; end?: number};
+  /** The app's declared viewport inset (LayerProvider `inset`). */
+  layerInset?: LayerInset;
+  /** Promote to the top layer and follow open modals. @default true */
+  isTopLayer?: boolean;
+  /** Region name. @default translated "Notifications" (`@astryx.toast.viewport`) */
+  label?: string;
+  /** @default translated "Dismiss notification" (`@astryx.toast.dismiss`) */
+  dismissLabel?: string;
+  id?: string;
+  locale?: string;
+}
+
+const {position = 'bottomEnd', maxVisible = 5, inset, layerInset, isTopLayer = true, label, dismissLabel, id, locale} = Astro.props;
+const t = translator(Astro, locale);
+const insetStyle = mergeStyles(
+  insetVars(layerInset),
+  {
+    top: inset?.top ? cssSize(inset.top) : undefined,
+    bottom: inset?.bottom ? cssSize(inset.bottom) : undefined,
+    insetInlineStart: inset?.start ? cssSize(inset.start) : undefined,
+    insetInlineEnd: inset?.end ? cssSize(inset.end) : undefined,
+  } as StyleValue,
+);
+---
+<div class="ax-toast-home">
+  <ax-toast-viewport
+    id={id}
+    class="ax-toast-viewport ax-overlay-root"
+    popover={isTopLayer ? 'manual' : undefined}
+    data-astryx-layer-root=""
+    data-position={position}
+    data-max-visible={maxVisible}
+    data-ax-label={label ?? t('@astryx.toast.viewport')}
+    style={insetStyle}
+  ><template data-ax-toast-template><Card isLiveRegion={false} dismissLabel={dismissLabel} locale={locale} /></template></ax-toast-viewport>
+</div>
+<script>import '../../elements/toast';</script>

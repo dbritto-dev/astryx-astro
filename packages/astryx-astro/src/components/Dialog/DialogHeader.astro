@@ -1,0 +1,51 @@
+---
+/**
+ * DialogHeader — the title row of a Dialog: a title, optional subtitle, start/end content and
+ * a close button. Port of @astryxdesign/core Dialog/DialogHeader.tsx (on Layout/LayoutHeader).
+ * Place it in a Layout's `header` slot inside the Dialog so the dialog inset is not doubled.
+ *
+ * The title renders in a focusable h2 (tabindex="-1"): it names the parent Dialog through
+ * aria-labelledby (unless the Dialog has its own aria-label / aria-labelledby) and takes focus
+ * when the dialog opens (unless content carries `data-autofocus`). Keep it inline and
+ * non-interactive. Inline (preview) dialogs never move focus.
+ *
+ * `hasCloseButton` is the Astro face of Astryx's `onOpenChange` (a close button renders only
+ * when it is set): a ghost icon-only Button labelled with the translated "Close"
+ * (`@astryx.dialog.close`, override with `closeLabel`) that closes the dialog with zero JS
+ * (Dialog points it at itself as a `command="close"` invoker). Its end-slot edge compensation
+ * follows Astryx: automatic with the close button, or chosen with `endContentEdgeCompensation`.
+ *
+ * Slots: `title` / `subtitle` (or the string props), `startContent`, `endContent`.
+ * Theme targets: astryx-dialog-header, -start-content, -title-block, -end-content, -close-icon.
+ *
+ * @example
+ * <DialogHeader slot="header" title="Share" subtitle="Anyone with the link can view" hasCloseButton />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import OverlayHeader from './_OverlayHeader.astro';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Title text (or the `title` slot for inline markup); names the dialog. */
+  title?: string;
+  /** Secondary text below the title (or the `subtitle` slot; inline content only). */
+  subtitle?: string;
+  /** Render the close button (Astryx: passing `onOpenChange`). @default false */
+  hasCloseButton?: boolean;
+  /** End-slot compensation axes; omitted keeps the automatic close-button compensation. */
+  endContentEdgeCompensation?: 'inline' | 'block' | 'all';
+  /** Border at the bottom edge; unset follows the parent Layout's `defaultHasDividers`. */
+  hasDivider?: boolean;
+  /** @default translated "Close" (`@astryx.dialog.close`) */
+  closeLabel?: string;
+  locale?: string;
+}
+
+const slot = async (name: string) => (Astro.slots.has(name) ? await Astro.slots.render(name) : undefined);
+const html = {
+  title: await slot('title'),
+  subtitle: await slot('subtitle'),
+  startContent: await slot('startContent'),
+  endContent: await slot('endContent'),
+};
+---
+<OverlayHeader {...Astro.props} kind="dialog" html={html} />

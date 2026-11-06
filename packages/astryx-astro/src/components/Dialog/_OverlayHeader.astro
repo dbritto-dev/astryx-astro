@@ -1,0 +1,67 @@
+---
+/**
+ * @internal The header row shared by DialogHeader and DrawerHeader (Astryx keeps two copies of
+ * identical markup and styles: Dialog/DialogHeader.tsx, Drawer/DrawerHeader.tsx). `kind` picks
+ * the theme targets (`astryx-<kind>-header*`) and the Dialog-only title behaviour: a focusable
+ * h2 (tabindex="-1", `data-ax-dialog-title`) that names the dialog and takes focus on open.
+ * The public components render their slots and pass the HTML in `html`.
+ */
+import LayoutHeader from '../Layout/LayoutHeader.astro';
+import Heading from '../Text/Heading.astro';
+import Text from '../Text/Text.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import {translator} from '../../lib/i18n';
+
+export interface Props {
+  kind: 'dialog' | 'drawer';
+  title?: string;
+  subtitle?: string;
+  hasCloseButton?: boolean;
+  endContentEdgeCompensation?: 'inline' | 'block' | 'all';
+  hasDivider?: boolean;
+  closeLabel?: string;
+  locale?: string;
+  html: {title?: string; subtitle?: string; startContent?: string; endContent?: string};
+  [key: string]: unknown;
+}
+
+const {
+  kind, title, subtitle, hasCloseButton = false, endContentEdgeCompensation, hasDivider, closeLabel,
+  locale, html, slot: _slot, ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const label = closeLabel ?? t('@astryx.dialog.close');
+const filled = (s: string | undefined) => s != null && s.trim() !== '';
+const hasStart = filled(html.startContent);
+const hasEnd = filled(html.endContent);
+const hasSubtitle = filled(html.subtitle) || (subtitle != null && subtitle !== '');
+const compBlock = endContentEdgeCompensation == null ? hasCloseButton : endContentEdgeCompensation === 'block' || endContentEdgeCompensation === 'all';
+const compInline = endContentEdgeCompensation == null ? hasCloseButton : endContentEdgeCompensation === 'inline' || endContentEdgeCompensation === 'all';
+const isDialog = kind === 'dialog';
+const titleAttrs = isDialog ? {tabindex: '-1', class: 'ax-dialog-header-title', 'data-ax-dialog-title': ''} : {};
+---
+<LayoutHeader hasDivider={hasDivider} {...rest}>
+  <div class={`astryx-${kind}-header`}>
+    {hasStart && <div class={`astryx-${kind}-header-start-content`}><Fragment set:html={html.startContent} /></div>}
+    <div class={`astryx-${kind}-header-title-block`}>
+      <Heading level={2} {...titleAttrs}>{filled(html.title) ? <Fragment set:html={html.title} /> : title}</Heading>
+      {hasSubtitle && <Text type="body" size="sm" color="secondary">{filled(html.subtitle) ? <Fragment set:html={html.subtitle} /> : subtitle}</Text>}
+    </div>
+    {(hasEnd || hasCloseButton) && (
+      <div
+        class={`astryx-${kind}-header-end-content`}
+        data-ax-comp-block={compBlock ? '' : undefined}
+        data-ax-comp-inline={compInline ? '' : undefined}
+      >
+        {hasEnd && <Fragment set:html={html.endContent} />}
+        {hasCloseButton && (
+          <IconButton variant="ghost" label={label} tooltip={label} data-ax-dialog-close="">
+            <Icon slot="icon" icon="close" color="inherit" class={`astryx-${kind}-header-close-icon`} />
+          </IconButton>
+        )}
+      </div>
+    )}
+  </div>
+</LayoutHeader>

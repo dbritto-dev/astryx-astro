@@ -1,0 +1,46 @@
+---
+/**
+ * DrawerHeader — the title row of a Drawer; the same API as DialogHeader. Port of
+ * @astryxdesign/core Drawer/DrawerHeader.tsx (on Layout/LayoutHeader). Compose it in a Layout's
+ * `header` slot inside the Drawer so the drawer inset is not doubled.
+ *
+ * Two differences from DialogHeader, as in Astryx: it never moves focus (Drawer focuses
+ * `[data-autofocus]`, else its body) and it does not name the drawer (Drawer's `label` does).
+ * `hasCloseButton` (Astryx: passing `onOpenChange`) renders the ghost icon-only close Button
+ * with the translated "Close" (`@astryx.dialog.close`, override with `closeLabel`); the Drawer
+ * points it at itself as a native invoker.
+ *
+ * Slots: `title` / `subtitle` (or the string props), `startContent`, `endContent`.
+ * Theme targets: astryx-drawer-header, -start-content, -title-block, -end-content, -close-icon.
+ *
+ * @example
+ * <DrawerHeader slot="header" title="web-01" subtitle="us-east-1" hasCloseButton />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import OverlayHeader from '../Dialog/_OverlayHeader.astro';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Title text, rendered as an h2 (or the `title` slot). */
+  title?: string;
+  /** Secondary text below the title (or the `subtitle` slot; inline content only). */
+  subtitle?: string;
+  /** Render the close button (Astryx: passing `onOpenChange`). @default false */
+  hasCloseButton?: boolean;
+  /** End-slot compensation axes; omitted keeps the automatic close-button compensation. */
+  endContentEdgeCompensation?: 'inline' | 'block' | 'all';
+  /** Border at the bottom edge; unset follows the parent Layout's `defaultHasDividers`. */
+  hasDivider?: boolean;
+  /** @default translated "Close" (`@astryx.dialog.close`) */
+  closeLabel?: string;
+  locale?: string;
+}
+
+const slot = async (name: string) => (Astro.slots.has(name) ? await Astro.slots.render(name) : undefined);
+const html = {
+  title: await slot('title'),
+  subtitle: await slot('subtitle'),
+  startContent: await slot('startContent'),
+  endContent: await slot('endContent'),
+};
+---
+<OverlayHeader {...Astro.props} kind="drawer" html={html} />

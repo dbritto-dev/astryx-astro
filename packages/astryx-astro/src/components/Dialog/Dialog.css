@@ -1,0 +1,196 @@
+/*
+ * Port of @astryxdesign/core Dialog/Dialog.tsx (styles.dialog, open, openSettled, backdrop,
+ * fullscreen, fullscreenOpen, fullscreenSafeArea, inner, inlineWrapper, dynamicStyles.sizing /
+ * position) and Layout/container.stylex.ts (container({useThemeDefault: 'dialog'})).
+ * Rule groups follow the modal path's stylex.props() order: dialog, open, backdrop, sizing,
+ * position, fullscreen, fullscreenOpen, openSettled; then the inner container; then inline.
+ *
+ * Motion: Astryx runs a keyframe entrance on `open`; here the same entrance is an
+ * `@starting-style` transition (opacity 0 → 1, translate toward the opener's side + 0.95 scale,
+ * --duration-medium-max / --ease-standard), and the exit fades (--duration-exit / --ease-exit)
+ * with `display` and `overlay` as allow-discrete transitions so the dialog stays in the top
+ * layer while it fades (the layer runtime's exit rule; Astryx closes at once). Reduced motion
+ * (media query or a theme's [data-astryx-reduced-motion]): never travels or scales; appears at
+ * once under a fine pointer, cross-fades 200ms on easeInOut under a coarse one.
+ *
+ * Container padding publisher (contract #14): the inner box sets --container-padding-* to the
+ * applied padding; theme chain per edge --astryx-dialog-padding-<edge> → -<axis> → shorthand →
+ * --spacing-4; an explicit `padding` prop arrives as the private, non-inheriting --_ax-pad.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-pad { syntax: "*"; inherits: false; }
+@property --_ax-dialog-width { syntax: "*"; inherits: false; }
+@property --_ax-dialog-max-height { syntax: "*"; inherits: false; }
+@property --_ax-dialog-top { syntax: "*"; inherits: false; }
+@property --_ax-dialog-bottom { syntax: "*"; inherits: false; }
+@property --_ax-dialog-start { syntax: "*"; inherits: false; }
+@property --_ax-dialog-end { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* styles.dialog (the native modal) */
+  .astryx-dialog {
+    position: fixed;
+    margin: auto;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: var(--color-background-surface);
+    --_dialog-radius: var(--radius-container);
+    border-radius: var(--_dialog-radius);
+    box-shadow: var(--shadow-high);
+    display: none;
+    flex-direction: column;
+    height: fit-content;
+    overscroll-behavior: contain;
+    opacity: 0;
+    transform: none;
+    transition-property: opacity, transform, display, overlay;
+    transition-behavior: allow-discrete;
+    transition-duration: var(--duration-exit);
+    transition-timing-function: var(--ease-exit);
+  }
+  /* Forced colors override the backdrop: a 1px border keeps the modal apart from the page. */
+  @media (forced-colors: active) {
+    .astryx-dialog { border-width: 1px; border-style: solid; border-color: CanvasText; }
+  }
+
+  /* open */
+  .astryx-dialog[open] {
+    display: flex;
+    opacity: 1;
+    transition-duration: var(--duration-medium-max);
+    transition-timing-function: var(--ease-standard);
+  }
+  @starting-style {
+    .astryx-dialog[open] {
+      opacity: 0;
+      transform: translate(var(--dialog-dir-x, 0px), var(--dialog-dir-y, 16px)) scale(0.95);
+    }
+  }
+
+  /* backdrop: no blur (a full-viewport blur is costly to repaint); appears with the dialog,
+   * fades with its exit. */
+  .astryx-dialog::backdrop {
+    background-color: var(--color-overlay);
+    opacity: 0;
+    transition-property: opacity, display, overlay;
+    transition-behavior: allow-discrete;
+    transition-duration: var(--duration-exit);
+    transition-timing-function: var(--ease-exit);
+  }
+  .astryx-dialog[open]::backdrop { opacity: 1; transition-duration: 0s; }
+
+  /* dynamicStyles.sizing: the preferred width, clamped to the container and the dynamic
+   * viewport with spacing-token gutters. */
+  .astryx-dialog {
+    width: var(--_ax-dialog-width, 400px);
+    max-width: min(100%, calc(100dvw - var(--spacing-4) - var(--spacing-4)));
+    max-height: var(--_ax-dialog-max-height, 75dvh);
+  }
+
+  /* dynamicStyles.position: logical start/end mirror under RTL; unset edges are auto. */
+  .astryx-dialog[data-ax-positioned] {
+    margin: 0;
+    top: var(--_ax-dialog-top, auto);
+    bottom: var(--_ax-dialog-bottom, auto);
+    inset-inline-start: var(--_ax-dialog-start, auto);
+    inset-inline-end: var(--_ax-dialog-end, auto);
+  }
+
+  /* fullscreen: nothing of the page shows around it, so no radius and no edge. */
+  .astryx-dialog[data-variant="fullscreen"] {
+    width: 100dvw;
+    height: 100dvh;
+    max-width: 100dvw;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-width: 0;
+    margin: 0;
+    inset: 0;
+  }
+  /* fullscreenOpen: fades in without the translate/scale. */
+  @starting-style {
+    .astryx-dialog[data-variant="fullscreen"][open] { transform: none; }
+  }
+
+  /* openSettled: a dialog open on page load opens where it rests (spec:AST-013 FR13). */
+  .astryx-dialog[data-ax-settled],
+  .astryx-dialog[data-ax-settled]::backdrop { transition-duration: 0s; }
+
+  /* Reduced motion: no travel or scale; at once under a fine pointer, a 200ms fade under a
+   * coarse one (design:reduced-motion DR1–DR4). */
+  @media (prefers-reduced-motion: reduce) {
+    @starting-style {
+      .astryx-dialog[open] { transform: none; }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .astryx-dialog,
+    .astryx-dialog[open],
+    .astryx-dialog::backdrop { transition-duration: 0s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-dialog[open] { transition-duration: 200ms; transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  }
+  @starting-style {
+    :where([data-astryx-reduced-motion]) .astryx-dialog[open] { transform: none; }
+  }
+  @media (not (pointer: coarse)) {
+    :where([data-astryx-reduced-motion]) .astryx-dialog,
+    :where([data-astryx-reduced-motion]) .astryx-dialog[open],
+    :where([data-astryx-reduced-motion]) .astryx-dialog::backdrop { transition-duration: 0s; }
+  }
+  @media (pointer: coarse) {
+    :where([data-astryx-reduced-motion]) .astryx-dialog[open] { transition-duration: 200ms; transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  }
+
+  /* inner + container({useThemeDefault: 'dialog'}) / container({padding}) */
+  .ax-dialog-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    box-sizing: border-box;
+    --container-padding-inline-start: var(--_ax-pad, var(--astryx-dialog-padding-inline-start, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, var(--spacing-4)))));
+    --container-padding-inline-end: var(--_ax-pad, var(--astryx-dialog-padding-inline-end, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, var(--spacing-4)))));
+    --container-padding-block-start: var(--_ax-pad, var(--astryx-dialog-padding-block-start, var(--astryx-dialog-padding, var(--spacing-4))));
+    --container-padding-block-end: var(--_ax-pad, var(--astryx-dialog-padding-block-end, var(--astryx-dialog-padding, var(--spacing-4))));
+    --layout-padding-outer-x: var(--_ax-pad, var(--astryx-dialog-padding-inline-start, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, var(--spacing-4)))));
+    --layout-padding-outer-y: var(--_ax-pad, var(--astryx-dialog-padding-block-start, var(--astryx-dialog-padding, var(--spacing-4))));
+    --layout-padding-inner-x: var(--_ax-pad, var(--astryx-dialog-padding-inline-start, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, var(--spacing-4)))));
+    --layout-padding-inner-y: var(--_ax-pad, var(--astryx-dialog-padding-block-start, var(--astryx-dialog-padding, var(--spacing-4))));
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    padding-inline-start: var(--container-padding-inline-start);
+    padding-inline-end: var(--container-padding-inline-end);
+    padding-block-start: var(--container-padding-block-start);
+    padding-block-end: var(--container-padding-block-end);
+  }
+
+  /* fullscreenSafeArea: the theme-default padding keeps clear of the safe areas; an explicit
+   * prop or theme padding still wins. The published --container-padding-* stay unchanged. */
+  .ax-dialog-inner[data-ax-safe-area] {
+    padding-block-start: var(--astryx-dialog-padding-block-start, var(--astryx-dialog-padding, max(var(--spacing-4), env(safe-area-inset-top, 0px))));
+    padding-block-end: var(--astryx-dialog-padding-block-end, var(--astryx-dialog-padding, max(var(--spacing-4), env(safe-area-inset-bottom, 0px))));
+    padding-inline-start: var(--astryx-dialog-padding-inline-start, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, max(var(--spacing-4), env(safe-area-inset-left, 0px)))));
+    padding-inline-end: var(--astryx-dialog-padding-inline-end, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, max(var(--spacing-4), env(safe-area-inset-right, 0px)))));
+  }
+  .ax-dialog-inner[data-ax-safe-area]:dir(rtl) {
+    padding-inline-start: var(--astryx-dialog-padding-inline-start, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, max(var(--spacing-4), env(safe-area-inset-right, 0px)))));
+    padding-inline-end: var(--astryx-dialog-padding-inline-end, var(--astryx-dialog-padding-inline, var(--astryx-dialog-padding, max(var(--spacing-4), env(safe-area-inset-left, 0px)))));
+  }
+
+  /* inlineWrapper: the dialog's visual styles in flow, without <dialog> behaviour. */
+  .astryx-dialog[data-ax-inline] {
+    position: static;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    display: flex;
+    opacity: 1;
+    transition: none;
+  }
+}
