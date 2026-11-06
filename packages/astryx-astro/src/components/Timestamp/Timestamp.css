@@ -1,0 +1,57 @@
+/*
+ * Port of @astryxdesign/core Timestamp/Timestamp.tsx (styles.time) and
+ * Timestamp/TimestampHoverCard.tsx (styles.dl/row/label/value/action, gridTemplates).
+ * Typography comes from Text (the root carries .astryx-text + .astryx-timestamp[data-format]).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* Reset <time> element defaults */
+  .ax-timestamp-time {
+    display: inline;
+    font-family: inherit;
+    font-style: normal;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    font-weight: inherit;
+  }
+
+  /* The card: a <dl> grid so cells align in columns across rows. */
+  .ax-timestamp-card {
+    display: grid;
+    align-items: center;
+    column-gap: var(--spacing-4);
+    row-gap: var(--spacing-2);
+    margin: 0;
+    padding: 0;
+  }
+  .ax-timestamp-card[data-columns="label-value-action"] { grid-template-columns: auto 1fr auto; }
+  .ax-timestamp-card[data-columns="label-value"] { grid-template-columns: auto 1fr; }
+  .ax-timestamp-card[data-columns="value-action"] { grid-template-columns: 1fr auto; }
+  .ax-timestamp-card[data-columns="value"] { grid-template-columns: 1fr; }
+  .ax-timestamp-card-row { display: contents; }
+  .ax-timestamp-card-label {
+    color: var(--color-text-secondary);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-normal);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+  }
+  .ax-timestamp-card-value {
+    color: var(--color-text-primary);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-weight: var(--font-weight-normal);
+    margin: 0;
+    padding: 0;
+    white-space: nowrap;
+  }
+  .ax-timestamp-card-action {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+}

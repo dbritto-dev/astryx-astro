@@ -1,0 +1,195 @@
+---
+/**
+ * Timestamp — a date/time as human-readable text in a semantic `<time datetime>`, relative
+ * ("2 hours ago"), absolute or auto, with an optional copyable hover card. Port of
+ * @astryxdesign/core Timestamp/Timestamp.tsx and Timestamp/TimestampHoverCard.tsx (formatting:
+ * lib/date formatInstant, formatRelativeTime, formatTooltipLines, timestamp.ts), on Text,
+ * HoverCard, IconButton and the `timestamp-copy` component icon. Behaviour:
+ * src/elements/timestamp.ts (`<ax-timestamp>`, the Text root).
+ *
+ * Rendering follows Astryx's clock rule: absolute formats never read the clock; `relative`,
+ * `relative_short` and `auto` render the full date and time in UTC (labelled) on the server,
+ * and the element switches to the real format in the browser (relative phrase, or for `auto`
+ * past `autoThreshold`, `date_time`), formatted in the viewer's zone and the resolved locale
+ * (`data-locale`; every Intl call gets it explicitly). Absolute formats are re-formatted in
+ * the viewer's zone too, as Astryx's client render is. `data-format` on the root reflects the
+ * effective format (a theme hook). `isLive` re-renders a relative phrase every 1s/30s/1min/5min
+ * by distance (getLiveInterval).
+ *
+ * A relative timestamp gets the full absolute time as its accessible name (zone spelled out)
+ * and a tab stop, and opens a HoverCard (label "Timestamp details", above, any focus) whose
+ * content is a `<dl>` grid: optional label column, value, and an action column with a copy
+ * IconButton (`.astryx-timestamp-copy-button`) for copyable rows — by default one copyable row
+ * with the full absolute time; `tooltipEntries` configures rows (zones, formats, labels) and
+ * attaches the card to absolute formats too. Copy flips copy → check for 1.5s, the tooltip
+ * "Copy" → "Copied", the name "Copy <value>" → "Copied", and announces "Copied".
+ *
+ * Port notes: the card markup ships in a `<template>` the element stamps on connect, because a
+ * `<dl>` written inside a `<p>` would end the paragraph in the HTML parser (Astryx creates it
+ * on the client). The display calendar comes from `Astro.locals.astryxCalendar` (the
+ * InternationalizationProvider calendar). Rest props land on the `<time>` (as in Astryx);
+ * `class`/`style` on the Text root. An unparseable value renders nothing (dev warning).
+ *
+ * @example
+ * <Timestamp value="2026-02-19T17:00:00Z" />
+ * <Timestamp value={1740000000} format="date" />
+ * <Timestamp value={iso} isLive tooltipEntries={[{label: 'Local'}, {timezoneID: 'UTC', label: 'UTC', isCopyable: true}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Text, {type TextColor, type TextSize, type TextType, type TextWeight} from '../Text/Text.astro';
+import HoverCard from '../HoverCard/HoverCard.astro';
+import CopyButton from '../CodeBlock/_CopyButton.astro';
+import {attachHoverCard} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {devWarn} from '../../lib/devWarning';
+import {
+  DEFAULT_AUTO_THRESHOLD,
+  effectiveTimestampFormat,
+  formatInstant,
+  formatTooltipLines,
+  isAbsoluteFormat,
+  isRelativeFormat,
+  parseValue,
+  type TimestampFormat,
+  type TimestampTooltipEntry,
+  type TimestampTooltipLine,
+} from '../../lib/date';
+import {ARG_A, calendarFromLocals} from '../Calendar/calendarModel';
+import './Timestamp.css';
+
+export type {TimestampFormat, TimestampTooltipEntry};
+
+export interface Props extends Omit<HTMLAttributes<'time'>, 'datetime' | 'color'> {
+  /** The date/time: a Unix timestamp (seconds; ms above 1e12) or an ISO 8601 string. */
+  value: string | number;
+  /** @default 'auto' */
+  format?: TimestampFormat;
+  /** Seconds within which 'auto' is relative. @default 604800 (7 days) */
+  autoThreshold?: number;
+  /** Copyable hover card with the full date/time (relative formats, or any with tooltipEntries). @default true */
+  hasTooltip?: boolean;
+  /** Hover card rows: `{timezoneID?, format?, label?, isCopyable?}` each. */
+  tooltipEntries?: ReadonlyArray<TimestampTooltipEntry>;
+  /** Append the zone abbreviation (date_time, time). @default false */
+  isTimezoneShown?: boolean;
+  /** Update a relative phrase live. @default false */
+  isLive?: boolean;
+  /** Semantic text type. @default 'supporting' */
+  type?: TextType;
+  /** Explicit font size override. */
+  size?: TextSize;
+  /** @default 'secondary' */
+  color?: TextColor;
+  weight?: TextWeight;
+  /** Locale for the text, the card and the translated labels (port extension). */
+  locale?: string;
+}
+
+const {
+  value,
+  format = 'auto',
+  autoThreshold = DEFAULT_AUTO_THRESHOLD,
+  hasTooltip = true,
+  tooltipEntries,
+  isTimezoneShown = false,
+  isLive = false,
+  type = 'supporting',
+  size,
+  color = 'secondary',
+  weight,
+  locale: localeProp,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const locale = resolveLocale(Astro, localeProp);
+const t = translator(Astro, localeProp);
+const calendar = calendarFromLocals(undefined, Astro, 'Timestamp');
+const date = parseValue(value);
+const isValidDate = !Number.isNaN(date.getTime());
+if (!isValidDate) devWarn('Timestamp', `could not parse value ${JSON.stringify(value)} as a date. Rendering nothing.`);
+
+const needsClock = !isAbsoluteFormat(format);
+// The server never reads the clock: a clock-dependent format renders the full date and time.
+const serverFormat = effectiveTimestampFormat(format, date, null, autoThreshold);
+const displayText = !isValidDate
+  ? ''
+  : formatInstant(date, serverFormat as Exclude<TimestampFormat, 'relative' | 'relative_short' | 'auto'>, locale,
+      needsClock ? {timeZone: 'UTC', isTimezoneShown: true} : {isTimezoneShown, calendar});
+const entries = tooltipEntries !== undefined && tooltipEntries.length > 0 ? tooltipEntries : undefined;
+// The card exists when it can ever show: relative formats (once the clock is read) or entries.
+const hasCard = isValidDate && hasTooltip && (needsClock || entries !== undefined);
+// …and is attached right away only where the server already knows it shows.
+const attachedNow = hasCard && (isRelativeFormat(serverFormat) || entries !== undefined);
+const lines: ReadonlyArray<TimestampTooltipLine> = !hasCard
+  ? []
+  : entries === undefined
+    ? [{value: formatInstant(date, 'full', locale, {calendar}), isCopyable: true}]
+    : formatTooltipLines(date, entries, locale, calendar);
+const hasLabelColumn = lines.some((line) => line.label != null && line.label !== '');
+const hasActionColumn = lines.some((line) => line.isCopyable);
+const columns = `${hasLabelColumn ? 'label-' : ''}value${hasActionColumn ? '-action' : ''}`;
+
+const cardLabel = t('@astryx.timestamp.detailsLabel');
+const card = hasCard ? attachHoverCard({label: cardLabel}) : null;
+const copyTemplate = t('@astryx.timestamp.copyValue', {value: ARG_A});
+const {themeClass, attrs} = themeProps('timestamp', {format: serverFormat});
+const callerTabIndex = rest.tabindex ?? (rest as Record<string, unknown>).tabIndex;
+const callerLabel = rest['aria-label'];
+const Root = 'ax-timestamp' as 'span';
+---
+{isValidDate && (
+  <Text
+    as={Root}
+    type={type}
+    size={size}
+    color={color}
+    weight={weight}
+    class={cx(themeClass, className)}
+    style={style}
+    {...attrs}
+    {...(attachedNow ? card!.trigger : {})}
+    data-ax-card={card?.id}
+    data-value={date.toISOString()}
+    data-ax-format={format}
+    data-ax-auto-threshold={autoThreshold !== DEFAULT_AUTO_THRESHOLD ? String(autoThreshold) : undefined}
+    data-ax-timezone-shown={isTimezoneShown ? '' : undefined}
+    data-ax-live={isLive ? '' : undefined}
+    data-ax-entries={entries ? JSON.stringify(entries) : undefined}
+    data-ax-calendar={calendar !== 'gregory' ? calendar : undefined}
+    data-ax-copy-template={hasCard ? copyTemplate : undefined}
+    data-ax-own-tabindex={callerTabIndex != null ? '' : undefined}
+    data-ax-own-label={callerLabel != null ? '' : undefined}
+    data-locale={locale}
+  ><time
+    {...rest}
+    datetime={date.toISOString()}
+    class="ax-timestamp-time"
+    tabindex={callerTabIndex ?? (attachedNow ? '0' : undefined)}
+  >{displayText}</time></Text>
+)}
+{hasCard && (
+  <HoverCard {...card!.layer} label={cardLabel} placement="above" focusTrigger="always" hasHoverIndication isEnabled={attachedNow}>
+    <Fragment slot="content"><template data-ax-timestamp-card><dl class="ax-timestamp-card" data-columns={columns}>{lines.map((line) => (
+      <div class="ax-timestamp-card-row">{hasLabelColumn && <dt class="ax-timestamp-card-label">{line.label ?? ''}</dt>}<dd class="ax-timestamp-card-value">{line.value}</dd>{hasActionColumn && (
+        <div class="ax-timestamp-card-action">{line.isCopyable && (
+          <CopyButton
+            iconSlot="timestamp-copy"
+            themeClass="astryx-timestamp-copy-button"
+            label={t('@astryx.timestamp.copyValue', {value: line.value})}
+            copiedLabel={t('@astryx.timestamp.copied')}
+            tip={t('@astryx.timestamp.copy')}
+            copiedTip={t('@astryx.timestamp.copied')}
+            announce={t('@astryx.timestamp.copied')}
+            value={line.value}
+            resetAfterMs={1500}
+            locale={localeProp}
+          />
+        )}</div>
+      )}</div>
+    ))}</dl></template></Fragment>
+  </HoverCard>
+)}
+<script>import '../../elements/timestamp';</script>

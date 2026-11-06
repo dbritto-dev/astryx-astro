@@ -1,0 +1,51 @@
+---
+import Timestamp from './Timestamp.astro';
+import Text from '../Text/Text.astro';
+
+// Relative values must be relative to the reader's clock: the demo writes data-value in the
+// browser from each <time>'s data-offset (ms before now), like the Timer demo.
+const placeholder = '2026-02-19T17:00:00Z';
+const fixed = '2026-02-19T17:00:00Z';
+const row = 'display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--spacing-5)';
+const cell = 'display:inline-flex;flex-direction:column;gap:var(--spacing-1);min-width:140px';
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+const zones = [
+  {label: 'Local'},
+  {timezoneID: 'UTC', label: 'UTC'},
+  {timezoneID: 'America/Bogota', label: 'Bogotá', format: 'date_time' as const},
+  {timezoneID: 'UTC', format: 'system_date_time' as const, label: 'ISO', isCopyable: true},
+];
+---
+<div style="display:grid;gap:var(--spacing-5);color:var(--color-text-primary)" data-test="timestamps">
+  <div style={row}>
+    <span style={cell}><Timestamp id="ts-relative" value={placeholder} format="relative" data-offset="300000" /><span style={caption}>relative (hover / focus: card)</span></span>
+    <span style={cell}><Timestamp id="ts-short" value={placeholder} format="relative_short" data-offset="7200000" /><span style={caption}>relative_short</span></span>
+    <span style={cell}><Timestamp id="ts-auto-recent" value={placeholder} data-offset="259200000" /><span style={caption}>auto, 3 days ago</span></span>
+    <span style={cell}><Timestamp id="ts-auto-old" value="2025-03-21T14:51:53Z" /><span style={caption}>auto, past the threshold</span></span>
+    <span style={cell}><Timestamp id="ts-live" value={placeholder} format="relative" isLive data-offset="15000" /><span style={caption}>isLive (ticks)</span></span>
+    <span style={cell}><Timestamp id="ts-future" value={placeholder} format="relative" data-offset="-172800000" /><span style={caption}>future</span></span>
+  </div>
+  <div style={row}>
+    {(['date', 'date_long', 'date_weekday', 'date_time', 'time', 'system_date', 'system_date_time', 'system_time', 'unix_seconds'] as const).map((format) => (
+      <span style={cell}><Timestamp id={`ts-${format}`} value={fixed} format={format} /><span style={caption}>{format}</span></span>
+    ))}
+    <span style={cell}><Timestamp id="ts-zone" value={fixed} format="date_time" isTimezoneShown /><span style={caption}>date_time + isTimezoneShown</span></span>
+  </div>
+  <div style={row}>
+    <span style={cell}><Timestamp id="ts-entries" value={fixed} format="date" tooltipEntries={zones} /><span style={caption}>tooltipEntries: zones, labels, one copyable</span></span>
+    <span style={cell}><Timestamp id="ts-unix" value={1740000000} format="relative" hasTooltip={false} /><span style={caption}>Unix seconds, hasTooltip false</span></span>
+    <span style={cell}><Timestamp id="ts-es" value={placeholder} format="relative" locale="es-ES" data-offset="5400000" /><span style={caption}>locale es-ES</span></span>
+    <span style={cell}><Timestamp id="ts-invalid" value="not a date" /><span style={caption}>invalid value renders nothing</span></span>
+  </div>
+  <div style={row}>
+    <span style={cell}><Timestamp value={fixed} format="date_long" type="body" color="primary" weight="semibold" /><span style={caption}>type body, primary, semibold</span></span>
+    <span style={cell}><Timestamp value={fixed} format="time" color="accent" size="lg" /><span style={caption}>accent, lg</span></span>
+    <span style={cell}><Text type="large">Due <Timestamp value={fixed} format="date" type="inherit" color="inherit" /></Text><span style={caption}>inherit surrounding text</span></span>
+  </div>
+  <p style="margin:0;font-size:var(--font-size-sm)" id="ts-paragraph">Edited <Timestamp id="ts-inline" value={placeholder} format="relative" data-offset="5400000" /> by Ada — the card's list stays out of the paragraph.</p>
+</div>
+<script>
+  document.querySelectorAll<HTMLElement>('[data-test="timestamps"] time[data-offset]').forEach((time) => {
+    time.closest('ax-timestamp')?.setAttribute('data-value', new Date(Date.now() - Number(time.dataset.offset)).toISOString());
+  });
+</script>

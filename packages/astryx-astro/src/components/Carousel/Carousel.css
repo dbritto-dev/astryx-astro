@@ -1,0 +1,103 @@
+/*
+ * Port of @astryxdesign/core Carousel/Carousel.tsx (styles, gapStyles, paddingStyles).
+ * Theme hooks: .astryx-carousel, .astryx-carousel-scroller[data-gap][data-padding][data-snap]
+ * [data-edge-fade]. Live state written by <ax-carousel>: [data-ax-fade="start|end|both"] on the
+ * scroller, [data-ax-hidden] on a button pill.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-carousel {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    overflow: clip;
+    overflow-clip-margin: 1px;
+  }
+
+  .astryx-carousel-scroller {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    /* 1px bleed for child selection indicators (no token at this size) */
+    padding-bottom: 1px;
+    margin-bottom: -1px;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+    mask-image: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-carousel-scroller { scroll-behavior: auto; }
+  }
+
+  /* gapStyles */
+  .astryx-carousel-scroller[data-gap="0"] { gap: var(--spacing-0); }
+  .astryx-carousel-scroller[data-gap="0.5"] { gap: var(--spacing-0-5); }
+  .astryx-carousel-scroller[data-gap="1"] { gap: var(--spacing-1); }
+  .astryx-carousel-scroller[data-gap="1.5"] { gap: var(--spacing-1-5); }
+  .astryx-carousel-scroller[data-gap="2"] { gap: var(--spacing-2); }
+  .astryx-carousel-scroller[data-gap="3"] { gap: var(--spacing-3); }
+  .astryx-carousel-scroller[data-gap="4"] { gap: var(--spacing-4); }
+
+  /* paddingStyles: the gutter is inside the scroll area, snap points align to the content edge */
+  .astryx-carousel-scroller[data-padding="0"] { padding-inline: var(--spacing-0); scroll-padding-inline: var(--spacing-0); }
+  .astryx-carousel-scroller[data-padding="0.5"] { padding-inline: var(--spacing-0-5); scroll-padding-inline: var(--spacing-0-5); }
+  .astryx-carousel-scroller[data-padding="1"] { padding-inline: var(--spacing-1); scroll-padding-inline: var(--spacing-1); }
+  .astryx-carousel-scroller[data-padding="1.5"] { padding-inline: var(--spacing-1-5); scroll-padding-inline: var(--spacing-1-5); }
+  .astryx-carousel-scroller[data-padding="2"] { padding-inline: var(--spacing-2); scroll-padding-inline: var(--spacing-2); }
+  .astryx-carousel-scroller[data-padding="3"] { padding-inline: var(--spacing-3); scroll-padding-inline: var(--spacing-3); }
+  .astryx-carousel-scroller[data-padding="4"] { padding-inline: var(--spacing-4); scroll-padding-inline: var(--spacing-4); }
+  .astryx-carousel-scroller[data-padding="5"] { padding-inline: var(--spacing-5); scroll-padding-inline: var(--spacing-5); }
+  .astryx-carousel-scroller[data-padding="6"] { padding-inline: var(--spacing-6); scroll-padding-inline: var(--spacing-6); }
+  .astryx-carousel-scroller[data-padding="8"] { padding-inline: var(--spacing-8); scroll-padding-inline: var(--spacing-8); }
+  .astryx-carousel-scroller[data-padding="10"] { padding-inline: var(--spacing-10); scroll-padding-inline: var(--spacing-10); }
+
+  .astryx-carousel-scroller[data-snap] { scroll-snap-type: x mandatory; }
+
+  /* Edge fades (fadeStart / fadeEnd / fadeBoth) */
+  .astryx-carousel-scroller[data-ax-fade="start"] { mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 2px, black var(--spacing-1)); }
+  .astryx-carousel-scroller[data-ax-fade="start"]:dir(rtl) { mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.3) 2px, black var(--spacing-1)); }
+  .astryx-carousel-scroller[data-ax-fade="end"] { mask-image: linear-gradient(to left, transparent 0%, rgba(0,0,0,0.3) 2px, black var(--spacing-1)); }
+  .astryx-carousel-scroller[data-ax-fade="end"]:dir(rtl) { mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 2px, black var(--spacing-1)); }
+  .astryx-carousel-scroller[data-ax-fade="both"] { mask-image: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 2px, black var(--spacing-1), black calc(100% - var(--spacing-1)), rgba(0,0,0,0.3) calc(100% - 2px), transparent 100%); }
+
+  .ax-carousel-item {
+    scroll-snap-align: start;
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  /* The button layer covers the carousel on the top layer; only the pills take presses. */
+  .ax-carousel-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+  }
+  .ax-carousel-buttons:not(:popover-open) { display: none; }
+  .ax-carousel-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-background-popover);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-med);
+    pointer-events: auto;
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .ax-carousel-pill[data-side="start"] { transform: translateX(-50%); }
+  .ax-carousel-pill[data-side="start"]:dir(rtl) { transform: translateX(50%); }
+  .ax-carousel-pill[data-side="end"] { transform: translateX(50%); }
+  .ax-carousel-pill[data-side="end"]:dir(rtl) { transform: translateX(-50%); }
+  .ax-carousel-pill[data-ax-hidden] {
+    opacity: 0;
+    pointer-events: none;
+  }
+}

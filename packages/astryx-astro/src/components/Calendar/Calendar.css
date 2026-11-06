@@ -1,0 +1,169 @@
+/*
+ * Port of @astryxdesign/core Calendar/styles.ts (calendarStyles, monthGridStyles,
+ * dayCellStyles, dayCellTheme) as applied by Calendar.tsx. Rule groups follow the order
+ * Calendar.tsx passes styles to stylex.props(), so later groups win at equal specificity.
+ *
+ * Theme hooks: .astryx-calendar[data-mode], .astryx-calendar-nav[data-nav][data-disabled]
+ * (on the ghost Buttons), .astryx-calendar-day[data-selected|today|disabled|in-range|marker].
+ * Private state the stylesheet reads: [data-ax-outside] (adjacent-month day),
+ * .ax-calendar-range-bg / .ax-calendar-preview-bg [data-round-start|end] (band caps).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── calendarStyles ─────────────────────────────────────────────────── */
+  .astryx-calendar {
+    display: inline-block;
+    padding: var(--spacing-3);
+    min-width: 220px;
+  }
+  .ax-calendar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-2);
+    gap: var(--spacing-2);
+  }
+  .ax-calendar-month-label {
+    flex: 1;
+    text-align: center;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--text-label-size);
+    color: var(--color-text-primary);
+  }
+  /* Two months side by side need ~488px: wrap rather than scroll the page sideways (WCAG 1.4.10). */
+  .ax-calendar-months {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-4);
+  }
+  .ax-calendar-nav-icon { display: inline-flex; }
+
+  /* ── monthGridStyles ────────────────────────────────────────────────── */
+  .ax-calendar-month { flex: 1 1 0; }
+  .ax-calendar-day-name {
+    width: var(--size-element-md);
+    /* Restores the small gap the standalone header used to have below it. */
+    height: calc(var(--size-element-md) + var(--spacing-1));
+    padding-bottom: var(--spacing-1);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+  }
+  .ax-calendar-day-name[data-week-number] { width: var(--size-element-md); }
+  .ax-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .ax-calendar-grid[data-week-numbers] { grid-template-columns: auto repeat(7, 1fr); }
+  .ax-calendar-week-number {
+    width: var(--size-element-md);
+    height: var(--size-element-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-supporting-size);
+    color: var(--color-text-secondary);
+  }
+  .ax-calendar-row { display: contents; }
+
+  /* ── dayCellStyles: cell + range / preview bands ────────────────────────
+   * BAND_INSET (2px) is half the gap between the day button and its cell: a literal derived
+   * from the two size tokens, deliberately not a spacing token (see styles.ts). */
+  .ax-calendar-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--size-element-md);
+    isolation: isolate;
+  }
+  .ax-calendar-range-bg,
+  .ax-calendar-preview-bg {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+  }
+  .ax-calendar-range-bg { background-color: var(--color-accent-muted); }
+  .ax-calendar-preview-bg { background-color: var(--color-overlay-hover); }
+  :is(.ax-calendar-range-bg, .ax-calendar-preview-bg)[data-round-start] {
+    inset-inline-start: 2px;
+    border-start-start-radius: var(--radius-full);
+    border-end-start-radius: var(--radius-full);
+  }
+  :is(.ax-calendar-range-bg, .ax-calendar-preview-bg)[data-round-end] {
+    inset-inline-end: 2px;
+    border-start-end-radius: var(--radius-full);
+    border-end-end-radius: var(--radius-full);
+  }
+
+  /* ── Day button: dayCellStyles.day + dayCellTheme.day ────────────────── */
+  .astryx-calendar-day {
+    width: var(--size-element-sm);
+    height: var(--size-element-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    border-width: 0;
+    border-style: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--text-body-size);
+    padding: 0;
+    position: relative;
+    z-index: 1;
+    transition-property: background-color, color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    color: var(--color-text-primary);
+    background-color: transparent;
+  }
+  .astryx-calendar-day:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-calendar-day { transition-property: none; }
+  }
+  /* Expand the hit target so adjacent days meet with no gap (HIT_BLEED). */
+  .astryx-calendar-day::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    inset-inline-end: -2px;
+    bottom: -2px;
+    inset-inline-start: -2px;
+  }
+
+  /* ── State modifiers, in Calendar.tsx's order ─────────────────────────── */
+  .astryx-calendar-day[data-ax-outside] {
+    opacity: 0.5;
+    color: var(--color-text-secondary);
+  }
+  .astryx-calendar-day[data-marker="today-only"] {
+    box-shadow: inset 0 0 0 1px var(--color-border-emphasized);
+  }
+  .astryx-calendar-day[data-marker="today-in-range"] {
+    box-shadow: inset 0 0 0 1px var(--color-text-primary);
+  }
+  .astryx-calendar-day[data-selected] {
+    forced-color-adjust: none;
+    background-color: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+  @media (forced-colors: active) {
+    .astryx-calendar-day[data-selected] {
+      background-color: Highlight;
+      color: HighlightText;
+    }
+  }
+  .astryx-calendar-day[data-disabled] {
+    cursor: default;
+    opacity: 0.3;
+    background-image: none;
+  }
+}

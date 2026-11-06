@@ -1,0 +1,293 @@
+/*
+ * Port of @astryxdesign/core CodeBlock/CodeBlock.tsx (styles, containerStyles, dynamicStyles,
+ * chevronReveal) and the static half of CodeBlock/highlightStyles.ts (the ::highlight() and
+ * .astryx-token-* rules, lib/codeblock highlightRuleCss()). Rule groups follow the order
+ * CodeBlock.tsx passes styles to stylex.props().
+ *
+ * Theme hooks: .astryx-code-block[data-size][data-language][data-container],
+ * .astryx-code-block-header[…], .astryx-code-block-title[data-size][data-language],
+ * .astryx-code-block-copy-button; private var --_codeblock-gutter-width (unregistered, so it
+ * inherits from <code> to the line rows). Syntax colors read --color-syntax-* with Astryx's
+ * defaults (theme/syntax/tokens.ts) as fallbacks: Astryx injects those defaults on :root at
+ * runtime; a static fallback keeps themes and SyntaxTheme wrappers in charge.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Root: styles.root → rootCorner → width (inline) → containerStyles ──── */
+  .astryx-code-block {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    background-color: var(--color-syntax-background, var(--color-background-muted));
+    overflow: hidden;
+  }
+  /* Headerless: Copy sits in its own inline-end column beside the viewport, never over code. */
+  .astryx-code-block[data-ax-corner] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .astryx-code-block[data-container="card"] {
+    border-radius: var(--radius-element);
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--color-border);
+  }
+  /* Blends into the surface it's embedded in: transparent syntax background (header too). */
+  .astryx-code-block[data-container="section"] {
+    border-radius: 0;
+    border-width: 0;
+    border-style: none;
+    border-color: transparent;
+    --color-syntax-background: transparent;
+  }
+
+  /* The viewport (a flex item of the column root): 0 lets a root sized from outside bound it. */
+  .ax-codeblock-viewport { display: block; min-height: 0; }
+  /* Before <ax-scrollable-area> upgrades (or without JS), both axes simply scroll. */
+  .ax-codeblock-viewport:not(:defined) { overflow: auto; }
+
+  /* ── Header ──────────────────────────────────────────────────────────── */
+  .astryx-code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: var(--spacing-4);
+    background-color: var(--color-syntax-background, var(--color-background-muted));
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-block: var(--spacing-2);
+  }
+  .astryx-code-block-header[data-ax-divider] {
+    border-bottom-width: var(--border-width);
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-border);
+  }
+  .ax-codeblock-heading {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+  }
+  .ax-codeblock-heading[data-ax-codeblock-toggle] { cursor: pointer; user-select: none; }
+  .ax-codeblock-heading[data-ax-codeblock-toggle]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-code-block-title {
+    display: flex;
+    align-items: center;
+    font-size: var(--text-supporting-size);
+    font-family: var(--font-family-code);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-syntax-comment, var(--color-text-secondary));
+    margin: 0;
+    line-height: var(--text-supporting-leading);
+  }
+
+  /* ── Collapse ────────────────────────────────────────────────────────── */
+  .ax-codeblock-collapse {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition-property: grid-template-rows;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  .ax-codeblock-collapse[data-collapsed] { grid-template-rows: 0fr; }
+  .ax-codeblock-collapse-inner { overflow: hidden; min-height: 0; }
+  @keyframes ax-codeblock-chevron-reveal {
+    from { width: 0; margin-inline-end: 0; opacity: 0; }
+    to { width: 14px; margin-inline-end: var(--spacing-1); opacity: 1; }
+  }
+  .ax-codeblock-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    margin-inline-end: var(--spacing-1);
+    overflow: hidden;
+    color: var(--color-syntax-comment, var(--color-text-secondary));
+    animation-name: ax-codeblock-chevron-reveal;
+    animation-duration: var(--duration-medium);
+    animation-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-codeblock-chevron { animation-name: none; }
+  }
+  .ax-codeblock-chevron-icon {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  /* Resting chevronRight points to the inline end when collapsed; down when expanded. */
+  .ax-codeblock-heading:not([data-collapsed]) .ax-codeblock-chevron-icon { transform: rotate(90deg); }
+
+  /* ── Code ────────────────────────────────────────────────────────────── */
+  .ax-codeblock-wrapper { display: flex; min-width: fit-content; }
+  .ax-codeblock-wrapper[data-ax-compact] { margin-block-start: calc(-1 * var(--spacing-2)); }
+  .ax-codeblock-code {
+    display: block;
+    flex: 1;
+    /* The block grows to its longest line, so row paint spans the full scroll width. */
+    min-width: max-content;
+    padding-block: var(--spacing-3);
+    padding-inline: var(--spacing-4);
+    margin: 0;
+    font-family: var(--font-family-code);
+    color: var(--color-syntax-variable, var(--color-text-primary));
+    tab-size: 2;
+    white-space: pre;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  .ax-codeblock-code[data-ax-size="sm"] { font-size: var(--text-supporting-size); }
+  .ax-codeblock-code[data-ax-size="md"] { font-size: var(--text-code-size); }
+  .ax-codeblock-code[data-ax-wrapped] {
+    min-width: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: break-word;
+  }
+  /* With line numbers the <code> hosts the full-height divider between gutter and code. */
+  .ax-codeblock-code[data-ax-numbered] { position: relative; }
+  .ax-codeblock-code[data-ax-numbered]::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: calc(var(--spacing-4) + var(--_codeblock-gutter-width) + var(--spacing-3));
+    width: 0;
+    border-inline-start-width: var(--border-width);
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--color-border);
+    pointer-events: none;
+  }
+
+  /* ── Lines: line → numbered → diff → diff+numbered → added/removed/header → highlighted ── */
+  .ax-codeblock-line { line-height: var(--text-code-leading); }
+  .ax-codeblock-line[data-ax-numbered] {
+    display: grid;
+    grid-template-columns: var(--_codeblock-gutter-width) 1fr;
+    column-gap: calc(var(--spacing-3) + var(--border-width) + var(--spacing-4));
+  }
+  .ax-codeblock-line[data-ax-numbered]::before {
+    content: attr(data-line);
+    grid-column: 1;
+    align-self: start;
+    text-align: end;
+    color: var(--color-syntax-punctuation, var(--color-text-secondary));
+    user-select: none;
+    font-family: var(--font-family-code);
+  }
+  .ax-codeblock-line[data-ax-diff-layout] {
+    display: grid;
+    grid-template-columns: 1ch 1fr;
+    column-gap: var(--spacing-2);
+  }
+  .ax-codeblock-line[data-ax-diff-layout][data-ax-numbered] {
+    grid-template-columns: var(--_codeblock-gutter-width) auto 1fr;
+    column-gap: 0;
+  }
+  .ax-codeblock-line[data-diff="added"] {
+    background-color: var(--color-syntax-added, color-mix(in srgb, var(--color-success-muted) 25%, transparent));
+    margin-inline: calc(-1 * var(--spacing-4));
+    padding-inline: var(--spacing-4);
+  }
+  .ax-codeblock-line[data-diff="added"]::before { color: var(--color-syntax-added-marker, var(--color-text-green)); }
+  .ax-codeblock-line[data-diff="removed"] {
+    background-color: var(--color-syntax-removed, color-mix(in srgb, var(--color-error-muted) 25%, transparent));
+    margin-inline: calc(-1 * var(--spacing-4));
+    padding-inline: var(--spacing-4);
+  }
+  .ax-codeblock-line[data-diff="removed"]::before { color: var(--color-syntax-removed-marker, var(--color-text-red)); }
+  .ax-codeblock-line[data-diff="header"] {
+    background-color: var(--color-syntax-diff-header, var(--color-background-muted));
+    color: var(--color-syntax-punctuation, var(--color-text-secondary));
+    margin-inline: calc(-1 * var(--spacing-4));
+    padding-inline: var(--spacing-4);
+  }
+  /* Last: a highlight replaces a diff tint rather than stacking on it. */
+  .ax-codeblock-line[data-ax-highlighted] {
+    background-color: var(--color-accent-muted);
+    margin-inline: calc(-1 * var(--spacing-4));
+    padding-inline: var(--spacing-4);
+  }
+  .ax-codeblock-line-content { min-width: 0; }
+  .ax-codeblock-chunk { content-visibility: auto; }
+
+  .ax-codeblock-diff-marker {
+    color: var(--color-text-secondary);
+    user-select: none;
+    white-space: pre;
+  }
+  .ax-codeblock-diff-marker[data-ax-numbered] {
+    margin-inline-start: calc(var(--spacing-3) + var(--border-width) + var(--spacing-4));
+    margin-inline-end: var(--spacing-2);
+  }
+  .ax-codeblock-diff-marker[data-ax-kind="added"] { color: var(--color-syntax-added-marker, var(--color-text-green)); }
+  .ax-codeblock-diff-marker[data-ax-kind="removed"] { color: var(--color-syntax-removed-marker, var(--color-text-red)); }
+
+  /* ── Controls ────────────────────────────────────────────────────────── */
+  /* A ghost IconButton; this only tints its resting glyph to the muted comment color. */
+  .astryx-code-block-copy-button.astryx-button[data-variant] { color: var(--color-syntax-comment, var(--color-text-secondary)); }
+  .ax-codeblock-corner {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    align-self: start;
+    margin-inline: var(--spacing-2);
+  }
+  .ax-codeblock-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    flex-shrink: 0;
+  }
+  /* As tall as the first line's row, so the controls sit on the first line. */
+  .ax-codeblock-corner[data-ax-size="md"] { block-size: calc(2 * var(--spacing-3) + var(--text-code-size) * var(--text-code-leading)); }
+  .ax-codeblock-corner[data-ax-size="sm"] { block-size: calc(2 * var(--spacing-3) + var(--text-supporting-size) * var(--text-code-leading)); }
+
+  /* The copy glyph's two states (code-block-copy / timestamp-copy); data-copied picks one. */
+  .ax-copy-icon, .ax-copy-icon-state { display: inline-flex; align-items: center; justify-content: center; }
+  .ax-copy-icon-state[data-state="copied"] { display: none; }
+  [data-copied] .ax-copy-icon-state[data-state="copied"] { display: inline-flex; }
+  [data-copied] .ax-copy-icon-state[data-state="idle"] { display: none; }
+
+  /* ── Syntax colors (highlightRuleCss + SYNTAX_TOKEN_DEFAULTS fallbacks) ─── */
+  .astryx-code-block code::highlight(astryx-keyword), .astryx-codeeditor code::highlight(astryx-keyword) { color: var(--color-syntax-keyword, var(--color-text-accent)); }
+  .astryx-code-block code::highlight(astryx-string), .astryx-codeeditor code::highlight(astryx-string) { color: var(--color-syntax-string, var(--color-text-green)); }
+  .astryx-code-block code::highlight(astryx-comment), .astryx-codeeditor code::highlight(astryx-comment) { color: var(--color-syntax-comment, var(--color-text-secondary)); }
+  .astryx-code-block code::highlight(astryx-number), .astryx-codeeditor code::highlight(astryx-number) { color: var(--color-syntax-number, var(--color-text-orange)); }
+  .astryx-code-block code::highlight(astryx-function), .astryx-codeeditor code::highlight(astryx-function) { color: var(--color-syntax-function, var(--color-text-blue)); }
+  .astryx-code-block code::highlight(astryx-type), .astryx-codeeditor code::highlight(astryx-type) { color: var(--color-syntax-type, var(--color-text-purple)); }
+  .astryx-code-block code::highlight(astryx-tag), .astryx-codeeditor code::highlight(astryx-tag) { color: var(--color-syntax-tag, var(--color-text-red)); }
+  .astryx-code-block code::highlight(astryx-attribute), .astryx-codeeditor code::highlight(astryx-attribute) { color: var(--color-syntax-attribute, var(--color-text-teal)); }
+  .astryx-code-block code::highlight(astryx-property), .astryx-codeeditor code::highlight(astryx-property) { color: var(--color-syntax-property, var(--color-text-cyan)); }
+  .astryx-code-block code::highlight(astryx-operator), .astryx-codeeditor code::highlight(astryx-operator) { color: var(--color-syntax-operator, var(--color-text-cyan)); }
+  .astryx-code-block code::highlight(astryx-constant), .astryx-codeeditor code::highlight(astryx-constant) { color: var(--color-syntax-constant, var(--color-text-orange)); }
+  .astryx-code-block code::highlight(astryx-punctuation), .astryx-codeeditor code::highlight(astryx-punctuation) { color: var(--color-syntax-punctuation, var(--color-text-secondary)); }
+  .astryx-code-block code::highlight(astryx-variable), .astryx-codeeditor code::highlight(astryx-variable) { color: var(--color-syntax-variable, var(--color-text-primary)); }
+
+  .astryx-token-keyword { color: var(--color-syntax-keyword, var(--color-text-accent)); }
+  .astryx-token-string { color: var(--color-syntax-string, var(--color-text-green)); }
+  .astryx-token-comment { color: var(--color-syntax-comment, var(--color-text-secondary)); }
+  .astryx-token-number { color: var(--color-syntax-number, var(--color-text-orange)); }
+  .astryx-token-function { color: var(--color-syntax-function, var(--color-text-blue)); }
+  .astryx-token-type { color: var(--color-syntax-type, var(--color-text-purple)); }
+  .astryx-token-tag { color: var(--color-syntax-tag, var(--color-text-red)); }
+  .astryx-token-attribute { color: var(--color-syntax-attribute, var(--color-text-teal)); }
+  .astryx-token-property { color: var(--color-syntax-property, var(--color-text-cyan)); }
+  .astryx-token-operator { color: var(--color-syntax-operator, var(--color-text-cyan)); }
+  .astryx-token-constant { color: var(--color-syntax-constant, var(--color-text-orange)); }
+  .astryx-token-punctuation { color: var(--color-syntax-punctuation, var(--color-text-secondary)); }
+  .astryx-token-variable { color: var(--color-syntax-variable, var(--color-text-primary)); }
+}

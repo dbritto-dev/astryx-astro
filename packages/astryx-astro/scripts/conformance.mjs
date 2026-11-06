@@ -36,7 +36,8 @@ for (const c of top) {
   if (!ported.has(c.name) || (only.size && !only.has(c.name))) continue;
   const file = join(dist, slug(c.name), 'index.html');
   if (!existsSync(file)) { console.log(`✗ ${c.name}: page not built`); failures++; continue; }
-  const demo = parse(readFileSync(file, 'utf8')).querySelector('.demo');
+  // node-html-parser treats <pre> as raw text by default; CodeBlock's theme targets live inside one.
+  const demo = parse(readFileSync(file, 'utf8'), {blockTextElements: {script: true, noscript: true, style: true}}).querySelector('.demo');
   if (!demo) { console.log(`✗ ${c.name}: demo section missing`); failures++; continue; }
   const family = [c, ...manifest.components.filter((s) => s.subComponentOf === c.name)];
   const problems = [];
