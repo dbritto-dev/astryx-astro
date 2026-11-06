@@ -3,10 +3,19 @@ export {themeProps, stableClassName, dataAttributes, cx} from './lib/themeProps'
 export {translator, resolveLocale} from './lib/i18n';
 export {sanitizeUrl, isSafeUrl, safeHref} from './lib/safeUrl';
 export type * from './lib/types';
+export {registerIcons, registerIconTheme, resolveIcon, getIcon, getExtendedIcon, getIconRegistry, resolveComponentIcon, resetIcons} from './components/Icon/iconRegistry';
+export type * from './components/Icon/iconRegistry';
 
+export {default as Badge} from './components/Badge/Badge.astro';
+export {default as Icon} from './components/Icon/Icon.astro';
+export {default as Kbd} from './components/Kbd/Kbd.astro';
+export {default as Skeleton} from './components/Skeleton/Skeleton.astro';
+export {default as Spinner} from './components/Spinner/Spinner.astro';
 export {default as HStack} from './components/Stack/HStack.astro';
 export {default as Stack} from './components/Stack/Stack.astro';
 export {default as StackItem} from './components/Stack/StackItem.astro';
 export {default as VStack} from './components/Stack/VStack.astro';
+export {default as StatusDot} from './components/StatusDot/StatusDot.astro';
 export {default as Heading} from './components/Text/Heading.astro';
 export {default as Text} from './components/Text/Text.astro';
+export {default as VisuallyHidden} from './components/VisuallyHidden/VisuallyHidden.astro';

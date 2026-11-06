@@ -16,6 +16,8 @@ const lines = [
   "export {translator, resolveLocale} from './lib/i18n';",
   "export {sanitizeUrl, isSafeUrl, safeHref} from './lib/safeUrl';",
   "export type * from './lib/types';",
+  "export {registerIcons, registerIconTheme, resolveIcon, getIcon, getExtendedIcon, getIconRegistry, resolveComponentIcon, resetIcons} from './components/Icon/iconRegistry';",
+  "export type * from './components/Icon/iconRegistry';",
   '',
 ];
 const seen = new Set();
