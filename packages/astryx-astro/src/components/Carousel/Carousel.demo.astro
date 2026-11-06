@@ -1,0 +1,51 @@
+---
+import Carousel from './Carousel.astro';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const hues = ['blue', 'green', 'orange', 'purple', 'teal', 'red', 'cyan', 'pink', 'yellow', 'gray'];
+const tile = (hue: string, w = 160) =>
+  `width:${w}px;height:96px;border-radius:var(--radius-container);display:flex;align-items:flex-end;padding:var(--spacing-2) var(--spacing-3);box-sizing:border-box;` +
+  `background:linear-gradient(135deg,var(--color-background-${hue},var(--color-background-muted)),var(--color-${hue}-muted,var(--color-accent-muted)));` +
+  'color:var(--color-text-primary);font-size:var(--font-size-sm);font-weight:var(--font-weight-medium)';
+const chip = 'padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-full);font-size:var(--font-size-sm);color:var(--color-text-primary);white-space:nowrap';
+---
+<div style="display:grid;gap:var(--spacing-6);min-width:0">
+  <div style="min-width:0;padding-inline:var(--spacing-4)">
+    <p style={cap}>Default: gap 1, buttons, edge fade (10 slides)</p>
+    <Carousel id="car-default" aria-label="Color swatches">
+      {hues.map((h, i) => <div style={tile(h)} data-index={i}>Swatch {i + 1}</div>)}
+    </Carousel>
+  </div>
+  <div style="min-width:0;padding-inline:var(--spacing-4)">
+    <p style={cap}>hasSnap, gap 3, padding 3</p>
+    <Carousel id="car-snap" aria-label="Snapping cards" hasSnap gap={3} padding={3}>
+      {hues.slice(0, 8).map((h, i) => <div style={tile(h, 220)}>Card {i + 1}</div>)}
+    </Carousel>
+  </div>
+  <div style="min-width:0;padding-inline:var(--spacing-4)">
+    <p style={cap}>hasLoop (buttons wrap around)</p>
+    <Carousel id="car-loop" aria-label="Looping gallery" hasLoop gap={2}>
+      {hues.map((h, i) => <div style={tile(h, 180)}>Photo {i + 1}</div>)}
+    </Carousel>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--spacing-5);padding-inline:var(--spacing-4)">
+    <div style="min-width:0">
+      <p style={cap}>hasButtons false, hasEdgeFade false, gap 0.5, chips</p>
+      <Carousel id="car-plain" aria-label="Filters" hasButtons={false} hasEdgeFade={false} gap={0.5}>
+        {['All', 'Design', 'Engineering', 'Marketing', 'Sales', 'Support', 'Legal', 'Finance', 'People'].map((c) => <span style={chip}>{c}</span>)}
+      </Carousel>
+    </div>
+    <div style="min-width:0">
+      <p style={cap}>Content that fits: no buttons, no tab stop</p>
+      <Carousel id="car-fit" gap={4}>
+        {hues.slice(0, 2).map((h, i) => <div style={tile(h, 120)}>Item {i + 1}</div>)}
+      </Carousel>
+    </div>
+  </div>
+  <div dir="rtl" lang="he" style="min-width:0;padding-inline:var(--spacing-4)">
+    <p style={cap}>RTL, gap 1.5, padding 2</p>
+    <Carousel id="car-rtl" aria-label="RTL" gap={1.5} padding={2} locale="he-IL">
+      {hues.map((h, i) => <div style={tile(h, 150)}>{i + 1}</div>)}
+    </Carousel>
+  </div>
+</div>

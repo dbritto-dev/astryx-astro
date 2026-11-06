@@ -1,0 +1,150 @@
+---
+/**
+ * Carousel — a horizontal scroll row with edge fades, scroll-snap and prev/next buttons.
+ * Port of @astryxdesign/core Carousel/Carousel.tsx (styles, gapStyles, paddingStyles, the
+ * button layer, Shift+wheel mapping, the edge focus hand-off, CarouselHandle) with
+ * hooks/useScrollOverflow.ts and hooks/isRtlElement.ts. Behaviour: src/elements/carousel.ts
+ * (`<ax-carousel>`, the root).
+ *
+ * APG carousel (no auto-rotation — Astryx has none): the root is `role="region"`
+ * `aria-roledescription="carousel"` named by `aria-label` (default the translated "Carousel");
+ * each top-level child of the default slot is wrapped in a slide `role="group"`
+ * `aria-roledescription="slide"` named "Slide N of M" (translated); the scroller
+ * (`.astryx-carousel-scroller[data-gap][data-padding][data-snap][data-edge-fade]`) is a group
+ * named like the carousel and a tab stop only while its content overflows, so arrow keys
+ * pan it natively. Shift + a vertical wheel scrolls horizontally.
+ *
+ * Buttons (`hasButtons`): two ghost sm icon-only Buttons ("Scroll left" / "Scroll right",
+ * radius full) in popover pills on a `Layer` that covers the carousel (custom positioning:
+ * `position-area: center` + `anchor-size()`), so they hang half outside the clipped root as in
+ * Astryx. A button whose edge has nothing left is faded out and disabled; with `hasLoop` both
+ * stay available while the content overflows and wrap around. When the focused button's edge
+ * runs out, focus moves to the scroller (preventScroll), never to <body>. Clicks scroll by
+ * about one viewport (`clientWidth − half an item`), smooth unless reduced motion.
+ *
+ * Element API (CarouselHandle): `scrollNext()`, `scrollPrev()`, `scrollTo(index)`,
+ * `canScrollNext()`, `canScrollPrev()`. State attributes on the scroller:
+ * `data-ax-overflow-start|end`, `data-ax-fade="start|end|both"`.
+ *
+ * @example
+ * <Carousel aria-label="Featured products" gap={2} hasSnap>{items.map((i) => <Card … />)}</Carousel>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {COMMENT_NODE, ELEMENT_NODE, TEXT_NODE, parse, render, type Node} from 'ultrahtml';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import Layer from '../Layer/Layer.astro';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import './Carousel.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** Gap between items (spacing step). @default 1 */
+  gap?: 0 | 0.5 | 1 | 1.5 | 2 | 3 | 4;
+  /** Prev/next buttons while content is scrollable. @default true */
+  hasButtons?: boolean;
+  /** Gradient edge-fade mask while content overflows. @default true */
+  hasEdgeFade?: boolean;
+  /** Wrap around: Next at the end scrolls to the start and Prev at the start to the end. @default false */
+  hasLoop?: boolean;
+  /** Each item snaps to the start edge. @default false */
+  hasSnap?: boolean;
+  /** Inline padding (and matching scroll-padding) inside the scroll area. */
+  padding?: SpacingStep;
+  /** Accessible label for the carousel region. @default translated 'Carousel' */
+  'aria-label'?: string;
+  /** Locale for the translated labels (port extension). */
+  locale?: string;
+}
+
+const {
+  gap = 1,
+  hasButtons = true,
+  hasEdgeFade = true,
+  hasLoop = false,
+  hasSnap = false,
+  padding,
+  'aria-label': ariaLabelProp,
+  locale,
+  id: idProp,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const ariaLabel = ariaLabelProp ?? t('@astryx.carousel.label');
+const id = idProp ?? uid(Astro, 'ax-carousel');
+
+// Children.toArray: every top-level element (and non-blank text) is one slide.
+const ast = parse(Astro.slots.has('default') ? await Astro.slots.render('default') : '');
+const slides: string[] = [];
+for (const node of (ast.children ?? []) as Node[]) {
+  if (node.type === COMMENT_NODE) continue;
+  if (node.type === TEXT_NODE && !String(node.value ?? '').trim()) continue;
+  if (node.type === ELEMENT_NODE && ['script', 'style', 'template'].includes(String(node.name).toLowerCase())) continue;
+  slides.push(await render(node));
+}
+
+const {themeClass, attrs} = themeProps('carousel');
+const scroller = themeProps('carousel-scroller', {
+  gap,
+  padding,
+  snap: hasSnap ? 'snap' : null,
+  edgeFade: hasEdgeFade ? 'edge-fade' : null,
+});
+const Root = 'ax-carousel' as 'div';
+---
+<Root
+  {...rest}
+  id={id}
+  class={cx(themeClass, className)}
+  {...attrs}
+  role="region"
+  aria-label={ariaLabel}
+  aria-roledescription="carousel"
+  data-ax-loop={hasLoop ? '' : undefined}
+>
+  <div class={scroller.themeClass} {...scroller.attrs} role="group" aria-label={ariaLabel} tabindex="-1">
+    {slides.map((html, index) => (
+      <div
+        class="ax-carousel-item"
+        role="group"
+        aria-roledescription="slide"
+        aria-label={t('@astryx.carousel.slideLabel', {current: index + 1, total: slides.length})}
+      ><Fragment set:html={html} /></div>
+    ))}
+  </div>
+  {hasButtons && (
+    <Layer anchor={id} positioning="custom" isDefaultOpen class="ax-carousel-buttons" style="position-area:center;width:anchor-size(width);height:anchor-size(height)">
+      <div class="ax-carousel-pill" data-side="start" data-ax-hidden="">
+        <Button
+          class="ax-carousel-nav"
+          data-side="start"
+          label={t('@astryx.carousel.scrollLeft')}
+          variant="ghost"
+          size="sm"
+          isIconOnly
+          isDisabled
+          style="--_button-radius:var(--radius-full)"
+          locale={locale}
+        ><Icon slot="icon" icon="chevronLeft" size="xsm" class="ax-mirror-rtl" /></Button>
+      </div>
+      <div class="ax-carousel-pill" data-side="end" data-ax-hidden="">
+        <Button
+          class="ax-carousel-nav"
+          data-side="end"
+          label={t('@astryx.carousel.scrollRight')}
+          variant="ghost"
+          size="sm"
+          isIconOnly
+          isDisabled
+          style="--_button-radius:var(--radius-full)"
+          locale={locale}
+        ><Icon slot="icon" icon="chevronRight" size="xsm" class="ax-mirror-rtl" /></Button>
+      </div>
+    </Layer>
+  )}
+</Root>
+<script>import '../../elements/carousel';</script>
