@@ -132,7 +132,9 @@ Generated Astryx themes style components through stable hooks, e.g.
 - Client runtime singletons live in `src/elements/runtime/` (modality, announce, layer stack
   with Escape/outside-press/focus return, anchor positioning, roving focus, typeahead,
   disabled-interaction). Import them; never add a second document-level Escape or
-  modality listener.
+  modality listener. Module-level mutable state in `src/elements/**` goes through
+  `globalSingleton()` (`runtime/global.ts`) so a duplicated module copy shares it (see
+  docs/handoffs.md, "Global-singleton rule").
 
 ## Overlays (from docs/architecture-map.md §4 and §8)
 

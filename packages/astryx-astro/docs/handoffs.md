@@ -13,6 +13,12 @@ introduces a provider/consumer key, slot convention or runtime API.
 | `size`, `button-icon-size` | Button (inherited size), its default-sized slot Icons; ButtonGroup root without `size` | ButtonGroup (explicit size), Toolbar — `buttonSizeStampers()` | Button |
 | `button-group` | every Button root | ButtonGroup (`groupMemberStamper`) | ButtonGroup |
 
+Followers (`lib/cascade.ts` header): content an owner renders in its own layer takes the owner's
+stamped value in the same pass — `data-ax-inherit-from="<owner id>"` on the follower (inside the
+layer root), optional `data-ax-inherit-map="lg=md"` and `data-ax-inherit-deep`. Astryx's
+equivalent is the owner passing `useSize(sizeProp)` down as a prop. Used by Selector /
+MultiSelector option rows (and the MultiSelector row checkboxes) while the box's size is inherited.
+
 ## Icons
 
 - `Icon` props: `icon` (name, namespaced key, SVG string, Astro component, or `<svg>` in the
@@ -53,6 +59,18 @@ introduces a provider/consumer key, slot convention or runtime API.
   `keyboardHint.ts` (useKeyboardHint), `typeahead.ts`, `disabledInteraction.ts`.
 - Build new layered widgets (menus, comboboxes, dialogs, sheets) on `LayerElement` +
   `registerLayer`; never add another document Escape/outside listener.
+- **Global-singleton rule.** A page can evaluate a client module twice (under `astro dev` Vite
+  pre-bundles a consumer's `import {toast} from 'astryx-astro/elements/toast'` beside the
+  components' raw `<script>` imports). Every module-level mutable value in `src/elements/**`
+  (queues, stacks, registries, "listening" flags, observers, id counters, shared resources)
+  lives in `globalSingleton('<name>', create)` from `runtime/global.ts`
+  (`globalThis[Symbol.for('astryx-astro/<name>/v1')]`); listener functions a module adds and
+  later removes are stored there too. Classes other modules look up with `instanceof` or extend
+  across files get `brandClass(Cls, '<name>')` (done: PopoverElement, MenuElement,
+  ComboboxLayerElement, ModalHostElement, ToastElement, ToastViewportElement). Only pure caches
+  of derived values (a feature test) stay module-local. A new element follows the same rule;
+  `tools/tests/runtime-singletons.test.mjs` loads a second copy and checks toast, Escape stack,
+  hotkeys and behaviours.
 
 ## Attaching a tooltip / hover card / popover to a trigger you render
 
@@ -119,7 +137,9 @@ SizeContext), closing through `popovertarget` + `popovertargetaction="hide"`.
   bounded by `[role="group"], [popover]`; Toolbar items `button, input, a[href], [tabindex]`
   bounded by `[role="toolbar"], [popover]` with the caret guard.
 - Toolbar slots: `startContent`, `centerContent`, `endContent`; container-side edge compensation
-  on the start/end slots. Keyboard hint: `elements/runtime/keyboardHint.ts`
+  on the start/end slots. Edge items are counted as ButtonGroup counts them
+  (`:nth-child(1 of :not([popover]):not(template):not(dialog):not(script))` and the
+  `nth-last-child` form): a Button's tooltip layer is its next sibling. Banner's end area too. Keyboard hint: `elements/runtime/keyboardHint.ts`
   (`data-ax-keyboard-hint="<ax-layer id>"` on any roving container; `behaviors/keyboardHint.ts`
   is gone); its `.ax-keyboard-hint*` rules live in `src/styles/shared.css` (one copy for
   Toolbar, SegmentedControl, TabList).
@@ -253,11 +273,8 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 ## Lead notes (integration pass)
 
 - `stamp()` now never enters `[data-astryx-layer-root]`; appliers get `(attrs, tag, node)`.
-  `ButtonGroup/groupCascade.ts` `stampOutsideLayers()` remains for node-level appliers.
+  `ButtonGroup/groupCascade.ts` `stampOutsideLayers()` is `stamp()` with `(attrs, node)` appliers.
 - Never generate ids with `Math.random()`; use `uid(Astro, prefix)` so output is deterministic.
-- Known runtime bug (open): nested roving containers (a Toolbar containing a ButtonGroup that
-  isn't first) produce two Tab stops; outer containers must sync after inner ones and every
-  enclosing container must sync on focus.
 
 ## Form fields (Field-composed inputs)
 
@@ -331,7 +348,8 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 ## Table
 
 - `data` + `columns` (`{key, header, width: proportional()/pixel(), align, sortable, resizable,
-  renderCell, accessor, format}`); `renderCell` runs on the server (text, `comp(Badge, {...})`,
+  renderCell, accessor, format}`; the callbacks use method syntax so `TableColumn<Row>[]` is
+  assignable to the `columns` prop under `strictFunctionTypes`); `renderCell` runs on the server (text, `comp(Badge, {...})`,
   element or trusted HTML). `useTable*` plugin functions keep Astryx names and go in
   `plugins={{...}}`; callbacks became events (`astryx-sort-change`, `astryx-column-resize`,
   `astryx-expanded-change`, `astryx-toggle-group`, `astryx-expanded-ids-change`; preventDefault
@@ -431,9 +449,10 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Typeahead sources: `searchSource={createStaticSource(items, {keywords})}` (server-rendered,
   `components/Typeahead/createStaticSource.ts`) → `el.searchSource` (client SearchSource) →
   `astryx-query`.
-- Stand-in: MultiSelector's decorative checkbox is `<Indicator name="checkbox">` until
-  CheckboxInput lands. Deferred: MultiSelector option `action` grid rows and `renderTrigger`,
-  touch press models.
+- MultiSelector rows render Astryx's inert CheckboxInput (`<div inert>` + `label=""
+  isLabelHidden`, lg → md); `<ax-multi-selector>` sets its `value` in place (`setMark`). The
+  element restamps only `[role="option"]` rows with the box size (marks keep theirs). Deferred:
+  MultiSelector option `action` grid rows and `renderTrigger`, touch press models.
 - `presentation="bottom-sheet|adaptive"` (Selector, MultiSelector; SelectorBottomSheet): the
   `<ax-combobox-layer>` is restyled as a sheet (heading = label); `layer.isSheet` while latched —
   the owner then moves focus to the search row, else the listbox (tabindex 0, the trigger's
@@ -480,8 +499,6 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Events: Selector `astryx-change` {value}; MultiSelector {values, change?}; ComplexSelector
   {value}; Typeahead {value} + `astryx-change-query`, `astryx-query`.
 - `renderOption` / `renderValue` / `renderItem` are server-side function props.
-- Backlog: MultiSelector uses the `checkbox` Indicator as its check mark; review against
-  CheckboxInput parity.
 
 ## Bottom sheets and adaptive presentation
 
@@ -511,7 +528,6 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 
 ## Final integration backlog (lead)
 
-- Table: filtering, pagination, context-menu rows, column settings plugins.
 - Presentation contract still to adopt: ContextMenu, Tokenizer, PowerSearch, DateTimeInput /
   DateRangeInput pickers; DropdownMenu sheet action-list rows + drill-in sub-menus.
 
@@ -591,6 +607,9 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `table.activeColumnKeys`; `TableColumnSettings` picker (MultiSelector).
 - Context menus: `astryx-context-action` {id, columnKey, rowKey, kind} (cancelable);
   `table.registerContextAction(id, {state, select})`; sort and expand/collapse actions built in.
+  Children mode: TableCell / TableHeaderCell `contextMenuActions` wrap the content in a
+  `<ContextMenu items>` (`Table/contextMenuOptions.ts`); rows dispatch `astryx-select`, `data-id`
+  = the action id.
 - `<ax-table>` helpers `setRowPager()`, `matchCount`. All `useTable*` plugin functions exported.
 - Filter popover initial focus: the popover takes the first genuine content control (usePopover
   focusInitialTarget), and DateInput's calendar toggle precedes its text field (as in Astryx),
