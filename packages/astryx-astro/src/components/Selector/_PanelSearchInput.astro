@@ -1,0 +1,47 @@
+---
+/**
+ * The search row at the top of a Selector / MultiSelector panel: magnifier, borderless input,
+ * and the shared clear (✕) button once a query is typed, in a rounded box shaped like the
+ * option rows under it. Port of @astryxdesign/core Field/PanelSearchInput.tsx (internal there
+ * too). The focus ring is inset on the field box, for keyboard focus only (the owning element
+ * sets `data-keyboard-focus` from the shared modality, as Astryx does).
+ *
+ * `class` lands on the outer row (theme target, gutter); every other prop reaches the
+ * `<input>`, so the owner keeps the combobox wiring (role, aria-controls, aria-expanded …).
+ * The clear button follows the input in DOM order (the owners' Tab handling relies on it).
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import {cx} from '../../lib/themeProps';
+import {textEntryTraitAttributes} from '../Field/fieldProps';
+import './Selector.css';
+
+export interface Props extends HTMLAttributes<'input'> {
+  /** Accessible name of the input (`aria-label`: the panel has no visible label). */
+  label: string;
+  /** Accessible name of the clear button, e.g. "Clear Search options". */
+  clearLabel: string;
+  placeholder?: string;
+  /** Extra attributes for the outer row (theme target). */
+  rowAttrs?: Record<string, string | undefined>;
+  locale?: string;
+}
+
+const {label, clearLabel, placeholder, rowAttrs = {}, locale, class: className, ...input} = Astro.props;
+---
+<div {...rowAttrs} class={cx('ax-panel-search', className as string | undefined)} data-ax-panel-search>
+  <div class="ax-panel-search-field">
+    <Icon icon="search" size="sm" color="secondary" class="ax-panel-search-icon" />
+    <input
+      type="text"
+      {...textEntryTraitAttributes({enterKeyHint: 'search', hasAutoCorrect: false})}
+      autocomplete="off"
+      aria-label={label}
+      placeholder={placeholder}
+      class="ax-panel-search-input"
+      {...input}
+    />
+    <InputClearButton label={clearLabel} isHidden locale={locale} data-ax-panel-search-clear="" />
+  </div>
+</div>

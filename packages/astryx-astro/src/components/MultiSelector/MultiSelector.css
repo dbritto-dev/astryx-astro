@@ -1,0 +1,201 @@
+/*
+ * Port of @astryxdesign/core MultiSelector/MultiSelector.tsx (styles, sizeStyles,
+ * itemSizeStyles, selectAllSizeStyles). The search row, popup panel and status button come
+ * from ../Selector/Selector.css; the `input` variant's bordered box is `.ax-input`
+ * (Field/Field.css). Rule groups follow the React stylex.props() order (triggerContainer →
+ * size → secondary → ghost → overlay/focusWithin (shared.css) → pointerRestoredFocus →
+ * disabled → readOnly → ghostDisabled → ghostReadOnly → placeholder); selectors carry
+ * `[data-variant]` so they out-rank `.ax-input`'s base declarations.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-multi-selector[data-variant] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    color: var(--color-text-primary);
+    cursor: pointer;
+  }
+  .astryx-multi-selector[data-variant]:not([data-variant="input"]) {
+    box-sizing: border-box;
+    z-index: 1;
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--color-border-emphasized);
+    --_field-radius: var(--radius-element);
+    border-radius: var(--_field-radius);
+    box-shadow: none;
+  }
+  .astryx-multi-selector[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-multi-selector[data-size="md"] { height: var(--size-element-md); }
+  .astryx-multi-selector[data-size="lg"] { height: var(--size-element-lg); }
+
+  .astryx-multi-selector[data-variant="secondary"],
+  .astryx-multi-selector[data-variant="ghost"] {
+    font-weight: var(--font-weight-medium);
+    transition-property: background-image, background-color, color, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform: scale(1);
+  }
+  .astryx-multi-selector[data-variant="secondary"] { background-color: var(--color-neutral); }
+  .astryx-multi-selector[data-variant="ghost"] { width: auto; background-color: transparent; }
+  .astryx-multi-selector[data-variant="secondary"]:active,
+  .astryx-multi-selector[data-variant="ghost"]:active { transform: scale(0.98); }
+  @media (pointer: coarse) {
+    .astryx-multi-selector[data-variant="secondary"]:active,
+    .astryx-multi-selector[data-variant="ghost"]:active { transform: scale(1); }
+  }
+
+  /* pointerRestoredFocus */
+  .astryx-multi-selector[data-variant][data-ax-focus-restored]:focus-within,
+  .astryx-multi-selector.ax-input[data-variant][data-ax-focus-restored]:not([data-disabled]):focus-within {
+    border-color: var(--color-border-emphasized);
+    box-shadow: none;
+    outline-width: 0;
+    outline-style: none;
+  }
+
+  .astryx-multi-selector[data-variant]:not([data-variant="input"])[data-disabled] { opacity: 0.5; cursor: default; }
+  .astryx-multi-selector[data-variant][data-readonly] { cursor: default; }
+  .astryx-multi-selector[data-variant]:not([data-variant="input"]):is([data-disabled], [data-readonly]) {
+    background-image: none;
+    transform: none;
+  }
+  .astryx-multi-selector[data-variant]:not([data-variant="input"]):is([data-disabled], [data-readonly]):active { transform: none; }
+  .astryx-multi-selector[data-variant][data-ax-placeholder] { color: var(--color-text-secondary); }
+
+  /* ── Trigger ────────────────────────────────────────────────────────────── */
+  .ax-multi-selector-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: inherit;
+    color: inherit;
+    cursor: pointer;
+    outline: none;
+    border-radius: var(--radius-element);
+  }
+  .ax-multi-selector-trigger:is(:disabled, [aria-disabled="true"], [aria-readonly="true"]) { cursor: default; }
+  .ax-multi-selector-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .ax-multi-selector-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-multi-selector-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+    align-items: center;
+  }
+  .ax-multi-selector-overflow {
+    flex-shrink: 0;
+    font-size: var(--text-label-size);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-medium);
+  }
+  .ax-multi-selector-chevron {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform-origin: center;
+  }
+  .ax-multi-selector-chevron[data-state="expanded"] { transform: rotate(180deg); }
+  .astryx-multi-selector :is(.ax-selector-icon, .ax-selector-start-icon) { flex-shrink: 0; }
+
+  /* ── Popup ──────────────────────────────────────────────────────────────── */
+  .ax-multi-selector-dropdown {
+    box-sizing: border-box;
+    min-height: 0;
+    max-height: min(300px, var(--_ax-max-block-size));
+    overflow-y: auto;
+    padding: var(--spacing-1);
+  }
+  .ax-multi-selector-listbox { outline: none; }
+  .astryx-multi-selector-section-heading {
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-2);
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    user-select: none;
+  }
+  .astryx-multi-selector-empty-state {
+    padding: var(--spacing-3);
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+  }
+  .astryx-multi-selector-empty-state[hidden] { display: none; }
+
+  /* ── Option rows ────────────────────────────────────────────────────────── */
+  .astryx-multi-selector-option {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    border-radius: var(--radius-element);
+    cursor: pointer;
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    outline: none;
+  }
+  .astryx-multi-selector-option[aria-disabled="true"] { cursor: default; }
+  .astryx-multi-selector-option[data-size="sm"] { padding: var(--spacing-1); }
+  .astryx-multi-selector-option[data-size="md"] { padding-block: var(--spacing-1-5); padding-inline: var(--spacing-2); }
+  .astryx-multi-selector-option[data-size="lg"] { padding: var(--spacing-2); }
+  .astryx-multi-selector-option[data-select-all][data-size="sm"] { padding-inline: var(--spacing-1); padding-block: var(--spacing-0-5); }
+  .astryx-multi-selector-option[data-select-all]:is([data-size="md"], [data-size="lg"]) { padding-inline: var(--spacing-2); padding-block: var(--spacing-1); }
+  /* itemHighlighted: the fill alone (Astryx draws no ring on MultiSelector rows). */
+  .astryx-multi-selector-option[data-ax-highlighted] { background-color: var(--color-overlay-hover); }
+  .astryx-multi-selector-option[aria-disabled="true"] { opacity: 0.5; color: var(--color-text-disabled); }
+  .astryx-multi-selector-option[hidden] { display: none; }
+  .ax-multi-selector-check {
+    pointer-events: none;
+    display: flex;
+    flex-shrink: 0;
+  }
+  .ax-multi-selector-check-end { margin-inline-start: auto; }
+  .ax-multi-selector-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

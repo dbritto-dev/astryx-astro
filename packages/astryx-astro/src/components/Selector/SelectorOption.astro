@@ -1,0 +1,60 @@
+---
+/**
+ * SelectorOption — the content primitive for custom option (and value) rendering in a
+ * Selector: icon + label + description + end content, composed from Item. Port of
+ * @astryxdesign/core Selector/SelectorOption.tsx (+ SelectorRowLayoutContext.ts).
+ *
+ * Use it in Selector's `renderOption` / `renderValue` render functions. Theme target:
+ * `.astryx-selector-option` (on the Item root, whose own
+ * padding and radius are reset so the host row owns them).
+ *
+ * Row layout context: inside an InputGroup the trigger is height-pinned, so Astryx forces
+ * `layout="inline"`; here a Selector in a group renders its value with the class
+ * `ax-selector-value` under `[data-astryx-input-group-item]`, and Selector.css folds a
+ * stacked SelectorOption onto one line there (CSS instead of context).
+ *
+ * @example
+ * <Selector label="Owner" options={people}
+ *   renderOption={(o) => <SelectorOption label={o.label} description={o.description} icon="info" />} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item from '../Item/Item.astro';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx} from '../../lib/themeProps';
+import './Selector.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Primary label (or the `label` slot). */
+  label?: string;
+  /** Icon before the label (name / SVG string / Astro component), or the `icon` slot. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Secondary text below the label (or the `description` slot). */
+  description?: string;
+  /** `stacked` puts the description below; `inline` keeps one line. @default 'stacked' */
+  layout?: 'stacked' | 'inline';
+  /** Content after the label/description, or the `endContent` slot. */
+  endContent?: string;
+}
+
+const {label, icon, description, layout, endContent, class: className, ...rest} = Astro.props;
+const slot = async (name: string) => (Astro.slots.has(name) ? await Astro.slots.render(name) : '');
+const iconHtml = await slot('icon');
+const labelHtml = await slot('label');
+const descriptionHtml = await slot('description');
+const endHtml = await slot('endContent');
+const hasIcon = iconHtml.trim() !== '' || (icon != null && icon !== '');
+---
+<Item
+  {...rest}
+  class={cx('astryx-selector-option', className as string | undefined)}
+  label={labelHtml ? undefined : label}
+  description={descriptionHtml ? undefined : description}
+  layout={layout}
+  data-ax-layout={layout ?? 'stacked'}
+>
+  {hasIcon && (iconHtml ? <Fragment slot="startContent" set:html={iconHtml} /> : <Icon slot="startContent" icon={icon} size="sm" color="secondary" />)}
+  {labelHtml && <Fragment slot="label" set:html={labelHtml} />}
+  {descriptionHtml && <Fragment slot="description" set:html={descriptionHtml} />}
+  {(endHtml || endContent) && (endHtml ? <Fragment slot="endContent" set:html={endHtml} /> : <Fragment slot="endContent">{endContent}</Fragment>)}
+</Item>

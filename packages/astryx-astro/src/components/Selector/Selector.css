@@ -1,0 +1,339 @@
+/*
+ * Port of @astryxdesign/core Selector/Selector.tsx (styles, sizeStyles, itemSizeStyles),
+ * Selector/SelectorOption.tsx (embeddedStyles), Selector/selectorPresentation.stylex.ts
+ * (pointerRestoredFocus), Field/PanelSearchInput.tsx (styles), privateAttributes/focusOwner.stylex.ts
+ * (focusWithinOwner). Shared by MultiSelector (the search row and the selector popup).
+ *
+ * The `input` variant's bordered box is the shared `.ax-input` (Field/Field.css:
+ * inputWrapperStyles, status border/hover, disabled + disabled focus ring); `secondary` and
+ * `ghost` drop it (Astryx overrides every border, fill and shadow of it) and carry the
+ * interaction overlay (`.ax-overlay-image`) instead, so no rule here has to out-rank a
+ * Field.css state rule. Rule groups follow the React stylex.props() order:
+ * triggerContainer → size → ghost → secondary → overlay → focus owner → pointerRestoredFocus →
+ * disabled → readOnly → ghostDisabled → ghostReadOnly → placeholder → (status: Field.css) →
+ * inGroup. Selectors carry `[data-variant]` (always rendered) so they out-rank `.ax-input`'s
+ * own base declarations at equal layer.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Trigger container (the control box) ────────────────────────────────── */
+  .astryx-selector[data-variant] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    color: var(--color-text-primary);
+    cursor: pointer;
+  }
+  @media (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      .astryx-selector[data-variant] { font-size: max(1rem, var(--text-label-size)); }
+    }
+  }
+  .astryx-selector[data-variant]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* secondary / ghost: inputWrapperStyles.base minus what their styles override */
+  .astryx-selector[data-variant]:not([data-variant="input"]) {
+    box-sizing: border-box;
+    z-index: 1;
+    border-width: 0;
+    border-style: solid;
+    border-color: var(--color-border-emphasized);
+    --_field-radius: var(--radius-element);
+    border-radius: var(--_field-radius);
+    box-shadow: none;
+    outline: none;
+  }
+
+  /* sizeStyles: padding sizes the trigger (one line = the size token, each extra line adds one) */
+  .astryx-selector[data-size="sm"] {
+    min-height: var(--size-element-sm);
+    line-height: max(min(var(--spacing-5), max(var(--size-element-sm) - 2 * var(--border-width), 1.5em)), 20px, 1rem);
+    padding-block: calc((var(--size-element-sm) - max(min(var(--spacing-5), max(var(--size-element-sm) - 2 * var(--border-width), 1.5em)), 20px, 1rem) - 2 * var(--border-width)) / 2);
+  }
+  .astryx-selector[data-size="md"] {
+    min-height: var(--size-element-md);
+    line-height: max(min(var(--spacing-5), max(var(--size-element-md) - 2 * var(--border-width), 1.5em)), 20px, 1rem);
+    padding-block: calc((var(--size-element-md) - max(min(var(--spacing-5), max(var(--size-element-md) - 2 * var(--border-width), 1.5em)), 20px, 1rem) - 2 * var(--border-width)) / 2);
+  }
+  .astryx-selector[data-size="lg"] {
+    min-height: var(--size-element-lg);
+    line-height: max(min(var(--spacing-5), max(var(--size-element-lg) - 2 * var(--border-width), 1.5em)), 20px, 1rem);
+    padding-block: calc((var(--size-element-lg) - max(min(var(--spacing-5), max(var(--size-element-lg) - 2 * var(--border-width), 1.5em)), 20px, 1rem) - 2 * var(--border-width)) / 2);
+  }
+
+  /* triggerGhost / triggerSecondary: content width, uncapped line box, press scale */
+  .astryx-selector[data-variant="ghost"],
+  .astryx-selector[data-variant="secondary"] {
+    width: auto;
+    line-height: max(var(--spacing-5), 20px, 1rem);
+    font-weight: var(--font-weight-medium);
+    transition-property: background-image, background-color, color, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform: scale(1);
+  }
+  .astryx-selector[data-variant="ghost"] { background-color: transparent; }
+  .astryx-selector[data-variant="secondary"] { background-color: var(--color-neutral); }
+  .astryx-selector[data-variant="ghost"]:active,
+  .astryx-selector[data-variant="secondary"]:active { transform: scale(0.98); }
+  @media (pointer: coarse) {
+    .astryx-selector[data-variant="ghost"]:active,
+    .astryx-selector[data-variant="secondary"]:active { transform: scale(1); }
+  }
+
+  /* focusWithinOwner: secondary/ghost ring the box while the trigger has keyboard focus */
+  .astryx-selector[data-variant]:not([data-variant="input"]):not([data-ax-focus-restored]):has(> [data-astryx-focus-owner]:focus-visible) {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  /* selectorPresentationStyles.pointerRestoredFocus: focus a pointer pick returned paints no ring */
+  .astryx-selector.ax-input[data-variant][data-ax-focus-restored]:focus-within,
+  .astryx-selector.ax-input[data-variant][data-ax-focus-restored][data-status]:focus-within {
+    border-color: var(--color-border-emphasized);
+    box-shadow: none;
+    outline-width: 0;
+    outline-style: none;
+  }
+
+  /* disabled (inputWrapperStyles.disabled for the borderless variants; .ax-input has its own) */
+  .astryx-selector[data-variant]:not([data-variant="input"])[data-disabled] { opacity: 0.5; cursor: default; }
+  .astryx-selector[data-variant][data-readonly] { cursor: default; }
+  .astryx-selector[data-variant]:not([data-variant="input"]):is([data-disabled], [data-readonly]) {
+    background-image: none;
+    transform: none;
+  }
+  .astryx-selector[data-variant]:not([data-variant="input"]):is([data-disabled], [data-readonly]):active { transform: none; }
+
+  /* triggerPlaceholder */
+  .astryx-selector[data-variant][data-ax-placeholder] { color: var(--color-text-secondary); }
+
+  /* inside an InputGroup: the group's height is the row (triggerInGroup) */
+  .astryx-selector[data-variant][data-astryx-input-group-item] {
+    min-height: 0;
+    padding-block: 0;
+    line-height: max(var(--spacing-5), 20px, 1rem);
+  }
+
+  /* ── Trigger button ─────────────────────────────────────────────────────── */
+  .ax-selector-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    font-weight: inherit;
+    color: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+  .ax-selector-trigger:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-selector-trigger[aria-readonly="true"] { cursor: default; }
+  [data-astryx-input-group-item] > .ax-selector-trigger { align-self: stretch; }
+  .ax-selector-value-slot { display: contents; }
+  .ax-selector-label {
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: start;
+  }
+  /* renderValue wrapper: takes the free width, clips horizontally */
+  .ax-selector-value {
+    flex-grow: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-align: start;
+  }
+  [data-astryx-input-group-item] .ax-selector-value { max-height: 100%; }
+  /* SelectorRowLayoutContext: a height-pinned (grouped) trigger folds SelectorOption onto one line */
+  [data-astryx-input-group-item] .ax-selector-value .astryx-selector-option .ax-item-content,
+  [data-astryx-input-group-item] .ax-selector-value .astryx-selector-option .ax-item-action { flex-direction: row; align-items: baseline; gap: var(--spacing-2); }
+  .astryx-selector :is(.ax-selector-icon, .ax-selector-start-icon, .ax-selector-value-icon) { flex-shrink: 0; }
+  /* the chevron carries its own rotation (and the indicator theme target) */
+  .ax-selector-chevron {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform-origin: center;
+  }
+  .ax-selector-chevron[data-state="expanded"] { transform: rotate(180deg); }
+
+  .ax-selector-status-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-element);
+  }
+
+  /* ── Popup ──────────────────────────────────────────────────────────────── */
+  .ax-selector-search-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: var(--_ax-max-block-size);
+  }
+  .ax-selector-listbox {
+    box-sizing: border-box;
+    min-height: 0;
+    max-height: min(300px, var(--_ax-max-block-size));
+    overflow-y: auto;
+    outline: none;
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-1);
+    touch-action: pinch-zoom;
+  }
+  .ax-selector-listbox[data-ax-overflow] { touch-action: pan-y pinch-zoom; overscroll-behavior: contain; }
+  /* dropdownInput: the input trigger's text inset includes its border */
+  .ax-selector-listbox-inset { padding-inline: calc(var(--spacing-1) + var(--border-width)); }
+
+  .astryx-selector-empty-state {
+    padding: var(--spacing-3);
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+  }
+  .astryx-selector-empty-state[hidden] { display: none; }
+  .astryx-selector-section-heading {
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-2);
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    user-select: none;
+  }
+  .astryx-divider.ax-selector-divider { margin-block: var(--spacing-1); }
+
+  /* ── Option rows ────────────────────────────────────────────────────────── */
+  .astryx-selector-option-row {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding: var(--spacing-2);
+    border-radius: var(--radius-element);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    cursor: pointer;
+    text-align: start;
+    outline-style: none;
+  }
+  .astryx-selector-option-row[data-size="sm"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); }
+  .astryx-selector-option-row[data-size="md"] { padding-block: var(--spacing-1-5); }
+  .astryx-selector-option-row[data-ax-highlighted] { background-color: var(--color-overlay-hover); }
+  /* The fill alone does not reach 3:1: after keyboard input the active row rings inside itself. */
+  .astryx-selector-option-row[data-ax-highlighted][data-ax-keyboard] {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: calc(-1 * var(--focus-outline-width));
+  }
+  .astryx-selector-option-row[aria-selected="true"] { font-weight: var(--font-weight-medium); }
+  .astryx-selector-option-row[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+  .astryx-selector-option-row[hidden] { display: none; }
+  .ax-selector-option-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    flex: 1;
+    min-width: 0;
+  }
+  /* The mark keeps either logical position; an indicator that draws nothing takes no room. */
+  .ax-selector-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 1rem;
+  }
+  .ax-selector-mark:empty { display: none; }
+
+  /* SelectorOption embedded in a row: the host row owns padding and radius */
+  .astryx-item.astryx-selector-option {
+    padding-block: 0;
+    padding-inline: 0;
+    border-radius: 0;
+    min-width: 0;
+    flex: 1;
+  }
+  .astryx-selector-option .ax-item-label { font-size: inherit; font-weight: inherit; }
+
+  /* ── PanelSearchInput ───────────────────────────────────────────────────── */
+  .ax-panel-search {
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-1);
+  }
+  .ax-panel-search.ax-panel-search-inset { padding-inline: calc(var(--spacing-1) + var(--border-width)); }
+  .ax-panel-search-field {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding-block: var(--spacing-1-5);
+    padding-inline: var(--spacing-2);
+    border-radius: var(--radius-element);
+    transition-property: box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) { .ax-panel-search-field { transition-duration: 0s; } }
+  .ax-panel-search-field[data-keyboard-focus]:has(input:focus-visible) {
+    box-shadow: inset 0 0 0 2px var(--color-accent);
+  }
+  .ax-panel-search-field > .astryx-icon { display: flex; align-items: center; flex-shrink: 0; }
+  .ax-panel-search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    outline: none;
+  }
+  .ax-panel-search-input::placeholder { color: var(--color-text-secondary); }
+  @media (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      .ax-panel-search-input { font-size: max(1rem, var(--text-label-size)); }
+    }
+  }
+}

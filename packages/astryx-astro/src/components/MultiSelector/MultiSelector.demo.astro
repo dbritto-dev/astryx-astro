@@ -1,0 +1,92 @@
+---
+import MultiSelector, {type MultiSelectorSize, type MultiSelectorOptionType} from './MultiSelector.astro';
+import Button from '../Button/Button.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: MultiSelectorSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Choose at least one column',
+  warning: 'Wide tables scroll sideways',
+  success: 'Saved to your view',
+};
+const columns = ['Name', 'Email', 'Role', 'Team', 'Location', 'Status'];
+const grouped: MultiSelectorOptionType[] = [
+  {type: 'section', title: 'Engineering', options: [{value: 'web', label: 'Web'}, {value: 'mobile', label: 'Mobile'}, {value: 'infra', label: 'Infrastructure', disabled: true}]},
+  {type: 'divider'},
+  {type: 'section', title: 'Design', options: [{value: 'product', label: 'Product design'}, {value: 'brand', label: 'Brand'}]},
+  {type: 'divider'},
+  {value: 'other', label: 'Other'},
+];
+const tags = ['Bug', 'Feature', 'Docs', 'Performance', 'Security', 'Accessibility', 'Design', 'Infra', 'Testing', 'Refactor', 'Research', 'Support', 'Billing', 'Mobile', 'Web'];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Sizes</h3>
+    <div style={grid}>
+      {sizes.map((size) => <MultiSelector label={`Columns (${size})`} size={size} options={columns} value={['Name', 'Email']} />)}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Trigger display: count, labels, badges · variants</h3>
+    <div style={grid}>
+      <MultiSelector id="ms-count" label="Count" options={columns} value={['Name', 'Role']} />
+      <MultiSelector id="ms-labels" label="Labels" options={columns} value={['Name', 'Role', 'Team', 'Status']} triggerDisplay="labels" />
+      <MultiSelector id="ms-badges" label="Badges" options={columns} value={['Name', 'Role', 'Team', 'Status']} triggerDisplay="badges" maxBadges={2} />
+      <MultiSelector label="Secondary" variant="secondary" options={columns} value={['Email']} />
+      <MultiSelector label="Ghost" variant="ghost" options={columns} placeholder="Filter…" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <MultiSelector label={`${type} ${size}`} size={size} options={columns} status={{type, message: messages[type]}} />
+      )))}
+      <MultiSelector label="Tooltip status" options={columns} status={{type: 'warning', message: messages.warning}} statusVariant="tooltip" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Forms: select all, clear, search + create</h3>
+    <form id="ms-form" style={grid}>
+      <MultiSelector id="ms-form-columns" label="Visible columns" options={columns} value={['Name', 'Email']} htmlName="columns" hasSelectAll hasClear />
+      <MultiSelector id="ms-tags" label="Tags" options={tags} htmlName="tags" hasSearch hasCreate hasClear triggerDisplay="labels" placeholder="Add tags" />
+      <div style="display:flex;gap:var(--spacing-2);align-items:center;grid-column:1/-1">
+        <Button type="reset" label="Reset" variant="secondary" />
+        <output id="ms-form-output" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)"></output>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h3 style={cap}>Grouped and disabled options, checkbox at the end, empty, disabled, read-only, loading</h3>
+    <div style={grid}>
+      <MultiSelector id="ms-grouped" label="Teams" options={grouped} value={['mobile', 'infra']} hasSelectAll />
+      <MultiSelector label="Checkbox at the end" options={columns} value={['Team']} indicatorPosition="end" />
+      <MultiSelector label="Nothing to pick" options={[]} />
+      <MultiSelector id="ms-disabled" label="Disabled" options={columns} value={['Name']} isDisabled disabledMessage="Pick a table first" htmlName="disabled" />
+      <MultiSelector id="ms-readonly" label="Read-only" options={columns} value={['Name', 'Email']} isReadOnly htmlName="readonly" />
+      <MultiSelector label="Loading" options={[]} isLoading placeholder="Loading…" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Open by default</h3>
+    <div style="min-height:300px">
+      <MultiSelector label="Open on load" options={columns} value={['Role']} hasSelectAll isDefaultOpen />
+    </div>
+  </section>
+</div>
+<script>
+  const form = document.getElementById('ms-form') as HTMLFormElement | null;
+  const out = document.getElementById('ms-form-output');
+  const show = () => { if (form && out) out.textContent = new URLSearchParams(new FormData(form) as never).toString(); };
+  form?.addEventListener('astryx-change', show);
+  form?.addEventListener('reset', () => setTimeout(show, 0));
+  show();
+</script>

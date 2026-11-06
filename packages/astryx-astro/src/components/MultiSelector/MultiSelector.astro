@@ -1,0 +1,429 @@
+---
+/**
+ * MultiSelector — a checkbox dropdown for choosing several values. Port of
+ * @astryxdesign/core MultiSelector/MultiSelector.tsx and MultiSelector/hooks.ts
+ * (useMultiCombobox), sharing Selector's option model (../Selector/options.ts), search row
+ * (../Selector/_PanelSearchInput.astro) and presentation controller.
+ * Behaviour: src/elements/multi-selector.ts on runtime/combobox.ts.
+ *
+ * Markup: a Field-composed control box `<ax-multi-selector class="astryx-multi-selector">`
+ * with a `<button role="combobox" aria-haspopup="listbox" popovertarget>` showing the
+ * selection (`triggerDisplay`: "N selected", "A, B, C, +N" or Badges), one hidden
+ * `<input name>` per selected value (a native multi-select's serialization), spinner, clear
+ * button and status icon or chevron; its sibling `<ax-combobox-layer popover="auto">` holds
+ * the `.astryx-multi-selector-popup` surface: optional search row, then a
+ * `role="listbox" aria-multiselectable="true"` of `role="option"` rows (each with a
+ * decorative, inert checkbox), an optional "Select all" first row (tri-state; partially
+ * selected is spoken through its name, aria-selected cannot say "mixed"), sections as
+ * `role="group"` and aria-hidden dividers.
+ *
+ * Keyboard (useMultiCombobox): ↓/↑/Enter/Space open on the first option (↑ the last); in the
+ * list ↓/↑ move (clamped, disabled skipped), Home/End/PageUp/PageDown first/last,
+ * Enter/Space toggle and keep the list open, Escape closes, Tab closes, Delete/Backspace
+ * clear a closed clearable selector; type-to-select opens the list on the match (Space stays
+ * the toggle). Selected options move first within their group when the list opens (frozen
+ * while it stays open). Every change is announced ("2 of 5 selected", "All selected",
+ * "Selection cleared"); search announces its count; `hasCreate` offers a `Create "<query>"`
+ * row (Enter with nothing highlighted takes it).
+ *
+ * Events (on `<ax-multi-selector>`, bubbling): `astryx-change` `{values, change?}` —
+ * `change` is `{type: 'create', query}` for a creation (the element adds the option
+ * itself); `astryx-open-change` `{isOpen, reason}` from the layer. Element API: `el.values`
+ * (get/set), `el.open()`, `el.close()`, `el.toggle()`, `el.isOpen`, `el.clear()`,
+ * `el.formatValue = (items) => string` (client counterpart of the `formatValue` prop).
+ * Form reset restores the server values.
+ *
+ * Theme hooks: `.astryx-multi-selector[data-variant][data-size][data-status][data-disabled][data-readonly]`,
+ * `.astryx-multi-selector-option[data-size][data-select-all][data-selected][data-disabled]`,
+ * `.astryx-multi-selector-search`, `.astryx-multi-selector-section-heading`,
+ * `.astryx-multi-selector-empty-state`, `.astryx-multi-selector-indicator-icon[data-state]`,
+ * `.astryx-multi-selector-popup`; private var `--_field-radius`.
+ *
+ * Not available / deferred: `onChange`/`changeAction` (use the event), `handleRef` (the
+ * element API), `renderTrigger` (a caller-rendered opener), option `action` grid rows
+ * (spec:AST-058), `presentation` "bottom-sheet" | "adaptive" (BottomSheet not ported), the
+ * touch press controller. Stand-in: the decorative checkbox is the `checkbox` Indicator
+ * (CheckboxInput is not ported yet; Astryx renders an inert CheckboxInput there).
+ *
+ * @example
+ * <MultiSelector label="Columns" options={['Name', 'Email', 'Role']} value={['Name']} hasSelectAll htmlName="columns" />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import Divider from '../Divider/Divider.astro';
+import Badge from '../Badge/Badge.astro';
+import Indicator from '../Indicator/Indicator.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import PanelSearchInput from '../Selector/_PanelSearchInput.astro';
+import OptionRow from './_MultiSelectorOptionRow.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {clearance, placementAttrs} from '../Layer/layer';
+import {messageTemplate, pluralTemplates} from '../Field/clientMessages';
+import {
+  GROUP_DROP,
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  type FieldComposedProps,
+  type FieldStatusPlacement,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+} from '../Field/fieldProps';
+import {getSelectableOptions, optionRows, type SelectorOptionData, type SelectorOptionType} from '../Selector/options';
+import '../Field/Field.css';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import '../Selector/Selector.css';
+import './MultiSelector.css';
+
+export type MultiSelectorOptionData = SelectorOptionData;
+export type MultiSelectorOptionType = SelectorOptionType;
+export type MultiSelectorSize = InputSize;
+export type MultiSelectorVariant = 'input' | 'secondary' | 'ghost';
+export type MultiSelectorPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+export type MultiSelectorStatus = InputStatus;
+export interface MultiSelectorSelectedItem {
+  value: string;
+  label: string;
+}
+
+export interface Props extends FieldComposedProps {
+  /** Strings, option objects, dividers or sections (as Selector). */
+  options: MultiSelectorOptionType[];
+  /** The selected values (the element owns them afterwards). @default [] */
+  value?: string[];
+  /** Form field name: one hidden input per selected value (dropped while disabled). */
+  htmlName?: string;
+  /** @default translated "Select…" */
+  placeholder?: string;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: MultiSelectorSize;
+  /** @default 'input' */
+  variant?: MultiSelectorVariant;
+  /** Values visible, focusable and submitted; no surface. @default false */
+  isReadOnly?: boolean;
+  /** Why it is disabled (tooltip on hover/focus). */
+  disabledMessage?: string;
+  /** Busy: spinner + aria-busy; empty states are not shown. @default false */
+  isLoading?: boolean;
+  /** Icon at the start of the trigger (or the `startIcon` slot). */
+  startIcon?: LabelIcon;
+  /** Clear-all (✕) button while values are selected. @default false */
+  hasClear?: boolean;
+  /** A tri-state "Select all" first row. @default false */
+  hasSelectAll?: boolean;
+  /** @default translated "Select all" */
+  selectAllLabel?: string;
+  /** A search row that filters the options. @default false */
+  hasSearch?: boolean;
+  /** @default translated "Search…" */
+  searchPlaceholder?: string;
+  /** Shown/announced when there are no options (or the `emptyText` slot). @default "No options" */
+  emptyText?: string;
+  /** Shown/announced when the query matches nothing (or the `emptySearchText` slot). @default "No results found" */
+  emptySearchText?: string;
+  /** With hasSearch: offer `Create "<query>"` for a query no option matches exactly. @default false */
+  hasCreate?: boolean;
+  /** "N selected" (count), "A, B, +N" (labels) or Badges. @default 'count' */
+  triggerDisplay?: 'count' | 'labels' | 'badges';
+  /** Server-side trigger text for count/labels (set `el.formatValue` for client updates). */
+  formatValue?: (items: MultiSelectorSelectedItem[]) => string;
+  /** Badges shown before "+N". @default 3 */
+  maxBadges?: number;
+  /** Custom option content (Astryx `renderOption`), a server-side render function. */
+  renderOption?: (option: SelectorOptionData & {label: string}) => unknown;
+  /** Edge of the row that carries the checkbox. @default 'start' */
+  indicatorPosition?: 'start' | 'end';
+  /** Only 'popover' is implemented. @default 'popover' */
+  presentation?: MultiSelectorPresentation;
+  /** Open on load (showcases). @default false */
+  isDefaultOpen?: boolean;
+  /** @default 'attached' for input, 'detached' for secondary/ghost */
+  statusVariant?: FieldStatusPlacement;
+  'data-testid'?: string;
+}
+
+const {
+  options = [],
+  value: valueProp = [],
+  htmlName,
+  placeholder: placeholderProp,
+  size: sizeProp,
+  variant = 'input',
+  isReadOnly = false,
+  disabledMessage,
+  isLoading = false,
+  startIcon,
+  hasClear = false,
+  hasSelectAll = false,
+  selectAllLabel: selectAllLabelProp,
+  hasSearch = false,
+  searchPlaceholder: searchPlaceholderProp,
+  emptyText: emptyTextProp,
+  emptySearchText: emptySearchTextProp,
+  hasCreate = false,
+  triggerDisplay = 'count',
+  formatValue,
+  maxBadges = 3,
+  renderOption,
+  indicatorPosition = 'start',
+  presentation: _presentation = 'popover',
+  isDefaultOpen = false,
+  statusVariant: statusVariantProp = 'attached',
+  ...props
+} = Astro.props;
+
+const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && statusVariantProp === 'attached' ? 'detached' : statusVariantProp;
+const r = routeFieldProps('MultiSelector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>, {groupable: true, isReadOnly});
+const {isDisabled, status} = r;
+const isEffectivelyReadOnly = isReadOnly && !isDisabled;
+const locale = resolveLocale(Astro, r.locale);
+const t = translator(Astro, r.locale);
+const size: MultiSelectorSize = sizeProp ?? 'md';
+const placeholder = placeholderProp ?? t('@astryx.multiSelector.selectPlaceholder');
+const selectAllLabel = selectAllLabelProp ?? t('@astryx.multiSelector.selectAll');
+const searchPlaceholder = searchPlaceholderProp ?? t('@astryx.multiSelector.searchPlaceholder');
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const emptyHtml = await slotHtml('emptyText');
+const emptySearchHtml = await slotHtml('emptySearchText');
+const startIconHtml = await slotHtml('startIcon');
+const emptyText = emptyTextProp ?? t('@astryx.multiSelector.empty');
+const emptySearchText = emptySearchTextProp ?? t('@astryx.multiSelector.emptySearchResults');
+if (import.meta.env?.DEV && hasCreate && !hasSearch) {
+  console.warn('[astryx-astro] MultiSelector: `hasCreate` needs `hasSearch`: the create row is minted from the typed query, so without a search input nothing is offered.');
+}
+
+const ids = {
+  box: r.ids.make('box'),
+  layer: r.ids.make('layer'),
+  listbox: r.ids.make('listbox'),
+  search: r.ids.make('search'),
+  readOnly: r.ids.make('readonly'),
+};
+const itemId = (index: number) => `${ids.listbox}-item-${index}`;
+
+const selectable = getSelectableOptions(options);
+const values = [...valueProp];
+const valueSet = new Set(values);
+const rows = optionRows(options);
+const selectedItems: MultiSelectorSelectedItem[] = values.map((v) => ({value: v, label: selectable.find((o) => o.value === v)?.label ?? v}));
+const enabled = selectable.filter((o) => !o.disabled);
+const allSelected = enabled.length > 0 && enabled.every((o) => valueSet.has(o.value));
+const someSelected = enabled.some((o) => valueSet.has(o.value));
+const selectAllState = allSelected ? 'checked' : someSelected ? 'indeterminate' : 'unchecked';
+const checkboxSize = size === 'lg' ? 'md' : size;
+
+const labelsText = (labels: string[]) => {
+  const shown = labels.slice(0, 3);
+  const rest = labels.length - shown.length;
+  return rest > 0 ? `${shown.join(', ')}, +${rest}` : shown.join(', ');
+};
+const triggerText = values.length === 0
+  ? placeholder
+  : triggerDisplay === 'count'
+    ? formatValue?.(selectedItems) ?? t('@astryx.multiSelector.selectedCount', {count: values.length})
+    : formatValue?.(selectedItems) ?? labelsText(selectedItems.map((i) => i.label));
+
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const showStatusIcon = status != null && effectiveStatusVariant !== 'detached';
+const statusTip = status != null && effectiveStatusVariant === 'tooltip' && !!status.message ? attachTooltip() : null;
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, statusTip?.id, disabledTip?.id, isEffectivelyReadOnly ? ids.readOnly : undefined);
+const STATUS_LABEL = {warning: '@astryx.input.statusButton.warning', error: '@astryx.input.statusButton.error', success: '@astryx.input.statusButton.success'} as const;
+const isInteractive = !isDisabled && !isEffectivelyReadOnly;
+const showsClear = hasClear && !isDisabled && !isEffectivelyReadOnly;
+const canCreate = hasCreate && hasSearch;
+
+const {themeClass, attrs: themeAttrs} = themeProps('multi-selector', {
+  variant,
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+  readonly: isEffectivelyReadOnly ? 'readonly' : null,
+});
+const boxClass = cx(themeClass, variant === 'input' ? 'ax-input' : 'ax-overlay-image ax-focus-within', 'ax-multi-selector-box', r.control.class);
+const MARKS = ['checked', 'unchecked', 'indeterminate'] as const;
+const messages = {
+  selectedCount: pluralTemplates(t, locale, '@astryx.multiSelector.selectedCount', 'count'),
+  selectionCount: messageTemplate(t, locale, '@astryx.multiSelector.selectionCount', {}, ['count', 'total']),
+  allSelected: t('@astryx.multiSelector.allSelected'),
+  selectionCleared: t('@astryx.multiSelector.selectionCleared'),
+  resultCount: pluralTemplates(t, locale, '@astryx.multiSelector.resultCount', 'count'),
+  createOption: messageTemplate(t, locale, '@astryx.multiSelector.createOption', {}, ['query']),
+  optionCreated: messageTemplate(t, locale, '@astryx.multiSelector.optionCreated', {}, ['label']),
+  partial: t('@astryx.multiSelector.selectAllPartiallySelected', {label: selectAllLabel}),
+};
+---
+<Field {...r.field}>
+  <ax-multi-selector
+    id={ids.box}
+    class={boxClass}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-layer={isEffectivelyReadOnly ? undefined : ids.layer}
+    data-ax-listbox={ids.listbox}
+    data-ax-values={JSON.stringify(values)}
+    data-ax-placeholder={values.length === 0 ? '' : undefined}
+    data-ax-has-search={hasSearch ? '' : undefined}
+    data-ax-create={canCreate ? '' : undefined}
+    data-ax-trigger-display={triggerDisplay}
+    data-ax-max-badges={maxBadges}
+    data-ax-locale={locale}
+    data-ax-html-name={htmlName != null && !isDisabled ? htmlName : undefined}
+    data-ax-messages={JSON.stringify(messages)}
+    data-ax-result-count={messages.resultCount}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-ax-loading={isLoading ? '' : undefined}
+  >
+    {startIconHtml ? <Fragment set:html={startIconHtml} /> : startIcon && <Icon icon={startIcon} size="sm" color="secondary" class="ax-selector-start-icon" />}
+    <span {...r.groupLabel}>{r.label}</span>
+    {isEffectivelyReadOnly && <span id={ids.readOnly} class="ax-field-sr-only">{t('@astryx.input.readOnly')}</span>}
+    <button
+      {...r.native}
+      {...r.required}
+      {...r.groupInput}
+      type="button"
+      id={r.id}
+      class="ax-multi-selector-trigger"
+      data-astryx-focus-owner=""
+      role={isEffectivelyReadOnly || !hasSearch ? 'combobox' : undefined}
+      aria-haspopup={isEffectivelyReadOnly ? undefined : 'listbox'}
+      aria-expanded={isEffectivelyReadOnly ? 'false' : isDefaultOpen ? 'true' : 'false'}
+      aria-controls={isEffectivelyReadOnly ? undefined : ids.listbox}
+      aria-readonly={isEffectivelyReadOnly ? 'true' : undefined}
+      aria-disabled={isDisabled ? 'true' : undefined}
+      aria-describedby={describedBy}
+      aria-labelledby={r.labelledBy}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      popovertarget={isInteractive ? ids.layer : undefined}
+    ><span class="ax-multi-selector-content" data-ax-trigger-content>{values.length > 0 && triggerDisplay === 'badges' ? (
+      <span class="ax-multi-selector-badges">
+        {selectedItems.slice(0, maxBadges).map((item) => <Badge label={item.label} variant="neutral" />)}
+        {selectedItems.length > maxBadges && <span class="ax-multi-selector-overflow">+{selectedItems.length - maxBadges}</span>}
+      </span>
+    ) : (
+      <span class="ax-multi-selector-text">{triggerText}</span>
+    )}</span></button>
+    {htmlName != null && !isDisabled && values.map((v) => (
+      <input type="hidden" name={htmlName} value={v} data-ax-multi-value="" {...{[GROUP_DROP_DISABLED]: ''}} />
+    ))}
+    {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    {showsClear && (
+      <InputClearButton label={t('@astryx.multiSelector.clearAll', {label: r.label})} isHidden={values.length === 0} locale={r.locale} data-ax-keep-open="" {...{[GROUP_DROP_DISABLED]: ''}} />
+    )}
+    {showStatusIcon ? (statusTip ? (
+      <button type="button" class="ax-selector-status-button ax-focus-visible" aria-label={t(STATUS_LABEL[status!.type])} {...statusTip.trigger} data-ax-keep-open="" data-ax-selector-status="" {...{[GROUP_DROP]: ''}}>
+        <Icon icon={status!.type} size="sm" color={status!.type} class="ax-selector-icon" />
+      </button>
+    ) : (
+      <Icon icon={status!.type} size="sm" color={status!.type} class="ax-selector-icon" />
+    )) : !isEffectivelyReadOnly && (
+      <Icon icon="chevronDown" size="sm" color="secondary" class="astryx-multi-selector-indicator-icon ax-selector-icon ax-multi-selector-chevron" data-state={isDefaultOpen ? 'expanded' : 'collapsed'} />
+    )}
+    {!isEffectivelyReadOnly && (
+      <Fragment>
+        <template data-ax-placeholder-template><span class="ax-multi-selector-text">{placeholder}</span></template>
+        <template data-ax-badge-template><Badge label="" variant="neutral" /></template>
+        {MARKS.map((state) => (
+          <Fragment>
+            <template data-ax-mark={state}><Indicator name="checkbox" state={state} size={checkboxSize} /></template>
+            <template data-ax-mark={`${state}-disabled`}><Indicator name="checkbox" state={state} size={checkboxSize} isDisabled /></template>
+          </Fragment>
+        ))}
+        {canCreate && (
+          <template data-ax-option-template>
+            <OptionRow option={{value: '', label: ''}} id="" isSelected={false} size={size} indicatorPosition={indicatorPosition} />
+          </template>
+        )}
+      </Fragment>
+    )}
+  </ax-multi-selector>
+  {!isEffectivelyReadOnly && (
+    <ax-combobox-layer
+      id={ids.layer}
+      popover="auto"
+      class="ax-layer ax-layer-motion ax-popover-layer ax-selector-layer"
+      data-astryx-layer-root=""
+      {...placementAttrs({placement: 'below', alignment: 'start'})}
+      data-ax-anchor={ids.box}
+      data-ax-open={isDefaultOpen && isInteractive ? 'true' : undefined}
+      style={clearance('var(--spacing-1)')}
+    >
+      <div class="astryx-popover astryx-multi-selector-popup ax-focus-visible">
+        <div class={hasSearch ? 'ax-selector-search-panel' : 'ax-selector-panel'}>
+          {hasSearch && (
+            <Fragment>
+              <PanelSearchInput
+                id={ids.search}
+                label={t('@astryx.multiSelector.searchOptions')}
+                clearLabel={t('@astryx.textInput.clearLabel', {label: t('@astryx.multiSelector.searchOptions')})}
+                placeholder={searchPlaceholder}
+                class="astryx-multi-selector-search"
+                role="combobox"
+                aria-expanded={isDefaultOpen ? 'true' : 'false'}
+                aria-controls={ids.listbox}
+                aria-autocomplete="list"
+                locale={r.locale}
+              />
+              <Divider />
+            </Fragment>
+          )}
+          <div class="ax-multi-selector-dropdown">
+            <div id={ids.listbox} role="listbox" aria-multiselectable="true" aria-labelledby={r.id} class="ax-multi-selector-listbox">
+              {canCreate && (
+                <div role="option" id={`${ids.listbox}-create`} aria-selected="false" data-value="" data-ax-create-row="" data-ax-fixed=""
+                  class="astryx-multi-selector-option" data-size={size} hidden><span class="ax-multi-selector-label" data-ax-create-label></span></div>
+              )}
+              {hasSelectAll && (
+                <OptionRow
+                  option={{value: '__xds_select_all__', label: selectAllLabel}}
+                  id={`${ids.listbox}-select-all`}
+                  isSelected={allSelected}
+                  markState={selectAllState}
+                  isSelectAll
+                  partialLabel={messages.partial}
+                  size={size}
+                  indicatorPosition={indicatorPosition}
+                  hidden={selectable.length === 0}
+                />
+              )}
+              {rows.map((row) => row.kind === 'divider' ? (
+                <Divider aria-hidden="true" class="ax-selector-divider" data-ax-divider="" />
+              ) : row.kind === 'section' ? (
+                <div role="group" aria-label={row.title} data-ax-section="">
+                  {row.title && <div aria-hidden="true" class="astryx-multi-selector-section-heading">{row.title}</div>}
+                  {row.options.map(({option, index}) => (
+                    <OptionRow option={option} id={itemId(index)} order={index} isSelected={valueSet.has(option.value)} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
+                  ))}
+                </div>
+              ) : (
+                <OptionRow option={row.option} id={itemId(row.index)} order={row.index} isSelected={valueSet.has(row.option.value)} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
+              ))}
+              <div role="presentation" class="astryx-multi-selector-empty-state" data-ax-empty="options" hidden={selectable.length > 0 || isLoading || undefined}>
+                {emptyHtml ? <Fragment set:html={emptyHtml} /> : emptyText}
+              </div>
+              {hasSearch && (
+                <div role="presentation" class="astryx-multi-selector-empty-state" data-ax-empty="search" hidden>
+                  {emptySearchHtml ? <Fragment set:html={emptySearchHtml} /> : emptySearchText}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </ax-combobox-layer>
+  )}
+  {statusTip && <Tooltip {...statusTip.layer} content={status?.message} placement="above" />}
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/multi-selector';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

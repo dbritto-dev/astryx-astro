@@ -1,0 +1,58 @@
+---
+/**
+ * One MultiSelector option row (MultiSelector.tsx renderItem): `role="option"` with the
+ * `multi-selector-option` theme target (size, select-all, selected, disabled), a decorative
+ * inert checkbox at either edge and the label (or `renderOption`'s content). The select-all
+ * row's partial state is spoken through its name (`aria-label`), since aria-selected has no
+ * "mixed".
+ */
+import Indicator from '../Indicator/Indicator.astro';
+import type {SelectorOptionData} from '../Selector/options';
+
+export interface Props {
+  option: SelectorOptionData & {label: string};
+  id: string;
+  /** Original position, restored when the list closes (selected rows move first on open). */
+  order?: number;
+  isSelected: boolean;
+  /** Checkbox state (select-all is tri-state). @default isSelected ? 'checked' : 'unchecked' */
+  markState?: 'checked' | 'unchecked' | 'indeterminate';
+  isSelectAll?: boolean;
+  /** The select-all row's name while partially selected. */
+  partialLabel?: string;
+  size: 'sm' | 'md' | 'lg';
+  indicatorPosition: 'start' | 'end';
+  content?: unknown;
+  hidden?: boolean;
+}
+
+const {option, id, order, isSelected, markState, isSelectAll = false, partialLabel, size, indicatorPosition, content, hidden = false} = Astro.props;
+const isDisabled = !!option.disabled;
+const state = markState ?? (isSelected ? 'checked' : 'unchecked');
+const checkboxSize = size === 'lg' ? 'md' : size;
+const mark = `${state}${isDisabled ? '-disabled' : ''}`;
+---
+<div
+  role="option"
+  id={id || undefined}
+  aria-selected={isSelected ? 'true' : 'false'}
+  aria-disabled={isDisabled ? 'true' : undefined}
+  aria-label={isSelectAll && state === 'indeterminate' ? partialLabel : undefined}
+  data-value={option.value}
+  data-ax-label={option.label}
+  data-ax-order={order}
+  data-ax-select-all-row={isSelectAll ? '' : undefined}
+  data-ax-fixed={isSelectAll ? '' : undefined}
+  data-ax-partial-label={isSelectAll ? partialLabel : undefined}
+  data-ax-mark-state={mark}
+  class="astryx-multi-selector-option"
+  data-size={size}
+  data-select-all={isSelectAll ? 'select-all' : undefined}
+  data-selected={isSelected ? 'selected' : undefined}
+  data-disabled={isDisabled ? 'disabled' : undefined}
+  hidden={hidden || undefined}
+>
+  {indicatorPosition === 'start' && <span class="ax-multi-selector-check" inert data-ax-mark-slot><Indicator name="checkbox" state={state} size={checkboxSize} isDisabled={isDisabled} /></span>}
+  {content != null && !isSelectAll ? content : <span class="ax-multi-selector-label">{option.label}</span>}
+  {indicatorPosition === 'end' && <span class="ax-multi-selector-check ax-multi-selector-check-end" inert data-ax-mark-slot><Indicator name="checkbox" state={state} size={checkboxSize} isDisabled={isDisabled} /></span>}
+</div>
