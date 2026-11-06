@@ -1,0 +1,26 @@
+---
+/**
+ * Internal (Markdown): Astryx ListMarkerScope (List/ListContext.tsx). Draws `marker` on the
+ * ListItems rendered inside it instead of the marker their List's `listStyle` names, or
+ * `task`'s read-only checkbox in place of either. With `hasMarkerGutter`, counters keep the
+ * ordinary marker column and may paint outside it toward inline-start. Outside a List, or in a
+ * List without markers, it changes nothing.
+ *
+ *   <List listStyle="disc"><ListMarkerScope marker="square"><ListItem label="Nested" /></ListMarkerScope></List>
+ */
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {LIST_LOCAL, readListContext, type ListMarker, type ListTaskMarker} from './listContext';
+
+interface Props {
+  marker: ListMarker;
+  task?: ListTaskMarker;
+  hasMarkerGutter?: boolean;
+}
+
+const {marker, task, hasMarkerGutter = false} = Astro.props;
+const context = readListContext(Astro);
+const html = context == null
+  ? await Astro.slots.render('default')
+  : await renderWithLocals(Astro, {[LIST_LOCAL]: {...context, marker, task, hasMarkerGutter}}, () => Astro.slots.render('default'));
+---
+<Fragment set:html={html} />

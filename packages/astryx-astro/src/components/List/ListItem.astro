@@ -1,0 +1,158 @@
+---
+/**
+ * ListItem — one row of a List: an Item (`<li>`) with the list's marker, density, divider and
+ * edge treatment. Port of @astryxdesign/core List/ListItem.tsx (styles, markerStyles,
+ * taskMarkerStyles) with Item/ItemListRowContext.tsx, Item/ItemMarkerColumnsContext.tsx and
+ * utils/touchHitArea(.stylex).ts (the shared `ax-hit-area`).
+ *
+ * Reads the nearest List's context (`Astro.locals.astryxList`, ./listContext.ts); outside a List
+ * it is a balanced, undivided, unmarked row. Theme hooks: `.astryx-item.astryx-list-item` (Item's
+ * `[data-density][data-align]` and states), private var `--_hit-border-bottom` on a divided
+ * row's touch hit layer.
+ *
+ * Markers (custom-rendered, `list-style: none`): `disc` / `circle` (and Markdown's `square`) draw
+ * a 6px dot in a 16px box on the first line; `decimal` (and Markdown's `lower-alpha` /
+ * `lower-roman`) draw a CSS counter (`counter(astryx-list) "."`) right-aligned with tabular
+ * figures, hanging into the row's inline inset before it widens the list's shared column; a
+ * task item (internal `_ListMarkerScope`) draws a read-only CheckboxInput instead. Port
+ * extension: the `marker` slot replaces the list's marker with your own content (an icon, an
+ * emoji …), in the shared column of a numbered list.
+ *
+ * Interactive rows (Item): `interactiveRole="button"` (Astryx `onClick`: an invisible button,
+ * listen for `click`), `href` (an invisible link, safeHref-checked; `target="_blank"` adds
+ * `noopener noreferrer`), `interactiveRef="<selector>"` (a nested control owns the action; the
+ * row delegates surface clicks to it). `isSelected` → `aria-current="true"` (a list item cannot
+ * carry aria-selected); `isDisabled` → `aria-disabled`. Interactive, enabled rows grow toward a
+ * 44px hit target under a coarse pointer, raised above the rows after them.
+ *
+ * Slots: `label`, `description` (markup instead of the props), `startContent` (icon, avatar),
+ * `endContent` (badge, chevron), `marker` (port extension, see above).
+ * Deferred touch extras (AGENTS.md scope): the swipe gesture (Item renders the panels, at
+ * rest), the coarse-pointer press controller and the hit band's neighbour clamping.
+ *
+ * @example
+ * <ListItem label="Settings" description="Manage your preferences"><Icon slot="startContent" icon="wrench" /></ListItem>
+ * <ListItem label="Docs" href="/docs" target="_blank" />
+ * <ListItem label="Archive" interactiveRole="button" isSelected />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item, {type ItemAlign, type ItemSwipeActions, type ItemSwipeBehavior} from '../Item/Item.astro';
+import CheckboxInput from '../CheckboxInput/CheckboxInput.astro';
+import {cx} from '../../lib/themeProps';
+import {readListContext, type ListMarker} from './listContext';
+import './List.css';
+
+export interface Props extends Omit<HTMLAttributes<'li'>, 'role'> {
+  /** Primary text (a string truncates to one line), or markup in the `label` slot. */
+  label?: string;
+  /** Secondary text below the label (one line), or markup in the `description` slot. */
+  description?: string;
+  /** Start/end content alignment against the label (Item `align`). @default 'center' */
+  align?: ItemAlign;
+  /** Astryx `onClick`: the row is an invisible button (listen for `click`). */
+  interactiveRole?: 'button';
+  /** Astryx `interactiveRef`: a CSS selector (inside the row) for the control that owns the action. */
+  interactiveRef?: string;
+  /** Link destination (an invisible link; safeHref-checked). */
+  href?: string | URL;
+  /** Link target; `_blank` merges `noopener noreferrer` into rel. */
+  target?: '_blank' | '_self' | (string & {});
+  rel?: string;
+  /** `aria-disabled`, dimmed, not activatable. @default false */
+  isDisabled?: boolean;
+  /** The current item: selected fill + `aria-current="true"`. @default false */
+  isSelected?: boolean;
+  /** Touch swipe verbs, passed to Item (panels rendered; the gesture is deferred). */
+  swipeActions?: ItemSwipeActions;
+  /** @default 'reveal' */
+  swipeBehavior?: ItemSwipeBehavior;
+  /** A semantic role for the row (the parent then owns keyboard access). */
+  role?: string;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  description,
+  align,
+  interactiveRole,
+  interactiveRef,
+  href,
+  target,
+  rel,
+  isDisabled = false,
+  isSelected = false,
+  swipeActions,
+  swipeBehavior,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const ctx = readListContext(Astro);
+// A List isolates its rows, so what a row raises stays below a page-level sticky header.
+const isInList = ctx != null;
+const isTouchTarget = (interactiveRole != null || href != null || (interactiveRef != null && interactiveRef !== '')) && !isDisabled;
+const density = ctx?.density ?? 'balanced';
+const hasDividers = ctx?.hasDividers ?? false;
+const edge = ctx?.edge ?? 'padded';
+const listStyle = ctx?.listStyle ?? 'none';
+const hasMarkers = listStyle !== 'none';
+const isNumbered = listStyle === 'decimal';
+const markerKind: ListMarker | null = hasMarkers ? (ctx?.marker ?? listStyle) : null;
+const task = markerKind == null ? undefined : ctx?.task;
+const hasMarkerGutter = ctx?.hasMarkerGutter === true;
+
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const customMarker = await slotHtml('marker');
+const labelHtml = await slotHtml('label');
+const descriptionHtml = await slotHtml('description');
+const startHtml = await slotHtml('startContent');
+const endHtml = await slotHtml('endContent');
+
+const isDot = markerKind === 'disc' || markerKind === 'circle' || markerKind === 'square';
+const markerShape = markerKind === 'disc' ? 'dot' : markerKind;
+const hasMarker = customMarker !== '' || task != null || markerKind != null;
+---
+<Item
+  {...rest}
+  as="li"
+  class={cx('astryx-list-item', isTouchTarget && 'ax-hit-area', className as string | undefined)}
+  style={style}
+  label={label}
+  description={description}
+  align={align}
+  density={density}
+  interactiveRole={interactiveRole}
+  interactiveRef={interactiveRef}
+  href={href}
+  target={target}
+  rel={rel}
+  isDisabled={isDisabled}
+  isSelected={isSelected}
+  swipeActions={swipeActions}
+  swipeBehavior={swipeBehavior}
+  __listRow
+  __markerColumns={isNumbered}
+  data-ax-in-list={isInList ? '' : undefined}
+  data-ax-numbered={isNumbered ? '' : undefined}
+  data-ax-counter={hasMarkers ? '' : undefined}
+  data-ax-divided={hasDividers ? '' : undefined}
+  data-ax-edge={edge !== 'padded' ? edge : undefined}
+>
+  {hasMarker && (
+    <Fragment slot="marker">{customMarker !== '' ? (
+      <span class="ax-list-marker-custom"><Fragment set:html={customMarker} /></span>
+    ) : task != null ? (
+      <span class="ax-list-task"><CheckboxInput size="sm" value={task.isChecked} label={task.label} isLabelHidden isReadOnly /></span>
+    ) : isDot ? (
+      <span class="ax-list-marker"><span class={`ax-list-marker-${markerShape}`} /></span>
+    ) : (
+      <span class="ax-list-number" data-marker={markerKind} data-ax-gutter={hasMarkerGutter ? '' : undefined} />
+    )}</Fragment>
+  )}
+  {labelHtml !== '' && <Fragment slot="label"><Fragment set:html={labelHtml} /></Fragment>}
+  {descriptionHtml !== '' && <Fragment slot="description"><Fragment set:html={descriptionHtml} /></Fragment>}
+  {startHtml !== '' && <Fragment slot="startContent"><Fragment set:html={startHtml} /></Fragment>}
+  {endHtml !== '' && <Fragment slot="endContent"><Fragment set:html={endHtml} /></Fragment>}
+</Item>

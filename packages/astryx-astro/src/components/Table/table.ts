@@ -24,6 +24,7 @@ export {useTableRowStatus} from './plugins/rowStatus';
 export {useTableGroupedRows} from './plugins/groupedRows';
 export {useTableTreeData, useTableTreeState} from './plugins/tree';
 export {useTableRowIndex} from './plugins/rowIndex';
+export {useTableSelection, useTableSelectionState, SELECTION_COLUMN_KEY} from './plugins/selection';
 
 export type * from './types';
 export type {
@@ -42,3 +43,9 @@ export type {UseTableRowStatusConfig, TableRowStatus, TableSemanticRowStatus, Ta
 export type {UseTableGroupedRowsConfig, UseTableGroupedRowsResult} from './plugins/groupedRows';
 export type {TableTreeRowMeta, UseTableTreeDataConfig, UseTableTreeStateConfig, UseTableTreeStateResult} from './plugins/tree';
 export type {UseTableRowIndexConfig} from './plugins/rowIndex';
+export type {
+  UseTableSelectionConfig,
+  UseTableSelectionStateConfig,
+  UseTableSelectionStateResult,
+  TableSelectionState,
+} from './plugins/selection';

@@ -1,0 +1,162 @@
+---
+/**
+ * CheckboxList — a labelled group of checkboxes for picking several options, with a group label,
+ * description, status and List density / dividers. Port of @astryxdesign/core
+ * CheckboxList/CheckboxList.tsx, CheckboxList/CheckboxListContext.tsx and
+ * CheckboxList/requiredGroup.ts, with Field/fieldParts.ts (FR10 routing) and utils/inputAria.ts.
+ * Items: CheckboxListItem.astro. Behaviour: src/elements/checkbox-list.ts.
+ *
+ * Markup as in Astryx: Field (theme target `.astryx-checkbox-list` on the Field root; label as a
+ * `<span>`, description, detached status) around the `role="group"` element
+ * (`<ax-checkbox-list>`, the control box for `controlClass/Style`) holding a List of
+ * CheckboxListItem rows. Field-composed (contract #8): base props (`id`, `aria-*`, `data-*` …) go
+ * to the group; `containerClass/Style` → the Field box. FormLayout reaches the Field as for every
+ * input (`form-direction`, `field-layout`, `form-optionality`).
+ *
+ * - Collection mode (`value` given): the list owns the checked state; every item needs a
+ *   `value`. Without `value` the items are standalone (`isChecked`, `astryx-check`).
+ * - The group is labelled by the Field label (+ a caller's `aria-labelledby`) and described by
+ *   the description, the status message and the disabled reason.
+ * - `isDisabled` dims the group (`aria-disabled`) and every checkbox (focusable, `aria-disabled`,
+ *   detached from the form). With `disabledMessage` the group shows the reason as a tooltip on
+ *   hover / keyboard focus, and the reason describes each checkbox too.
+ * - `isReadOnly`: full opacity, nothing toggles. An error `status` makes every checkbox
+ *   `aria-invalid`.
+ * - `isRequired`: while no box is checked, the first enabled, non-read-only box carries native
+ *   `required` (server-rendered, kept current by the element), so the browser blocks submit and
+ *   focuses it. A disabled or read-only group requires nothing.
+ * - Port extension `htmlName`: every checkbox submits `htmlName=<item value>` with its form.
+ * - Port extension: a CheckboxListItem with `isSelectAll` checks / unchecks every enabled item
+ *   and shows checked / indeterminate / unchecked from them (Astryx's select-all pattern).
+ *
+ * Events (bubbling, from `<ax-checkbox-list>`): `astryx-change` `{values}` when the user toggles
+ * an item in collection mode (Astryx onChange(values): the previous values, plus the toggled
+ * value appended, or without it). Standalone items dispatch `astryx-check` `{isChecked}` from
+ * their row. The CheckboxInputs' own `astryx-change` stays inside the rows.
+ * Element API: `el.value` (get/set string[]; setting never dispatches).
+ * Not available: `onChange` / `changeAction` callbacks (use the event; per-item `isLoading`
+ * renders the pending state).
+ *
+ * @example
+ * <CheckboxList label="Notifications" value={['email']} htmlName="notify">
+ *   <CheckboxListItem label="Email" value="email" />
+ *   <CheckboxListItem label="SMS" value="sms" description="Standard rates apply" />
+ * </CheckboxList>
+ */
+import Field from '../Field/Field.astro';
+import List from '../List/List.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles} from '../../lib/style';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {stamp} from '../../lib/cascade';
+import {joinAriaIDs, routeFieldProps, type FieldComposedProps} from '../Field/fieldProps';
+import {LIST_LOCAL, type ListContextValue, type ListDensity} from '../List/listContext';
+import {
+  CHECKBOX_LIST_LOCAL,
+  CHECKBOX_REASON_KEY,
+  CHECKBOX_REQUIRED_KEY,
+  CHECKBOX_STATE_KEY,
+  type CheckboxListContextValue,
+} from './checkboxListContext';
+import './CheckboxList.css';
+
+export interface Props extends Omit<FieldComposedProps, 'statusVariant' | 'labelTooltip'> {
+  /** The checked values (collection mode) — the initial state; the element owns it after load. */
+  value?: string[];
+  /** List density; `compact` also uses the small checkbox. @default 'balanced' */
+  density?: ListDensity;
+  /** Dividers between items. @default false */
+  hasDividers?: boolean;
+  /** Why the whole group is disabled (with `isDisabled`): a tooltip, and focusable checkboxes. */
+  disabledMessage?: string;
+  /** Full opacity, not toggleable. @default false */
+  isReadOnly?: boolean;
+  /** Port extension: form field name every checkbox submits its item value under. */
+  htmlName?: string;
+  'data-testid'?: string;
+  [attr: `data-${string}`]: unknown;
+}
+
+const {
+  value,
+  density = 'balanced',
+  hasDividers = false,
+  disabledMessage,
+  isReadOnly = false,
+  htmlName,
+  ...props
+} = Astro.props;
+
+const {statusVariant: _ignoredVariant, labelTooltip: _ignoredTooltip, ...routed} = props as Props & {statusVariant?: unknown; labelTooltip?: unknown};
+const r = routeFieldProps('CheckboxList', {...(routed as FieldComposedProps & Record<string, unknown>), statusVariant: 'detached'});
+const {isDisabled, status} = r;
+const labelID = r.ids.fieldLabel;
+const descriptionID = r.field.descriptionID;
+const statusMessageID = r.statusMessageId;
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+const tip = showsDisabledMessage ? attachTooltip() : null;
+const isRequired = !!r.field.isRequired && !r.field.isOptional;
+
+const context: CheckboxListContextValue = {
+  isCollection: value !== undefined,
+  values: value ?? [],
+  isDisabled,
+  hasDisabledMessage: showsDisabledMessage,
+  disabledMessageID: tip?.id,
+  isReadOnly,
+  isInvalid: status?.type === 'error',
+  isRequired,
+  htmlName,
+};
+// The items render inside both contexts: the group's, and the List's (density, dividers) that
+// the List below would otherwise only give the markup it receives already rendered.
+const listContext: ListContextValue = {density, hasDividers, edge: 'padded', listStyle: 'none'};
+let itemsHtml = await renderWithLocals(
+  Astro,
+  {[CHECKBOX_LIST_LOCAL]: context, [LIST_LOCAL]: listContext},
+  () => (Astro.slots.has('default') ? Astro.slots.render('default') : Promise.resolve('')),
+);
+
+// The disabled reason describes each checkbox after its own description (FR9).
+if (tip) {
+  itemsHtml = await stamp(itemsHtml, CHECKBOX_REASON_KEY, (a) => {
+    a['aria-describedby'] = joinAriaIDs(a['aria-describedby'], tip.id) ?? tip.id;
+  });
+}
+// requiredGroup: while no box is checked, the first enabled box carries native `required`.
+if (isRequired) {
+  const boxes: {checked: boolean; enabled: boolean}[] = [];
+  itemsHtml = await stamp(itemsHtml, CHECKBOX_STATE_KEY, (a) => {
+    boxes.push({checked: 'checked' in a, enabled: a['aria-disabled'] !== 'true' && a['aria-readonly'] !== 'true'});
+  });
+  const target = boxes.some((b) => b.checked) ? -1 : boxes.findIndex((b) => b.enabled);
+  let index = 0;
+  itemsHtml = await stamp(itemsHtml, CHECKBOX_REQUIRED_KEY, (a) => {
+    if (index++ === target) a.required = '';
+  });
+}
+
+const {themeClass} = themeProps('checkbox-list');
+const native = r.native as Record<string, unknown>;
+const callerId = (props as {id?: string}).id;
+---
+<Field {...r.field} class={cx(themeClass, r.field.class)} labelID={labelID} isGroupLabel statusVariant="detached">
+  <ax-checkbox-list
+    {...native}
+    id={callerId}
+    role="group"
+    class={r.control.class}
+    style={mergeStyles(r.control.style)}
+    aria-disabled={isDisabled ? 'true' : (native['aria-disabled'] as string | undefined)}
+    aria-labelledby={joinAriaIDs(labelID, (props as {'aria-labelledby'?: string})['aria-labelledby'])}
+    aria-describedby={r.describedBy(descriptionID, statusMessageID, tip?.id)}
+    data-ax-tooltip={tip?.id}
+    data-ax-collection={value !== undefined ? '' : undefined}
+    data-ax-value={value !== undefined ? JSON.stringify(value) : undefined}
+    data-ax-required={isRequired ? '' : undefined}
+  ><List density={density} hasDividers={hasDividers}><Fragment set:html={itemsHtml} /></List></ax-checkbox-list>
+  {tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/checkbox-list';</script>

@@ -1,0 +1,29 @@
+---
+/**
+ * A selection checkbox of useTableSelection (Astryx SelectAllCheckbox / SelectionCellContent):
+ * a small CheckboxInput with a hidden, translated label, centered in the 36px column. `kind`
+ * `all` is the header's "Select all rows" (checked / indeterminate / unchecked); `row` is a
+ * row's "Select <label>" (or "Select row"). Behaviour: elements/table-features/selection.ts.
+ */
+import CheckboxInput from '../CheckboxInput/CheckboxInput.astro';
+import {translator} from '../../lib/i18n';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  kind: 'all' | 'row';
+  value: boolean | 'indeterminate';
+  rowLabel?: string;
+  isDisabled?: boolean;
+  table: TableRenderContext;
+}
+
+const {kind, value, rowLabel, isDisabled = false, table} = Astro.props;
+const t = translator(Astro, table.locale);
+const label = kind === 'all'
+  ? t('@astryx.table.selection.selectAllRows')
+  : rowLabel != null
+    ? t('@astryx.table.selection.selectRowNamed', {label: rowLabel})
+    : t('@astryx.table.selection.selectRow');
+---
+<div class="ax-table-selection-center"><CheckboxInput label={label} isLabelHidden value={value} isDisabled={isDisabled} size="sm" locale={table.locale} data-ax-table-select={kind} /></div>
+<script>import '../../elements/table-features/selection';</script>

@@ -6,6 +6,8 @@ import TableFooter from './TableFooter.astro';
 import TableRow from './TableRow.astro';
 import TableCell from './TableCell.astro';
 import TableHeaderCell from './TableHeaderCell.astro';
+import TableSelectionToolbar from './TableSelectionToolbar.astro';
+import Button from '../Button/Button.astro';
 import {
   pixel,
   proportional,
@@ -14,6 +16,8 @@ import {
   useTableRowExpansion,
   useTableRowIndex,
   useTableRowStatus,
+  useTableSelection,
+  useTableSelectionState,
   useTableSortable,
   useTableSortableState,
   useTableStickyColumns,
@@ -96,6 +100,29 @@ const sortColumns: TableColumn<Person>[] = [
   {key: 'rating', header: 'Rating', sortable: true, align: 'end', width: pixel(96)},
   {key: 'salary', header: 'Salary', sortable: true, align: 'end', width: pixel(120), format: (v) => usd.format(v as number)},
 ];
+
+// Row selection.
+const selectionPeople = people.slice(0, 8);
+const {selectionConfig, selectionState} = useTableSelectionState({
+  data: selectionPeople,
+  idKey: 'id',
+  selectedKeys: ['p02', 'p05', 'p99'],
+  getIsItemEnabled: (p) => p.status !== 'Offline',
+});
+const selectionColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Name', width: pixel(170)},
+  {key: 'role', header: 'Role', width: proportional(2, {minWidth: 200})},
+  {key: 'team', header: 'Team', width: pixel(120)},
+  {key: 'status', header: 'Status', width: pixel(110), renderCell: (p) => comp(Badge, {variant: statusVariant[p.status], label: p.status})},
+  {key: 'location', header: 'Location', width: pixel(140)},
+  {key: 'salary', header: 'Salary', align: 'end', width: pixel(120), format: (v) => usd.format(v as number)},
+];
+const plainSelectionPeople = people.slice(0, 5);
+const plainSelection = useTableSelectionState({
+  data: plainSelectionPeople,
+  idKey: 'id',
+  getIsItemSelectable: (p) => p.team !== 'Design',
+});
 
 // Column resize.
 const resizeColumns: TableColumn<Person>[] = [
@@ -254,6 +281,30 @@ const skeletonColumns: TableColumn[] = ['name', 'role', 'team'].map((key, i) => 
   <section>
     <p style={caption}>Sorting (useTableSortableState + useTableSortable): click or Enter/Space on a header; Shift adds a secondary key (multi-sort shows its priority). Rows re-sort in the page.</p>
     <Table aria-label="Sortable people" data={sorting.sortedData} columns={sortColumns} idKey="id" plugins={{sort: useTableSortable(sorting.sortConfig)}} density="compact" hasHover id="table-sort" />
+  </section>
+
+  <section data-test="selection">
+    <p style={caption}>Row selection (useTableSelectionState + useTableSelection) with a TableSelectionToolbar: the header selects every enabled row (Offline people are disabled; Elena stays selected), keys outside the rows ("p99") survive select-all and deselect-all; Unselect All clears everything. Sticky first columns replay the wash.</p>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-2);min-width:0">
+      <TableSelectionToolbar for="table-selection" selection={selectionState} data-test="selection-toolbar">
+        <Button slot="startContent" label="Export" variant="secondary" />
+        <Button slot="startContent" label="Archive" variant="secondary" />
+      </TableSelectionToolbar>
+      <Table aria-label="Selectable people" data={selectionPeople} columns={selectionColumns} idKey="id" hasHover density="compact" id="table-selection"
+        plugins={{selection: useTableSelection({...selectionConfig, getRowLabel: (p: Person) => p.name}), sticky: useTableStickyColumns({startKeys: ['__xds_selection', 'name']})}} />
+    </div>
+  </section>
+
+  <section data-test="selection-plain">
+    <p style={caption}>Selection without the row wash (hasRowHighlight: false; aria-selected stays), non-selectable rows (Design has no checkbox), a custom toolbar count (the selectionLabel slot) at size md</p>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-2);min-width:0">
+      <TableSelectionToolbar for="table-selection-plain" selection={plainSelection.selectionState} size="md" variant="transparent" label="Team actions" clearLabel="Clear" data-test="selection-toolbar-plain">
+        <Button slot="startContent" label="Message" />
+        <template slot="selectionLabel">{(count: number) => <span><strong data-selected-count>{count}</strong> chosen</span>}</template>
+      </TableSelectionToolbar>
+      <Table aria-label="Team picker" data={plainSelectionPeople} columns={basicColumns.slice(0, 3)} idKey="id" id="table-selection-plain"
+        plugins={{selection: useTableSelection({...plainSelection.selectionConfig, hasRowHighlight: false})}} />
+    </div>
   </section>
 
   <section>

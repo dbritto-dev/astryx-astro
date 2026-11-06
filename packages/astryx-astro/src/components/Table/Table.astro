@@ -27,9 +27,12 @@
  * `astryx-expanded-ids-change` {ids, id, isExpanded}. The cancelable ones keep the current
  * state when prevented.
  *
- * Deferred: row selection + TableSelectionToolbar (CheckboxInput, Toolbar), filtering
- * editors, pagination, column settings, context-menu actions, `animatedLayout` glides —
- * README.md lists the hook points left for them. Touch: the resize handles ignore coarse
+ * Row selection: `useTableSelection` / `useTableSelectionState` (plugins/selection.ts) +
+ * TableSelectionToolbar — events `astryx-select-item` {key, isSelected}, `astryx-select-all`
+ * {isAllSelected} (both cancelable), `astryx-selection-change` {selectedKeys, selectedCount,
+ * hasSelection}; `table.selectedKeys`, `table.clearSelection()`.
+ * Deferred: filtering editors, pagination, column settings, context-menu actions,
+ * `animatedLayout` glides — README.md lists the hook points left for them. Touch: the resize handles ignore coarse
  * pointers (as in Astryx); everything else is plain click/keyboard.
  *
  * @example
@@ -47,7 +50,7 @@ import type {HTMLAttributes} from 'astro/types';
 import {resolveLocale, translator} from '../../lib/i18n';
 import {stamp} from '../../lib/cascade';
 import {uid} from '../../lib/uid';
-import {buildTable, orderPlugins} from './pipeline';
+import {buildTable, orderPlugins, rowKeyOf} from './pipeline';
 import {collectSlotNodes, html, slot} from './node';
 import TableNodeView from './_TableNode.astro';
 import type {
@@ -155,6 +158,7 @@ const context: TablePluginContext<Row> = {
   idBase,
   data: data as readonly Row[] | undefined,
   hasSlot: (name) => Astro.slots.has(name),
+  rowKey: (item, index) => rowKeyOf(item, index, idKey as TableIdKey<Row> | undefined),
 };
 
 const {root} = buildTable<Row>({

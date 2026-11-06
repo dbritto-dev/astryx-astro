@@ -1,0 +1,171 @@
+---
+/**
+ * CheckboxListItem — one option of a CheckboxList (or a checkbox row in a plain List): a
+ * ListItem whose start content is a CheckboxInput. Port of @astryxdesign/core
+ * CheckboxList/CheckboxListItem.tsx (with its DescribedCheckboxInput) and
+ * Item/ItemDescriptionContext.tsx.
+ *
+ * - Collection mode (inside a CheckboxList with `value`): checked when the list's values
+ *   contain this item's `value` (required there — the item throws without it). Standalone
+ *   (inside a List, or a CheckboxList without `value`): `isChecked` (`true` | `false` |
+ *   `'indeterminate'`) is the initial state and the row dispatches `astryx-check`
+ *   `{isChecked}` when the user toggles it (Astryx onCheck(checked)).
+ * - The checkbox (size sm in a compact list, else md) is the row's single tab stop; the row is
+ *   an enlarged click target that delegates surface clicks to it (Item `interactiveRef`), while
+ *   links and buttons in the label keep their own action. A read-only item does not delegate.
+ * - Name: a string `label` names the checkbox (its visually hidden label); markup in the `label`
+ *   slot names it through `aria-labelledby` to the visible label, or `aria-label` replaces the
+ *   name (keep every visible word). Description: the row's description (Item's id, cascade key
+ *   `item-description`), then the group's disabled reason.
+ * - A checked, enabled row has the accent-muted fill and `data-selected="selected"` (theme
+ *   state), kept current on the client.
+ * - `isDisabled` (or the group's) → dimmed row, `aria-disabled` checkbox (still focusable);
+ *   `isLoading` → a spinner in the box, `aria-busy` on the row and checkbox, toggling blocked.
+ * - Port extension `isSelectAll` (inside a CheckboxList): the item checks or unchecks every
+ *   enabled, non-read-only item of its list and shows checked / indeterminate / unchecked from
+ *   them; it needs no `value` and takes no part in the required group. Pass `isChecked` for the
+ *   server-rendered state (the element corrects it on load).
+ *
+ * Slots: `label`, `description` (markup instead of the props), `endContent`.
+ * Not available: `onCheck` / `onClick` callbacks (use `astryx-check`, or `click` on the checkbox).
+ * Deferred touch extras: the coarse-pointer row press (CheckboxRowPressContext).
+ *
+ * @example
+ * <CheckboxListItem label="Email" value="email" description="Daily digest" />
+ * <CheckboxListItem value="pro" aria-label="Pro plan Recommended option"><span slot="label">Pro plan <Badge label="Recommended" /></span></CheckboxListItem>
+ * <CheckboxListItem label="Select all" isSelectAll isChecked="indeterminate" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import ListItem from '../List/ListItem.astro';
+import CheckboxInput from '../CheckboxInput/CheckboxInput.astro';
+import CheckboxSlot from './_CheckboxSlot.astro';
+import type {ItemAlign} from '../Item/Item.astro';
+import {cx} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {devWarn} from '../../lib/devWarning';
+import {readListContext} from '../List/listContext';
+import {
+  CHECKBOX_ITEM_KEY,
+  CHECKBOX_REASON_KEY,
+  CHECKBOX_REQUIRED_KEY,
+  CHECKBOX_STATE_KEY,
+  readCheckboxListContext,
+} from './checkboxListContext';
+import './CheckboxList.css';
+
+export interface Props extends Omit<HTMLAttributes<'li'>, 'role'> {
+  /** Primary text (names the checkbox), or markup in the `label` slot. */
+  label?: string;
+  /** Plain-text accessible name for the checkbox, replacing the one derived from the label. */
+  'aria-label'?: string;
+  /** Identity key; required in a CheckboxList with `value`. Submitted as the checkbox value. */
+  value?: string;
+  /** Secondary text below the label (the checkbox's description), or the `description` slot. */
+  description?: string;
+  /** Start/end content alignment against the label (Item `align`). @default 'center' */
+  align?: ItemAlign;
+  /** Disable just this item. @default false */
+  isDisabled?: boolean;
+  /** Pending: a spinner in the box, toggling blocked. @default false */
+  isLoading?: boolean;
+  /** Standalone mode: the initial checked state. Ignored in collection mode. */
+  isChecked?: boolean | 'indeterminate';
+  /** Port extension: check / uncheck every enabled item of the CheckboxList. @default false */
+  isSelectAll?: boolean;
+  /** Locale for the built-in checkbox name. */
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  'aria-label': ariaLabel,
+  value,
+  description,
+  align,
+  isDisabled: isItemDisabled = false,
+  isLoading = false,
+  isChecked,
+  isSelectAll: isSelectAllProp = false,
+  locale,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const ctx = readCheckboxListContext(Astro);
+const listCtx = readListContext(Astro);
+const t = translator(Astro, locale);
+const isSelectAll = isSelectAllProp && ctx != null;
+if (isSelectAllProp && ctx == null) devWarn('CheckboxListItem', '`isSelectAll` only works inside a CheckboxList; it was ignored.');
+if (ctx?.isCollection && value === undefined && !isSelectAll) {
+  throw new Error('CheckboxListItem requires a `value` prop when used inside CheckboxList with a value array.');
+}
+
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const labelHtml = await slotHtml('label');
+const descriptionHtml = await slotHtml('description');
+const endHtml = await slotHtml('endContent');
+
+const id = uid(Astro, 'ax-checkbox-list-item');
+const labelID = `${id}-label`;
+const isRichLabel = labelHtml !== '';
+const namesFromVisibleLabel = isRichLabel && ariaLabel == null;
+const checkboxLabel = ariaLabel ?? (isRichLabel ? t('@astryx.checkboxList.item.checkbox') : (label ?? ''));
+
+const density = listCtx?.density ?? 'balanced';
+const checkboxSize = density === 'compact' ? 'sm' : 'md';
+const isDisabled = (ctx?.isDisabled ?? false) || isItemDisabled;
+const isReadOnly = ctx?.isReadOnly ?? false;
+const resolvedChecked: boolean | 'indeterminate' =
+  ctx?.isCollection && value !== undefined && !isSelectAll ? ctx.values.includes(value) : (isChecked ?? false);
+const isInteractive = !isReadOnly;
+const isCheckedRow = resolvedChecked === true && !isDisabled && !isReadOnly;
+
+const inherit = inherits({
+  [CHECKBOX_ITEM_KEY]: true,
+  [CHECKBOX_STATE_KEY]: !!ctx?.isRequired && !isSelectAll,
+  [CHECKBOX_REQUIRED_KEY]: !!ctx?.isRequired && !isSelectAll,
+  'item-description': true,
+  [CHECKBOX_REASON_KEY]: ctx?.disabledMessageID != null,
+});
+---
+<ListItem
+  {...rest}
+  class={cx('ax-checkbox-list-row', className as string | undefined)}
+  label={isRichLabel ? undefined : label}
+  description={description}
+  align={align}
+  isDisabled={isDisabled}
+  interactiveRef={isInteractive ? `#${id}` : undefined}
+  aria-busy={isLoading ? 'true' : undefined}
+  data-selected={isCheckedRow ? 'selected' : undefined}
+  data-ax-checkbox-list-item=""
+  data-ax-select-all={isSelectAll ? '' : undefined}
+  data-ax-checkbox-value={isSelectAll ? undefined : value}
+>
+  <Fragment slot="startContent">
+    <CheckboxSlot attrs={{value: isSelectAll ? undefined : value, 'aria-labelledby': namesFromVisibleLabel ? labelID : undefined}}>
+      <CheckboxInput
+        id={id}
+        label={checkboxLabel}
+        isLabelHidden
+        value={resolvedChecked}
+        isDisabled={isDisabled}
+        isReadOnly={isReadOnly}
+        isLoading={isLoading}
+        size={checkboxSize}
+        htmlName={isSelectAll ? undefined : ctx?.htmlName}
+        status={ctx?.isInvalid ? {type: 'error'} : undefined}
+        locale={locale}
+        data-ax-inherit={inherit}
+        data-ax-checkbox-list-input=""
+      />
+    </CheckboxSlot>
+  </Fragment>
+  {isRichLabel && <span slot="label" id={labelID}><Fragment set:html={labelHtml} /></span>}
+  {descriptionHtml !== '' && <Fragment slot="description"><Fragment set:html={descriptionHtml} /></Fragment>}
+  {endHtml !== '' && <Fragment slot="endContent"><Fragment set:html={endHtml} /></Fragment>}
+</ListItem>
+<script>import '../../elements/checkbox-list';</script>

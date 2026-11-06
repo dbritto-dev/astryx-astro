@@ -1,0 +1,121 @@
+---
+/**
+ * List — a vertical collection of ListItem rows with density, dividers, markers, an edge
+ * treatment and an optional header. Port of @astryxdesign/core List/List.tsx and
+ * List/ListContext.tsx (rows: ListItem.astro).
+ *
+ * Markup as in Astryx: `<ul>` (or `<ol>` for `listStyle="decimal"`) with an explicit
+ * `role="list"` (Safari/VoiceOver drops list semantics for `list-style: none`), theme hooks
+ * `.astryx-list[data-density][data-list-style]`. With a header (`header` prop or slot) the list
+ * sits in a column wrapper after `<div id>` holding the header, and is `aria-labelledby` it;
+ * without one a caller's `aria-labelledby` is kept. Consumer `class`, `style` and attributes go
+ * on the list element.
+ *
+ * Cascade to the rows (ListContext): density, dividers, edge and marker reach every ListItem
+ * rendered inside through the subtree-scoped `Astro.locals.astryxList` (./listContext.ts); a
+ * nested List sets its own. Numbered lists (`decimal`) subgrid every row into one shared
+ * marker column (`max-content`), so a counter that gains a digit never moves its row's text or
+ * a nested list; counters start at `start` (CSS counter `astryx-list`).
+ *
+ * Edge (contract #14, container padding protocol): `padded` (default) keeps text inside each
+ * row's inset; `flush` drops the rows' inline inset; `outset` and `bleed` make the list reach
+ * the nearest publishing container's padding edge (`--container-padding-inline-*`) and place
+ * each row inside it — `outset` steps the row back in by the padding its inset does not fill,
+ * `bleed` fills the list with square corners and pads the text onto the container's padding
+ * line. Without such a container they look like `padded`. `edgeCompensation="inline"` is the
+ * deprecated spelling of `edge="outset"` (`edge` wins; a dev warning when both are set).
+ *
+ * The list clips in the inline axis (`overflow-x: clip`, for swipe rows) and, under a coarse
+ * pointer, isolates the touch bands its rows raise.
+ *
+ * @example
+ * <List header="Settings" hasDividers edge="outset">
+ *   <ListItem label="Notifications" description="Manage your alerts" href="/settings/notifications" />
+ *   <ListItem label="Privacy" description="Control your data" href="/settings/privacy" />
+ * </List>
+ * <List listStyle="decimal" density="compact" start={3}>
+ *   <ListItem label="Third step" />
+ * </List>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {uid} from '../../lib/uid';
+import {devWarn} from '../../lib/devWarning';
+import {LIST_LOCAL, type ListContextValue, type ListDensity, type ListEdge, type ListStyle} from './listContext';
+import './List.css';
+
+export type {ListDensity, ListEdge, ListStyle} from './listContext';
+
+export interface Props extends Omit<HTMLAttributes<'ul'>, 'start'> {
+  /** Row spacing: block padding 4 / 8 / 12px (spacious also widens the inline inset). @default 'balanced' */
+  density?: ListDensity;
+  /** A divider between rows (rows lose their corner radius and the list its gap). @default false */
+  hasDividers?: boolean;
+  /**
+   * Where row text, dividers and hover/selection backgrounds sit relative to the list and the
+   * container around it: `padded`, `flush`, `outset` or `bleed` (see the header). @default 'padded'
+   */
+  edge?: ListEdge;
+  /** @deprecated Use `edge="outset"`, which this sets; `edge` wins when both are set. */
+  edgeCompensation?: 'inline';
+  /** Header text above the list (or markup in the `header` slot); labels the list. */
+  header?: string;
+  /** Marker style; `decimal` renders an `<ol>` with numbered rows. @default 'none' */
+  listStyle?: ListStyle;
+  /** First number of a `decimal` list. @default 1 */
+  start?: number;
+  'data-testid'?: string;
+}
+
+const {
+  density = 'balanced',
+  hasDividers = false,
+  edge: edgeProp,
+  edgeCompensation,
+  header,
+  listStyle = 'none',
+  start,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+if (edgeProp != null && edgeCompensation != null) {
+  devWarn('List', '`edge` and the deprecated `edgeCompensation` are both set; `edge` wins. Remove `edgeCompensation`.');
+}
+const edge: ListEdge = edgeProp ?? (edgeCompensation === 'inline' ? 'outset' : 'padded');
+const isOrdered = listStyle === 'decimal';
+const Tag = isOrdered ? 'ol' : 'ul';
+const hasCustomStart = start != null && start !== 1;
+
+const context: ListContextValue = {density, hasDividers, edge, listStyle};
+const [itemsHtml, headerHtml] = await renderWithLocals(Astro, {[LIST_LOCAL]: context}, async () => [
+  Astro.slots.has('default') ? await Astro.slots.render('default') : '',
+  Astro.slots.has('header') ? (await Astro.slots.render('header')).trim() : '',
+]);
+const hasHeader = headerHtml !== '' || (header != null && header !== '');
+const headerId = hasHeader ? uid(Astro, 'ax-list-header') : undefined;
+
+const {themeClass, attrs: themeAttrs} = themeProps('list', {density, listStyle});
+const listAttrs: Record<string, unknown> = {
+  ...rest,
+  ...(hasHeader ? {'aria-labelledby': headerId} : {}),
+  ...(isOrdered && hasCustomStart ? {start} : {}),
+  role: 'list',
+  ...themeAttrs,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(listStyle !== 'none' && hasCustomStart ? {'--_ax-list-start': start! - 1} : null, style as StyleValue),
+  'data-ax-dividers': hasDividers ? '' : undefined,
+  'data-ax-edge': edge === 'outset' || edge === 'bleed' ? edge : undefined,
+};
+---
+{hasHeader ? (
+  <div class="ax-list-root">
+    <div id={headerId} class="ax-list-header">{headerHtml !== '' ? <Fragment set:html={headerHtml} /> : header}</div>
+    <Tag {...listAttrs}><Fragment set:html={itemsHtml} /></Tag>
+  </div>
+) : (
+  <Tag {...listAttrs}><Fragment set:html={itemsHtml} /></Tag>
+)}

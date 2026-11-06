@@ -1,0 +1,93 @@
+---
+/**
+ * TableSelectionToolbar — the bulk-action surface for a Table with row selection: your actions
+ * at the start, the selected count and an "Unselect All" command at the end, on a Toolbar.
+ * Port of @astryxdesign/core Table/TableSelectionToolbar.tsx. Behaviour:
+ * src/elements/table-selection-toolbar.ts.
+ *
+ * Pass `selection` = `selectionState` from `useTableSelectionState` (the server render's count
+ * and visibility) and `for` = the id of the Table (its `<table>`, where the Table's `id` goes) so
+ * the toolbar follows that table's selection on the client: it shows only while something is
+ * selected (Astryx renders nothing otherwise; here it is `hidden`), keeps the count current, and
+ * Clear empties the complete selection (`table.clearSelection()`, which dispatches
+ * `astryx-selection-change`). It owns no table or sticky layout: place it in flow, or position
+ * it with `class` / `style` (they go to the Toolbar's Section, Astryx `xstyle`).
+ *
+ * Toolbar (`.astryx-toolbar[data-size]`, `role="toolbar"` named by `label`, roving arrows, the
+ * keyboard hint); `size` (default sm) cascades to your actions and the Clear button (ghost).
+ *
+ * Slots: `startContent` (product actions); `selectionLabel` — a function slot replacing the count
+ * text (Astryx `renderSelectionLabel`), called with the server count; mark the number with
+ * `data-selected-count` and the client keeps it current:
+ *   <template slot="selectionLabel">{(count) => <span><b data-selected-count>{count}</b> people chosen</span>}</template>
+ *
+ * @example
+ * ---
+ * const {selectionConfig, selectionState} = useTableSelectionState({data: people, idKey: 'id', selectedKeys: ['p02']});
+ * ---
+ * <TableSelectionToolbar for="people" selection={selectionState}>
+ *   <Button slot="startContent" label="Export" variant="secondary" />
+ * </TableSelectionToolbar>
+ * <Table id="people" aria-label="People" data={people} idKey="id" columns={columns} plugins={{selection: useTableSelection(selectionConfig)}} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Toolbar from '../Toolbar/Toolbar.astro';
+import Button from '../Button/Button.astro';
+import type {SectionVariant} from '../Section/Section.astro';
+import type {ComponentSize} from '../../lib/types';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {pluralTemplates} from '../Field/clientMessages';
+import type {TableSelectionState} from './plugins/selection';
+import './Table.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'aria-label'> {
+  /** `selectionState` from useTableSelectionState: the server render's count and visibility. */
+  selection: TableSelectionState;
+  /** Port extension: the id of the Table (its `<table>`) whose selection the toolbar follows. */
+  for?: string;
+  /** Accessible name for the toolbar. @default 'Bulk actions' */
+  label?: string;
+  /** Visible label of the command that clears the complete selection. @default 'Unselect All' */
+  clearLabel?: string;
+  /** Toolbar size; cascades to the actions and the Clear button. @default 'sm' */
+  size?: ComponentSize;
+  /** Toolbar surface. @default 'muted' */
+  variant?: SectionVariant;
+  locale?: string;
+}
+
+const {
+  selection,
+  for: forId,
+  label: labelProp,
+  clearLabel: clearLabelProp,
+  size = 'sm',
+  variant = 'muted',
+  locale: localeProp,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, localeProp);
+const locale = resolveLocale(Astro, localeProp);
+const label = labelProp ?? t('@astryx.table.selection.bulkActionsLabel');
+const clearLabel = clearLabelProp ?? t('@astryx.table.selection.clearAll');
+const count = selection.selectedCount;
+const hasCustomLabel = Astro.slots.has('selectionLabel');
+const selectionLabelHtml = hasCustomLabel ? await Astro.slots.render('selectionLabel', [count]) : '';
+const startHtml = Astro.slots.has('startContent') ? await Astro.slots.render('startContent') : '';
+---
+<ax-table-selection-toolbar
+  for={forId}
+  hidden={selection.hasSelection ? undefined : true}
+  data-ax-locale={locale}
+  data-ax-count-templates={hasCustomLabel ? undefined : pluralTemplates(t, locale, '@astryx.table.selection.selectedCount', 'count')}
+>
+  <Toolbar {...rest} label={label} size={size} variant={variant} locale={localeProp}>
+    {startHtml !== '' && <Fragment slot="startContent"><Fragment set:html={startHtml} /></Fragment>}
+    <Fragment slot="endContent">
+      <span data-ax-selection-label="" data-ax-custom={hasCustomLabel ? '' : undefined}>{hasCustomLabel ? <Fragment set:html={selectionLabelHtml} /> : t('@astryx.table.selection.selectedCount', {count})}</span>
+      <Button label={clearLabel} variant="ghost" data-ax-selection-clear="" />
+    </Fragment>
+  </Toolbar>
+</ax-table-selection-toolbar>
+<script>import '../../elements/table-selection-toolbar';</script>

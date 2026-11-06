@@ -22,7 +22,7 @@ browser lives in one custom element and small per-feature modules.
 | `useTableGroupedRows` | `plugins/groupedRows.ts` (all rows rendered, collapsed sections `hidden`) + `table-features/grouped.ts` (`astryx-toggle-group`) |
 | `useTableTreeState` / `useTableTreeData` | `plugins/tree.ts` (all rows rendered in tree order, collapsed subtrees `hidden`) + `table-features/tree.ts` (`astryx-expanded-ids-change`) |
 | `useTableRowIndex` | `plugins/rowIndex.ts` (+ the element renumbers visible rows after a re-sort/toggle) |
-| `useTableSelection(State)`, `TableSelectionToolbar` | **deferred** (CheckboxInput, Toolbar) — hook points below |
+| `useTableSelection(State)`, `TableSelectionToolbar` | `plugins/selection.ts` (server: `__xds_selection` column with CheckboxInputs, `aria-selected` + inline wash per selected row, row keys, the complete selected-key set) + `table-features/selection.ts` (toggles, select-all with the frozen set, events, `selectedKeys` / `clearSelection()`) + `TableSelectionToolbar.astro` / `elements/table-selection-toolbar.ts` (follows the table `for` its id) |
 | `useTableFiltering`, `useTableFilterState` | **deferred** (DateInput, MultiSelector, Tokenizer) |
 | `useTablePagination`, `paginateData` | **deferred** (Pagination) |
 | `useTableColumnSettings(State)` | **deferred** |
@@ -86,6 +86,37 @@ const {sortedData, sortConfig} = useTableSortableState({data: people, defaultSor
 - In a grid or flex item, give the item `min-width: 0` (as for any horizontal scroller) so a
   wide table scrolls instead of widening the track.
 
+### Row selection
+
+```astro
+---
+import {useTableSelection, useTableSelectionState} from 'astryx-astro/components/Table/table';
+import TableSelectionToolbar from 'astryx-astro/components/Table/TableSelectionToolbar.astro';
+const {selectionConfig, selectionState} = useTableSelectionState({
+  data: people, idKey: 'id', selectedKeys: savedKeys, getIsItemEnabled: (p) => !p.locked,
+});
+---
+<TableSelectionToolbar for="people" selection={selectionState}>
+  <Button slot="startContent" label="Export" variant="secondary" />
+</TableSelectionToolbar>
+<Table id="people" aria-label="People" data={people} idKey="id" columns={columns}
+       plugins={{selection: useTableSelection({...selectionConfig, getRowLabel: (p) => p.name})}} />
+```
+
+- `useTableSelection(config)`: Astryx's config (`getIsItemSelected`, `getIsAllSelected`,
+  `getIsIndeterminate`, `getIsItemSelectable`, `getIsItemEnabled`, `getRowLabel`,
+  `hasRowHighlight`; `onSelectItem` / `onSelectAll` are accepted and never called) plus
+  `getRowKey` (default: the Table's `idKey`, via the plugin context's `rowKey(item, index)`) and
+  `selectedKeys` (the complete selection, so keys outside the rendered rows survive) — both
+  filled by `useTableSelectionState`, whose `setSelectedKeys` is replaced by the events.
+- The client recomputes the header with useTableSelectionState's rules (all actionable rows
+  selected → checked, some → indeterminate); select-all / deselect-all leave disabled rows and
+  keys outside the rendered rows (hidden tree/group rows count as rendered) as they are.
+- `TableSelectionToolbar`: `selection`, `for` (the Table's id), `label`, `clearLabel`, `size`
+  (sm), `variant` (muted), `startContent` slot, `selectionLabel` function slot (count) with
+  `[data-selected-count]` kept current. Hidden while nothing is selected.
+- Astryx has no Shift-range or row-click selection; keyboard is the checkboxes' own.
+
 ### Events (bubbling, composed, from `<ax-table>`)
 
 | Event | detail | Astryx |
@@ -95,9 +126,13 @@ const {sortedData, sortConfig} = useTableSortableState({data: people, defaultSor
 | `astryx-expanded-change` (cancelable) | `{key, isExpanded, expandedKeys}` | `onToggle(key)` |
 | `astryx-toggle-group` (cancelable) | `{groupKey, isCollapsed, collapsedGroups}` | `onToggleGroup(groupKey)` |
 | `astryx-expanded-ids-change` (cancelable) | `{ids, id, isExpanded}` | `onExpandedIdsChange(ids)` |
+| `astryx-select-item` (cancelable) | `{key, isSelected}` | `onSelectItem({item, isSelected})` |
+| `astryx-select-all` (cancelable) | `{isAllSelected}` | `onSelectAll({isAllSelected})` |
+| `astryx-selection-change` | `{selectedKeys, selectedCount, hasSelection}` | `setSelectedKeys(next)` |
 
 `preventDefault()` keeps the current state (controlled use). Element API: `sort`,
-`columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds` (get/set).
+`columnWidths`, `expandedKeys`, `collapsedGroups`, `expandedIds`, `selectedKeys` (get/set),
+`clearSelection()`.
 
 Sticky header: Astryx has no prop. Either put the table in a block-scrolling container and pin
 `.astryx-table-header-cell` with caller CSS (works while the columns fit), or let the region
@@ -120,18 +155,6 @@ plugin's component, and in it call `registerTableBehavior('<name>', (table) => c
 
 Deferred plugins — where they plug in:
 
-- **Selection** (`useTableSelection`, `useTableSelectionState`): name `selection` is already in
-  the canonical order (after sort/tree, before pagination). `transformColumns` prepends
-  `__xds_selection` (`pixel(36)`, `resizable: false`) with `comp(CheckboxInput, …)` in the
-  header (select all; `indeterminate`) and per row (`@astryx.table.selection.selectRowNamed`);
-  `transformBodyRow` writes `aria-selected="true"` and, with `hasRowHighlight`,
-  `background-color` + `--table-row-overlay: var(--color-accent-muted)` (pinned cells already
-  replay that variable) plus a row key (`rowKeyOf()` in pipeline.ts); `transformScrollWrapper`
-  adds `withFeature('selection')` and the selected keys. Client:
-  `table-features/selection.ts` → delegated `change`, select-all/indeterminate, events
-  `astryx-select-item` {key, isSelected} / `astryx-select-all` {isAllSelected}, `table.api`
-  entry. **TableSelectionToolbar** (Toolbar + Button) listens for those events on the table it
-  is `for`.
 - **Filtering** (`useTableFiltering`): `column.filter` is already typed; the trigger goes in the
   header `after` slot, inline editors in `below` (ids and naming handled). Client filtering:
   `table.addRowFilter(row => …)` hides rejected rows (and their panels) and renumbers.

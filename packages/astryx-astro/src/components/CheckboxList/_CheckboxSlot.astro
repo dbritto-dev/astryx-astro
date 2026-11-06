@@ -1,0 +1,20 @@
+---
+/**
+ * Internal: renders the item's CheckboxInput (default slot) and writes `attrs` onto its native
+ * checkbox, which enrols in the `checkbox-list-item` cascade key. CheckboxInput keeps its own
+ * markup and behaviour (`<ax-checkbox-input>`); this only adds what it does not route to the
+ * input: the form `value` and a rich label's `aria-labelledby`.
+ */
+import {stamp} from '../../lib/cascade';
+import {CHECKBOX_ITEM_KEY} from './checkboxListContext';
+
+interface Props {
+  attrs: Record<string, string | undefined>;
+}
+
+const {attrs} = Astro.props;
+const html = await stamp(await Astro.slots.render('default'), CHECKBOX_ITEM_KEY, (a) => {
+  for (const [name, value] of Object.entries(attrs)) if (value != null) a[name] = value;
+});
+---
+<Fragment set:html={html} />
