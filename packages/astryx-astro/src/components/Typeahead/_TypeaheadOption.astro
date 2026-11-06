@@ -1,0 +1,46 @@
+---
+/**
+ * One typeahead result row (BaseTypeahead.tsx renderOption): `role="option"`, its id derived
+ * from the item id (the active descendant keeps naming the same item while rows are added
+ * after it, spec:AST-092 FR7), `aria-selected` for the current value plus a check mark, and
+ * the content (default TypeaheadItem, or `renderItem`'s). The item rides along as JSON so the
+ * element can report it on selection.
+ */
+import Icon from '../Icon/Icon.astro';
+import TypeaheadItem from './TypeaheadItem.astro';
+import type {SearchableItem} from '../../lib/searchableItem';
+
+export interface Props {
+  item: SearchableItem;
+  id: string;
+  isSelected: boolean;
+  size: 'sm' | 'md' | 'lg';
+  /** Source order (static items). */
+  order?: number;
+  keywords?: string[];
+  content?: unknown;
+  hidden?: boolean;
+}
+
+const {item, id, isSelected, size, order, keywords, content, hidden = false} = Astro.props;
+// Only JSON-safe fields travel to the client (React nodes in `element`/`action` cannot).
+const payload = JSON.stringify({id: item.id, label: item.label, auxiliaryData: item.auxiliaryData});
+---
+<div
+  role="option"
+  id={id || undefined}
+  aria-selected={isSelected ? 'true' : 'false'}
+  tabindex="-1"
+  class="ax-typeahead-option"
+  data-size={size}
+  data-id={item.id}
+  data-ax-label={item.label}
+  data-ax-item={payload}
+  data-ax-order={order}
+  data-ax-keywords={keywords && keywords.length ? JSON.stringify(keywords.map((k) => k.toLowerCase())) : undefined}
+  data-ax-static={order != null ? '' : undefined}
+  hidden={hidden || undefined}
+>
+  <span class="ax-typeahead-option-content">{content != null ? content : <TypeaheadItem item={item} class="ax-typeahead-default-item" />}</span>
+  <span class="ax-typeahead-check" data-ax-check-slot>{isSelected && <Icon icon="check" size="sm" color="primary" />}</span>
+</div>

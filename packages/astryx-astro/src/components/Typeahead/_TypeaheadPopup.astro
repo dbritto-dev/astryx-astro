@@ -1,0 +1,72 @@
+---
+/**
+ * The result popup BaseTypeahead and Typeahead share (BaseTypeahead.tsx popover.render):
+ * a manual popover (a text input cannot be an invoker) that the shared layer stack closes
+ * when a press starts and ends outside the field (`data-ax-outside-press="dismiss"`), holding
+ * the `role="listbox"` (`.astryx-typeahead-dropdown`, named "Search results"). A static
+ * source's items are server-rendered here (hidden until a search shows them), grouped by
+ * `auxiliaryData.group` (ungrouped first); the empty-search row (`role="option"`,
+ * aria-disabled, as in Astryx) follows. The row / check templates the element clones for
+ * asynchronous results sit inside the layer root (inert).
+ */
+import Icon from '../Icon/Icon.astro';
+import TypeaheadOption from './_TypeaheadOption.astro';
+import {groupItems} from '../../lib/groupItems';
+import type {SearchableItem} from '../../lib/searchableItem';
+import {clearance} from '../Layer/layer';
+import {cssSize, mergeStyles} from '../../lib/style';
+import type {StaticSearchSource} from './createStaticSource';
+
+export interface Props {
+  layerId: string;
+  listboxId: string;
+  anchorId: string;
+  label: string;
+  size: 'sm' | 'md' | 'lg';
+  source?: StaticSearchSource;
+  value?: SearchableItem | null;
+  renderItem?: (item: SearchableItem) => unknown;
+  emptyText: string;
+  emptyHtml?: string;
+  menuWidth?: number;
+}
+
+const {layerId, listboxId, anchorId, label, size, source, value, renderItem, emptyText, emptyHtml, menuWidth} = Astro.props;
+const optionId = (id: string) => `${listboxId}-option-${encodeURIComponent(id)}`;
+const items = source?.items ?? [];
+const order = new Map(items.map((item, index) => [item, index]));
+const groups = groupItems(items, {ungroupedFirst: true});
+const width = menuWidth != null ? `min(${cssSize(menuWidth)}, var(--_ax-max-inline-size))` : undefined;
+---
+<ax-combobox-layer
+  id={layerId}
+  popover="manual"
+  class="ax-layer ax-layer-motion ax-popover-layer ax-typeahead-layer"
+  data-astryx-layer-root=""
+  data-placement="below"
+  data-align="start"
+  data-ax-anchor={anchorId}
+  data-ax-outside-press="dismiss"
+  data-ax-width={width ? '' : undefined}
+  style={mergeStyles(clearance('var(--spacing-1)'), width && {width})}
+>
+  <div class="astryx-popover ax-typeahead-surface">
+    <div id={listboxId} role="listbox" aria-label={label} class="astryx-typeahead-dropdown">
+      {groups.map((group) => group.heading == null ? (
+        group.items.map((item) => (
+          <TypeaheadOption item={item} id={optionId(item.id)} isSelected={value?.id === item.id} size={size} order={order.get(item)} keywords={source?.keywords?.(item)} content={renderItem?.(item)} hidden />
+        ))
+      ) : (
+        <div role="group" aria-label={group.heading} data-ax-group={group.heading} hidden>
+          <div aria-hidden="true" class="ax-typeahead-group-heading">{group.heading}</div>
+          {group.items.map((item) => (
+            <TypeaheadOption item={item} id={optionId(item.id)} isSelected={value?.id === item.id} size={size} order={order.get(item)} keywords={source?.keywords?.(item)} content={renderItem?.(item)} hidden />
+          ))}
+        </div>
+      ))}
+      <div role="option" aria-disabled="true" class="astryx-typeahead-empty-state" data-ax-empty hidden>{emptyHtml ? <Fragment set:html={emptyHtml} /> : emptyText}</div>
+    </div>
+  </div>
+  <template data-ax-option-template><TypeaheadOption item={{id: '', label: ''}} id="" isSelected={false} size={size} /></template>
+  <template data-ax-check-template><Icon icon="check" size="sm" color="primary" /></template>
+</ax-combobox-layer>

@@ -1,0 +1,43 @@
+---
+/**
+ * TypeaheadItem — the default result row content of a typeahead: an optional icon (or
+ * avatar), the label and an optional description. Port of @astryxdesign/core
+ * Typeahead/TypeaheadItem.tsx. Use it in a Typeahead `renderItem` function.
+ *
+ * Theme target: `.astryx-typeahead-item`. `group` has no effect (set
+ * `item.auxiliaryData.group` on the source items to group results), as in Astryx.
+ *
+ * @example
+ * <Typeahead label="Assignee" searchSource={people}
+ *   renderItem={(item) => <TypeaheadItem item={item} description={item.auxiliaryData?.role} />} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {SearchableItem} from '../../lib/searchableItem';
+import {cx} from '../../lib/themeProps';
+import './Typeahead.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** The result item (its `label` is shown). */
+  item: SearchableItem;
+  /** Icon before the label (name / SVG string / Astro component), or the `icon` slot (an Avatar …). */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Secondary text below the label. */
+  description?: string;
+  /** Dimmed. @default false */
+  isDisabled?: boolean;
+  /** No effect (Astryx keeps it for compatibility); group with `auxiliaryData.group`. */
+  group?: string;
+}
+
+const {item, icon, description, isDisabled = false, group: _group, class: className, ...rest} = Astro.props;
+const iconHtml = Astro.slots.has('icon') ? (await Astro.slots.render('icon')).trim() : '';
+---
+<div {...rest} class={cx('astryx-typeahead-item', className as string | undefined)} data-ax-disabled={isDisabled ? '' : undefined}>
+  {iconHtml ? <Fragment set:html={iconHtml} /> : icon != null && <Icon icon={icon} size="sm" color="secondary" />}
+  <div class="ax-typeahead-item-content">
+    <span class="ax-typeahead-item-label" data-ax-item-label>{item.label}</span>
+    {description && <span class="ax-typeahead-item-description">{description}</span>}
+  </div>
+</div>

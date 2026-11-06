@@ -1,0 +1,112 @@
+---
+import Typeahead, {createStaticSource, type TypeaheadSize, type SearchableItem} from './Typeahead.astro';
+import BaseTypeahead from './BaseTypeahead.astro';
+import TypeaheadItem from './TypeaheadItem.astro';
+import Button from '../Button/Button.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: TypeaheadSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Choose an assignee',
+  warning: 'Out of office this week',
+  success: 'Available',
+};
+const fruits: SearchableItem[] = ['Apple', 'Apricot', 'Banana', 'Blackberry', 'Blueberry', 'Cherry', 'Coconut', 'Date', 'Dragon fruit', 'Fig', 'Grape', 'Guava', 'Kiwi', 'Lemon', 'Lime', 'Lychee', 'Mango', 'Melon', 'Orange', 'Papaya', 'Peach', 'Pear', 'Pineapple', 'Plum', 'Raspberry', 'Strawberry', 'Watermelon']
+  .map((label) => ({id: label.toLowerCase().replace(/\s+/g, '-'), label}));
+const fruitSource = createStaticSource(fruits);
+const people: SearchableItem<{role: string; group: string; aliases: string[]}>[] = [
+  {id: 'ada', label: 'Ada Lovelace', auxiliaryData: {role: 'Engineering', group: 'Engineering', aliases: ['countess']}},
+  {id: 'grace', label: 'Grace Hopper', auxiliaryData: {role: 'Compilers', group: 'Engineering', aliases: ['admiral']}},
+  {id: 'margaret', label: 'Margaret Hamilton', auxiliaryData: {role: 'Apollo software', group: 'Engineering', aliases: ['apollo']}},
+  {id: 'dieter', label: 'Dieter Rams', auxiliaryData: {role: 'Industrial design', group: 'Design', aliases: ['braun']}},
+  {id: 'susan', label: 'Susan Kare', auxiliaryData: {role: 'Icons', group: 'Design', aliases: ['icons']}},
+  {id: 'alan', label: 'Alan Kay', auxiliaryData: {role: 'Research', group: 'Research', aliases: ['smalltalk']}},
+];
+const peopleSource = createStaticSource(people, {keywords: (item) => item.auxiliaryData?.aliases ?? []});
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Static source (server-rendered items, filtered in the browser)</h3>
+    <div style={grid}>
+      <Typeahead id="ta-fruit" label="Fruit" searchSource={fruitSource} placeholder="Search fruit…" debounceMs={0} hasMatchHighlight />
+      <Typeahead id="ta-people" label="Assignee" searchSource={peopleSource} description="Grouped by team; aliases match too" value={people[1]} debounceMs={0}
+        renderItem={(item) => <TypeaheadItem item={item} description={(item.auxiliaryData as {role: string}).role} />} />
+      <Typeahead id="ta-focus" label="Recent" searchSource={fruitSource} hasEntriesOnFocus maxMenuItems={5} debounceMs={0} placeholder="Focus to see suggestions" />
+      <Typeahead id="ta-min" label="Three characters" searchSource={fruitSource} minQueryLength={3} debounceMs={0} placeholder="Type 3+ characters" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Asynchronous source (the page answers astryx-query)</h3>
+    <div style={grid}>
+      <Typeahead id="ta-async" label="Country (async)" placeholder="Search countries…" description="Answered after 300 ms" data-demo-async="300" />
+      <Typeahead id="ta-async-partial" label="City (partial lists)" placeholder="Search cities…" description="Local matches first, the server's appended" data-demo-partial="" />
+      <Typeahead id="ta-async-empty" label="Nothing matches" placeholder="Anything" data-demo-async="0" data-demo-empty="" emptySearchText="No records for that query" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes × status</h3>
+    <div style={grid}>
+      {sizes.map((size) => <Typeahead label={`Size ${size}`} size={size} searchSource={fruitSource} value={fruits[5]} />)}
+      {statuses.map((type) => sizes.map((size) => (
+        <Typeahead label={`${type} ${size}`} size={size} searchSource={peopleSource} status={{type, message: messages[type]}} />
+      )))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Form, disabled, start icon, bare engine</h3>
+    <form id="ta-form" style={grid}>
+      <Typeahead id="ta-form-fruit" label="Favourite fruit" searchSource={fruitSource} htmlName="fruit" value={fruits[0]} debounceMs={0} isRequired />
+      <Typeahead id="ta-disabled" label="Disabled" searchSource={fruitSource} value={fruits[2]} isDisabled disabledMessage="Locked by an administrator" />
+      <Typeahead label="With start icon" searchSource={fruitSource} startIcon="search" isLabelHidden placeholder="Search…" />
+      <div>
+        <p style={cap}>BaseTypeahead (no field chrome)</p>
+        <BaseTypeahead id="ta-base" aria-label="Search fruit (bare)" searchSource={fruitSource} debounceMs={0} placeholder="Bare engine" />
+      </div>
+      <div style="display:flex;gap:var(--spacing-2);align-items:center;grid-column:1/-1">
+        <Button type="reset" label="Reset" variant="secondary" />
+        <output id="ta-form-output" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  // Demo backend: answers `astryx-query` for the async examples.
+  const COUNTRIES = ['Argentina', 'Australia', 'Austria', 'Belgium', 'Bolivia', 'Brazil', 'Canada', 'Chile', 'Colombia', 'Costa Rica', 'Denmark', 'Ecuador', 'Finland', 'France', 'Germany', 'Peru', 'Portugal', 'Spain', 'Uruguay'];
+  const CITIES = ['Lima', 'Medellín', 'Bogotá', 'Cusco', 'Arequipa', 'Cali', 'Cartagena', 'Quito', 'Santiago', 'Montevideo', 'Madrid', 'Lisbon'];
+  const toItems = (list: string[]) => list.map((label) => ({id: label.toLowerCase(), label}));
+  document.addEventListener('astryx-query', (event) => {
+    const host = event.target as HTMLElement;
+    // Base props (data-*) land on the combobox input.
+    const field = host.querySelector('input[role="combobox"]');
+    if (!field?.matches('[data-demo-async], [data-demo-partial]')) return;
+    const {query, respond, update, signal} = (event as CustomEvent).detail;
+    event.preventDefault();
+    if (field!.hasAttribute('data-demo-partial')) {
+      const q = query.toLowerCase();
+      const local = toItems(CITIES.slice(0, 6).filter((c) => c.toLowerCase().includes(q)));
+      update(local);
+      const timer = setTimeout(() => respond([...local, ...toItems(CITIES.slice(6).filter((c) => c.toLowerCase().includes(q)))]), 400);
+      signal.addEventListener('abort', () => clearTimeout(timer));
+      return;
+    }
+    const delay = Number(field!.getAttribute('data-demo-async') ?? 300);
+    const answer = () => respond(field!.hasAttribute('data-demo-empty') ? [] : toItems(COUNTRIES.filter((c) => c.toLowerCase().includes(query.toLowerCase()))));
+    if (delay === 0) answer();
+    else {
+      const timer = setTimeout(answer, delay);
+      signal.addEventListener('abort', () => clearTimeout(timer));
+    }
+  });
+  const form = document.getElementById('ta-form') as HTMLFormElement | null;
+  const out = document.getElementById('ta-form-output');
+  const show = () => { if (form && out) out.textContent = new URLSearchParams(new FormData(form) as never).toString(); };
+  form?.addEventListener('astryx-change', show);
+  form?.addEventListener('reset', () => setTimeout(show, 0));
+  show();
+</script>

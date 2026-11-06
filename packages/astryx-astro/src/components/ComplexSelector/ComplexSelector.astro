@@ -1,0 +1,249 @@
+---
+/**
+ * ComplexSelector — a selector shell for rich, custom selection surfaces (a colour matrix, a
+ * date + time pair, a filter form). Port of @astryxdesign/core ComplexSelector/ComplexSelector.tsx
+ * (on Popover/usePopover.tsx, Field, hooks/useInputStatusIcon.tsx, hooks/useBusyAnnouncement.ts).
+ * Behaviour: src/elements/complex-selector.ts + runtime/popover.ts (`<ax-popover>`).
+ *
+ * It owns the field, the trigger (`<button role="combobox" aria-haspopup="dialog">`), the
+ * anchored `popover="auto"` dialog surface (`.astryx-complex-selector-popup`, `role="dialog"`,
+ * `aria-modal`, named by `label`, focus moves into it and returns on close, Tab stays inside),
+ * and the value. The content (default slot) owns its own accessible structure — a radio
+ * group, a grid, a form — as Astryx's `children` render prop does.
+ *
+ * Committing a value from the content (Astryx `onChange` / `close` helpers, client side):
+ *  - declarative: an element with `data-ax-commit="<value>"` (a JSON value, or plain text)
+ *    commits it on click; `data-ax-commit-label="…"` becomes the trigger text; `data-ax-close`
+ *    closes the popup (on its own, or after the commit). After every commit, commit targets
+ *    that carry `aria-pressed` / `aria-checked` / `aria-selected` are re-synced to the value.
+ *  - imperative: `el.commit(value, {label?, close?})` on `<ax-complex-selector>` (find it with
+ *    `closest`-free `document.getElementById(id)` or from the popup's `data-ax-owner`), or
+ *    dispatch `astryx-commit` `{value, label?, close?}` from inside the content.
+ * A commit while disabled is ignored, also from a popup opened before (Astryx isDisabledRef).
+ * `children` as a function: the default slot may be a render function receiving
+ * `(value, {triggerId, contentId})` on the server.
+ *
+ * `trigger` slot (Astryx `renderTrigger`): the first `<button>` / `[role="button"]` of the
+ * slot becomes the opener — the combobox role, `aria-haspopup="dialog"`, `aria-expanded`,
+ * `aria-controls`, `aria-label` (the label, unless it names itself), `aria-required`,
+ * `aria-disabled` are written onto it; no Field, status, spinner or chevron renders.
+ *
+ * Keyboard: ArrowDown on the closed trigger opens it (Enter/Space are the button's own);
+ * Escape closes (shared layer stack); Tab cycles inside the dialog.
+ *
+ * Events: `astryx-change` `{value}` on `<ax-complex-selector>` (bubbling) for every commit;
+ * `astryx-open-change` `{isOpen, reason}` from the popup layer. Element API: `el.value`,
+ * `el.commit(value, opts)`, `el.open()`, `el.close()`, `el.toggle()`, `el.isOpen`
+ * (Astryx `handleRef`).
+ *
+ * Theme hooks: `.astryx-complex-selector[data-variant][data-size][data-status]`,
+ * `.astryx-complex-selector-indicator-icon[data-state]`, `.astryx-complex-selector-popup`.
+ * Not available: `onChange`/`changeAction` (use the event; no optimistic value),
+ * `onClick`/`onKeyDown` props (native events work on the trigger), `contentXstyle` →
+ * `contentClass`/`contentStyle`.
+ *
+ * @example
+ * <ComplexSelector label="Colour" value="teal" triggerLabel="Teal">
+ *   <div role="radiogroup" aria-label="Colour">
+ *     <button role="radio" aria-checked="true" data-ax-commit="teal" data-ax-commit-label="Teal" data-ax-close>Teal</button>
+ *   </div>
+ * </ComplexSelector>
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {seal} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {clearance, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
+import {
+  routeFieldProps,
+  statusIconPlan,
+  type FieldComposedProps,
+  type FieldStatusPlacement,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+} from '../Field/fieldProps';
+import type {LayerAlignment, LayerPlacement} from '../../lib/types';
+import '../Field/Field.css';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './ComplexSelector.css';
+
+export type ComplexSelectorVariant = 'input' | 'secondary' | 'ghost';
+export type ComplexSelectorSize = InputSize;
+export type ComplexSelectorStatus = InputStatus;
+
+export interface Props extends FieldComposedProps {
+  /** The current value (any JSON value; the element owns it afterwards). */
+  value?: unknown;
+  /** Text of the closed trigger (or the `triggerLabel` slot). */
+  triggerLabel?: string;
+  /** Shown when there is no trigger label. @default translated "Select…" */
+  placeholder?: string;
+  /** Busy: spinner + aria-busy. @default false */
+  isLoading?: boolean;
+  /** @default 'md' */
+  size?: ComplexSelectorSize;
+  /** @default 'input' */
+  variant?: ComplexSelectorVariant;
+  /** Icon at the start of the trigger (or the `startIcon` slot). */
+  startIcon?: LabelIcon;
+  /** @default 'below' */
+  placement?: LayerPlacement;
+  /** @default 'start' */
+  alignment?: LayerAlignment;
+  /** Class for the popup content container (Astryx `contentXstyle`). */
+  contentClass?: string;
+  /** Inline style for the popup content container. */
+  contentStyle?: StyleValue;
+  /** Open on load (showcases). @default false */
+  isDefaultOpen?: boolean;
+  /** @default 'attached' for input, 'detached' for secondary/ghost */
+  statusVariant?: FieldStatusPlacement;
+  'data-testid'?: string;
+}
+
+const {
+  value,
+  triggerLabel: triggerLabelProp,
+  placeholder: placeholderProp,
+  isLoading = false,
+  size = 'md',
+  variant = 'input',
+  startIcon,
+  placement = 'below',
+  alignment = 'start',
+  contentClass,
+  contentStyle,
+  isDefaultOpen = false,
+  statusVariant: statusVariantProp = 'attached',
+  ...props
+} = Astro.props;
+
+const effectiveStatusVariant: FieldStatusPlacement = variant !== 'input' && statusVariantProp === 'attached' ? 'detached' : statusVariantProp;
+const r = routeFieldProps('ComplexSelector', {...props, statusVariant: effectiveStatusVariant} as Props & Record<string, unknown>);
+const {isDisabled, status} = r;
+const t = translator(Astro, r.locale);
+const placeholder = placeholderProp ?? t('@astryx.selector.placeholder');
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const triggerLabelHtml = await slotHtml('triggerLabel');
+const startIconHtml = await slotHtml('startIcon');
+const hasTriggerLabel = triggerLabelHtml !== '' || triggerLabelProp != null;
+
+const ids = {
+  box: r.ids.make('box'),
+  layer: r.ids.make('layer'),
+  content: r.ids.make('content'),
+  label: r.ids.fieldLabel,
+};
+// The default slot may be a render function `(value, state) => …` (Astryx `children`).
+const contentHtml = Astro.slots.has('default')
+  ? await seal(await Astro.slots.render('default', [value, {triggerId: r.id, contentId: ids.content, isOpen: isDefaultOpen, isBusy: isLoading}]))
+  : '';
+
+const plan = statusIconPlan(status, effectiveStatusVariant);
+const isTooltipStatus = effectiveStatusVariant === 'tooltip';
+const describedBy = r.describedBy(r.field.descriptionID, isTooltipStatus ? plan.tooltipId : r.statusMessageId);
+const callerLabel = (props as Record<string, unknown>)['aria-label'] as string | undefined;
+const callerLabelledBy = (props as Record<string, unknown>)['aria-labelledby'] as string | undefined;
+
+// renderTrigger → `trigger` slot: the caller's control becomes the field.
+let customTriggerHtml = '';
+if (Astro.slots.has('trigger')) {
+  const stamped = await stampTrigger(
+    await Astro.slots.render('trigger'),
+    (attrs, tag) => ({
+      id: r.id,
+      role: 'combobox',
+      'aria-label': attrs['aria-label'] ?? callerLabel ?? (attrs['aria-labelledby'] != null || callerLabelledBy != null ? undefined : r.label),
+      'aria-labelledby': callerLabelledBy,
+      'aria-haspopup': 'dialog',
+      'aria-expanded': isDefaultOpen ? 'true' : 'false',
+      'aria-controls': ids.content,
+      'aria-describedby': mergeIds(attrs['aria-describedby'], (props as Record<string, unknown>)['aria-describedby'] as string | undefined),
+      'aria-busy': isLoading ? 'true' : undefined,
+      'aria-required': r.required['aria-required'],
+      'aria-disabled': isDisabled ? 'true' : undefined,
+      'data-ax-complex-trigger': '',
+      'data-ax-popover-trigger': ids.layer,
+      ...(tag === 'button' && !isDisabled ? {popovertarget: ids.layer} : {}),
+    }),
+    (tag, attrs) => tag === 'button' || attrs.role === 'button',
+  );
+  customTriggerHtml = stamped.html;
+}
+const hasCustomTrigger = customTriggerHtml !== '';
+
+const {themeClass, attrs: themeAttrs} = themeProps('complex-selector', {variant, size, status: status?.type ?? null});
+const valueJson = value === undefined ? undefined : JSON.stringify(value);
+---
+{hasCustomTrigger ? (
+  <ax-complex-selector id={ids.box} class="ax-complex-selector-custom" data-ax-layer={ids.layer} data-ax-content={ids.content} data-ax-value={valueJson} data-ax-custom-trigger="" data-ax-disabled={isDisabled ? '' : undefined}>
+    <Fragment set:html={customTriggerHtml} />
+  </ax-complex-selector>
+) : (
+  <Field {...r.field} labelID={ids.label}>
+    <ax-complex-selector
+      id={ids.box}
+      class={cx(themeClass, variant === 'input' ? 'ax-input' : 'ax-overlay-image', 'ax-focus-within-combobox', r.control.class)}
+      style={mergeStyles(r.control.style)}
+      {...themeAttrs}
+      data-disabled={isDisabled ? 'disabled' : undefined}
+      data-ax-disabled={isDisabled ? '' : undefined}
+      data-ax-placeholder={hasTriggerLabel ? undefined : ''}
+      data-ax-layer={ids.layer}
+      data-ax-content={ids.content}
+      data-ax-value={valueJson}
+      data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    >
+      {startIconHtml ? <Fragment set:html={startIconHtml} /> : startIcon && <Icon icon={startIcon} size="sm" color="secondary" class="ax-complex-selector-icon" />}
+      <button
+        {...r.native}
+        {...r.required}
+        type="button"
+        id={r.id}
+        class="ax-complex-selector-trigger"
+        role="combobox"
+        aria-haspopup="dialog"
+        aria-expanded={isDefaultOpen ? 'true' : 'false'}
+        aria-controls={ids.content}
+        aria-describedby={describedBy}
+        aria-labelledby={callerLabelledBy ?? (callerLabel != null ? undefined : ids.label)}
+        aria-invalid={status?.type === 'error' ? 'true' : undefined}
+        aria-busy={isLoading ? 'true' : undefined}
+        aria-disabled={isDisabled ? 'true' : undefined}
+        data-ax-complex-trigger=""
+        data-ax-popover-trigger={ids.layer}
+        popovertarget={isDisabled ? undefined : ids.layer}
+      ><span class="ax-complex-selector-text" data-ax-trigger-label>{triggerLabelHtml ? <Fragment set:html={triggerLabelHtml} /> : triggerLabelProp ?? placeholder}</span></button>
+      {isLoading && <Spinner size="sm" aria-hidden="true" />}
+      {plan.renders ? (
+        <span class="ax-complex-selector-status" data-ax-complex-status={isTooltipStatus ? '' : undefined}><InputStatusIcon status={status} plan={plan} size="sm" locale={r.locale} /></span>
+      ) : (
+        <Icon icon="chevronDown" size="sm" color="secondary" class="astryx-complex-selector-indicator-icon ax-complex-selector-icon ax-complex-selector-chevron" data-state={isDefaultOpen ? 'expanded' : 'collapsed'} />
+      )}
+      <template data-ax-placeholder-template>{placeholder}</template>
+    </ax-complex-selector>
+  </Field>
+)}
+<ax-popover
+  id={ids.layer}
+  popover="auto"
+  class="ax-layer ax-layer-motion ax-popover-layer ax-complex-selector-layer"
+  data-astryx-layer-root=""
+  {...placementAttrs({placement, alignment})}
+  data-ax-anchor={hasCustomTrigger ? r.id : ids.box}
+  data-ax-owner={ids.box}
+  data-ax-open={isDefaultOpen && !isDisabled ? 'true' : undefined}
+  style={clearance('var(--spacing-1)')}
+>
+  <div class="astryx-popover astryx-complex-selector-popup ax-focus-visible" role="dialog" aria-modal="true" aria-label={r.label} tabindex="-1">
+    <div id={ids.content} class={cx('ax-complex-selector-content', contentClass)} style={contentStyle as StyleValue}><Fragment set:html={contentHtml} /></div>
+  </div>
+</ax-popover>
+<script>import '../../elements/complex-selector';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

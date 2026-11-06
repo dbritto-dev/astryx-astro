@@ -1,0 +1,151 @@
+---
+/**
+ * BaseTypeahead — the bare combobox engine: an `<input role="combobox">`, its own busy
+ * indicator, and the result popup; no field wrapper, border or selected-value token.
+ * Typeahead (and Tokenizer later) compose the same engine. Port of @astryxdesign/core
+ * Typeahead/BaseTypeahead.tsx. Behaviour: src/elements/typeahead.ts (`<ax-typeahead
+ * data-ax-base>`, a `display: contents` host — it adds no box).
+ *
+ * Name the input yourself (`aria-label` or `aria-labelledby`). The popup anchors to the input,
+ * or to the element whose id you pass as `anchor` (Astryx `anchorRef`). Sources, events,
+ * keyboard and announcements are Typeahead's (see Typeahead.astro); the selected item is
+ * marked in the list (aria-selected + check), and the input clears after a pick.
+ *
+ * @example
+ * <BaseTypeahead aria-label="Search frameworks" searchSource={createStaticSource(frameworks)} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Spinner from '../Spinner/Spinner.astro';
+import TypeaheadPopup from './_TypeaheadPopup.astro';
+import {cx} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {pluralTemplates} from '../Field/clientMessages';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {StaticSearchSource} from './createStaticSource';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './Typeahead.css';
+
+export interface Props extends Omit<HTMLAttributes<'input'>, 'value' | 'size'> {
+  /** A static source (`createStaticSource(items)`); or set `el.searchSource` / answer `astryx-query`. */
+  searchSource?: StaticSearchSource;
+  /** The selected item (marked in the list). */
+  value?: SearchableItem | null;
+  renderItem?: (item: SearchableItem) => unknown;
+  /** @default translated "Search…" */
+  placeholder?: string;
+  /** @default false */
+  hasEntriesOnFocus?: boolean;
+  /** @default 10 */
+  maxMenuItems?: number;
+  /** Requested popup width in px (clamped to the viewport). */
+  menuWidth?: number;
+  /** @default 1 */
+  minQueryLength?: number;
+  /** @default "No results found" (or the `emptySearchText` slot) */
+  emptySearchText?: string;
+  /** Native `disabled` (no tab stop). @default false */
+  isDisabled?: boolean;
+  /** Disabled but focusable (`aria-disabled` + readonly), for a disabled-reason tooltip. @default false */
+  isFocusableDisabled?: boolean;
+  /** @default false */
+  hasAutoFocus?: boolean;
+  /** @default 150 */
+  debounceMs?: number;
+  /** Row padding scale. @default 'md' */
+  size?: 'sm' | 'md' | 'lg';
+  /** Id of the element the popup anchors to (Astryx `anchorRef`). @default the input */
+  anchor?: string;
+  /** Legacy alias of `id`. */
+  inputId?: string;
+  /** @default false */
+  hasMatchHighlight?: boolean;
+  locale?: string;
+}
+
+const {
+  searchSource,
+  value = null,
+  renderItem,
+  placeholder: placeholderProp,
+  hasEntriesOnFocus = false,
+  maxMenuItems = 10,
+  menuWidth,
+  minQueryLength = 1,
+  emptySearchText: emptySearchTextProp,
+  isDisabled = false,
+  isFocusableDisabled = false,
+  hasAutoFocus = false,
+  debounceMs = 150,
+  size = 'md',
+  anchor,
+  inputId,
+  hasMatchHighlight = false,
+  locale: localeProp,
+  id: idProp,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const locale = resolveLocale(Astro, localeProp);
+const t = translator(Astro, localeProp);
+const base = uid(Astro, 'ax-base-typeahead');
+const id = inputId ?? (idProp as string | undefined) ?? `${base}-input`;
+const ids = {host: `${base}-host`, layer: `${base}-layer`, listbox: `${base}-listbox`};
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+const disabledNative = isDisabled && !isFocusableDisabled;
+---
+<ax-typeahead
+  id={ids.host}
+  class="ax-base-typeahead"
+  data-ax-base=""
+  data-ax-layer={ids.layer}
+  data-ax-listbox={ids.listbox}
+  data-ax-value={value ? JSON.stringify({id: value.id, label: value.label, auxiliaryData: value.auxiliaryData}) : undefined}
+  data-ax-debounce={debounceMs}
+  data-ax-min-query={minQueryLength}
+  data-ax-max-items={maxMenuItems}
+  data-ax-entries-on-focus={hasEntriesOnFocus ? '' : undefined}
+  data-ax-match-highlight={hasMatchHighlight ? '' : undefined}
+  data-ax-locale={locale}
+  data-ax-result-count={pluralTemplates(t, locale, '@astryx.typeahead.resultCount', 'count')}
+  data-ax-loading-label={t('@astryx.typeahead.loading')}
+  data-ax-placeholder-text={placeholderProp ?? t('@astryx.typeahead.searchPlaceholder')}
+>
+  <input
+    {...rest}
+    id={id}
+    type="text"
+    role="combobox"
+    class={cx('ax-typeahead-input', className as string | undefined)}
+    aria-expanded="false"
+    aria-controls={ids.listbox}
+    aria-autocomplete="list"
+    aria-disabled={isFocusableDisabled && isDisabled ? 'true' : undefined}
+    disabled={disabledNative || undefined}
+    readonly={(isFocusableDisabled && isDisabled) || undefined}
+    placeholder={placeholderProp ?? t('@astryx.typeahead.searchPlaceholder')}
+    autocomplete="off"
+    enterkeyhint="search"
+    autocorrect="off"
+    autofocus={hasAutoFocus || undefined}
+    data-autofocus={hasAutoFocus ? '' : undefined}
+    data-ax-typeahead-input=""
+  />
+  <span class="ax-typeahead-loading-status" data-ax-own-spinner="" hidden><Spinner size="sm" role="img" aria-label={t('@astryx.typeahead.loading')} data-ax-typeahead-spinner="" /></span>
+  <TypeaheadPopup
+    layerId={ids.layer}
+    listboxId={ids.listbox}
+    anchorId={anchor ?? id}
+    label={t('@astryx.typeahead.searchResults')}
+    size={size}
+    source={searchSource}
+    value={value}
+    renderItem={renderItem}
+    emptyText={emptySearchTextProp ?? t('@astryx.typeahead.emptySearchResults')}
+    emptyHtml={emptySearchHtml}
+    menuWidth={menuWidth}
+  />
+</ax-typeahead>
+<script>import '../../elements/typeahead';</script>
