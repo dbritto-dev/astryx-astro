@@ -1,0 +1,32 @@
+---
+/**
+ * A row's expansion toggle (Astryx useTableRowExpansion ExpansionChevron): "Expand <row>" /
+ * "Collapse <row>" (or the generic "Expand row"), `aria-expanded`, centred in the 40px
+ * column. Both names are rendered for the client to swap. Behaviour:
+ * elements/table-features/expansion.ts.
+ */
+import {translator} from '../../lib/i18n';
+import ExpandIcon from './_ExpandIcon.astro';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  rowLabel?: string;
+  isExpanded: boolean;
+  table: TableRenderContext;
+}
+
+const {rowLabel, isExpanded, table} = Astro.props;
+const t = translator(Astro, table.locale);
+const expandLabel = rowLabel ? t('@astryx.tableRowExpansion.expandRowNamed', {label: rowLabel}) : t('@astryx.tableRowExpansion.expandRow');
+const collapseLabel = rowLabel ? t('@astryx.tableRowExpansion.collapseRowNamed', {label: rowLabel}) : t('@astryx.tableRowExpansion.collapseRow');
+---
+<button
+  type="button"
+  class="ax-table-expand-toggle"
+  data-expansion-toggle=""
+  aria-label={isExpanded ? collapseLabel : expandLabel}
+  aria-expanded={isExpanded ? 'true' : 'false'}
+  data-ax-label-expand={expandLabel}
+  data-ax-label-collapse={collapseLabel}
+><span class="ax-table-expand-glyph"><span class="ax-table-expand-glyph-center"><ExpandIcon expanded={isExpanded} /></span></span></button>
+<script>import '../../elements/table-features/expansion';</script>

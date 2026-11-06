@@ -1,0 +1,28 @@
+---
+/**
+ * TableHeaderCell — a `<th>` with the table's header styling. Port of @astryxdesign/core
+ * Table/TableHeaderCell.tsx.
+ *
+ * Inside a Table it takes the density padding, the semibold secondary label, the header
+ * divider (always drawn), column dividers and single-line truncation; the Table stamps
+ * `data-density` onto it (cascade key `table-density`). Standalone it renders a plain `<th>`.
+ * Theme hook: `.astryx-table-header-cell[data-density]`.
+ *
+ * Deferred: `contextMenuActions` (ContextMenu is not ported yet).
+ *
+ * @example
+ * <TableHeader><TableRow isHeaderRow><TableHeaderCell scope="col">Name</TableHeaderCell></TableRow></TableHeader>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Table.css';
+
+export interface Props extends HTMLAttributes<'th'> {
+  /** Which cells this header relates to. */
+  scope?: 'col' | 'row' | 'colgroup' | 'rowgroup';
+}
+
+const {class: className, ...rest} = Astro.props;
+const {themeClass} = themeProps('table-header-cell');
+---
+<th {...rest} class={cx(themeClass, className)} data-ax-inherit="table-density"><slot /></th>

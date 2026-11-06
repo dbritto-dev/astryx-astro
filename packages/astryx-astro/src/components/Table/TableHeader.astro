@@ -1,0 +1,20 @@
+---
+/**
+ * TableHeader — the `<thead>` section of a children-mode Table. Port of @astryxdesign/core
+ * Table/TableHeader.tsx. Data-driven Tables render their sections themselves.
+ *
+ * @example
+ * <Table aria-label="Totals">
+ *   <TableHeader>…<TableRow>…</TableRow></TableHeader>
+ * </Table>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Table.css';
+
+export interface Props extends HTMLAttributes<'thead'> {}
+
+const {class: className, ...rest} = Astro.props;
+const {themeClass} = themeProps('table-header');
+---
+<thead {...rest} class={cx(themeClass, className)}><slot /></thead>

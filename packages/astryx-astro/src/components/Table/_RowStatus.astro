@@ -1,0 +1,74 @@
+---
+/**
+ * A row status marker (Astryx useTableRowStatus renderCell): `role="img"` named by the label,
+ * with the label as a supplemental hover tooltip. Semantic `status` → that icon in its tone;
+ * custom `color` → an 8px dot, or the caller's `icon` (named colors keep Astryx's Icon color
+ * mapping; a raw CSS color paints the icon through `color`).
+ */
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {warnOnce} from '../../lib/devWarning';
+import type {IconColor, IconName} from '../Icon/iconRegistry';
+import type {TableRowStatus, TableSemanticRowStatus} from './plugins/rowStatus';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  status: TableRowStatus | TableSemanticRowStatus;
+  table: TableRenderContext;
+}
+
+const NAMED_COLORS: Record<string, string> = {
+  accent: 'var(--color-icon-accent)',
+  success: 'var(--color-icon-green)',
+  error: 'var(--color-icon-red)',
+  warning: 'var(--color-icon-orange)',
+  red: 'var(--color-icon-red)',
+  orange: 'var(--color-icon-orange)',
+  green: 'var(--color-icon-green)',
+  yellow: 'var(--color-icon-yellow)',
+  blue: 'var(--color-icon-blue)',
+  gray: 'var(--color-icon-gray)',
+};
+const ICON_COLOR_BY_NAMED_COLOR: Record<string, IconColor> = {
+  accent: 'accent', success: 'success', error: 'error', warning: 'warning', red: 'red',
+  orange: 'warning', green: 'green', yellow: 'warning', blue: 'blue', gray: 'gray',
+};
+
+const {status} = Astro.props;
+const raw = status as {status?: unknown; color?: unknown; icon?: unknown; label: string};
+let variant: 'dot' | 'icon' | null = null;
+let icon: IconName | undefined;
+let iconColor: IconColor = 'inherit';
+let customColor: string | undefined;
+let dotColor: string | undefined;
+if (raw.status === 'success' || raw.status === 'warning' || raw.status === 'error') {
+  if (import.meta.env.DEV && ('color' in raw || 'icon' in raw)) {
+    warnOnce('useTableRowStatus:semantic-custom-conflict', 'useTableRowStatus', 'status cannot be combined with color or icon. The semantic status takes precedence and the custom marker fields are ignored.');
+  }
+  variant = 'icon';
+  icon = raw.status;
+  iconColor = raw.status;
+} else if (typeof raw.color === 'string') {
+  if (typeof raw.icon === 'string') {
+    variant = 'icon';
+    icon = raw.icon as IconName;
+    const named = ICON_COLOR_BY_NAMED_COLOR[raw.color];
+    if (named) iconColor = named;
+    else customColor = raw.color;
+  } else {
+    variant = 'dot';
+    dotColor = NAMED_COLORS[raw.color] ?? raw.color;
+  }
+}
+const tip = variant ? attachTooltip() : null;
+---
+{variant && tip && (
+  <span
+    class="ax-table-row-status"
+    role="img"
+    aria-label={raw.label}
+    style={customColor ? `color:${customColor}` : undefined}
+    {...tip.trigger}
+  >{variant === 'dot' ? <span class="ax-table-row-status-dot" style={`--_ax-status-color:${dotColor}`}></span> : <Icon icon={icon} size="xsm" color={iconColor} />}</span>
+)}{variant && tip && <Tooltip {...tip.layer} content={raw.label} />}

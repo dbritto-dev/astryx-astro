@@ -1,0 +1,40 @@
+---
+/**
+ * TableCell — a `<td>` for children-mode Tables. Port of @astryxdesign/core
+ * Table/TableCell.tsx (+ table.stylex.ts, useTableCellStyles.ts).
+ *
+ * Inside a Table it takes the table's density padding, divider borders, vertical alignment
+ * and text overflow: the Table stamps the effective `data-density` onto it (cascade key
+ * `table-density`), the rest follows from the table's attributes. Standalone it renders a
+ * plain `<td>`. Theme hook: `.astryx-table-cell[data-density]`.
+ *
+ * Deferred: `contextMenuActions` (ContextMenu is not ported yet).
+ *
+ * @example
+ * <TableRow><TableCell>Alice</TableCell><TableCell colSpan={2}>Engineer</TableCell></TableRow>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Table.css';
+
+export interface Props extends HTMLAttributes<'td'> {
+  /** For a `<td>` acting as a row header. */
+  scope?: 'col' | 'row' | 'colgroup' | 'rowgroup';
+  /** Space-separated ids of the header cells describing this cell. */
+  headers?: string;
+  /** Columns spanned (Astryx name; `colspan` works too). */
+  colSpan?: number;
+  /** Rows spanned (Astryx name; `rowspan` works too). */
+  rowSpan?: number;
+}
+
+const {colSpan, rowSpan, class: className, ...rest} = Astro.props;
+const {themeClass} = themeProps('table-cell');
+---
+<td
+  {...rest}
+  colspan={colSpan ?? rest.colspan}
+  rowspan={rowSpan ?? rest.rowspan}
+  class={cx(themeClass, className)}
+  data-ax-inherit="table-density"
+><slot /></td>

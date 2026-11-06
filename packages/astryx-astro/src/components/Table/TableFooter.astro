@@ -1,0 +1,20 @@
+---
+/**
+ * TableFooter — the `<tfoot>` section of a children-mode Table. Port of @astryxdesign/core
+ * Table/TableFooter.tsx. Data-driven Tables render their sections themselves.
+ *
+ * @example
+ * <Table aria-label="Totals">
+ *   <TableFooter>…<TableRow>…</TableRow></TableFooter>
+ * </Table>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Table.css';
+
+export interface Props extends HTMLAttributes<'tfoot'> {}
+
+const {class: className, ...rest} = Astro.props;
+const {themeClass} = themeProps('table-footer');
+---
+<tfoot {...rest} class={cx(themeClass, className)}><slot /></tfoot>

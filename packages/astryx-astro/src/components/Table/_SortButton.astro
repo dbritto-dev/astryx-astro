@@ -1,0 +1,33 @@
+---
+/**
+ * The Sort control of a sortable header (Astryx useTableSortable SortHeaderButton): a
+ * button named by the column label (the direction lives in the header's `aria-sort`), the
+ * indicator glyph, and — while multi-sort has more than one key — the visible priority
+ * number with a hidden "Priority n of m" description. Behaviour: elements/table-features/sort.ts.
+ */
+import {translator} from '../../lib/i18n';
+import SortIcon from './_SortIcon.astro';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  sortKey: string;
+  direction: 'ascending' | 'descending' | null;
+  align?: 'start' | 'center' | 'end';
+  rank: number | null;
+  total: number;
+  priorityId: string;
+  table: TableRenderContext;
+}
+
+const {sortKey, direction, align, rank, total, priorityId, table} = Astro.props;
+const t = translator(Astro, table.locale);
+---
+<button
+  type="button"
+  class="ax-table-sort-button ax-focus-visible"
+  data-align={align === 'center' || align === 'end' ? align : undefined}
+  data-ax-sort-key={sortKey}
+  data-ax-priority-id={priorityId}
+  aria-describedby={rank != null ? priorityId : undefined}
+><span><slot /></span><span class="ax-table-sort-icon" data-direction={direction ?? 'none'}><SortIcon direction={direction ?? 'none'} /></span>{rank != null && <span class="ax-table-sort-rank" aria-hidden="true">{rank}</span>}</button>{rank != null && <span id={priorityId} hidden>{t('@astryx.table.sort.priority', {rank, total})}</span>}
+<script>import '../../elements/table-features/sort';</script>

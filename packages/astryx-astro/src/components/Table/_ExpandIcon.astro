@@ -1,0 +1,18 @@
+---
+/**
+ * The expansion glyph: component icon slot `table-row-expand {expanded}` (fallback
+ * chevronRight, xsm). A slot resolved to null renders nothing; the toggle keeps its size,
+ * name, `aria-expanded` and behaviour. Port of the ComponentIcon use in
+ * @astryxdesign/core useTableRowExpansion.tsx.
+ */
+import Icon from '../Icon/Icon.astro';
+import {resolveComponentIcon, type IconVariant} from '../Icon/iconRegistry';
+
+interface Props {
+  expanded: boolean;
+}
+
+const {expanded} = Astro.props;
+const resolved = resolveComponentIcon('table-row-expand', {expanded}, {icon: 'chevronRight', size: 'xsm'}, Astro);
+---
+{resolved.icon != null && <Icon icon={resolved.icon} size={resolved.size} variant={resolved.variant as IconVariant | undefined} />}

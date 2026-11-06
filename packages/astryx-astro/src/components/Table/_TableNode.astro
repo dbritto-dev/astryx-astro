@@ -1,0 +1,39 @@
+---
+/**
+ * Renders one TableNode (types.ts) — the pipeline's ReactNode stand-in: text (escaped),
+ * trusted `{html}`, `{tag, attrs, children}` elements, `{component, props, children}`
+ * Astro components (children → default slot; `table: true` adds the `table` render
+ * context prop) and arrays. Slot placeholders are filled by Table.astro beforehand; one
+ * left unresolved renders nothing.
+ */
+import type {TableNode, TableRenderContext} from './types';
+import {domAttrs, isComponentNode, isElementNode, isHtmlNode} from './node';
+
+interface Props {
+  node: TableNode;
+  table: TableRenderContext;
+}
+
+const {node, table} = Astro.props;
+const kind = Array.isArray(node)
+  ? 'list'
+  : node == null || typeof node === 'boolean'
+    ? 'none'
+    : typeof node !== 'object'
+      ? 'text'
+      : isHtmlNode(node)
+        ? 'html'
+        : isElementNode(node)
+          ? 'element'
+          : isComponentNode(node)
+            ? 'component'
+            : 'none';
+const list = kind === 'list' ? (node as readonly TableNode[]) : [];
+const Tag = kind === 'element' && isElementNode(node) ? node.tag : 'span';
+const attrs = kind === 'element' && isElementNode(node) ? domAttrs(node.attrs) : {};
+const Component = kind === 'component' && isComponentNode(node) ? (node.component as any) : null;
+const componentProps = kind === 'component' && isComponentNode(node) ? {...node.props, ...(node.table ? {table} : {})} : {};
+const children = isElementNode(node) || isComponentNode(node) ? node.children : undefined;
+const hasChildren = children != null && children !== false && !(Array.isArray(children) && children.length === 0);
+---
+{kind === 'list' && list.map((n) => <Astro.self node={n} table={table} />)}{kind === 'text' && String(node)}{kind === 'html' && <Fragment set:html={(node as {html: string}).html} />}{kind === 'element' && (hasChildren ? <Tag {...attrs}><Astro.self node={children} table={table} /></Tag> : <Tag {...attrs} />)}{kind === 'component' && Component && (hasChildren ? <Component {...componentProps}><Astro.self node={children} table={table} /></Component> : <Component {...componentProps} />)}

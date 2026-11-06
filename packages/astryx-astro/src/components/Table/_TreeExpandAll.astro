@@ -1,0 +1,30 @@
+---
+/**
+ * The tree column header's expand-all / collapse-all toggle (Astryx TreeExpandAllToggle):
+ * the chevron points down only while every expandable row is expanded.
+ */
+import Icon from '../Icon/Icon.astro';
+import {translator} from '../../lib/i18n';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  isAllExpanded: boolean | 'indeterminate';
+  table: TableRenderContext;
+}
+
+const {isAllExpanded, table} = Astro.props;
+const t = translator(Astro, table.locale);
+const all = isAllExpanded === true;
+const expandLabel = t('@astryx.tableTree.expandAllRows');
+const collapseLabel = t('@astryx.tableTree.collapseAllRows');
+---
+<button
+  type="button"
+  class="ax-table-tree-toggle"
+  data-ax-tree-expand-all=""
+  aria-label={all ? collapseLabel : expandLabel}
+  aria-expanded={all ? 'true' : 'false'}
+  data-ax-label-expand={expandLabel}
+  data-ax-label-collapse={collapseLabel}
+><Icon icon="chevronRight" size="xsm" class="ax-table-chevron" /></button>
+<script>import '../../elements/table-features/tree';</script>
