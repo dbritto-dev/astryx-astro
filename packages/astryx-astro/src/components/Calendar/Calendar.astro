@@ -1,0 +1,247 @@
+---
+/**
+ * Calendar — pick a date or a date range from a month grid. Port of @astryxdesign/core
+ * Calendar/Calendar.tsx (Calendar, MonthGrid, DayCell), Calendar/styles.ts,
+ * Calendar/dayCellUtils.ts, Calendar/getInitialFocusDate.ts, Calendar/getWeekdayHeaderNames.ts
+ * (+ weekdayHeaderNames.generated.ts), Calendar/hooks/useCalendarDays.ts,
+ * Calendar/hooks/useCalendarConstraints.ts, hooks/useGridFocus.ts and i18n/useCalendarSystem.ts.
+ * Pure logic: ./calendarModel.ts (shared with the element); behaviour: src/elements/calendar.ts
+ * (`<ax-calendar>`); keyboard: ./gridFocus.ts.
+ *
+ * Markup: the root `<ax-calendar class="astryx-calendar" data-mode>` holds a header (two ghost
+ * icon-only Buttons `.astryx-calendar-nav[data-nav="prev|next"][data-disabled]` around the
+ * month label) and one APG grid per visible month: `role="grid"` named by its month, a header
+ * row of `columnheader`s (+ a visually hidden week-field header with `hasWeekNumbers`) and
+ * week rows of `gridcell`s, each holding a day `<button class="astryx-calendar-day">` with
+ * `data-selected|today|disabled|in-range|marker` (the theme states), `data-date` (ISO),
+ * `aria-current="date"` on today, `aria-disabled` on unavailable and adjacent-month days
+ * (focusable, skipped by the arrows), the selection in its name ("…, selected", "…, range
+ * start") and `aria-selected` on the cell. The server renders the initial month(s) with the
+ * same function the element uses for every later render (`renderMonthsHtml`).
+ *
+ * Keyboard (useGridFocus + Calendar): arrows (RTL-aware), Home/End (row), Ctrl/Cmd+Home/End
+ * (grid), PageUp/PageDown (month), Shift+PageUp/PageDown (year), crossing into the adjacent
+ * month at the edges; one roving tab stop per grid (selected > today > first enabled day);
+ * Escape cancels a range in progress (and stops there, so a surrounding popover stays open).
+ * Month changes, range starts, completions and cancellations are announced politely.
+ *
+ * Element API (`<ax-calendar>`, for DateInput / DateRangeInput):
+ *  - `value` (get/set: ISO date | `{start, end}` | null), `focusDate` (ISO of the first
+ *    visible month), `rangeSelectionStart`, `navigateTo(iso)` (handleRef), `focusDay(iso?)`,
+ *    `cancelRangeSelection()`, `dateConstraints` (client functions, see below),
+ *    `configure({min, max, minRangeSpan, maxRangeSpan, numberOfMonths, …})`.
+ *  - Events (bubbling, composed): `astryx-change` — single `{value: ISO, valueAsDate: Date}`,
+ *    range `{value: {start, end}}`; cancelable: `preventDefault()` keeps the old value (a
+ *    controlled owner sets `el.value` itself). `astryx-focus-date-change` `{focusDate}` when
+ *    the visible month changes (onFocusDateChange).
+ *
+ * Port notes:
+ *  - `value` and `defaultValue` both seed the initial selection; the element owns it afterwards.
+ *  - `dateConstraints` (functions) run on the server over a window (two years either side of
+ *    the opening months, clipped to min/max) and ship as a bitmask; set `el.dateConstraints`
+ *    in the browser for rules that must hold beyond it.
+ *  - `calendar` default is `Astro.locals.astryxCalendar` (the InternationalizationProvider
+ *    calendar), else `gregory`; a calendar the server cannot show falls back to Gregorian on
+ *    both sides, so the markup matches.
+ *  - Today is the browser's day: the element re-renders on connect when it differs from the
+ *    server's, and a view opened on today follows it.
+ *  - Deferred (scope): the coarse-pointer press controller (usePressFeedback).
+ *
+ * @example
+ * <Calendar defaultValue="2026-03-10" />
+ * <Calendar mode="range" numberOfMonths={2} min="2026-01-01" maxRangeSpan={14} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {
+  ARG_A,
+  ARG_B,
+  calendarAddMonths,
+  calendarFromLocals,
+  calendarMonthOf,
+  createDateDisabled,
+  encodeConstraintMask,
+  getInitialFocusDate,
+  monthYearLabel,
+  navigationAvailability,
+  normalizeWeekStart,
+  plainDateFromISO,
+  plainDateToISO,
+  renderMonthsHtml,
+  visibleMonths,
+  type CalendarConfig,
+  type CalendarMessages,
+  type CalendarSystem,
+  type DateRange,
+  type DayOfWeek,
+  type DayOfWeekName,
+  type ISODateString,
+} from './calendarModel';
+import {plainDateDiffDays, plainDateIsAfter, plainDateIsBefore, plainDateToday} from '../../lib/date';
+import '../VisuallyHidden/VisuallyHidden.css';
+import './Calendar.css';
+
+export type {CalendarSystem, DateRange, DayOfWeek, DayOfWeekName, ISODateString};
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'defaultValue'> {
+  /** Selection mode. @default 'single' */
+  mode?: 'single' | 'range';
+  /** Initially selected date (single) or range; null for none. The element owns it afterwards. */
+  value?: ISODateString | DateRange | null;
+  /** Initial selection (uncontrolled). */
+  defaultValue?: ISODateString | DateRange;
+  /** Number of months to display. @default 1 */
+  numberOfMonths?: 1 | 2;
+  /** Minimum selectable date (ISO). */
+  min?: ISODateString;
+  /** Maximum selectable date (ISO). */
+  max?: ISODateString;
+  /** Custom constraints; a date is disabled if ANY returns false (server-evaluated, see header). */
+  dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
+  /** Range mode: max days a range may span, both endpoints counted (7 = a 7-day window). */
+  maxRangeSpan?: number;
+  /** Range mode: min days a range must span, both endpoints counted (2 forbids one day). @default 1 */
+  minRangeSpan?: number;
+  /** Visible month (ISO). Unset: the selected date, else today clamped into min/max. */
+  focusDate?: ISODateString;
+  /** Show days from adjacent months. @default true */
+  hasOutsideDays?: boolean;
+  /** Show ISO 8601 week numbers in a side column. @default false */
+  hasWeekNumbers?: boolean;
+  /** Only the rows each month needs instead of a fixed 6-row grid. @default false */
+  hasVariableRowCount?: boolean;
+  /** First day of week: 0 (Sunday) … 6, or 'sun' … 'sat'. @default 0 */
+  weekStartsOn?: DayOfWeek | DayOfWeekName;
+  /** Calendar system the grid shows; values stay Gregorian ISO. @default Astro.locals.astryxCalendar ?? 'gregory' */
+  calendar?: CalendarSystem;
+  /** Locale for labels, digits and the translated strings (port extension). */
+  locale?: string;
+}
+
+const {
+  mode = 'single',
+  value,
+  defaultValue,
+  numberOfMonths: numberOfMonthsProp = 1,
+  min,
+  max,
+  dateConstraints,
+  maxRangeSpan,
+  minRangeSpan,
+  focusDate: focusDateProp,
+  hasOutsideDays = true,
+  hasWeekNumbers = false,
+  hasVariableRowCount = false,
+  weekStartsOn: weekStartsOnProp = 0,
+  calendar: calendarProp,
+  locale: localeProp,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const locale = resolveLocale(Astro, localeProp);
+const t = translator(Astro, localeProp);
+const calendar = calendarFromLocals(calendarProp, Astro, 'Calendar');
+const weekStartsOn = normalizeWeekStart(weekStartsOnProp);
+const numberOfMonths = numberOfMonthsProp === 2 ? 2 : 1;
+const today = plainDateToday();
+const effectiveValue = (value !== undefined ? value : defaultValue) ?? null;
+const focusDate = getInitialFocusDate({
+  focusDate: focusDateProp,
+  value: effectiveValue ?? undefined,
+  min,
+  max,
+  numberOfMonths,
+  today,
+  calendar,
+});
+// The view opened on today (no focusDate, no value): the browser re-derives it from its own today.
+const focusFromToday = !focusDateProp && !effectiveValue;
+
+const messages: CalendarMessages = {
+  daySelected: t('@astryx.calendar.daySelected', {date: ARG_A}),
+  dayRangeStart: t('@astryx.calendar.dayRangeStart', {date: ARG_A}),
+  dayRangeEnd: t('@astryx.calendar.dayRangeEnd', {date: ARG_A}),
+  dayRangeStartAndEnd: t('@astryx.calendar.dayRangeStartAndEnd', {date: ARG_A}),
+  dayInRange: t('@astryx.calendar.dayInRange', {date: ARG_A}),
+  rangeStartAnnounce: t('@astryx.calendar.rangeStartAnnounce', {date: ARG_A}),
+  rangeCompleteAnnounce: t('@astryx.calendar.rangeCompleteAnnounce', {start: ARG_A, end: ARG_B}),
+  rangeClearedAnnounce: t('@astryx.calendar.rangeClearedAnnounce', {date: ARG_A}),
+};
+
+// dateConstraints → a bitmask over two years either side of the opening months (within min/max).
+let mask: CalendarConfig['mask'];
+if (dateConstraints && dateConstraints.length > 0) {
+  const opening = visibleMonths({calendar, numberOfMonths} as CalendarConfig, focusDate);
+  let start = calendarAddMonths(calendar, opening[0], -24).start;
+  let end = calendarAddMonths(calendar, opening[opening.length - 1], 24).end;
+  if (min && plainDateIsAfter(plainDateFromISO(min), start)) start = plainDateFromISO(min);
+  if (max && plainDateIsBefore(plainDateFromISO(max), end)) end = plainDateFromISO(max);
+  const length = plainDateDiffDays(start, end) + 1;
+  if (length > 0) mask = encodeConstraintMask(start, length, createDateDisabled({dateConstraints}));
+}
+
+const config: CalendarConfig = {
+  mode,
+  numberOfMonths,
+  min,
+  max,
+  maxRangeSpan,
+  minRangeSpan,
+  hasOutsideDays,
+  hasWeekNumbers,
+  hasVariableRowCount,
+  weekStartsOn,
+  calendar,
+  locale,
+  messages,
+  mask,
+};
+const isDisabled = createDateDisabled({min, max, maxRangeSpan, minRangeSpan, mask});
+const months = visibleMonths(config, focusDate);
+const label = monthYearLabel(config, months);
+const {canPrevious, canNext} = navigationAvailability(config, months);
+const monthsHtml = renderMonthsHtml(config, {focusDate, value: effectiveValue, rangeSelectionStart: null, hoveredDate: null, today}, isDisabled);
+const {themeClass, attrs} = themeProps('calendar', {mode});
+const valueAttr = effectiveValue == null ? undefined : typeof effectiveValue === 'string' ? effectiveValue : JSON.stringify({start: effectiveValue.start, end: effectiveValue.end});
+const Root = 'ax-calendar' as 'div';
+---
+<Root
+  {...rest}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-ax-config={JSON.stringify(config)}
+  data-ax-value={valueAttr}
+  data-ax-focus-date={plainDateToISO(calendarMonthOf(calendar, focusDate).start)}
+  data-ax-today={plainDateToISO(today)}
+  data-ax-today-focus={focusFromToday ? '' : undefined}
+>
+  <div class="ax-calendar-header">
+    <Button
+      class="astryx-calendar-nav"
+      data-nav="prev"
+      data-disabled={canPrevious ? undefined : 'disabled'}
+      label={t('@astryx.calendar.previousMonth')}
+      variant="ghost"
+      isIconOnly
+      isDisabled={!canPrevious}
+      locale={localeProp}
+    ><span slot="icon" class="ax-calendar-nav-icon ax-mirror-rtl"><Icon icon="chevronLeft" size="sm" color="inherit" /></span></Button>
+    <span class="ax-calendar-month-label">{label}</span>
+    <Button
+      class="astryx-calendar-nav"
+      data-nav="next"
+      data-disabled={canNext ? undefined : 'disabled'}
+      label={t('@astryx.calendar.nextMonth')}
+      variant="ghost"
+      isIconOnly
+      isDisabled={!canNext}
+      locale={localeProp}
+    ><span slot="icon" class="ax-calendar-nav-icon ax-mirror-rtl"><Icon icon="chevronRight" size="sm" color="inherit" /></span></Button>
+  </div>
+  <div class="ax-calendar-months"><Fragment set:html={monthsHtml} /></div>
+</Root>
+<script>import '../../elements/calendar';</script>

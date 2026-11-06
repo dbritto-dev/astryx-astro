@@ -1,0 +1,110 @@
+---
+import CodeBlock from './CodeBlock.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import {lua} from '../../lib/codeblock/languages/lua';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const col = 'display:grid;gap:var(--spacing-5);min-width:0';
+
+const tsx = `import {useState} from 'react';
+
+export function Counter({start = 0}: {start?: number}) {
+  const [count, setCount] = useState(start);
+  // Increment on click
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+`;
+const python = `def fib(n: int) -> int:
+    """Return the n-th Fibonacci number."""
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+`;
+const diff = `--- a/greet.ts
++++ b/greet.ts
+@@ -1,4 +1,4 @@
+ export function greet(name: string) {
+-  return 'Hello ' + name;
++  return \`Hello, \${name}!\`;
+ }
+`;
+const json = `{"name": "astryx-astro", "private": true, "version": "0.7.9", "scripts": {"build": "astro build", "test": "node tools/tests/run-all.mjs"}}`;
+const css = Array.from({length: 120}, (_, i) => `.row-${i + 1} { inset-inline-start: ${i * 4}px; color: var(--color-text-primary); }`).join('\n');
+const bash = `pnpm install\ncd apps/docs && npx astro build`;
+const luaCode = `local function greet(name)\n  return "Hello, " .. name\nend\nprint(greet("Lua"))`;
+const rust = `fn main() {\n    let xs = vec![1, 2, 3];\n    let total: i32 = xs.iter().sum();\n    println!("{}", total);\n}`;
+const shoutTokenizer = (code: string) => {
+  const tokens: {type: string; start: number; end: number}[] = [];
+  for (const m of code.matchAll(/[A-Z]{2,}/g)) tokens.push({type: 'keyword', start: m.index!, end: m.index! + m[0].length});
+  for (const m of code.matchAll(/\d+/g)) tokens.push({type: 'number', start: m.index!, end: m.index! + m[0].length});
+  return tokens.sort((a, b) => a.start - b.start);
+};
+const nightTheme = {
+  name: 'night',
+  tokens: {
+    background: '#1e1f29', variable: '#e6e6f0', keyword: '#ff79c6', string: '#9be38f', comment: '#8a8fa8',
+    number: '#f5b56b', function: '#82aaff', type: '#c792ea', operator: '#89ddff', punctuation: '#a6accd',
+    property: '#80cbc4', constant: '#f78c6c',
+  },
+};
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--spacing-5)">
+    <div style={col}>
+      <div style="min-width:0">
+        <p style={cap}>language="tsx", title, line numbers, highlightLines [4, 6]</p>
+        <CodeBlock id="cb-tsx" code={tsx} language="tsx" title="Counter.tsx" hasLineNumbers highlightLines={[4, 6]} />
+      </div>
+      <div style="min-width:0">
+        <p style={cap}>No header: Copy in the corner column (size md)</p>
+        <CodeBlock id="cb-corner" code={bash} language="bash" hasLanguageLabel={false} />
+      </div>
+      <div style="min-width:0">
+        <p style={cap}>size="sm", startLineNumber 41</p>
+        <CodeBlock id="cb-sm" code={python} language="python" size="sm" hasLineNumbers startLineNumber={41} highlightLines={[43]} />
+      </div>
+    </div>
+    <div style={col}>
+      <div style="min-width:0">
+        <p style={cap}>isDiff over ts (file header, hunk, added, removed), line numbers</p>
+        <CodeBlock id="cb-diff" code={diff} language="ts" isDiff hasLineNumbers />
+      </div>
+      <div style="min-width:0">
+        <p style={cap}>plaintext diff, no copy button</p>
+        <CodeBlock id="cb-diff-plain" code={diff} isDiff hasCopyButton={false} />
+      </div>
+      <div style="min-width:0">
+        <p style={cap}>highlightMode="ranges" (CSS Custom Highlight API)</p>
+        <CodeBlock id="cb-ranges" code={rust} language="rust" highlightMode="ranges" hasLineNumbers />
+      </div>
+    </div>
+  </div>
+
+  <div style="min-width:0">
+    <p style={cap}>isWrapped, width="100%", endContent before Copy</p>
+    <CodeBlock id="cb-wrapped" code={json} language="json" isWrapped width="100%">
+      <IconButton slot="endContent" label="Open in editor" icon="externalLink" variant="ghost" size="sm" />
+    </CodeBlock>
+  </div>
+
+  <div style="min-width:0">
+    <p style={cap}>120 lines (chunked, content-visibility), maxHeight 220, isCollapsible</p>
+    <CodeBlock id="cb-long" code={css} language="css" title="rows.css" hasLineNumbers maxHeight={220} isCollapsible width="100%" />
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--spacing-5)">
+    <div style="padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-container);background:var(--color-background-surface)">
+      <p style={cap}>container="section" inside a surface</p>
+      <CodeBlock id="cb-section" code={luaCode} language={lua} container="section" />
+    </div>
+    <div>
+      <p style={cap}>syntaxTheme (per-instance colors)</p>
+      <CodeBlock id="cb-theme" code={tsx.split('\n').slice(3, 6).join('\n')} language="ts" syntaxTheme={nightTheme} />
+    </div>
+    <div>
+      <p style={cap}>Custom tokenizer (deprecated prop)</p>
+      <CodeBlock id="cb-tokenizer" code={'WARN 3 retries\nFAIL after 30s'} language="log" tokenizer={shoutTokenizer} />
+    </div>
+  </div>
+</div>

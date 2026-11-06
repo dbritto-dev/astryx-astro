@@ -1,0 +1,62 @@
+---
+/**
+ * Private: the copy IconButton CodeBlock and Timestamp share (Astryx renders the same ghost sm
+ * IconButton + ComponentIcon in CodeBlock.tsx and TimestampHoverCard.tsx). Both icon states
+ * of the slot are rendered (resolveComponentIcon per state; a theme's `null` hides a glyph
+ * but keeps the button) and `data-copied` toggles them; the behaviour is
+ * behaviors/clipboardCopy.ts. The tooltip is a sibling `<Tooltip>` the behaviour wires.
+ */
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {resolveComponentIcon} from '../Icon/iconRegistry';
+import {uid} from '../../lib/uid';
+import './CodeBlock.css';
+
+interface Props {
+  /** The component icon slot. */
+  iconSlot: 'code-block-copy' | 'timestamp-copy';
+  /** Theme target class on the button. */
+  themeClass: string;
+  /** aria-label idle / while copied. */
+  label: string;
+  copiedLabel: string;
+  /** Tooltip text idle / while copied. */
+  tip: string;
+  copiedTip: string;
+  /** Spoken on success. */
+  announce: string;
+  /** Text to copy, or the id of an element (a <template>) holding it. */
+  value?: string;
+  from?: string;
+  /** How long the copied state lasts (ms). @default 2000 */
+  resetAfterMs?: number;
+  locale?: string;
+  id?: string;
+}
+
+const {iconSlot, themeClass, label, copiedLabel, tip, copiedTip, announce, value, from, resetAfterMs, locale, id: idProp} = Astro.props;
+const id = idProp ?? uid(Astro, 'ax-copy');
+const tipId = uid(Astro, 'ax-copy-tip');
+const idle = resolveComponentIcon(iconSlot, {copied: false}, {icon: 'copy', size: 'sm'}, Astro);
+const copied = resolveComponentIcon(iconSlot, {copied: true}, {icon: 'check', size: 'sm'}, Astro);
+---
+<IconButton
+  id={id}
+  class={themeClass}
+  variant="ghost"
+  size="sm"
+  label={label}
+  locale={locale}
+  data-ax-copy=""
+  data-ax-copy-value={value}
+  data-ax-copy-from={from}
+  data-ax-copy-label={label}
+  data-ax-copied-label={copiedLabel}
+  data-ax-copy-announce={announce}
+  data-ax-copy-reset={resetAfterMs != null ? String(resetAfterMs) : undefined}
+  data-ax-copy-tooltip={tipId}
+  data-ax-copy-tip={tip}
+  data-ax-copied-tip={copiedTip}
+><span slot="icon" class="ax-copy-icon"><span class="ax-copy-icon-state" data-state="idle">{idle.icon && <Icon icon={idle.icon} size={idle.size ?? 'sm'} variant={idle.variant as never} color="inherit" />}</span><span class="ax-copy-icon-state" data-state="copied">{copied.icon && <Icon icon={copied.icon} size={copied.size ?? 'sm'} variant={copied.variant as never} color="inherit" />}</span></span></IconButton><Tooltip id={tipId} content={tip} />
+<script>import '../../behaviors/clipboardCopy';</script>

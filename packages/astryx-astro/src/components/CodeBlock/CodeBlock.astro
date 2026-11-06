@@ -1,0 +1,288 @@
+---
+/**
+ * CodeBlock — read-only, syntax-highlighted code with line numbers, highlighted lines, diffs,
+ * wrapping, collapse and a copy button. Port of @astryxdesign/core CodeBlock/CodeBlock.tsx
+ * (styles, containerStyles, dynamicStyles, line chunking, span and range modes), with
+ * hooks/useClipboard.ts (behaviors/clipboardCopy.ts), hooks/useScrollableArea.ts (the
+ * `<ax-scrollable-area>` element), theme/syntax/SyntaxTheme.tsx (the `syntaxTheme` wrapper)
+ * and the `code-block-copy` component icon slot. Tokenizing: lib/codeblock, on the server.
+ *
+ * Markup: `<pre class="astryx-code-block" data-size data-language data-container>` → optional
+ * header (`.astryx-code-block-header` with the `.astryx-code-block-title` and the controls:
+ * the `endContent` slot, then Copy), the code viewport (`role="group"` named by the language
+ * label or "Code", a tab stop only while it overflows) holding `<code>` with one
+ * `[data-line]` row per source line (`data-diff="added|removed|header"` on diff rows), and —
+ * without a header — the controls in an inline-end corner column beside the code.
+ * Line numbers are `::before` content from `data-line`, in a gutter `--_codeblock-gutter-width`
+ * (`<digits>ch`) wide; `highlightLines` rows get the accent tint.
+ *
+ * Highlight modes: `spans` (and `auto`, and every diff) render `.astryx-token-<type>` spans
+ * on the server — highlighted with no JavaScript; `ranges` renders bare line text plus the
+ * tokens as JSON and paints them with the CSS Custom Highlight API (`::highlight(astryx-*)`),
+ * falling back to spans where the API is missing or in Safari (as Astryx does).
+ * The `::highlight()` and `.astryx-token-*` rules live in CodeBlock.css (astryx-base) with the
+ * `--color-syntax-*` defaults as fallbacks, so theme and SyntaxTheme values win.
+ *
+ * Copy: a ghost sm IconButton (`.astryx-code-block-copy-button`) copies `code` exactly
+ * (diff glyphs included), flips its icon copy → check (both states rendered, `data-copied`
+ * toggles them; a theme maps `code-block-copy` per state), its name to "Copied" for 2s, and
+ * announces "Copied"; its tooltip stays "Copy code". Event `astryx-copy` `{text}` (onCopy).
+ * Collapse (`isCollapsible`, a header and ≥ `collapsibleThreshold` lines): the title row is a
+ * `role="button"` disclosure (`aria-expanded`, `aria-controls`; Enter/Space) over a 1fr/0fr grid
+ * row; the collapsed region is `inert`. Event `astryx-collapse-change` `{isCollapsed}`.
+ *
+ * Port notes: `auto` renders spans (the server cannot feature-detect; same paint); long code
+ * tokenizes synchronously on the server (no main-thread concern); `syntaxTheme` takes a
+ * `{name, tokens}` definition (Astryx `defineSyntaxTheme()` output or a plain map of token →
+ * CSS color) and writes its `--color-syntax-*` vars on a wrapper, as SyntaxTheme does.
+ * `onCopy` → the `astryx-copy` event.
+ *
+ * @example
+ * <CodeBlock code={source} language="tsx" title="Button.tsx" hasLineNumbers highlightLines={[3]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import CopyButton from './_CopyButton.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {
+  flatTokensToLines,
+  languageKey,
+  languageLabel as languageWord,
+  splitDiffLines,
+  tokenize,
+  type CodeLanguage,
+  type SyntaxToken,
+  type TokenLine,
+} from '../../lib/codeblock';
+import './CodeBlock.css';
+
+export interface SyntaxThemeDefinition {
+  name: string;
+  /** Token key (`keyword`, `background`, `added` …) → CSS color. */
+  tokens: Record<string, string | undefined>;
+}
+
+export interface Props extends Omit<HTMLAttributes<'pre'>, 'title'> {
+  /** The source to display (and copy, exactly). */
+  code: string;
+  /** A built-in identifier (`'rust'`) or a language value (lib/codeblock languages, `createCodeLanguage`). @default 'plaintext' */
+  language?: string | CodeLanguage;
+  /** Header title (e.g. a file name). */
+  title?: string;
+  /** Show the language in the header. @default true */
+  hasLanguageLabel?: boolean;
+  /** @default false */
+  hasLineNumbers?: boolean;
+  /** First line's number in the source file (values below 1 clamp to 1). @default 1 */
+  startLineNumber?: number;
+  /** Line numbers to highlight, in the gutter's file coordinates. */
+  highlightLines?: number[];
+  /** Render as a unified diff over `language` (+ added, - removed, @@ hunk headers). @default false */
+  isDiff?: boolean;
+  /** @default true */
+  hasCopyButton?: boolean;
+  /** Wrap long lines instead of scrolling. @default false */
+  isWrapped?: boolean;
+  /** Max height of the code viewport (number = px). */
+  maxHeight?: number | string;
+  /** A header control collapses the code (needs a header and `collapsibleThreshold` lines). @default false */
+  isCollapsible?: boolean;
+  /** @default 10 */
+  collapsibleThreshold?: number;
+  /** @default 'md' */
+  size?: 'sm' | 'md';
+  /** `'fit-content'` (longest line, floor min(100%, 400px)), `'100%'`, or any CSS width. @default 'fit-content' */
+  width?: string;
+  /** `'card'` (border, radius, muted background) or `'section'` (flush, transparent). @default 'card' */
+  container?: 'card' | 'section';
+  /** @deprecated Pass `createCodeLanguage({…, tokenize})` as `language`. Still wins over `language`'s grammar. */
+  tokenizer?: (code: string, language: string) => {type: string; start: number; end: number}[];
+  /** @default 'auto' */
+  highlightMode?: 'auto' | 'ranges' | 'spans';
+  /** Per-instance syntax colors (see header). */
+  syntaxTheme?: SyntaxThemeDefinition;
+  /** Locale for the translated labels (port extension). */
+  locale?: string;
+}
+
+const {
+  code,
+  language = 'plaintext',
+  title,
+  hasLanguageLabel = true,
+  hasLineNumbers = false,
+  startLineNumber = 1,
+  highlightLines,
+  isDiff = false,
+  hasCopyButton = true,
+  isWrapped = false,
+  maxHeight,
+  isCollapsible = false,
+  collapsibleThreshold = 10,
+  size = 'md',
+  width = 'fit-content',
+  container = 'card',
+  tokenizer: customTokenizer,
+  highlightMode = 'auto',
+  syntaxTheme,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const useSpans = isDiff || highlightMode !== 'ranges';
+
+const lines = (() => {
+  const l = code.split('\n');
+  if (l.length > 1 && l[l.length - 1] === '') l.pop();
+  return l;
+})();
+const diff = isDiff ? splitDiffLines(lines) : null;
+const tokenSource = diff ? diff.content.join('\n') : code;
+const tokenLines: TokenLine[] = customTokenizer
+  ? flatTokensToLines(customTokenizer(tokenSource, languageWord(language)), tokenSource)
+  : tokenize(tokenSource, language);
+const diffKinds = diff?.kinds ?? null;
+const firstLine = Number.isFinite(startLineNumber) && startLineNumber > 1 ? Math.floor(startLineNumber) : 1;
+const highlightSet = highlightLines ? new Set(highlightLines) : null;
+const maxLineDigits = String(firstLine + lines.length - 1).length;
+
+const languageName = languageWord(language);
+const languageAttr = languageKey(language);
+const languageLabel = !hasLanguageLabel
+  ? null
+  : isDiff
+    ? languageName === 'plaintext' ? 'diff' : `${languageName} diff`
+    : languageName !== 'plaintext' ? languageName : null;
+const showHeader = title != null || languageLabel != null;
+const canCollapse = showHeader && isCollapsible && lines.length >= collapsibleThreshold;
+const regionId = canCollapse ? uid(Astro, 'ax-code-block-region') : undefined;
+const hasEndContent = Astro.slots.has('endContent');
+const hasControls = hasCopyButton || hasEndContent;
+const endHtml = hasEndContent ? await Astro.slots.render('endContent') : '';
+
+// ── Lines ───────────────────────────────────────────────────────────────────
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function spanLine(text: string, tokens: SyntaxToken[]): string {
+  if (tokens.length === 0) return esc(text || '​');
+  let out = '';
+  let cursor = 0;
+  for (const token of tokens) {
+    if (token.start > cursor) out += esc(text.slice(cursor, token.start));
+    const end = Math.min(token.end, text.length);
+    out += `<span class="astryx-token-${esc(token.type)} xds-token-${esc(token.type)}">${esc(text.slice(token.start, end))}</span>`;
+    cursor = end;
+  }
+  if (cursor < text.length) out += esc(text.slice(cursor));
+  return out || '​';
+}
+function lineContent(line: string, i: number): string {
+  const tokens = tokenLines[i] ?? [];
+  if (!useSpans) return esc(line || '​');
+  if (diff) {
+    const kind = diff.kinds[i];
+    const content = kind === 'header' ? line : diff.content[i];
+    const marker = `<span data-diff-marker="" class="ax-codeblock-diff-marker"${kind === 'added' || kind === 'removed' ? ` data-ax-kind="${kind}"` : ''}${hasLineNumbers ? ' data-ax-numbered=""' : ''}>${esc(diff.glyphs[i] || ' ')}</span>`;
+    return `${marker}<span class="ax-codeblock-line-content">${kind === 'header' ? esc(content || '​') : spanLine(content, tokens)}</span>`;
+  }
+  return `<span class="ax-codeblock-line-content">${spanLine(line, tokens)}</span>`;
+}
+function lineHtml(line: string, i: number): string {
+  const n = firstLine + i;
+  const kind = diffKinds?.[i];
+  const attrs = [
+    `data-line="${n}"`,
+    kind && kind !== 'context' ? `data-diff="${kind}"` : '',
+    'class="ax-codeblock-line"',
+    hasLineNumbers ? 'data-ax-numbered=""' : '',
+    diffKinds ? 'data-ax-diff-layout=""' : '',
+    highlightSet?.has(n) ? 'data-ax-highlighted=""' : '',
+  ].filter(Boolean).join(' ');
+  return `<div ${attrs}>${lineContent(line, i)}</div>`;
+}
+const LINE_CHUNK_SIZE = 20;
+const LINE_CHUNK_THRESHOLD = 100;
+let linesHtml = '';
+if (lines.length < LINE_CHUNK_THRESHOLD) linesHtml = lines.map(lineHtml).join('');
+else {
+  for (let start = 0; start < lines.length; start += LINE_CHUNK_SIZE) {
+    const end = Math.min(start + LINE_CHUNK_SIZE, lines.length);
+    let chunk = '';
+    for (let i = start; i < end; i++) chunk += lineHtml(lines[i], i);
+    linesHtml += `<div class="ax-codeblock-chunk" style="contain-intrinsic-block-size:auto ${end - start}lh">${chunk}</div>`;
+  }
+}
+
+// ── Copy button ─────────────────────────────────────────────────────────────
+const sourceId = hasCopyButton ? uid(Astro, 'ax-code-block-source') : undefined;
+const copyLabel = t('@astryx.codeBlock.copyCode');
+const copiedLabel = t('@astryx.codeBlock.copied');
+
+const {themeClass, attrs} = themeProps('code-block', {size, language: languageAttr, container});
+const header = themeProps('code-block-header', {size, language: languageAttr, container});
+const titleHooks = themeProps('code-block-title', {size, language: languageAttr});
+const syntaxVars = syntaxTheme
+  ? Object.fromEntries(Object.entries(syntaxTheme.tokens).filter(([, v]) => v != null).map(([k, v]) => [`--color-syntax-${k}`, v as string]))
+  : null;
+const rootStyle = mergeStyles(
+  {
+    width,
+    'min-width': width === 'fit-content' ? 'min(100%, 400px)' : undefined,
+    'max-width': width === 'fit-content' ? '100%' : undefined,
+  },
+  style as StyleValue,
+);
+const viewportStyle = maxHeight != null ? `max-height:${typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight}` : undefined;
+const viewportLabel = languageLabel ?? t('@astryx.codeBlock.code');
+const attrEsc = (v: string) => esc(v).replace(/"/g, '&quot;');
+// The code viewport: the shared scroll capability (<ax-scrollable-area>; useScrollableArea with
+// keyboardAccess owner 'viewport', role group) around the code wrapper and <code>.
+const bodyHtml =
+  `<ax-scrollable-area class="ax-codeblock-viewport ax-focus-visible" role="group" aria-label="${attrEsc(viewportLabel)}" data-scroll-axis="both"${viewportStyle ? ` style="${attrEsc(viewportStyle)}"` : ''}>` +
+  `<div data-scroll-content="" class="ax-codeblock-wrapper"${showHeader && !hasLineNumbers ? ' data-ax-compact=""' : ''}>` +
+  `<code class="ax-codeblock-code" data-ax-size="${size}"${isWrapped ? ' data-ax-wrapped=""' : ''}${hasLineNumbers ? ` data-ax-numbered="" style="--_codeblock-gutter-width:${maxLineDigits}ch"` : ''}>${linesHtml}</code></div></ax-scrollable-area>`;
+const SyntaxWrapper = syntaxVars ? 'div' : Fragment;
+const wrapperProps = syntaxVars ? {style: mergeStyles(syntaxVars), 'data-astryx-syntax-theme': syntaxTheme!.name} : {};
+---
+<SyntaxWrapper {...wrapperProps}><pre
+  {...rest}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-ax-corner={hasControls && !showHeader ? '' : undefined}
+  data-ax-code-block={canCollapse || !useSpans ? '' : undefined}
+  style={rootStyle}
+>{/* Inside <pre> every whitespace character renders: no text between tags below. */}{showHeader && (
+  <div class={header.themeClass} {...header.attrs} data-ax-divider={hasLineNumbers ? '' : undefined}><div
+      class="ax-codeblock-heading ax-focus-visible"
+      role={canCollapse ? 'button' : undefined}
+      tabindex={canCollapse ? '0' : undefined}
+      aria-expanded={canCollapse ? 'true' : undefined}
+      aria-controls={regionId}
+      aria-label={canCollapse && !title?.trim() && !languageLabel ? t('@astryx.codeBlock.code') : undefined}
+      data-ax-codeblock-toggle={canCollapse ? '' : undefined}
+    ><span class={titleHooks.themeClass} {...titleHooks.attrs}>{
+      canCollapse && <span class="ax-codeblock-chevron ax-mirror-rtl"><Icon icon="chevronRight" size="xsm" color="inherit" class="ax-codeblock-chevron-icon" /></span>
+    }{title}{title && languageLabel ? ' — ' : ''}{languageLabel}</span></div>{hasControls && (
+      <div class="ax-codeblock-controls">{
+        hasEndContent && <Fragment set:html={endHtml} />
+      }{
+        hasCopyButton && <CopyButton iconSlot="code-block-copy" themeClass="astryx-code-block-copy-button" label={copyLabel} copiedLabel={copiedLabel} tip={copyLabel} copiedTip={copyLabel} announce={copiedLabel} from={sourceId} locale={locale} />
+      }</div>
+    )}</div>
+)}{canCollapse
+  ? <div id={regionId} class="ax-codeblock-collapse"><div class="ax-codeblock-collapse-inner"><Fragment set:html={bodyHtml} /></div></div>
+  : <Fragment set:html={bodyHtml} />
+}{hasControls && !showHeader && (
+  <div class="ax-codeblock-corner" data-ax-size={size}>{
+    hasEndContent && <Fragment set:html={endHtml} />
+  }{
+    hasCopyButton && <CopyButton iconSlot="code-block-copy" themeClass="astryx-code-block-copy-button" label={copyLabel} copiedLabel={copiedLabel} tip={copyLabel} copiedTip={copyLabel} announce={copiedLabel} from={sourceId} locale={locale} />
+  }</div>
+)}{hasCopyButton && <template id={sourceId}>{code}</template>}{!useSpans && <script type="application/json" data-ax-code-tokens set:html={JSON.stringify(tokenLines).replace(/</g, '\\u003c')} />}</pre></SyntaxWrapper>
+<script>import '../../elements/scrollable-area';</script>
+{(canCollapse || !useSpans) && <script>import '../../behaviors/codeBlock';</script>}

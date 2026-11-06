@@ -1,0 +1,65 @@
+---
+import Calendar from './Calendar.astro';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const grid = 'display:flex;flex-wrap:wrap;gap:var(--spacing-5);align-items:flex-start';
+const frame = 'border:1px solid var(--color-border);border-radius:var(--radius-container)';
+const out = 'margin:var(--spacing-2) 0 0;font-size:var(--font-size-sm);color:var(--color-text-primary);font-family:var(--font-family-code)';
+const noWeekends = [(d: Date) => d.getDay() !== 0 && d.getDay() !== 6];
+---
+<div style="display:grid;gap:var(--spacing-6)" data-test="calendars">
+  <div style={grid}>
+    <div>
+      <p style={cap}>Single date (defaultValue 2026-03-10)</p>
+      <Calendar id="cal-single" defaultValue="2026-03-10" style={frame} />
+      <p style={out} data-output-for="cal-single">—</p>
+    </div>
+    <div>
+      <p style={cap}>Opens on today (today ring, aria-current)</p>
+      <Calendar id="cal-today" style={frame} />
+    </div>
+    <div>
+      <p style={cap}>min 2026-05-05 / max 2026-06-20, weekends disabled</p>
+      <Calendar id="cal-bounds" min="2026-05-05" max="2026-06-20" focusDate="2026-05-01" dateConstraints={noWeekends} style={frame} />
+    </div>
+  </div>
+
+  <div>
+    <p style={cap}>Range mode, two months (defaultValue Apr 8 – 15)</p>
+    <Calendar id="cal-range" mode="range" numberOfMonths={2} defaultValue={{start: '2026-04-08', end: '2026-04-15'}} style={frame} />
+    <p style={out} data-output-for="cal-range">—</p>
+  </div>
+
+  <div style={grid}>
+    <div>
+      <p style={cap}>Range: maxRangeSpan 7, minRangeSpan 2</p>
+      <Calendar id="cal-span" mode="range" maxRangeSpan={7} minRangeSpan={2} focusDate="2026-07-01" style={frame} />
+    </div>
+    <div>
+      <p style={cap}>Week numbers, Monday first, variable rows, no outside days</p>
+      <Calendar id="cal-weeks" hasWeekNumbers weekStartsOn="mon" hasVariableRowCount hasOutsideDays={false} focusDate="2026-02-01" style={frame} />
+    </div>
+  </div>
+
+  <div style={grid}>
+    <div>
+      <p style={cap}>calendar="buddhist", locale th-TH</p>
+      <Calendar id="cal-buddhist" calendar="buddhist" locale="th-TH" defaultValue="2026-08-14" style={frame} />
+    </div>
+    <div>
+      <p style={cap}>locale es-ES, week starts Monday</p>
+      <Calendar id="cal-es" locale="es-ES" weekStartsOn={1} defaultValue="2026-09-21" style={frame} />
+    </div>
+    <div dir="rtl" lang="he">
+      <p style={cap}>RTL (dir="rtl", locale he-IL)</p>
+      <Calendar id="cal-rtl" locale="he-IL" defaultValue="2026-10-14" style={frame} />
+    </div>
+  </div>
+</div>
+<script>
+  for (const out of document.querySelectorAll<HTMLElement>('[data-output-for]')) {
+    document.getElementById(out.dataset.outputFor!)?.addEventListener('astryx-change', (e) => {
+      out.textContent = JSON.stringify((e as CustomEvent).detail.value);
+    });
+  }
+</script>
