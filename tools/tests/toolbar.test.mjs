@@ -166,5 +166,17 @@ const expectInset = `-${parseFloat(edge.pad) - 8}px`;
 check('edge compensation: ghost-edged slots pull in by (container padding − spacing-2)', edge.start === expectInset && edge.end === expectInset, JSON.stringify({...edge, expectInset}));
 const noComp = await page.$eval(row('basic'), (el) => getComputedStyle(el.querySelector('.ax-toolbar-end')).marginInlineEnd);
 check('no compensation when the edge item is not ghost', noComp === '0px', noComp);
+// A ghost IconButton with a tooltip: its `[popover]` tooltip layer (and any in-place script)
+// follows it in the slot; the button is still the slot's edge item.
+const tipEdge = await page.evaluate(() => {
+  const tb = document.querySelector('[data-test="card-tooltips"] .astryx-toolbar');
+  const start = tb.querySelector('.ax-toolbar-start');
+  const end = tb.querySelector('.ax-toolbar-end');
+  const kids = (el) => [...el.children].map((c) => c.localName + (c.hasAttribute('popover') ? '[popover]' : '') + (c.hasAttribute('data-astryx-edge-comp') ? '[edge]' : ''));
+  return {start: getComputedStyle(start).marginInlineStart, end: getComputedStyle(end).marginInlineEnd, startKids: kids(start), endKids: kids(end), pad: getComputedStyle(tb.closest('.astryx-section')).paddingInlineStart};
+});
+const tipInset = `-${parseFloat(tipEdge.pad) - 8}px`;
+check('the edge buttons carry tooltip layers after them (the case under test)', tipEdge.startKids.at(-1)?.includes('[popover]') && tipEdge.endKids.at(-1)?.includes('[popover]'), JSON.stringify(tipEdge));
+check('edge compensation holds for a ghost IconButton with a tooltip at both ends', tipEdge.start === tipInset && tipEdge.end === tipInset, JSON.stringify({...tipEdge, tipInset}));
 
 await done();
