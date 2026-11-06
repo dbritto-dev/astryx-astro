@@ -1,0 +1,9 @@
+---
+/**
+ * Demo/test fixture (private): a custom link component for the `as` prop (Astryx
+ * LinkComponentType / LinkProvider). It receives the checked href and every anchor
+ * attribute, and must spread them onto an <a>.
+ */
+const props = Astro.props;
+---
+<a {...props} data-demo-router><slot /></a>

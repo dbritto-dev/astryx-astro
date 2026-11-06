@@ -1,0 +1,31 @@
+---
+/**
+ * IconButton — an icon-only Button: square, `label` is the aria-label (contract #1).
+ * Port of @astryxdesign/core IconButton/IconButton.tsx: a thin wrapper that renders
+ * Button with `isIconOnly` always on; no visible label, children or endContent. Same
+ * theme target (`.astryx-button`), states, cascade keys and omissions as Button.
+ *
+ * @example
+ * <IconButton label="Settings" icon="wrench" variant="ghost" />
+ * <IconButton label="Close"><Icon slot="icon" icon="close" /></IconButton>
+ * <IconButton label="Add" icon="arrowUp" variant="primary" elevation="med" />
+ */
+import Button, {type Props as ButtonProps} from '../Button/Button.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+
+export interface Props extends Omit<ButtonProps, 'isIconOnly' | 'endContent'> {
+  /** Accessible label (required); rendered as `aria-label`, never as visible text. */
+  label: string;
+  /**
+   * The icon (required): a semantic name / SVG string / Astro component, or markup in the
+   * `icon` slot. A default-sized Icon gets sm for sm/md buttons and md for lg.
+   */
+  icon?: ExtendedIconName | AstroIconComponent;
+}
+
+const props = Astro.props;
+const hasIconSlot = Astro.slots.has('icon');
+---
+{hasIconSlot
+  ? <Button {...props} isIconOnly><slot name="icon" slot="icon" /></Button>
+  : <Button {...props} isIconOnly />}

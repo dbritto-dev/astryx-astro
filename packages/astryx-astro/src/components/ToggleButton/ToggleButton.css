@@ -1,0 +1,52 @@
+/*
+ * Port of @astryxdesign/core ToggleButton/ToggleButton.tsx (pressedStyles, labelStyles)
+ * and ToggleButton/ToggleButtonGroup.tsx (styles). ToggleButton renders Button's markup
+ * (Button.css); its pressed paint is Button's last style (xstyle), so it carries one more
+ * class than the variant rules instead of relying on stylesheet order.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* pressed surface: the system pressed overlay; Highlight under forced colors */
+  .astryx-button.astryx-toggle-button[data-is-pressed="true"] {
+    forced-color-adjust: none;
+    background-color: var(--color-overlay-pressed);
+  }
+  @media (forced-colors: active) {
+    .astryx-button.astryx-toggle-button[data-is-pressed="true"] { background-color: Highlight; color: HighlightText; }
+  }
+
+  /* label: weight shift on press, with a hidden semibold copy reserving the width */
+  .ax-toggle-button-label {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .astryx-toggle-button[data-is-pressed="true"] .ax-toggle-button-label-text { font-weight: var(--font-weight-semibold); }
+  .ax-toggle-button-label-reserve {
+    display: block;
+    font-weight: var(--font-weight-semibold);
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* pressedIcon swap: both rendered, one shown (the box disappears when its icon is absent) */
+  [data-ax-toggle-icon] { display: contents; }
+  .astryx-toggle-button[data-is-pressed="true"] [data-ax-toggle-icon="unpressed"],
+  .astryx-toggle-button:not([data-is-pressed="true"]) [data-ax-toggle-icon="pressed"] { display: none; }
+  .astryx-toggle-button:not([data-is-pressed="true"]) .ax-button-icon:has(> [data-ax-toggle-icon="unpressed"]:empty) { display: none; }
+
+  /* group: spaced, no surface of its own */
+  .astryx-toggle-button-group {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+  .astryx-toggle-button-group[data-ax-orientation="vertical"] {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

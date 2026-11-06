@@ -1,0 +1,103 @@
+---
+/**
+ * ToggleButtonGroup — groups ToggleButtons for single or multi-select by `value`.
+ * Port of @astryxdesign/core ToggleButton/ToggleButtonGroup.tsx: `role="group"` with
+ * `aria-label`, a spaced inline-flex row (or column) and no surface or shadow of its own
+ * (members keep their elevation; contract #5). Theme target `.astryx-toggle-button-group`.
+ *
+ * Context → cascade (lib/cascade.ts): the group renders its slot and stamps the members
+ * that opted in (ToggleButton's keys), stopping at nested groups and layer roots:
+ *  - `toggle-group`: group `isDisabled` disables every member (native `disabled`, or
+ *    `aria-disabled` for a member with a tooltip) — it never re-enables one; a member with
+ *    a `value` gets `aria-pressed` / `data-is-pressed` from the group `value` (its own
+ *    `isPressed` is ignored);
+ *  - `toggle-group-size` / `toggle-group-icon-size`: the group `size` for members without an
+ *    explicit size (Astryx: `size ?? group.size ?? 'md'`), and their slot icons' default.
+ *
+ * Events (behaviors/toggleButtonGroup.ts): activating a member dispatches `astryx-change`
+ * (bubbles, composed, cancelable) on the group with `detail: {value}` — Astryx
+ * onChange(value): single → the member's value or null (re-clicking the active one
+ * deselects), multiple → the toggled list. The group reflects it unless cancelled; the
+ * element's `value` property gets / sets the selection.
+ *
+ * No roving focus (Astryx has none here: every member is a tab stop). Touch slide-across
+ * press groups (contract #6) are deferred.
+ *
+ * @example
+ * <ToggleButtonGroup label="View" value="grid">
+ *   <ToggleButton value="list" label="List" />
+ *   <ToggleButton value="grid" label="Grid" />
+ * </ToggleButtonGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {ComponentSize} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {stamp} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {buttonSizeStampers} from '../Button/buttonCascade';
+import './ToggleButton.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'aria-label'> {
+  /** Accessible label for the group (aria-label). */
+  label: string;
+  /** Selection mode. @default 'single' */
+  type?: 'single' | 'multiple';
+  /** Selected value(s): string | null for single, string[] for multiple. */
+  value?: string | null | string[];
+  /** @default 'horizontal' */
+  orientation?: 'horizontal' | 'vertical';
+  /** Default size for members; a member's own `size` wins. @default 'md' */
+  size?: ComponentSize;
+  /** Disables every member. @default false */
+  isDisabled?: boolean;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  type = 'single',
+  value,
+  orientation = 'horizontal',
+  size,
+  isDisabled = false,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const isMultiple = type === 'multiple';
+const values: string[] = isMultiple ? (Array.isArray(value) ? value : []) : value != null && !Array.isArray(value) ? [value] : [];
+const selected = new Set(values);
+
+type Attrs = Record<string, string>;
+const html = await stamp(await Astro.slots.render('default'), {
+  'toggle-group': (a: Attrs) => {
+    if (isDisabled) {
+      a['data-ax-disabled'] = '';
+      if ('data-ax-tooltip' in a) a['aria-disabled'] = 'true';
+      else a.disabled = '';
+    }
+    if ('data-ax-value' in a) {
+      const pressed = selected.has(a['data-ax-value']) ? 'true' : 'false';
+      a['aria-pressed'] = pressed;
+      a['data-is-pressed'] = pressed;
+    }
+  },
+  ...buttonSizeStampers(size, {size: 'toggle-group-size', iconSize: 'toggle-group-icon-size'}),
+});
+
+const {themeClass, attrs: themeAttrs} = themeProps('toggle-button-group');
+---
+<div
+  {...rest}
+  role="group"
+  aria-label={label}
+  {...themeAttrs}
+  class={cx(themeClass, className as string | undefined)}
+  style={mergeStyles(style as StyleValue)}
+  data-ax-orientation={orientation === 'vertical' ? 'vertical' : undefined}
+  data-ax-type={type}
+  data-ax-value-order={isMultiple && values.length ? JSON.stringify(values) : undefined}
+  data-ax-toggle-button-group
+><Fragment set:html={html} /></div>
+<script>import '../../behaviors/toggleButtonGroup';</script>

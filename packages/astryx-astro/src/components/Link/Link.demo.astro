@@ -1,0 +1,55 @@
+---
+import Link from './Link.astro';
+import Text from '../Text/Text.astro';
+import Icon from '../Icon/Icon.astro';
+import RouterLink from './_DemoRouterLink.astro';
+
+const colors = ['accent', 'primary', 'secondary', 'disabled', 'placeholder', 'inherit'] as const;
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-4)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Colors</h3>
+    <div style={row} data-test="colors">
+      {colors.map((color) => <Link href={`#${color}`} color={color} isStandalone>{color}</Link>)}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inline, underline, standalone</h3>
+    <Text as="p" type="large">Read our <Link href="#terms" type="inherit">terms of service</Link> before you continue.</Text>
+    <p style="margin:var(--spacing-2) 0 0"><Text>Always underlined: <Link href="#privacy" hasUnderline>Privacy policy</Link></Text></p>
+    <div style={row}>
+      <Link href="#standalone" isStandalone>Standalone link</Link>
+      <Link href="#bold" weight="bold" isStandalone>Bold link</Link>
+      <Link href="#small" size="sm">Small link</Link>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>External, button, disabled, blocked</h3>
+    <div style={row} data-test="modes">
+      <Link href="https://github.com" isExternalLink data-test="external">GitHub</Link>
+      <Link href="https://example.com" target="_blank" rel="author" data-test="blank">Target blank</Link>
+      <Link data-test="as-button">No href (button)</Link>
+      <Link href="/docs" isDisabled data-test="disabled">Disabled link</Link>
+      <Link isDisabled data-test="disabled-button">Disabled button link</Link>
+      <Link href="javascript:alert(1)" data-test="blocked">Blocked destination</Link>
+      <Link href="#download" download="report.csv">Download</Link>
+      <Link href="#tooltip" tooltip="More about this">With tooltip</Link>
+      <Link href="/components/button/" as={RouterLink} data-test="custom">Custom link component</Link>
+      <Link href="javascript:void 0" as={RouterLink} data-test="custom-blocked">Blocked custom</Link>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Icon-only (label → aria-label) and truncation</h3>
+    <div style={row}>
+      <Link href="#home" label="Home"><Icon icon="chevronLeft" size="md" /></Link>
+      <div style="width:180px;border:1px dashed var(--color-border);padding:var(--spacing-1)">
+        <Link href="#long" maxLines={1} display="block">A very long link label that truncates with an ellipsis</Link>
+      </div>
+    </div>
+  </section>
+</div>

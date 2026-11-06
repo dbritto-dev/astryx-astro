@@ -1,0 +1,78 @@
+---
+import ToggleButton from './ToggleButton.astro';
+import ToggleButtonGroup from './ToggleButtonGroup.astro';
+import Icon from '../Icon/Icon.astro';
+import type {ComponentSize, Elevation} from '../../lib/types';
+
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-2)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const starOutline = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>';
+const starSolid = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></svg>';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Standalone (click to toggle; emits astryx-pressed-change)</h3>
+    <div style={row} data-test="standalone">
+      <ToggleButton label="Bold" data-test="bold" />
+      <ToggleButton label="Italic" isPressed data-test="italic" />
+      <ToggleButton label="Mute" icon="microphone" />
+      <ToggleButton label="Pinned" icon="check" isPressed />
+      <ToggleButton label="Favorite" icon={starOutline} pressedIcon={starSolid} data-test="favorite" />
+      <ToggleButton label="Favorite (pressed)" isPressed><Icon slot="icon" icon={starOutline} /><Icon slot="pressedIcon" icon={starSolid} color="yellow" /></ToggleButton>
+      <ToggleButton label="Filter" icon="funnel" isIconOnly data-test="icon-only" />
+      <ToggleButton label="Filter (pressed)" icon="funnel" isIconOnly isPressed />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes, states, elevation</h3>
+    <div style={row}>
+      {sizes.map((size) => <ToggleButton label={`Size ${size}`} size={size} icon="check" />)}
+      {sizes.map((size) => <ToggleButton label={`Pressed ${size}`} size={size} icon="check" isPressed />)}
+      <ToggleButton label="Disabled" isDisabled />
+      <ToggleButton label="Disabled pressed" isDisabled isPressed />
+      <ToggleButton label="Disabled + tooltip" tooltip="Locked" isDisabled data-test="disabled-tooltip" />
+      <ToggleButton label="Syncing" isLoading isPressed />
+      {elevations.map((elevation) => <ToggleButton label={`Elevation ${elevation}`} elevation={elevation} />)}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>ToggleButtonGroup — single (re-click deselects)</h3>
+    <ToggleButtonGroup label="View mode" value="grid" data-test="group-single">
+      <ToggleButton value="list" label="List" icon="menu" />
+      <ToggleButton value="grid" label="Grid" icon="viewColumns" />
+      <ToggleButton value="board" label="Board" icon="checkDouble" />
+    </ToggleButtonGroup>
+  </section>
+
+  <section>
+    <h3 style={cap}>ToggleButtonGroup — multiple, size sm</h3>
+    <ToggleButtonGroup label="Formatting" type="multiple" value={['bold', 'underline']} size="sm" data-test="group-multiple">
+      <ToggleButton value="bold" label="Bold" />
+      <ToggleButton value="italic" label="Italic" />
+      <ToggleButton value="underline" label="Underline" />
+      <ToggleButton value="code" label="Code (lg)" size="lg" />
+    </ToggleButtonGroup>
+  </section>
+
+  <section>
+    <h3 style={cap}>ToggleButtonGroup — vertical, size lg, icon-only</h3>
+    <ToggleButtonGroup label="Tools" orientation="vertical" value="search" size="lg" data-test="group-vertical">
+      <ToggleButton value="search" label="Search" icon="search" isIconOnly />
+      <ToggleButton value="filter" label="Filter" icon="funnel" isIconOnly />
+      <ToggleButton value="columns" label="Columns" icon="viewColumns" isIconOnly />
+    </ToggleButtonGroup>
+  </section>
+
+  <section>
+    <h3 style={cap}>ToggleButtonGroup — disabled</h3>
+    <ToggleButtonGroup label="Alignment" value="start" isDisabled data-test="group-disabled">
+      <ToggleButton value="start" label="Start" />
+      <ToggleButton value="center" label="Center" tooltip="Center text" />
+      <ToggleButton value="end" label="End" />
+    </ToggleButtonGroup>
+  </section>
+</div>

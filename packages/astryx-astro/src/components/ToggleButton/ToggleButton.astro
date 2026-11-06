@@ -1,0 +1,137 @@
+---
+/**
+ * ToggleButton — a ghost Button that toggles between pressed and unpressed (aria-pressed,
+ * reversible; contract #3). Port of @astryxdesign/core ToggleButton/ToggleButton.tsx
+ * (pressedStyles, labelStyles). Renders Button's markup with the extra
+ * `astryx-toggle-button` target: `.astryx-toggle-button[data-is-pressed][data-elevation]`
+ * (plus the Button hooks with `data-variant="ghost"`).
+ *
+ *  - Pressed paints the system pressed overlay (Highlight / HighlightText under forced
+ *    colors) and shifts the label to semibold; a hidden semibold copy reserves the width,
+ *    so toggling never changes the outer size.
+ *  - `pressedIcon` swaps in while pressed (both icons are rendered; CSS keyed on
+ *    `data-is-pressed` shows one), falling back to `icon`.
+ *  - Always interruptible: `isLoading` shows the (delayed) spinner and aria-busy but the
+ *    toggle stays clickable.
+ *
+ * Events (behaviors/toggleButton.ts): a click dispatches `astryx-pressed-change`
+ * (bubbles, composed, cancelable) with `detail: {isPressed, event}` — Astryx
+ * onPressedChange — then reflects the new state unless cancelled. `el.isPressed` gets / sets
+ * the state. Inside a ToggleButtonGroup a member with `value` is driven by the group
+ * (its own isPressed and event are ignored, as in Astryx).
+ *
+ * Cascade keys (lib/cascade.ts), consumed by ToggleButtonGroup:
+ *  - `toggle-group` (always): group disabled + selection of members with `value`;
+ *  - `toggle-group-size` / `toggle-group-icon-size` (when `size` is not explicit): the
+ *    group's size and its slot icons' owner default. Astryx ToggleButton always hands
+ *    Button a resolved size, so ButtonGroup / Toolbar / SizeContext never reach it.
+ *
+ * Not ported: `pressedChangeAction` (a React Action transition with an optimistic pressed
+ * state); listen for `astryx-pressed-change` and render `isLoading` while work is pending.
+ * The docs mention an automatic tooltip for icon-only toggles; the 0.7.9 source passes only
+ * `tooltip`, which is what this port does. Tooltip rendering: see Button's TODO(tooltip).
+ *
+ * @example
+ * <ToggleButton label="Bold" icon="check" isIconOnly isPressed />
+ * <ToggleButton label="Favorite" icon={StarOutline} pressedIcon={StarSolid} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {ComponentSize, Elevation} from '../../lib/types';
+import {cx} from '../../lib/themeProps';
+import {cleanSlotHtml} from '../Button/buttonCascade';
+import './ToggleButton.css';
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'type' | 'value' | 'disabled'> {
+  /** Accessible label (required): visible text, or the aria-label when icon-only. */
+  label: string;
+  /** Initial pressed state. Ignored for a ToggleButtonGroup member with a `value`. @default false */
+  isPressed?: boolean;
+  /** Explicit size; inside a ToggleButtonGroup the group's size; else 'md'. */
+  size?: ComponentSize;
+  /** Resting shadow depth (kept inside a ToggleButtonGroup). @default 'none' */
+  elevation?: Elevation;
+  /** A disabled group disables the member too; an enabled group never re-enables it. @default false */
+  isDisabled?: boolean;
+  /** @default false */
+  isLoading?: boolean;
+  /** Leading icon: a semantic name / SVG string / Astro component, or the `icon` slot. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Square icon-only toggle with `label` as aria-label. @default false */
+  isIconOnly?: boolean;
+  /** Icon shown while pressed (name / SVG / component, or the `pressedIcon` slot); falls back to `icon`. */
+  pressedIcon?: ExtendedIconName | AstroIconComponent;
+  /** Tooltip text (trigger semantics only until the tooltip runtime lands). */
+  tooltip?: string;
+  /** Identifier inside a ToggleButtonGroup (required there). */
+  value?: string;
+  'data-testid'?: string;
+  /** Locale for the "Loading" announcement. */
+  locale?: string;
+}
+
+const {
+  label,
+  isPressed: isPressedProp = false,
+  size,
+  elevation = 'none',
+  isDisabled = false,
+  isLoading = false,
+  icon,
+  isIconOnly = false,
+  pressedIcon,
+  tooltip,
+  value,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const isPressed = isPressedProp;
+const pressed = isPressed ? 'true' : 'false';
+
+const iconSlot = Astro.slots.has('icon') ? await cleanSlotHtml(await Astro.slots.render('icon'), 'icon') : null;
+const pressedSlot = Astro.slots.has('pressedIcon') ? await cleanSlotHtml(await Astro.slots.render('pressedIcon'), 'pressedIcon') : null;
+const hasIcon = iconSlot != null ? iconSlot.trim() !== '' : icon != null && icon !== '';
+const hasPressedIcon = pressedSlot != null ? pressedSlot.trim() !== '' : pressedIcon != null && pressedIcon !== '';
+const hasChildren = Astro.slots.has('default');
+const childrenHtml = hasChildren ? await Astro.slots.render('default') : null;
+// Astryx labelContent: children, else the label unless icon-only.
+const hasLabelContent = hasChildren || !isIconOnly;
+// Button's internal plumbing (not part of its public Props): the group's cascade keys.
+const internal: Record<string, unknown> = {
+  __cascadeKeys: {size: 'toggle-group-size', iconSize: 'toggle-group-icon-size'},
+  __inherit: {'toggle-group': true},
+};
+---
+<Button
+  {...rest}
+  label={label}
+  variant="ghost"
+  size={size}
+  elevation={elevation}
+  isDisabled={isDisabled}
+  isLoading={isLoading}
+  isInterruptible
+  isIconOnly={isIconOnly}
+  tooltip={tooltip}
+  class={cx('astryx-toggle-button', className as string | undefined)}
+  aria-pressed={pressed}
+  data-is-pressed={pressed}
+  data-elevation={elevation}
+  data-ax-toggle-button
+  data-ax-value={value}
+  data-ax-disabled-interaction
+  {...internal}
+>
+  {(hasIcon || hasPressedIcon) && (
+    <Fragment slot="icon">{hasPressedIcon ? (
+      <span data-ax-toggle-icon="unpressed">{hasIcon && (iconSlot != null ? <Fragment set:html={iconSlot} /> : <Icon icon={icon} />)}</span><span data-ax-toggle-icon="pressed">{pressedSlot != null ? <Fragment set:html={pressedSlot} /> : <Icon icon={pressedIcon} />}</span>
+    ) : (iconSlot != null ? <Fragment set:html={iconSlot} /> : <Icon icon={icon} />)}</Fragment>
+  )}
+  {hasLabelContent && (
+    <span class="ax-toggle-button-label"><span class="ax-toggle-button-label-text">{hasChildren ? <Fragment set:html={childrenHtml} /> : label}</span><span class="ax-toggle-button-label-reserve" aria-hidden="true">{hasChildren ? <Fragment set:html={childrenHtml} /> : label}</span></span>
+  )}
+</Button>
+<script>import '../../behaviors/toggleButton';</script>

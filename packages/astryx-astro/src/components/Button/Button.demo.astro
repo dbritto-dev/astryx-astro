@@ -1,0 +1,124 @@
+---
+import Button, {type ButtonVariant} from './Button.astro';
+import SizeProvider from './_ButtonSizeProvider.astro';
+import Icon from '../Icon/Icon.astro';
+import Badge from '../Badge/Badge.astro';
+import RouterLink from '../Link/_DemoRouterLink.astro';
+import type {ComponentSize, Elevation} from '../../lib/types';
+
+const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-2)';
+const grid = 'display:grid;grid-template-columns:repeat(4,max-content);align-items:center;gap:var(--spacing-3)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Variants × sizes</h3>
+    <div style={grid} data-test="variants">
+      {sizes.map((size) => variants.map((variant) => <Button label={`${variant} ${size}`} variant={variant} size={size} />))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Icons and end content</h3>
+    <div style={row}>
+      <Button label="Save" icon="check" variant="primary" />
+      <Button label="Search" icon="search" />
+      <Button label="Upload" variant="ghost"><Icon slot="icon" icon="upload" /></Button>
+      <Button label="Delete" icon="close" variant="destructive" />
+      <Button label="Options" endContent="chevronDown" />
+      <Button label="Options"><Icon slot="endContent" icon="chevronDown" size="sm" /></Button>
+      <Button label="Messages" variant="primary"><Badge slot="endContent" label={3} /></Button>
+      <Button label="Inbox" icon="menu"><Badge slot="endContent" label="New" variant="info" /></Button>
+      <Button label="Large" icon="calendar" size="lg" />
+      <Button label="Small" icon="calendar" size="sm" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Icon-only (square; label is the aria-label)</h3>
+    <div style={grid}>
+      {sizes.map((size) => variants.map((variant) => <Button label={`More ${size}`} icon="moreHorizontal" isIconOnly variant={variant} size={size} />))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Loading (geometry and name kept; aria-busy + spinner)</h3>
+    <div style={row} data-test="loading">
+      {variants.map((variant) => <Button label="Saving changes" variant={variant} isLoading />)}
+      <Button label="Refresh" icon="arrowsUpDown" isIconOnly isLoading />
+      <Button label="Interruptible" isLoading isInterruptible data-test="interruptible" />
+      <Button label="Saving changes" variant="primary" data-test="idle-twin" />
+      <Button label="Saving changes" variant="primary" isLoading data-test="loading-twin" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled</h3>
+    <div style={row} data-test="disabled">
+      {variants.map((variant) => <Button label={`Disabled ${variant}`} variant={variant} isDisabled />)}
+      <Button label="With tooltip" tooltip="Unavailable on this plan" isDisabled data-test="disabled-tooltip" />
+      <Button label="Disabled link" href="/docs" isDisabled data-test="disabled-href" />
+      <Button label="Delete" icon="close" isIconOnly isDisabled variant="destructive" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>As link</h3>
+    <div style={row} data-test="links">
+      <Button label="Read the docs" href="/components/link/" variant="primary" data-test="link" />
+      <Button label="Ghost link" href="#ghost" variant="ghost" icon="externalLink" />
+      <Button label="New tab" href="https://example.com" target="_blank" rel="noopener noreferrer" />
+      <Button label="Blocked destination" href="javascript:alert(1)" data-test="blocked" />
+      <Button label="Loading link" href="#loading" isLoading />
+      <Button label="Custom link component" href="/components/link/" as={RouterLink} data-test="custom" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Elevation (floating buttons)</h3>
+    <div style={row}>
+      {elevations.map((elevation) => <Button label={`Elevation ${elevation}`} elevation={elevation} variant="secondary" />)}
+      <Button label="Add" icon="arrowUp" isIconOnly variant="primary" elevation="high" size="lg" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Width</h3>
+    <div style="display:grid;gap:var(--spacing-2);max-width:420px">
+      <Button label="Fixed 200px" width={200} />
+      <Button label="Full width" width="100%" variant="primary" />
+      <div style="display:flex;gap:var(--spacing-2);width:240px;padding:var(--spacing-2);border:1px dashed var(--color-border);border-radius:var(--radius-inner)">
+        <Button label="Send invitations to all 12 reviewers" variant="primary" />
+        <Button label="More" icon="moreHorizontal" isIconOnly variant="ghost" />
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Visible content that differs from the label</h3>
+    <div style={row}>
+      <Button label="Save draft"><strong>Save</strong>&nbsp;draft</Button>
+      <Button label="Same">Same</Button>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Size cascade fixture (keys size, button-icon-size)</h3>
+    <div style={row} data-test="button-cascade">
+      <span data-case="sm"><Button label="sm" size="sm" icon="check" /></span>
+      <span data-case="md"><Button label="md" size="md" icon="check" /></span>
+      <span data-case="lg"><Button label="lg" size="lg"><Icon slot="icon" icon="check" /></Button></span>
+      <span data-case="explicit-icon"><Button label="explicit icon" size="lg"><Icon slot="icon" icon="check" size="xsm" /></Button></span>
+      <span data-case="default"><Button label="default" icon="check" /></span>
+      <SizeProvider size="lg">
+        <span data-case="provider-lg"><Button label="provider lg" icon="check" /></span>
+        <span data-case="provider-lg-explicit"><Button label="explicit sm" size="sm" icon="check" /></span>
+        <SizeProvider size="sm"><span data-case="nested-sm"><Button label="nested sm" icon="check" /></span></SizeProvider>
+        <SizeProvider size={null}><span data-case="null-provider"><Button label="null" icon="check" /></span></SizeProvider>
+      </SizeProvider>
+    </div>
+  </section>
+</div>

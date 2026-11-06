@@ -1,0 +1,159 @@
+/*
+ * Port of @astryxdesign/core Button/Button.tsx (styles, sizeStyles, elevationStyles,
+ * variants, loadingStyles) and Icon/IconSize.stylex.ts (iconBoxSizeStyles).
+ * Rule groups follow the stylex.props() order in Button.tsx:
+ *   focusOutline.focusVisible (ax-focus-visible) → base → size → iconOnly →
+ *   interactionOverlay.backgroundImage (ax-overlay-image) → inactive → disabled →
+ *   ariaDisabled → link → pressable → elevation → width (inline) → variant.
+ * Shared-class overrides use one extra class (`.astryx-button.ax-focus-visible`), never
+ * stylesheet order. Private state attributes: data-ax-icon-only (isIconOnly),
+ * data-ax-disabled (truly disabled, not busy-only). Inactive = :disabled or
+ * [aria-disabled="true"] (busy-only and tooltip-disabled buttons use the latter).
+ *
+ * Shared by IconButton and ToggleButton (they render this markup).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  @keyframes ax-button-spinner-reveal {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes ax-button-content-hide {
+    from { color: inherit; }
+    to { color: transparent; }
+  }
+
+  /* base */
+  .astryx-button {
+    --button-focus-offset: var(--focus-outline-offset);
+    outline-offset: 0;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--_button-radius, var(--radius-element));
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-medium);
+    white-space: nowrap;
+    /* one line by construction: let a row shrink the button so the label ellipsis engages */
+    min-width: 0;
+    max-width: 100%;
+    cursor: pointer;
+    transition-property: background-image, background-color, color, opacity, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-button.ax-focus-visible:focus-visible { outline-offset: var(--button-focus-offset); }
+  .astryx-button:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-button { transition-duration: 0s; }
+  }
+
+  /* size: one height contract (contract #4) */
+  .astryx-button[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-button[data-size="md"] { height: var(--size-element-md); }
+  .astryx-button[data-size="lg"] { height: var(--size-element-lg); }
+
+  /* icon-only: square, never squeezed */
+  .astryx-button[data-ax-icon-only] {
+    --button-icon-only-aspect: 1 / 1;
+    aspect-ratio: var(--button-icon-only-aspect);
+    padding-inline: 0;
+    padding-block: 0;
+    flex-shrink: 0;
+    max-width: none;
+  }
+
+  /* inactive (disabled or busy-only) + ariaDisabled: no press paint, no press scale */
+  .astryx-button:is(:disabled, [aria-disabled="true"]) {
+    cursor: default;
+    background-image: none;
+    transform: none;
+  }
+
+  /* disabled (truly disabled; a busy-only button is not dimmed) */
+  .astryx-button[data-ax-disabled] { opacity: 0.5; }
+
+  /* link */
+  .astryx-button:where(a) { text-decoration: none; }
+
+  /* pressable: a mouse press scales; a coarse pointer or reduced motion never does */
+  .astryx-button { transform: scale(1); }
+  .astryx-button:active:where(:not(:disabled, [aria-disabled="true"])) { transform: scale(0.98); }
+  @media (pointer: coarse) {
+    .astryx-button:active:where(:not(:disabled, [aria-disabled="true"])) { transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-button:active:where(:not(:disabled, [aria-disabled="true"])) { transform: scale(1); }
+  }
+
+  /* elevation (belongs to the painted surface; a ButtonGroup member reflects "none") */
+  .astryx-button[data-elevation="none"] { box-shadow: none; }
+  .astryx-button[data-elevation="low"] { box-shadow: var(--shadow-low); }
+  .astryx-button[data-elevation="med"] { box-shadow: var(--shadow-med); }
+  .astryx-button[data-elevation="high"] { box-shadow: var(--shadow-high); }
+
+  /* variants (after the shared ring: destructive re-colors just the ring) */
+  .astryx-button[data-variant="primary"] { background-color: var(--color-accent); color: var(--color-on-accent); }
+  .astryx-button[data-variant="secondary"] { background-color: var(--color-neutral); color: var(--color-text-primary); }
+  .astryx-button[data-variant="ghost"] { background-color: transparent; color: var(--color-text-primary); }
+  .astryx-button[data-variant="destructive"] { background-color: var(--color-error); color: var(--color-on-error); }
+  @media (forced-colors: active) {
+    /* forced colors replace the fill; a border keeps the shape (a border, so the ring stays) */
+    .astryx-button[data-variant="destructive"] { border-width: 1px; border-style: solid; border-color: CanvasText; }
+  }
+  .astryx-button[data-variant="destructive"].ax-focus-visible:focus-visible { outline-color: var(--color-error); }
+
+  /* content */
+  .ax-button-content { display: contents; }
+  .ax-button-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    /* iconBoxSizeStyles: sm for sm/md buttons … */
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+  }
+  /* … md for lg (keyed on the button's size, so a provider's restamp is followed) */
+  .astryx-button[data-size="lg"] > .ax-button-content > .ax-button-icon { width: 1.25rem; height: 1.25rem; font-size: 1.25rem; }
+  .ax-button-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .ax-button-end { display: inline-flex; align-items: center; color: inherit; }
+
+  /* loading: the spinner covers the content, which keeps its box but paints nothing */
+  .ax-button-spinner {
+    position: absolute;
+    top: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+  }
+  .ax-button-spinner[data-ax-delayed] {
+    animation-name: ax-button-spinner-reveal;
+    animation-duration: var(--duration-fast);
+    animation-fill-mode: backwards;
+    animation-delay: var(--duration-medium-min);
+  }
+  .ax-button-content[data-ax-hidden="immediate"] { color: transparent; }
+  .ax-button-content[data-ax-hidden="delayed"] {
+    animation-name: ax-button-content-hide;
+    animation-duration: 1ms;
+    animation-fill-mode: forwards;
+    animation-delay: var(--duration-medium-min);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-button-spinner[data-ax-delayed],
+    .ax-button-content[data-ax-hidden="delayed"] { animation-delay: 0s; }
+  }
+}
