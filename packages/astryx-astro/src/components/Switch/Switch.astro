@@ -1,0 +1,210 @@
+---
+/**
+ * Switch — an on/off toggle for settings that apply immediately, with label, description,
+ * status and loading state. Port of @astryxdesign/core Switch/Switch.tsx and
+ * Switch/switch.markers.stylex.ts with hooks/useAnnounce.ts (busy start) and
+ * utils/hitArea.ts (as a fixed 44px coarse-pointer target). Behaviour: src/elements/switch.ts.
+ *
+ * Markup as in Astryx: the field root `.astryx-switch-field[data-label-position][data-label-spacing]`
+ * (only non-default values are written, as Astryx does; takes `class`, `style`, `width` and the
+ * caller's base props), a row (`labelPosition` decides the order; hovering / pressing it tints
+ * the track), the switch surface holding a visually hidden native
+ * `<input type="checkbox" role="switch">` (the focusable control: name, id, describedby) and the
+ * decorative track `.astryx-switch[data-checked][data-disabled][data-size]` with its thumb
+ * `.astryx-switch-thumb[data-checked][data-size]`, the FieldLabel (`.astryx-switch-label`) and a
+ * detached FieldStatus. The focus ring is drawn on the track while the input is `:focus-visible`
+ * (also while disabled: a focusable-disabled switch still shows it).
+ *
+ * - `value`: the initial on/off state; the element owns it after load.
+ * - Thumb motion: the thumb slides by `transform` over `--duration-fast` / `--ease-standard`;
+ *   under `prefers-reduced-motion` or a theme's `[data-astryx-reduced-motion]` it moves at once.
+ *   RTL mirrors the travel (off on the reading start, on at the reading end).
+ * - `isDisabled` keeps the tab stop: `aria-disabled`, `form=""`, no name, activation cancelled;
+ *   `disabledMessage` adds a tooltip on the row that also describes the switch.
+ * - `isLoading`: `aria-busy`, a Spinner in the thumb, toggling blocked, "Loading" announced once.
+ * - `isRequired`: native `required` + `aria-required`; `aria-invalid` follows the status (false
+ *   while required, so Chromium does not report an untouched switch invalid).
+ * - Size sm (32×20 track) / md (40×24). Under a coarse pointer the input grows to a 44px target.
+ *
+ * Events (on `<ax-switch>`, bubbling): `astryx-change` `{isChecked, event}` on every user toggle
+ * (Astryx onChange(checked, e)). Native `change` works on the input.
+ * Element API: `el.checked` (get/set), `el.value` (alias), `el.input`.
+ * Not available: `changeAction` (server actions / optimistic state), `onChange` callbacks.
+ * Deferred touch extras (AGENTS.md scope): the thumb drag and lift (useSwitchTouch, switchTouch,
+ * switchFill — the touch presentation keeps the mouse geometry), the coarse-pointer press
+ * controller (`data-astryx-press` layers) and the hit area's neighbour clamping.
+ *
+ * @example
+ * <Switch label="Enable notifications" value={true} htmlName="notify" />
+ * <Switch label="Dark mode" description="Use a darker color scheme" value={false} labelPosition="start" labelSpacing="spread" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import FieldLabel from '../Field/FieldLabel.astro';
+import FieldStatus from '../FieldStatus/FieldStatus.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import type {SizeValue} from '../../lib/types';
+import {joinAriaIDs, routeFieldProps, withholdCallerHandlers, type FieldComposedProps, type InputStatus, type LabelIcon} from '../Field/fieldProps';
+import './Switch.css';
+
+export type SwitchLabelPosition = 'start' | 'end';
+export type SwitchLabelSpacing = 'hug' | 'spread';
+export type SwitchSize = 'sm' | 'md';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'class' | 'style'> {
+  /** Label text (always rendered for accessibility). */
+  label: string;
+  /** Visually hide the label (still read by screen readers). @default false */
+  isLabelHidden?: boolean;
+  /** Text below the label. */
+  description?: string;
+  /** Whether the switch is on — the initial state. */
+  value: boolean;
+  /** Busy: a spinner in the thumb, toggling blocked. @default false */
+  isLoading?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** 32×20 (sm) or 40×24 (md) track. @default 'md' */
+  size?: SwitchSize;
+  /** Form field name (submits "on" while on). Withheld while disabled. */
+  htmlName?: string;
+  /** Why the switch is disabled: a tooltip on hover / keyboard focus (with `isDisabled`). */
+  disabledMessage?: string;
+  /** Mutually exclusive with isRequired (wins). @default false */
+  isOptional?: boolean;
+  /** Native `required` + `aria-required`. @default false */
+  isRequired?: boolean;
+  /** Status: a detached message box below the switch; `aria-invalid` for errors. */
+  status?: InputStatus;
+  /** Icon before the label text: a name / SVG string / Astro component, or the `labelIcon` slot. */
+  labelIcon?: LabelIcon;
+  /** Tooltip text on an info icon at the end of the label. */
+  labelTooltip?: string;
+  /** Which side of the switch the label is on. @default 'end' */
+  labelPosition?: SwitchLabelPosition;
+  /** `hug` keeps label and switch together; `spread` pushes them to opposite ends. @default 'hug' */
+  labelSpacing?: SwitchLabelSpacing;
+  /** Width of the whole field (number = px, string = CSS). */
+  width?: SizeValue;
+  /** Describes the switch (merged before the field's own ids). */
+  'aria-describedby'?: string;
+  /** Names the switch (a visible title elsewhere in the row). */
+  'aria-labelledby'?: string;
+  /** Class for the field root (Astryx `className`). */
+  class?: string;
+  /** Inline style for the field root. */
+  style?: StyleValue;
+  /** Locale for built-in strings. */
+  locale?: string;
+}
+
+const {
+  label,
+  isLabelHidden = false,
+  description,
+  value,
+  isLoading = false,
+  isDisabled = false,
+  size = 'md',
+  htmlName,
+  disabledMessage,
+  isOptional = false,
+  isRequired = false,
+  status,
+  labelIcon,
+  labelTooltip,
+  labelPosition = 'end',
+  labelSpacing = 'hug',
+  width,
+  'aria-describedby': ariaDescribedBy,
+  'aria-labelledby': ariaLabelledBy,
+  class: className,
+  style,
+  locale,
+  ...rest
+} = Astro.props;
+
+// Shared Field ids (the switch's base props go to the field root here, as in Astryx).
+const r = routeFieldProps('Switch', {label, isDisabled, status, 'aria-describedby': ariaDescribedBy} as FieldComposedProps & Record<string, unknown>);
+const t = translator(Astro, locale);
+const isBusy = isLoading;
+const isOn = value === true;
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+const tip = showsDisabledMessage ? attachTooltip() : null;
+const descriptionID = description ? r.ids.description : undefined;
+const statusMessageID = status?.message ? r.ids.status : undefined;
+const describedBy = r.describedBy(descriptionID, statusMessageID, tip?.id);
+const labelIconHtml = Astro.slots.has('labelIcon') ? await Astro.slots.render('labelIcon') : null;
+
+const field = themeProps('switch-field', {
+  labelPosition: labelPosition !== 'end' ? labelPosition : null,
+  labelSpacing: labelSpacing !== 'hug' ? labelSpacing : null,
+});
+const track = themeProps('switch', {checked: isOn ? 'checked' : null, disabled: isDisabled ? 'disabled' : null, size});
+const thumb = themeProps('switch-thumb', {checked: isOn ? 'checked' : null, size});
+const switchLabel = themeProps('switch-label');
+// Native `disabled` used to swallow these; the switch stays focusable, so withhold them (AST-085 FR2).
+const rootRest = withholdCallerHandlers(rest as Record<string, unknown>, isDisabled);
+const labelProps = {
+  class: switchLabel.themeClass, label, inputID: r.id, isLabelHidden, isDisabled, isOptional, isRequired,
+  labelTooltip, description, descriptionID, locale,
+};
+---
+<ax-switch
+  {...rootRest}
+  class={cx(field.themeClass, className)}
+  {...field.attrs}
+  style={mergeStyles({width: cssSize(width)}, style)}
+>
+  <div
+    class={cx('ax-switch-row', !isDisabled && 'ax-switch-scope')}
+    data-ax-label-hidden={isLabelHidden ? '' : undefined}
+    data-ax-spread={labelSpacing === 'spread' ? '' : undefined}
+    data-ax-tooltip={tip?.id}
+    data-ax-busy-announce={isBusy ? t('@astryx.switch.loading') : undefined}
+  >
+    {labelPosition === 'start' && (
+      <div class="ax-switch-label-wrap" data-size={size}>
+        {labelIconHtml != null
+          ? <FieldLabel {...labelProps}><Fragment slot="labelIcon" set:html={labelIconHtml} /></FieldLabel>
+          : <FieldLabel {...labelProps} labelIcon={labelIcon} />}
+      </div>
+    )}
+    <div class="ax-switch-surface" data-size={size} data-ax-interactive={!isDisabled && !isBusy ? '' : undefined}>
+      <input
+        class="ax-switch-native"
+        id={r.id}
+        type="checkbox"
+        role="switch"
+        name={isDisabled ? undefined : htmlName}
+        checked={isOn || undefined}
+        aria-disabled={isDisabled ? 'true' : undefined}
+        form={isDisabled ? '' : undefined}
+        required={isRequired || undefined}
+        aria-required={isRequired ? 'true' : undefined}
+        aria-labelledby={ariaLabelledBy != null ? joinAriaIDs(ariaLabelledBy) : undefined}
+        aria-describedby={describedBy}
+        aria-invalid={status?.type === 'error' ? 'true' : isRequired ? 'false' : undefined}
+        aria-busy={isBusy ? 'true' : undefined}
+      />
+      <div aria-hidden="true" class={track.themeClass} {...track.attrs}>
+        <div class={thumb.themeClass} {...thumb.attrs}>{isBusy && <Spinner size="sm" aria-hidden="true" />}</div>
+      </div>
+    </div>
+    {labelPosition !== 'start' && (
+      <div class="ax-switch-label-wrap" data-size={size}>
+        {labelIconHtml != null
+          ? <FieldLabel {...labelProps}><Fragment slot="labelIcon" set:html={labelIconHtml} /></FieldLabel>
+          : <FieldLabel {...labelProps} labelIcon={labelIcon} />}
+      </div>
+    )}
+  </div>
+  {status?.message && <FieldStatus type={status.type} message={status.message} id={statusMessageID} variant="detached" class="ax-switch-status" />}
+  {tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" alignment={labelPosition === 'start' ? 'end' : 'start'} focusTrigger="always" />}
+</ax-switch>
+<script>import '../../elements/switch';</script>
+{isBusy && <script>import '../../behaviors/busyAnnounce';</script>}

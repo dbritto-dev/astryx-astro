@@ -1,0 +1,87 @@
+/*
+ * Port of @astryxdesign/core RadioList/RadioList.tsx (styles) and RadioList/RadioListItem.tsx
+ * (styles, wrapperSizeStyles, rowStyles) with utils/rtlStyles.ts centerInline and
+ * utils/touchHitArea.stylex.ts (as the shared `ax-hit-area`). Rule order follows
+ * stylex.props(): radiogroup → orientation; radioWrapper → size → press overlay; input →
+ * coarse → size → disabled; row root → row press.
+ *
+ * The row is an Item: Astryx's rowStyles.root (no padding, radius or row background, even on
+ * hover/press/selected) is applied after Item's own styles in the same layer. Here Item's
+ * rules and the shared overlay (`.ax-overlay-bg:where(…):hover:active`, 0-3-0) live in other
+ * stylesheets, so the neutralising rule carries enough class specificity to win regardless of
+ * stylesheet order; themes still override it from the higher `astryx-theme` layer.
+ * The coarse-pointer press paint (data-astryx-press) is deferred with the press controller.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── RadioList (radiogroup) ──────────────────────────────────────────── */
+  .astryx-radio-list { display: flex; }
+  .astryx-radio-list[data-orientation="vertical"] {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+  .astryx-radio-list[data-orientation="horizontal"] {
+    flex-direction: row;
+    gap: var(--spacing-5);
+  }
+
+  /* ── RadioListItem row: a bare surface by default (rowStyles.root) ───── */
+  .astryx-radio-list-item.astryx-radio-list-item.astryx-radio-list-item.astryx-item {
+    padding-block: 0;
+    padding-inline: 0;
+    border-radius: 0;
+    min-width: 0;
+    background-color: transparent;
+  }
+  /* rowStyles.press: the mouse press paint the circle's layer inherits — not through a
+   * nested link or button, which keep their own action. */
+  .astryx-radio-list-item[data-ax-press]:active:not(:has(a:active, button:active, [role="button"]:active, [role="link"]:active)) {
+    --_radio-row-press: var(--color-overlay-pressed);
+  }
+  @media (pointer: coarse) {
+    .astryx-radio-list-item[data-ax-press]:active:not(:has(a:active, button:active, [role="button"]:active, [role="link"]:active)) {
+      --_radio-row-press: transparent;
+    }
+  }
+
+  /* ── radio circle wrapper ────────────────────────────────────────────── */
+  .ax-radio-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    isolation: isolate;
+  }
+  .ax-radio-box[data-size="sm"] { width: 20px; height: 20px; }
+  .ax-radio-box[data-size="md"] { width: 24px; height: 24px; }
+  /* indicatorPressOverlay: owner-drawn, so it survives a replaced indicator */
+  .ax-radio-box[data-ax-press]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-full);
+    pointer-events: none;
+    background-color: var(--_radio-row-press, transparent);
+  }
+
+  /* ── native radio (visually hidden, covers the circle) ───────────────── */
+  .ax-radio-native {
+    position: absolute;
+    top: 50%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .ax-radio-native:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (pointer: coarse) {
+    .ax-radio-native { min-inline-size: 24px; min-block-size: 24px; }
+  }
+  .ax-radio-box[data-size="sm"] > .ax-radio-native { width: 20px; height: 20px; }
+  .ax-radio-box[data-size="md"] > .ax-radio-native { width: 24px; height: 24px; }
+}

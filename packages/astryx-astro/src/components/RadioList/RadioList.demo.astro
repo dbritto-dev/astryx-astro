@@ -1,0 +1,159 @@
+---
+import RadioList, {type RadioListSize} from './RadioList.astro';
+import RadioListItem from './RadioListItem.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Theme from '../theme/Theme.astro';
+import CheckboxIndicator from '../Indicator/CheckboxIndicator.astro';
+import {registerIndicatorTheme} from '../Indicator/indicatorRegistry';
+import type {InputStatusType} from '../Field/fieldProps';
+
+// A theme that replaces the radio indicator (defineTheme({indicators})).
+registerIndicatorTheme('docs-radio-swap', {radio: CheckboxIndicator});
+
+const sizes: RadioListSize[] = ['sm', 'md'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Choose a delivery speed',
+  warning: 'Express is unavailable on weekends',
+  success: 'Delivery speed saved',
+};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Size × orientation</h3>
+    <div style={grid}>
+      {sizes.map((size) => (
+        <RadioList label={`Notifications (${size})`} size={size} value="email" data-test={`vertical-${size}`}>
+          <RadioListItem label="Email" value="email" />
+          <RadioListItem label="SMS" value="sms" />
+          <RadioListItem label="Push" value="push" />
+        </RadioList>
+      ))}
+      {sizes.map((size) => (
+        <RadioList label={`Theme (${size}, horizontal)`} size={size} orientation="horizontal" value="light" data-test={`horizontal-${size}`}>
+          <RadioListItem label="Light" value="light" />
+          <RadioListItem label="Dark" value="dark" />
+          <RadioListItem label="System" value="system" />
+        </RadioList>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Descriptions, start / end content, rich label, no selection, label tooltip</h3>
+    <div style={grid}>
+      <RadioList label="Plan" description="You can change plans at any time" labelTooltip="Billed monthly" value="pro" htmlName="plan" data-test="plan">
+        <RadioListItem label="Free" value="free" description="Up to 3 projects" />
+        <RadioListItem value="pro" aria-label="Pro, recommended" description="Unlimited projects">
+          <span slot="label">Pro <Badge label="Recommended" /></span>
+        </RadioListItem>
+        <RadioListItem label="Enterprise" value="enterprise" description="SSO and audit logs" align="first-line">
+          <Icon slot="endContent" icon="info" size="sm" color="secondary" />
+        </RadioListItem>
+      </RadioList>
+      <RadioList label="Shipping speed" value="" data-test="no-selection">
+        <RadioListItem label="Standard" value="standard" description="5–7 business days" />
+        <RadioListItem label="Express" value="express" description="1–2 business days" />
+        <RadioListItem label="Overnight" value="overnight" isDisabled description="Not available for this address" />
+        <RadioListItem label="Pickup" value="pickup">
+          <Icon slot="startContent" icon="calendar" size="sm" color="secondary" />
+        </RadioListItem>
+      </RadioList>
+      <RadioList label="Hidden label" isLabelHidden value="a" orientation="horizontal">
+        <RadioListItem label="Option A" value="a" />
+        <RadioListItem label="Option B" value="b" />
+      </RadioList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size (detached message), optional / required</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <RadioList label={`${type} ${size}`} size={size} value={type === 'error' ? '' : 'standard'} status={{type, message: messages[type]}} isRequired={type === 'error'} data-test={`status-${type}-${size}`}>
+          <RadioListItem label="Standard" value="standard" />
+          <RadioListItem label="Express" value="express" />
+        </RadioList>
+      )))}
+      <RadioList label="Optional choice" isOptional value="">
+        <RadioListItem label="Yes" value="yes" />
+        <RadioListItem label="No" value="no" />
+      </RadioList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled group, disabled with reason, disabled item</h3>
+    <div style={grid}>
+      <RadioList label="Disabled group" isDisabled value="b" data-test="disabled">
+        <RadioListItem label="Option A" value="a" />
+        <RadioListItem label="Option B" value="b" />
+      </RadioList>
+      <RadioList label="Disabled with reason" isDisabled disabledMessage="Locked by your organization" value="a" size="sm" data-test="disabled-message">
+        <RadioListItem label="Option A" value="a" />
+        <RadioListItem label="Option B" value="b" />
+        <RadioListItem label="Option C" value="c" />
+      </RadioList>
+      <RadioList label="One option disabled" value="a" orientation="horizontal">
+        <RadioListItem label="Option A" value="a" />
+        <RadioListItem label="Option B" value="b" isDisabled />
+      </RadioList>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>A theme's replacement indicator (registerIndicatorTheme)</h3>
+    <Theme theme="docs-radio-swap">
+      <RadioList label="Replaced circles" value="b" orientation="horizontal" data-test="swap">
+        <RadioListItem label="Option A" value="a" />
+        <RadioListItem label="Option B" value="b" />
+        <RadioListItem label="Option C" value="c" />
+      </RadioList>
+    </Theme>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a FormLayout (horizontal labels, required by default) and a native form</h3>
+    <form data-test="form" novalidate style="display:grid;gap:var(--spacing-3);max-width:620px">
+      <FormLayout direction="horizontal-labels" defaultOptionality="required">
+        <RadioList label="Size" htmlName="size" value="m" orientation="horizontal" data-test="form-size">
+          <RadioListItem label="S" value="s" />
+          <RadioListItem label="M" value="m" />
+          <RadioListItem label="L" value="l" />
+        </RadioList>
+        <RadioList label="Gift wrap" htmlName="wrap" value="" isOptional description="Adds a card with your message" data-test="form-wrap">
+          <RadioListItem label="Paper" value="paper" />
+          <RadioListItem label="Box" value="box" />
+        </RadioList>
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h3 style={cap}>Right to left</h3>
+    <div dir="rtl" style={grid}>
+      <RadioList label="اتجاه" orientation="horizontal" value="one" data-test="rtl">
+        <RadioListItem label="واحد" value="one" />
+        <RadioListItem label="اثنان" value="two" />
+        <RadioListItem label="ثلاثة" value="three" />
+      </RadioList>
+    </div>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+    });
+  });
+</script>

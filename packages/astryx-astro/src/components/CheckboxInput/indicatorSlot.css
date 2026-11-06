@@ -1,0 +1,9 @@
+/*
+ * The indicator slot of CheckboxInput and RadioListItem (Astryx `indicatorSlot`): it holds
+ * only the resolved indicator and adds no box of its own.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-indicator-slot { display: contents; }
+}

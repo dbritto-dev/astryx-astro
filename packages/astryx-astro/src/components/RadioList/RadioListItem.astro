@@ -1,0 +1,131 @@
+---
+/**
+ * RadioListItem — one option of a RadioList: the radio circle, label, description and
+ * optional start / end content. Port of @astryxdesign/core RadioList/RadioListItem.tsx with
+ * hooks/useIndicatorFocusRing.tsx, utils/touchHitArea(.stylex).ts and Indicator/useIndicator.ts.
+ * Must be rendered inside a RadioList (reads `Astro.locals.astryxRadioList`).
+ *
+ * The row is an Item (`.astryx-item.astryx-radio-list-item[data-size][data-selected][data-disabled]`)
+ * whose surface delegates clicks to the radio (Item `interactiveRef`), so the whole row selects
+ * while the radio stays the option's single tab stop; links and buttons in the label,
+ * description or end content keep their own action. By default the row is a bare surface (no
+ * padding, radius or row background): hovering it tints the circle (`ax-indicator-scope`),
+ * pressing it darkens the circle; a theme's `radio-list-item` rules opt back into row styling.
+ *
+ * - The radio is named by the rendered label (`aria-labelledby`), or by `aria-label` for a rich
+ *   label without visible text (it replaces the label's name; keep every visible word).
+ * - Described by its own description, then the group's disabled reason.
+ * - `isDisabled` (or the group's) → native `disabled`; with the group's `disabledMessage` the
+ *   radio stays focusable (`aria-disabled`, `form=""`).
+ * - Focus ring on the circle on `:focus-visible` (not while disabled); the Item row also rings
+ *   for its focused radio, as Astryx's Item does (focusWithin).
+ * - Coarse pointers: an enabled row grows toward 44px through the shared `ax-hit-area` band.
+ *
+ * Slots: `label` / `description` (rich content instead of the props), `startContent` (before
+ * the circle), `endContent` (after the label).
+ * Not available: `onClick` (listen for `click` on the radio). Deferred touch extras: the
+ * coarse-pointer press controller (`data-astryx-press`) and the band's neighbour clamping.
+ *
+ * @example
+ * <RadioListItem label="SMS" value="sms" description="Standard messaging rates apply" />
+ * <RadioListItem value="pro" aria-label="Pro plan, recommended"><span slot="label">Pro <Badge label="Recommended" /></span></RadioListItem>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item, {type ItemAlign} from '../Item/Item.astro';
+import IndicatorStates from '../CheckboxInput/_IndicatorStates.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {uid} from '../../lib/uid';
+import {joinAriaIDs} from '../Field/fieldProps';
+import {readRadioListContext} from './radioListContext';
+import './RadioList.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** Primary label (or rich markup in the `label` slot). The radio is named by it. */
+  label?: string;
+  /** Plain-text accessible name for the radio; replaces the label's name. */
+  'aria-label'?: string;
+  /** Value of this option. */
+  value: string;
+  /** Secondary text below the label (or the `description` slot). */
+  description?: string;
+  /** Vertical alignment of start/end content against the label (Item `align`). @default 'center' */
+  align?: ItemAlign;
+  /** Disable just this option. @default false */
+  isDisabled?: boolean;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  'aria-label': ariaLabel,
+  value,
+  description,
+  align,
+  isDisabled: isItemDisabled = false,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const context = readRadioListContext(Astro);
+if (!context) throw new Error('RadioListItem must be used within an RadioList');
+
+const id = uid(Astro, 'ax-radio');
+const labelID = `${id}-label`;
+const descriptionID = `${id}-desc`;
+const isDisabled = context.isDisabled || isItemDisabled;
+const keepsFocusableForMessage = context.hasDisabledMessage && !isItemDisabled;
+const isChecked = context.value === value;
+const size = context.size;
+
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const labelSlot = await slotHtml('label');
+const descriptionSlot = await slotHtml('description');
+const startHtml = await slotHtml('startContent');
+const endHtml = await slotHtml('endContent');
+const hasDescription = descriptionSlot !== '' || (description != null && description !== '');
+
+const {themeClass, attrs: themeAttrs} = themeProps('radio-list-item', {
+  size,
+  selected: isChecked ? 'selected' : null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+---
+<Item
+  {...rest}
+  {...themeAttrs}
+  class={cx(themeClass, !isDisabled && 'ax-indicator-scope', !isDisabled && 'ax-hit-area', className as string | undefined)}
+  style={mergeStyles(style as StyleValue)}
+  interactiveRef={`#${id}`}
+  isDisabled={isDisabled}
+  align={align}
+  data-ax-radio-item=""
+  data-ax-press={isDisabled ? undefined : ''}
+>
+  <Fragment slot="startContent">
+    <div class={cx('ax-radio-box', !isDisabled && 'ax-indicator-ring-host')} data-size={size} data-ax-press={isDisabled ? undefined : ''}>
+      <input
+        class="ax-radio-native"
+        id={id}
+        type="radio"
+        name={context.name}
+        value={value}
+        checked={isChecked || undefined}
+        disabled={(isDisabled && !keepsFocusableForMessage) || undefined}
+        aria-disabled={keepsFocusableForMessage ? 'true' : undefined}
+        form={keepsFocusableForMessage ? '' : undefined}
+        required={context.isRequired || undefined}
+        aria-invalid={context.isRequired ? String(context.status?.type === 'error') : undefined}
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabel == null ? labelID : undefined}
+        aria-describedby={joinAriaIDs(hasDescription ? descriptionID : undefined, context.reasonID)}
+      />
+      <IndicatorStates name="radio" state={isChecked ? 'checked' : 'unchecked'} states={['unchecked', 'checked']} size={size} isDisabled={isDisabled} />
+    </div>
+    {startHtml !== '' && <Fragment set:html={startHtml} />}
+  </Fragment>
+  <span slot="label" id={labelID}>{labelSlot !== '' ? <Fragment set:html={labelSlot} /> : label}</span>
+  {hasDescription && <span slot="description" id={descriptionID}>{descriptionSlot !== '' ? <Fragment set:html={descriptionSlot} /> : description}</span>}
+  {endHtml !== '' && <Fragment slot="endContent"><Fragment set:html={endHtml} /></Fragment>}
+</Item>

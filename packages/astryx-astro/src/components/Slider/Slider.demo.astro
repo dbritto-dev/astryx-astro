@@ -1,0 +1,102 @@
+---
+import Slider from './Slider.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Budget exceeds the plan limit',
+  warning: 'High volume may distort audio',
+  success: 'Within the recommended range',
+};
+const tempMarks = [{value: 0, label: '0°'}, {value: 25, label: '25°'}, {value: 50, label: '50°'}, {value: 75, label: '75°'}, {value: 100, label: '100°'}];
+const priceMarks = [{value: 0}, {value: 250}, {value: 500}, {value: 750}, {value: 1000}];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-6) var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const formatDollars = (v: number) => `$${v}`;
+---
+<div style="display:grid;gap:var(--spacing-7);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Single and range, value tooltip / text / none</h3>
+    <div style={grid}>
+      <Slider label="Volume" value={40} data-test="single" />
+      <Slider label="Price range" value={[200, 800]} min={0} max={1000} step={10} formatValue={formatDollars} data-test="range" />
+      <Slider label="Brightness" value={70} valueDisplay="text" description="Applies to every display" data-test="text" />
+      <Slider label="Budget" value={[20, 60]} valueDisplay="text" minStepsBetweenThumbs={10} data-test="range-gap" />
+      <Slider label="Balance" value={50} valueDisplay="none" isLabelHidden />
+      <Slider label="Opacity" value={0.35} min={0} max={1} step={0.05} formatOptions={{style: 'percent'}} valueDisplay="text" data-test="percent" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Marks and labels</h3>
+    <div style={grid + ';padding-block-end:var(--spacing-4)'}>
+      <Slider label="Temperature" value={50} step={25} marks={tempMarks} formatValue={(v) => `${v}°`} data-test="marks" />
+      <Slider label="Spend" value={[250, 750]} min={0} max={1000} step={50} marks={priceMarks} formatValue={formatDollars} valueDisplay="text" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Vertical</h3>
+    <div style="display:flex;gap:var(--spacing-8);align-items:start">
+      <Slider label="Gain" orientation="vertical" value={30} data-test="vertical" />
+      <Slider label="Band" orientation="vertical" value={[25, 75]} valueDisplay="text" data-test="vertical-range" />
+      <Slider label="Level" orientation="vertical" value={50} step={25} marks={tempMarks} isDisabled />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status, optional / required, label tooltip</h3>
+    <div style={grid}>
+      {statuses.map((type) => (
+        <Slider label={`${type}`} value={type === 'error' ? 90 : 60} status={{type, message: messages[type]}} data-test={`status-${type}`} />
+      ))}
+      <Slider label="Tip" value={0.15} isOptional labelTooltip="Optional gratuity" formatOptions={{style: 'percent', maximumFractionDigits: 0}} min={0} max={0.3} step={0.01} />
+      <Slider label="Quality" value={80} isRequired data-test="required" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, disabled with reason</h3>
+    <div style={grid}>
+      <Slider label="Disabled" value={30} isDisabled htmlName="disabled" data-test="disabled" />
+      <Slider label="Disabled range" value={[30, 70]} isDisabled />
+      <Slider label="Disabled with reason" value={60} isDisabled disabledMessage="Volume is locked while sharing your screen" data-test="disabled-message" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a FormLayout (horizontal labels, required by default) and a native form</h3>
+    <form data-test="form" novalidate style="display:grid;gap:var(--spacing-3);max-width:620px">
+      <FormLayout direction="horizontal-labels" defaultOptionality="required">
+        <Slider label="Seats" htmlName="seats" value={5} min={1} max={50} valueDisplay="text" data-test="form-seats" />
+        <Slider label="Hours" htmlName="hours" value={[9, 17]} min={0} max={24} valueDisplay="text" data-test="form-hours" />
+        <Slider label="Discount" htmlName="discount" value={0} max={30} isOptional />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h3 style={cap}>Right to left</h3>
+    <div dir="rtl" style={grid}>
+      <Slider label="مستوى الصوت" value={30} data-test="rtl" />
+      <Slider label="النطاق" value={[20, 60]} valueDisplay="text" marks={priceMarks.map((m) => ({value: m.value / 10}))} data-test="rtl-range" />
+    </div>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const out: Record<string, string[]> = {};
+      for (const [key, value] of data) (out[key] ??= []).push(String(value));
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(out);
+    });
+  });
+</script>

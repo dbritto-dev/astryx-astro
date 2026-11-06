@@ -1,0 +1,75 @@
+/*
+ * Port of @astryxdesign/core CheckboxInput/CheckboxInput.tsx (styles, wrapperSizeStyles,
+ * indicatorPressOverlay) with utils/rtlStyles.ts centerInline and utils/touchHitArea.stylex.ts
+ * (as the shared `ax-hit-area`). Rule order follows stylex.props() order:
+ * container → containerLabelHidden; checkboxWrapper → size → press overlay; input → coarse →
+ * size → disabled. `stylex.when.ancestor(':active', indicatorScope)` is the zero-specificity
+ * `:where(.ax-indicator-scope:active *)`. The coarse-pointer press paint (data-astryx-press,
+ * --_indicator-press-image) is deferred with the press controller.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-checkbox-input { display: block; }
+
+  /* ── row (container) ─────────────────────────────────────────────────── */
+  .ax-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+  .ax-checkbox-row[data-ax-label-hidden] { gap: 0; }
+
+  /* ── box wrapper ─────────────────────────────────────────────────────── */
+  .ax-checkbox-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    isolation: isolate;
+  }
+  .ax-checkbox-box[data-size="sm"] { width: 20px; height: 20px; }
+  .ax-checkbox-box[data-size="md"] { width: 24px; height: 24px; }
+
+  /* The owner's pressed layer over whatever indicator a theme resolves (mouse :active). */
+  .ax-checkbox-box[data-ax-press]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-inner);
+    pointer-events: none;
+    background-color: transparent;
+  }
+  .ax-checkbox-box[data-ax-press]:where(.ax-indicator-scope:active *)::after { background-color: var(--color-overlay-pressed); }
+  @media (pointer: coarse) {
+    .ax-checkbox-box[data-ax-press]:where(.ax-indicator-scope:active *)::after { background-color: transparent; }
+  }
+
+  /* ── native input (visually hidden, covers the box) ──────────────────── */
+  .ax-checkbox-native {
+    position: absolute;
+    top: 50%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+    /* rtlStyles.centerInline('-50%'): physical on purpose, direction-symmetric */
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .ax-checkbox-native:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (pointer: coarse) {
+    .ax-checkbox-native { min-inline-size: 24px; min-block-size: 24px; }
+  }
+  .ax-checkbox-box[data-size="sm"] > .ax-checkbox-native { width: 20px; height: 20px; }
+  .ax-checkbox-box[data-size="md"] > .ax-checkbox-native { width: 24px; height: 24px; }
+  .ax-checkbox-native[aria-disabled="true"] { cursor: default; }
+
+  /* ── label column ────────────────────────────────────────────────────── */
+  .ax-checkbox-label-wrap {
+    display: flex;
+    flex-direction: column;
+  }
+}

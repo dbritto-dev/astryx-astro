@@ -1,0 +1,122 @@
+---
+/**
+ * RadioList — a group of options where exactly one can be chosen, with a group label,
+ * description and status. Port of @astryxdesign/core RadioList/RadioList.tsx and
+ * RadioList/RadioListReasonContext.ts with Field/fieldParts.ts (FR10 routing),
+ * hooks/useResolvedRequired.ts and utils/inputAria.ts. Items: RadioListItem.astro.
+ * Behaviour: src/elements/radio-list.ts.
+ *
+ * Field-composed (contract #8, ../Field/fieldProps.ts): base props (`id`, `aria-*`, `data-*` …)
+ * go to the `role="radiogroup"` element (`<ax-radio-list class="astryx-radio-list">`, which is
+ * also the control box for `controlClass/Style`); `containerClass/Style` → the Field box. The
+ * group is labelled by the Field label (a `<span>`, `aria-labelledby`), described by the
+ * description, the detached status and the disabled reason.
+ *
+ * - The radios are native `<input type="radio">`s sharing one `name` (`htmlName`, else a
+ *   generated one so the group still roves): Tab enters on the selected radio, arrows move and
+ *   select (native radio-group behaviour, RTL included). With no selection, forward Tab enters
+ *   on the first enabled radio and Shift+Tab on the last.
+ * - Context reaches the items through the subtree-scoped `Astro.locals.astryxRadioList` key
+ *   (./radioListContext.ts): name, value, size, disabled, required, status, reason id.
+ * - `isDisabled`: every radio natively disabled — unless `disabledMessage` is set, then they stay
+ *   focusable (`aria-disabled`, detached from the form with `form=""`, selection blocked) and the
+ *   group shows the reason as a tooltip on hover / keyboard focus; the reason describes the group
+ *   and each radio.
+ * - Required: the group exposes the effective state (`aria-required`, incl. a FormLayout
+ *   `defaultOptionality="required"` via `form-required`); radios get native `required` only
+ *   for an explicit `isRequired`.
+ *
+ * Events (on `<ax-radio-list>`, bubbling): `astryx-change` `{value}` when the user selects an
+ * option (Astryx onChange(value)). Native `change` works on the radios.
+ * Element API: `el.value` (get/set; '' clears), `el.radios`.
+ * Not available: the `onChange` callback (use the event).
+ *
+ * @example
+ * <RadioList label="Notification preference" value="email" htmlName="notify">
+ *   <RadioListItem label="Email" value="email" />
+ *   <RadioListItem label="SMS" value="sms" description="Standard messaging rates apply" />
+ * </RadioList>
+ */
+import Field from '../Field/Field.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles} from '../../lib/style';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {uid} from '../../lib/uid';
+import {joinAriaIDs, routeFieldProps, type FieldComposedProps} from '../Field/fieldProps';
+import {RADIO_LIST_LOCAL, type RadioListContextValue, type RadioListSize} from './radioListContext';
+import './RadioList.css';
+
+export type {RadioListSize} from './radioListContext';
+export type RadioListOrientation = 'vertical' | 'horizontal';
+
+export interface Props extends Omit<FieldComposedProps, 'statusVariant' | 'formDirection'> {
+  /** The selected value ('' = none) — the initial state; the element owns it after load. @default '' */
+  value?: string;
+  /** Layout direction of the items. @default 'vertical' */
+  orientation?: RadioListOrientation;
+  /** The `name` shared by the radios (form submission). @default generated */
+  htmlName?: string;
+  /** Why the whole group is disabled (with `isDisabled`): tooltip + focusable radios. */
+  disabledMessage?: string;
+  /** Size of the radio controls: 20px (sm) or 24px (md). @default 'md' */
+  size?: RadioListSize;
+  'data-testid'?: string;
+  [attr: `data-${string}`]: unknown;
+}
+
+const {
+  value = '',
+  orientation = 'vertical',
+  htmlName,
+  disabledMessage,
+  size = 'md',
+  ...props
+} = Astro.props;
+
+const {statusVariant: _ignoredVariant, ...routed} = props as Props & {statusVariant?: unknown};
+const r = routeFieldProps('RadioList', {...(routed as FieldComposedProps & Record<string, unknown>), statusVariant: 'detached'});
+const {isDisabled, status} = r;
+const labelID = r.ids.fieldLabel;
+const descriptionID = r.field.descriptionID;
+const statusMessageID = r.statusMessageId;
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+const tip = showsDisabledMessage ? attachTooltip() : null;
+const name = htmlName ?? uid(Astro, 'ax-radio-list');
+
+const context: RadioListContextValue = {
+  name,
+  value,
+  isDisabled,
+  hasDisabledMessage: showsDisabledMessage,
+  isRequired: !!r.field.isRequired && !r.field.isOptional,
+  size,
+  status,
+  reasonID: tip?.id,
+};
+const itemsHtml = await renderWithLocals(Astro, {[RADIO_LIST_LOCAL]: context}, () => Astro.slots.render('default'));
+
+const {themeClass, attrs: themeAttrs} = themeProps('radio-list', {orientation, size});
+const native = r.native as Record<string, unknown>;
+const callerId = (props as {id?: string}).id;
+---
+<Field {...r.field} labelID={labelID} isGroupLabel statusVariant="detached">
+  <ax-radio-list
+    {...native}
+    {...r.required}
+    id={callerId}
+    role="radiogroup"
+    class={cx(themeClass, r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    aria-disabled={isDisabled ? 'true' : (native['aria-disabled'] as string | undefined)}
+    aria-labelledby={joinAriaIDs(labelID, (props as {'aria-labelledby'?: string})['aria-labelledby'])}
+    aria-describedby={r.describedBy(descriptionID, statusMessageID, tip?.id)}
+    aria-invalid={status?.type === 'error' ? 'true' : undefined}
+    data-ax-tooltip={tip?.id}
+    data-ax-value={value}
+  ><Fragment set:html={itemsHtml} /></ax-radio-list>
+  {tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/radio-list';</script>

@@ -1,0 +1,164 @@
+/*
+ * Port of @astryxdesign/core Switch/Switch.tsx (styles, wrapperSizeStyles, trackSizeStyles,
+ * thumbOffSizeStyles, thumbOnSizeStyles, labelWrapperSizeStyles) and
+ * Switch/switch.markers.stylex.ts. Rule order follows stylex.props(): container → hidden label
+ * → spread; wrapper → size → interactive; input → coarse → disabled → busy; track → size →
+ * on/off → focus → disabled → disabled+off; thumb → size → on/off.
+ *
+ * `stylex.when.ancestor(':hover' | ':active', switchScope)` is the zero-specificity
+ * `:where(.ax-switch-scope:hover *)`; the scope class is on the row only while enabled.
+ * `stylex.when.siblingBefore(':focus-visible', switchFocusInput)` is `input:focus-visible + track`.
+ * Touch presentation (thumb lift/drag, press layers on ::before/::after, the fade fill) is
+ * deferred with the press controller and useSwitchTouch: coarse pointers keep this geometry.
+ * Reduce Motion — the media query or a theme's `[data-astryx-reduced-motion]` — moves the thumb
+ * and recolours the track at once.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-switch-field { display: block; }
+
+  /* ── row (container) ─────────────────────────────────────────────────── */
+  .ax-switch-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+  .ax-switch-row[data-ax-label-hidden] { gap: 0; }
+  .ax-switch-row[data-ax-spread] {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .astryx-field-status.ax-switch-status { margin-top: var(--spacing-2); }
+
+  /* ── switch surface (wrapper) ────────────────────────────────────────── */
+  .ax-switch-surface {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    isolation: isolate;
+  }
+  .ax-switch-surface[data-size="sm"] { width: 32px; height: 20px; }
+  .ax-switch-surface[data-size="md"] { width: 40px; height: 24px; }
+  .ax-switch-surface[data-ax-interactive] { touch-action: pan-y pinch-zoom; }
+
+  /* ── native input (visually hidden, covers the track) ────────────────── */
+  .ax-switch-native {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    transform: translate(-50%, -50%);
+  }
+  /* inputCoarse: a finger's target grows toward 44 × 44 px, centred (no neighbour clamping). */
+  @media (pointer: coarse) {
+    .ax-switch-native { min-width: 44px; min-height: 44px; }
+  }
+  .ax-switch-native:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-switch-native[aria-busy="true"] { pointer-events: none; }
+
+  /* ── track (.astryx-switch) ──────────────────────────────────────────── */
+  .astryx-switch {
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-full);
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: none;
+    outline: none;
+  }
+  .astryx-switch[data-size="sm"] { width: 32px; height: 20px; padding: 2px; }
+  .astryx-switch[data-size="md"] { width: 40px; height: 24px; padding: 4px; }
+
+  /* Pressed: the overlay rides on top of the on/off fill (fine pointers). */
+  @media (forced-colors: none) {
+    .astryx-switch:where(.ax-switch-scope:active *),
+    .astryx-switch-thumb:where(.ax-switch-scope:active *) {
+      background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed));
+    }
+  }
+  @media (forced-colors: none) and (pointer: coarse) {
+    .astryx-switch:where(.ax-switch-scope:active *),
+    .astryx-switch-thumb:where(.ax-switch-scope:active *) { background-image: none; }
+  }
+
+  /* trackOff / trackOn */
+  .astryx-switch:not([data-checked]) { background-color: var(--color-background-gray); }
+  .astryx-switch[data-checked] { background-color: var(--color-accent); }
+  @media (hover: hover) and (forced-colors: none) {
+    .astryx-switch:not([data-checked]):where(.ax-switch-scope:hover *) {
+      background-color: color-mix(in srgb, var(--color-background-gray), var(--color-tint-hover) 5%);
+    }
+    .astryx-switch[data-checked]:where(.ax-switch-scope:hover *) {
+      background-color: color-mix(in srgb, var(--color-accent), var(--color-tint-hover) 15%);
+    }
+  }
+
+  /* trackFocus: the ring follows the input's :focus-visible (disabled included). */
+  .ax-switch-native:focus-visible + .astryx-switch {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  /* trackDisabled / trackDisabledOff */
+  .astryx-switch[data-disabled] { opacity: 0.5; }
+  .astryx-switch[data-disabled]:not([data-checked]) { background-color: var(--color-background-gray); }
+
+  /* ── thumb ───────────────────────────────────────────────────────────── */
+  .astryx-switch-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    transition-property: transform, width, height;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: var(--color-background-surface);
+  }
+  .astryx-switch-thumb[data-size="sm"]:not([data-checked]) { width: 14px; height: 14px; transform: translateX(0); }
+  .astryx-switch-thumb[data-size="md"]:not([data-checked]) { width: 16px; height: 16px; transform: translateX(0); }
+  /* The on travel is a physical translate toward the inline end, so it flips under RTL. */
+  .astryx-switch-thumb[data-size="sm"][data-checked] { width: 16px; height: 16px; transform: translateX(12px); }
+  .astryx-switch-thumb[data-size="md"][data-checked] { width: 20px; height: 20px; transform: translateX(14px); }
+  .astryx-switch-thumb[data-size="sm"][data-checked]:dir(rtl) { transform: translateX(-12px); }
+  .astryx-switch-thumb[data-size="md"][data-checked]:dir(rtl) { transform: translateX(-14px); }
+
+  /* ── label column ────────────────────────────────────────────────────── */
+  .ax-switch-label-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .ax-switch-label-wrap[data-size="sm"] { min-height: 20px; }
+  .ax-switch-label-wrap[data-size="md"] { min-height: 24px; }
+
+  /* ── Reduce Motion: nothing slides, the colour changes at once ───────── */
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-switch,
+    .astryx-switch-thumb { transition-duration: 0s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-switch,
+  :where([data-astryx-reduced-motion]) .astryx-switch-thumb { transition-duration: 0s; }
+
+  /* ── Forced colours: system colours per state (WCAG 1.4.11) ──────────── */
+  @media (forced-colors: active) {
+    .astryx-switch { border-width: 1px; border-style: solid; border-color: CanvasText; }
+    .astryx-switch:not([data-checked]) { background-color: Canvas; }
+    .astryx-switch[data-checked] { background-color: Highlight; }
+    .astryx-switch[data-disabled] { border-color: GrayText; }
+    .astryx-switch-thumb:not([data-checked]) { background-color: CanvasText; }
+    .astryx-switch-thumb[data-checked] { background-color: HighlightText; }
+  }
+}

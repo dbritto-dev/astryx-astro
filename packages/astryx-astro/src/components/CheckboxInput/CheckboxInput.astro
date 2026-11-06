@@ -1,0 +1,179 @@
+---
+/**
+ * CheckboxInput — a single on/off (or partial) choice with a label, description and status.
+ * Port of @astryxdesign/core CheckboxInput/CheckboxInput.tsx with
+ * hooks/useIndicatorFocusRing.tsx, hooks/useBusyAnnouncement.ts, utils/touchHitArea(.stylex).ts,
+ * utils/disabledInteraction.ts (withholdCallerHandlers) and Indicator/useIndicator.ts.
+ * Behaviour: src/elements/checkbox-input.ts (+ src/elements/indicator-state.ts).
+ *
+ * Markup as in Astryx: a root (`.astryx-checkbox-input[data-size]`, takes `class`/`style`/
+ * `width`), a row (label beside the control; `ax-indicator-scope` while enabled, so hovering
+ * the row tints the box), the box wrapper holding a visually hidden native
+ * `<input type="checkbox">` and the resolved `checkbox` indicator (a theme replacement from
+ * registerIndicatorTheme keeps working), the FieldLabel (`.astryx-checkbox-label`, the
+ * description below it) and a detached FieldStatus. Base props (`aria-*`, `data-*`, inline
+ * handlers …) go to the native input; inline `on*` handlers other than focus/blur are withheld
+ * while disabled.
+ *
+ * - `value`: `true` | `false` | `'indeterminate'` — the initial state; the element owns it after
+ *   load (the native `indeterminate` property carries the mixed state; no aria-checked).
+ * - Focus ring on the indicator, only on `:focus-visible` (ax-indicator-ring-host/-ring).
+ * - `isDisabled` keeps the tab stop: `aria-disabled`, detached from its form (`form=""`, no name),
+ *   activation cancelled (runtime/disabledInteraction). `disabledMessage` adds a tooltip on the
+ *   row (hover / keyboard focus) that also describes the input.
+ * - `isReadOnly`: full opacity, `aria-readonly`, toggling cancelled. `isLoading`: `aria-busy`,
+ *   a Spinner in the box, toggling cancelled, "Loading" announced once.
+ * - `isRequired`: native `required` + `aria-required` (a FormLayout default sets nothing here:
+ *   an unchecked box is an answer). FormLayout `defaultOptionality` still hides the restated
+ *   indicator on the label (`form-optionality`).
+ * - Coarse pointers: a labelled, enabled checkbox's row grows toward 44px through the shared
+ *   `ax-hit-area` band; a press that starts on the band toggles the box.
+ *
+ * Events (on `<ax-checkbox-input>`, bubbling): `astryx-change` `{isChecked, event}` on every user
+ * toggle (Astryx onChange(checked, e)). Native `change` / `input` work on the `<input>`.
+ * Element API: `el.checked`, `el.indeterminate`, `el.value` (`boolean | 'indeterminate'`), `el.input`.
+ * Not available: `changeAction` (server actions / optimistic state), `onChange` callbacks.
+ * Deferred touch extras (AGENTS.md scope): the coarse-pointer press controller
+ * (`data-astryx-press`, `--_indicator-press-image`, CheckboxRowPressContext) and the hit band's
+ * neighbour clamping.
+ *
+ * @example
+ * <CheckboxInput label="Accept terms" value={false} htmlName="terms" />
+ * <CheckboxInput label="Select all" value="indeterminate" size="sm" />
+ * <CheckboxInput label="Subscribe" description="Receive weekly updates" value={true} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import FieldLabel from '../Field/FieldLabel.astro';
+import FieldStatus from '../FieldStatus/FieldStatus.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import IndicatorStates from './_IndicatorStates.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import type {SizeValue} from '../../lib/types';
+import {routeFieldProps, type FieldComposedProps, type InputStatus, type LabelIcon} from '../Field/fieldProps';
+import './CheckboxInput.css';
+
+export type CheckboxInputSize = 'sm' | 'md';
+export type CheckboxInputValue = boolean | 'indeterminate';
+
+export interface Props extends Omit<HTMLAttributes<'input'>, 'value' | 'size' | 'type' | 'checked' | 'class' | 'style' | 'form' | 'name' | 'required' | 'readonly' | 'disabled'> {
+  /** Label text (always rendered for accessibility). */
+  label: string;
+  /** Visually hide the label (still read by screen readers). @default false */
+  isLabelHidden?: boolean;
+  /** Text below the label. */
+  description?: string;
+  /** Checked, unchecked or indeterminate — the initial state. */
+  value: CheckboxInputValue;
+  /** Busy: aria-busy, a spinner in the box, toggling blocked. @default false */
+  isLoading?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Form field name (submits "on" while checked). Withheld while disabled. */
+  htmlName?: string;
+  /** Why the checkbox is disabled: a tooltip on hover / keyboard focus (with `isDisabled`). */
+  disabledMessage?: string;
+  /** Full opacity, not toggleable. @default false */
+  isReadOnly?: boolean;
+  /** Mutually exclusive with isRequired (wins). @default false */
+  isOptional?: boolean;
+  /** Native `required` + `aria-required`. @default false */
+  isRequired?: boolean;
+  /** Width of the whole field (number = px, string = CSS). */
+  width?: SizeValue;
+  /** 20px (sm) or 24px (md) box. @default 'md' */
+  size?: CheckboxInputSize;
+  /** Icon before the label text: a name / SVG string / Astro component, or the `labelIcon` slot. */
+  labelIcon?: LabelIcon;
+  /** Status: a detached message box below the checkbox; `aria-invalid` for errors. */
+  status?: InputStatus;
+  /** Native input id. @default generated */
+  id?: string;
+  /** Class for the root (Astryx `className`). */
+  class?: string;
+  /** Inline style for the root. */
+  style?: StyleValue;
+  /** Locale for built-in strings. */
+  locale?: string;
+}
+
+const {
+  value,
+  isLoading = false,
+  htmlName,
+  disabledMessage,
+  isReadOnly = false,
+  size = 'md',
+  labelIcon,
+  class: className,
+  style,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('CheckboxInput', props as unknown as FieldComposedProps & Record<string, unknown>);
+const {isDisabled, status} = r;
+const {isLabelHidden, isOptional, isRequired, description, width} = r.field;
+const t = translator(Astro, r.locale);
+const isBusy = isLoading;
+const isIndeterminate = value === 'indeterminate';
+const isChecked = value === true;
+const state = isIndeterminate ? 'indeterminate' : isChecked ? 'checked' : 'unchecked';
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+const tip = showsDisabledMessage ? attachTooltip() : null;
+const descriptionID = description ? r.ids.description : undefined;
+const describedBy = r.describedBy(descriptionID, status?.message ? r.ids.status : undefined, tip?.id);
+const hasHitArea = !isLabelHidden && !isDisabled && !isReadOnly;
+const labelIconHtml = Astro.slots.has('labelIcon') ? await Astro.slots.render('labelIcon') : null;
+const {themeClass, attrs} = themeProps('checkbox-input', {size});
+const label = themeProps('checkbox-label');
+---
+<ax-checkbox-input
+  class={cx(themeClass, className)}
+  {...attrs}
+  style={mergeStyles({width: cssSize(width)}, style)}
+  data-ax-indeterminate={isIndeterminate ? '' : undefined}
+>
+  <div
+    class={cx('ax-checkbox-row', !isDisabled && 'ax-indicator-scope', hasHitArea && 'ax-hit-area')}
+    data-ax-label-hidden={isLabelHidden ? '' : undefined}
+    data-ax-hit-area={hasHitArea ? '' : undefined}
+    data-ax-tooltip={tip?.id}
+    data-ax-busy-announce={isBusy ? t('@astryx.spinner.loading') : undefined}
+  >
+    <div class="ax-checkbox-box ax-indicator-ring-host" data-size={size} data-ax-press={isDisabled ? undefined : ''}>
+      <input
+        {...r.native}
+        class="ax-checkbox-native"
+        id={r.id}
+        type="checkbox"
+        name={isDisabled ? undefined : htmlName}
+        checked={isChecked || undefined}
+        aria-disabled={isDisabled ? 'true' : undefined}
+        form={isDisabled ? '' : undefined}
+        required={isRequired || undefined}
+        aria-required={isRequired ? 'true' : undefined}
+        aria-readonly={isReadOnly ? 'true' : undefined}
+        aria-describedby={describedBy}
+        aria-invalid={status?.type === 'error' ? 'true' : undefined}
+        aria-busy={isBusy ? 'true' : undefined}
+      />
+      <IndicatorStates name="checkbox" state={state} states={['unchecked', 'checked', 'indeterminate']} size={size} isDisabled={isDisabled}>
+        {isBusy && <Spinner size="sm" shade="inherit" aria-hidden="true" />}
+      </IndicatorStates>
+    </div>
+    <div class="ax-checkbox-label-wrap">
+      {labelIconHtml != null ? (
+        <FieldLabel class={label.themeClass} label={r.label} inputID={r.id} isLabelHidden={isLabelHidden} isDisabled={isDisabled} isOptional={isOptional} isRequired={isRequired} description={description} descriptionID={descriptionID} locale={r.locale}><Fragment slot="labelIcon" set:html={labelIconHtml} /></FieldLabel>
+      ) : (
+        <FieldLabel class={label.themeClass} label={r.label} inputID={r.id} isLabelHidden={isLabelHidden} isDisabled={isDisabled} isOptional={isOptional} isRequired={isRequired} labelIcon={labelIcon} description={description} descriptionID={descriptionID} locale={r.locale} />
+      )}
+    </div>
+  </div>
+  {status?.message && <FieldStatus type={status.type} message={status.message} id={r.ids.status} variant="detached" />}
+  {tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" alignment="start" focusTrigger="always" />}
+</ax-checkbox-input>
+<script>import '../../elements/checkbox-input';</script>
+{isBusy && <script>import '../../behaviors/busyAnnounce';</script>}

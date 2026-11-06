@@ -1,0 +1,104 @@
+---
+import CheckboxInput, {type CheckboxInputSize, type CheckboxInputValue} from './CheckboxInput.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Theme from '../theme/Theme.astro';
+import RadioIndicator from '../Indicator/RadioIndicator.astro';
+import {registerIndicatorTheme} from '../Indicator/indicatorRegistry';
+import type {InputStatusType} from '../Field/fieldProps';
+
+// A theme that replaces the checkbox indicator (defineTheme({indicators})).
+registerIndicatorTheme('docs-checkbox-swap', {checkbox: RadioIndicator});
+
+const sizes: CheckboxInputSize[] = ['sm', 'md'];
+const states: Array<[string, CheckboxInputValue]> = [['Unchecked', false], ['Checked', true], ['Indeterminate', 'indeterminate']];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'You must accept the terms to continue',
+  warning: 'Marketing email may land in your spam folder',
+  success: 'Preferences saved',
+};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-4);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Size × state</h3>
+    <div style={grid} data-test="matrix">
+      {sizes.map((size) => states.map(([name, value]) => (
+        <CheckboxInput label={`${name} (${size})`} size={size} value={value} data-test={`${name.toLowerCase()}-${size}`} />
+      )))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Description, optional / required, label icon, hidden label, width</h3>
+    <div style={grid}>
+      <CheckboxInput label="Share usage data" description="Anonymous crash reports and feature usage" value={true} data-test="described" />
+      <CheckboxInput label="Newsletter" isOptional value={false} />
+      <CheckboxInput label="Accept terms" isRequired value={false} data-test="required" />
+      <CheckboxInput label="Starred" labelIcon="success" value={true} />
+      <CheckboxInput label="Select row" isLabelHidden value={false} data-test="hidden-label" />
+      <CheckboxInput label="Fixed width (160px)" width={160} value={false} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size (detached message)</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <CheckboxInput label={`${type} ${size}`} size={size} value={type !== 'error'} status={{type, message: messages[type]}} data-test={`status-${type}-${size}`} />
+      )))}
+      <CheckboxInput label="Status without message" value={true} status={{type: 'success'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, read-only, loading</h3>
+    <div style={grid}>
+      <CheckboxInput label="Disabled" value={false} isDisabled htmlName="disabled" data-test="disabled" />
+      <CheckboxInput label="Disabled checked" value={true} isDisabled size="sm" />
+      <CheckboxInput label="Disabled indeterminate" value="indeterminate" isDisabled />
+      <CheckboxInput label="Disabled with reason" value={true} isDisabled disabledMessage="Managed by your administrator" data-test="disabled-message" />
+      <CheckboxInput label="Read-only" value={true} isReadOnly data-test="readonly" />
+      <CheckboxInput label="Loading" value={false} isLoading data-test="loading" />
+      <CheckboxInput label="Loading (sm, checked)" value={true} isLoading size="sm" />
+      <CheckboxInput label="Disabled with error" value={false} isDisabled status={{type: 'error', message: 'Fix before submitting'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>A theme's replacement indicator (registerIndicatorTheme)</h3>
+    <Theme theme="docs-checkbox-swap">
+      <div style={grid}>
+        <CheckboxInput label="Replaced, unchecked" value={false} data-test="swap-unchecked" />
+        <CheckboxInput label="Replaced, checked" value={true} size="sm" />
+        <CheckboxInput label="Replaced, indeterminate" value="indeterminate" data-test="swap-indeterminate" />
+      </div>
+    </Theme>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a FormLayout (required by default) and a native form</h3>
+    <form data-test="form" novalidate style="display:grid;gap:var(--spacing-3);max-width:560px">
+      <FormLayout defaultOptionality="required">
+        <CheckboxInput label="I agree to the terms" htmlName="terms" value={false} isRequired data-test="form-terms" />
+        <CheckboxInput label="Email me product news" htmlName="news" value={true} isOptional data-test="form-news" />
+        <CheckboxInput label="Select all regions" htmlName="regions" value="indeterminate" description="Some regions are selected" data-test="form-regions" />
+        <CheckboxInput label="Locked option" htmlName="locked" value={true} isDisabled />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+    });
+  });
+</script>
