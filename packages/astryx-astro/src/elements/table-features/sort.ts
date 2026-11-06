@@ -136,22 +136,50 @@ registerTableBehavior('sort', (table: AxTable) => {
     renderHeaders();
     if (config.isLocal) {
       table.reorderBody(compare);
+      // A client pager shows the first rows of the new order (re-derives `hidden`, renumbers).
+      table.updateVisibility();
       table.renumber();
     }
+  };
+
+  const request = (next: Entry[]) => {
+    if (!table.emit('astryx-sort-change', {sort: next}, true)) return;
+    apply(next);
   };
 
   const onClick = (event: MouseEvent) => {
     const button = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-ax-sort-key]');
     if (!button || !table.owns(button) || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
-    const next = nextSortState(sort, button.dataset.axSortKey ?? '', event.shiftKey && config.isMultiSortEnabled === true, config.allowUnsortedState ?? true);
-    if (!table.emit('astryx-sort-change', {sort: next}, true)) return;
-    apply(next);
+    request(nextSortState(sort, button.dataset.axSortKey ?? '', event.shiftKey && config.isMultiSortEnabled === true, config.allowUnsortedState ?? true));
   };
+
+  // Header context menu (Astryx getSortActions): the look follows the current sort; choosing
+  // replaces the sort with this column alone, or removes the column from it.
+  const keyOf = (area: HTMLElement) => area.querySelector<HTMLElement>('[data-ax-sort-key]')?.dataset.axSortKey ?? null;
+  const dirOf = (area: HTMLElement) => {
+    const key = keyOf(area);
+    return key == null ? null : (sort.find((e) => e.sortKey === key)?.direction ?? null);
+  };
+  const unregister = [
+    table.registerContextAction('sort-asc', {
+      state: (area) => (dirOf(area) === 'ascending' ? 'checked' : 'unchecked'),
+      select: (area) => { const key = keyOf(area); if (key != null) request([{sortKey: key, direction: 'ascending'}]); },
+    }),
+    table.registerContextAction('sort-desc', {
+      state: (area) => (dirOf(area) === 'descending' ? 'checked' : 'unchecked'),
+      select: (area) => { const key = keyOf(area); if (key != null) request([{sortKey: key, direction: 'descending'}]); },
+    }),
+    table.registerContextAction('sort-clear', {
+      state: (area) => (dirOf(area) != null ? 'shown' : null),
+      select: (area) => { const key = keyOf(area); if (key != null) request(sort.filter((e) => e.sortKey !== key)); },
+    }),
+  ];
 
   table.addEventListener('click', onClick);
   table.api.set('sort', {get: () => sort.map((e) => ({...e})), set: (value) => apply(Array.isArray(value) ? (value as Entry[]) : [])});
   return () => {
     table.removeEventListener('click', onClick);
+    for (const off of unregister) off();
     table.api.delete('sort');
   };
 });

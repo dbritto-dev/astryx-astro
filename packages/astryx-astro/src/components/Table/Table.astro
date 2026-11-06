@@ -3,8 +3,9 @@
  * Table — a styled, data-driven table with density, dividers, striped rows, hover highlight
  * and named plugins. Port of @astryxdesign/core Table/Table.tsx, BaseTable.tsx,
  * columnUtils.ts, useBaseTablePlugins.ts, table.stylex.ts, useTableCellStyles.ts,
- * TableContext.ts and the plugins under Table/plugins (sortable, columnResize,
- * stickyColumns, rowExpansion, rowStatus, groupedRows, tree, rowIndex) — see README.md.
+ * TableContext.ts, tableContextMenu.tsx and every plugin under Table/plugins (sortable,
+ * columnResize, stickyColumns, rowExpansion, rowStatus, groupedRows, tree, rowIndex, selection,
+ * filtering, pagination, columnSettings) — see README.md.
  *
  * Data-driven: `data` + `columns` ({key, header, width: proportional()/pixel(), align,
  * sortable, resizable, renderCell, accessor, format}); rich cells via `renderCell` returning
@@ -31,9 +32,21 @@
  * TableSelectionToolbar — events `astryx-select-item` {key, isSelected}, `astryx-select-all`
  * {isAllSelected} (both cancelable), `astryx-selection-change` {selectedKeys, selectedCount,
  * hasSelection}; `table.selectedKeys`, `table.clearSelection()`.
- * Deferred: filtering editors, pagination, column settings, context-menu actions,
- * `animatedLayout` glides — README.md lists the hook points left for them. Touch: the resize handles ignore coarse
- * pointers (as in Astryx); everything else is plain click/keyboard.
+ * Filtering: `useTableFiltering` / `useTableFilterState` (plugins/filtering.ts) — funnel +
+ * Popover or inline controls; `astryx-filter-change` {columnKey, value, filters} (cancelable);
+ * `hasClientFiltering` filters the rendered rows (empty state when none is left);
+ * `table.filters`, `table.clearFilters()`.
+ * Pagination: `useTablePagination` / `paginateData` (plugins/pagination.ts) — Pagination above /
+ * below (its `astryx-change` {page}, `astryx-page-size-change` {pageSize}); `hasClientPaging`
+ * pages the rendered rows; `table.paging`.
+ * Column settings: `useTableColumnSettings` / `useTableColumnSettingsState` + the
+ * TableColumnSettings picker — `astryx-columns-change` {activeColumnKeys} (cancelable);
+ * `table.activeColumnKeys`.
+ * Context menus: cells with `contextMenuActions` (sortable headers, expandable rows, your plugins)
+ * open a ContextMenu on right-click / Shift+F10 / long press — `astryx-context-action`
+ * {id, columnKey, rowKey, kind} (cancelable).
+ * Not ported: `animatedLayout` glides. Touch: the resize handles ignore coarse pointers (as in
+ * Astryx); everything else is plain click/keyboard.
  *
  * @example
  * ---

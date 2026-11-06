@@ -1,0 +1,47 @@
+---
+/**
+ * The filter control for a column's operator value type (Astryx useTableFiltering FilterControl
+ * and its Text / Number / Selector / MultiSelector / Date / Time / StringList controls), named
+ * "Filter <header>" with a hidden label. Types without a control (nested, empty, date_relative,
+ * date_range, custom) render nothing. Behaviour: elements/table-features/filter.ts.
+ */
+import TextInput from '../TextInput/TextInput.astro';
+import NumberInput from '../NumberInput/NumberInput.astro';
+import Selector from '../Selector/Selector.astro';
+import MultiSelector from '../MultiSelector/MultiSelector.astro';
+import DateInput from '../DateInput/DateInput.astro';
+import TimeInput from '../TimeInput/TimeInput.astro';
+import Tokenizer from '../Tokenizer/Tokenizer.astro';
+import {translator} from '../../lib/i18n';
+import type {OperatorValue} from '../PowerSearch/powerSearchModel';
+import type {TableFilterValue} from './plugins/filterModel';
+
+interface Props {
+  header: string;
+  operatorValue: OperatorValue;
+  value: TableFilterValue | undefined;
+  size: 'sm' | 'md';
+  hasClear?: boolean;
+  locale: string;
+}
+
+const {header, operatorValue: op, value, size, hasClear = false, locale} = Astro.props;
+const t = translator(Astro, locale);
+const label = t('@astryx.tableFiltering.filterByColumn', {header});
+const all = t('@astryx.table.filter.allPlaceholder');
+const str = typeof value === 'string' ? value : '';
+const num = typeof value === 'number' ? value : null;
+const list = Array.isArray(value) ? value : [];
+const options = 'values' in op && Array.isArray(op.values) ? op.values.map((v) => ({value: v.value, label: v.label})) : [];
+const numberBounds = op.type === 'integer' || op.type === 'float' ? {min: op.minValue ?? null, max: op.maxValue ?? null, step: op.type === 'integer' ? 1 : null} : null;
+const tokenSource = op.type === 'string_list' || op.type === 'entity_list' ? (op as {searchSource?: any}).searchSource : undefined;
+---
+{op.type === 'string' && <TextInput label={label} isLabelHidden value={str} placeholder={label} size={size} hasClear={hasClear} locale={locale} />}
+{numberBounds && <NumberInput label={label} isLabelHidden value={num} placeholder={label} min={numberBounds.min} max={numberBounds.max} step={numberBounds.step} size={size} hasClear={hasClear} locale={locale} />}
+{op.type === 'enum' && <Selector label={label} isLabelHidden options={options} value={str || null} placeholder={all} size={size} hasClear={hasClear} locale={locale} />}
+{op.type === 'enum_list' && <MultiSelector label={label} isLabelHidden options={options} value={list} placeholder={all} size={size} hasSelectAll hasSearch={false} hasClear={hasClear} locale={locale} />}
+{op.type === 'date_absolute' && <DateInput label={label} isLabelHidden value={str || undefined} size={size} hasClear={hasClear} locale={locale} />}
+{op.type === 'time' && <TimeInput label={label} isLabelHidden value={str || undefined} size={size} hasClear={hasClear} locale={locale} />}
+{(op.type === 'string_list' || op.type === 'entity_list') && (
+  <Tokenizer label={label} isLabelHidden searchSource={tokenSource} value={list.map((v) => ({id: v, label: v}))} size={size} hasClear={hasClear} presentation="popover" debounceMs={tokenSource ? undefined : 0} locale={locale} />
+)}

@@ -1,0 +1,73 @@
+---
+/**
+ * TableColumnSettings — a column picker for a Table with useTableColumnSettings (port
+ * extension: Astryx ships the headless useTableColumnSettings / useTableColumnSettingsState and
+ * leaves the picker to the product; its docs pair them with a MultiSelector). A MultiSelector
+ * lists the settings columns (`columns` — the ColumnSettingsOption list — with their labels;
+ * `group` → titled sections; `isAlwaysVisible` → checked and disabled), checked while active.
+ * Behaviour: src/elements/table-column-settings.ts.
+ *
+ * `settings` = `columnSettingsConfig` from useTableColumnSettingsState (or the plugin config);
+ * `for` = the Table's id (on its `<table>`). Toggling a column hides it or shows it again at the
+ * end (Astryx toggleColumn); the table dispatches `astryx-columns-change` (cancelable)
+ * `{activeColumnKeys}` and applies it without a round trip. Order beyond that: set
+ * `table.activeColumnKeys`, which the picker follows.
+ *
+ * `class` / `style` / other attributes reach the MultiSelector (its Field root).
+ *
+ * @example
+ * ---
+ * const state = useTableColumnSettingsState({columns: [{key: 'name', label: 'Name', isAlwaysVisible: true}, {key: 'email', label: 'Email'}], activeColumnKeys: ['name']});
+ * ---
+ * <TableColumnSettings for="people" settings={state.columnSettingsConfig} />
+ * <Table id="people" aria-label="People" data={people} columns={columns} plugins={{columnSettings: useTableColumnSettings(state.columnSettingsConfig)}} />
+ */
+import MultiSelector from '../MultiSelector/MultiSelector.astro';
+import type {UseTableColumnSettingsConfig} from './plugins/columnSettings';
+
+export interface Props {
+  /** Id of the Table (its `<table>`). */
+  for: string;
+  /** The column settings (useTableColumnSettingsState's `columnSettingsConfig`). */
+  settings: UseTableColumnSettingsConfig;
+  /** Field label (Astryx has no catalog string for a column picker). @default 'Columns' */
+  label?: string;
+  /** @default true */
+  isLabelHidden?: boolean;
+  /** @default 'md' */
+  size?: 'sm' | 'md' | 'lg';
+  /** What the closed picker shows. @default 'count' */
+  triggerDisplay?: 'count' | 'labels' | 'badges';
+  /** Placeholder while no column is active. */
+  placeholder?: string;
+  locale?: string;
+  [key: string]: unknown;
+}
+
+const {
+  for: forId,
+  settings,
+  label = 'Columns',
+  isLabelHidden = true,
+  size = 'md',
+  triggerDisplay = 'count',
+  placeholder,
+  locale,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {slot?: string};
+
+const toOption = (c: UseTableColumnSettingsConfig['columns'][number]) => ({value: c.key, label: c.label, disabled: c.isAlwaysVisible || undefined});
+const groups: string[] = [];
+for (const c of settings.columns) if (c.group && !groups.includes(c.group)) groups.push(c.group);
+const options = groups.length === 0
+  ? settings.columns.map(toOption)
+  : [
+      ...settings.columns.filter((c) => !c.group).map(toOption),
+      ...groups.map((title) => ({type: 'section' as const, title, options: settings.columns.filter((c) => c.group === title).map(toOption)})),
+    ];
+---
+<ax-table-column-settings for={forId} class="ax-table-column-settings">
+  <MultiSelector {...rest} label={label} isLabelHidden={isLabelHidden} options={options as any} value={[...settings.activeColumnKeys]} size={size} triggerDisplay={triggerDisplay} placeholder={placeholder} locale={locale} />
+</ax-table-column-settings>
+<script>import '../../elements/table-column-settings';</script>

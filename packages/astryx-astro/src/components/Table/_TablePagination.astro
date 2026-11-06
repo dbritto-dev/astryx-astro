@@ -1,0 +1,22 @@
+---
+/**
+ * The Pagination useTablePagination renders above / below the table (Astryx makeWrapper: a
+ * flex row, spacing-2 toward the table, aligned start / center / end). Behaviour:
+ * elements/table-features/paging.ts.
+ */
+import Pagination from '../Pagination/Pagination.astro';
+
+interface Props {
+  side: 'above' | 'below';
+  align: 'start' | 'center' | 'end';
+  tableId: string;
+  isHidden?: boolean;
+  pagination: Record<string, unknown>;
+}
+
+const {side, align, tableId, isHidden = false, pagination} = Astro.props;
+---
+<div class="ax-table-pagination" data-side={side} data-align={align} data-ax-pagination-of={tableId} hidden={isHidden}>
+  <Pagination {...(pagination as any)} />
+</div>
+<script>import '../../elements/table-features/paging';</script>

@@ -1,0 +1,33 @@
+---
+/**
+ * The rows of a table's context menus (Astryx tableContextMenu.tsx toContextMenuOptions →
+ * ContextMenu data items): one `<template data-ax-context-row="<key>">` per distinct action
+ * look, plus the group divider. Every cell's `<ax-menu>` starts empty; when it opens, the
+ * client clones the rows its cell lists (`data-ax-context-actions`) in group order, with a
+ * divider between groups. Behaviour: elements/table-features/context-menu.ts.
+ */
+import DropdownMenuItem from '../DropdownMenu/DropdownMenuItem.astro';
+import DropdownMenuDivider from '../DropdownMenu/DropdownMenuDivider.astro';
+import Icon from '../Icon/Icon.astro';
+import RowTemplate from './_ContextMenuRowTemplate.astro';
+import type {ContextMenuRowTemplate} from './pipeline';
+import type {TableRenderContext} from './types';
+import '../Layer/Layer.css';
+import '../DropdownMenu/DropdownMenu.css';
+import '../ContextMenu/ContextMenu.css';
+
+interface Props {
+  rows: ContextMenuRowTemplate[];
+  table: TableRenderContext;
+}
+
+const {rows} = Astro.props;
+---
+{rows.map((row) => (
+  <RowTemplate name="data-ax-context-template" value={row.key}>
+    {row.mirrorIcon && row.icon != null
+      ? <DropdownMenuItem label={row.label} isDisabled={row.isDisabled} variant={row.variant} data-id={row.id}><Icon slot="icon" icon={row.icon as any} size="sm" color={row.variant === 'destructive' ? 'error' : 'secondary'} class="ax-mirror-rtl" /></DropdownMenuItem>
+      : <DropdownMenuItem label={row.label} icon={row.icon as any} isDisabled={row.isDisabled} variant={row.variant} data-id={row.id} />}
+  </RowTemplate>
+))}<RowTemplate name="data-ax-context-divider" value=""><DropdownMenuDivider /></RowTemplate>
+<script>import '../../elements/table-features/context-menu';</script>

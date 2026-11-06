@@ -66,23 +66,27 @@
     white-space: nowrap;
     max-width: 0;
   }
-  .astryx-table-header-cell[data-density="compact"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
-  .astryx-table-header-cell[data-density="compact"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
-  .astryx-table-header-cell[data-density="balanced"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
-  .astryx-table-header-cell[data-density="balanced"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
-  .astryx-table-header-cell[data-density="spacious"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
-  .astryx-table-header-cell[data-density="spacious"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="compact"]:where(:nth-child(1 of :not([hidden]))) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="compact"]:where(:nth-last-child(1 of :not([hidden]))) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="balanced"]:where(:nth-child(1 of :not([hidden]))) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="balanced"]:where(:nth-last-child(1 of :not([hidden]))) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="spacious"]:where(:nth-child(1 of :not([hidden]))) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="spacious"]:where(:nth-last-child(1 of :not([hidden]))) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
   :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-header-cell[data-density] {
     border-inline-end-width: var(--border-width);
     border-inline-end-style: solid;
     border-inline-end-color: var(--color-border);
   }
-  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-header-cell[data-density]:where(:last-child) { border-inline-end-width: 0; }
+  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-header-cell[data-density]:where(:nth-last-child(1 of :not([hidden]))) { border-inline-end-width: 0; }
 
   /* ── TableCell: density, overflow, edge, vertical align, dividers, glide ── */
   .astryx-table-cell[data-density="compact"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); font-size: var(--text-body-size); box-sizing: border-box; }
   .astryx-table-cell[data-density="balanced"] { padding-block: var(--spacing-2); padding-inline: var(--spacing-3); font-size: var(--text-body-size); box-sizing: border-box; }
   .astryx-table-cell[data-density="spacious"] { padding-block: var(--spacing-3); padding-inline: var(--spacing-4); font-size: var(--text-body-size); box-sizing: border-box; }
+  /* A cell with a context menu (densityTextStyles + contextMenuCellStyles): its density padding
+     moves onto the trigger, which fills the cell, so a right-click anywhere in it — padding
+     included — opens the menu. The container-edge padding below still applies, as in Astryx. */
+  .astryx-table-cell.ax-table-context-cell { padding-block: 0; padding-inline: 0; block-size: 100%; }
   /* wrapStyles (default) / overflowStyles (textOverflow="truncate") */
   .astryx-table-cell[data-density] { overflow: hidden; overflow-wrap: break-word; word-break: break-word; max-width: 0; }
   :where(.astryx-table[data-text-overflow="truncate"] > * > tr) > .astryx-table-cell[data-density] {
@@ -93,12 +97,12 @@
     white-space: nowrap;
     max-width: 0;
   }
-  .astryx-table-cell[data-density="compact"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
-  .astryx-table-cell[data-density="compact"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
-  .astryx-table-cell[data-density="balanced"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
-  .astryx-table-cell[data-density="balanced"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
-  .astryx-table-cell[data-density="spacious"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
-  .astryx-table-cell[data-density="spacious"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="compact"]:where(:nth-child(1 of :not([hidden]))) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="compact"]:where(:nth-last-child(1 of :not([hidden]))) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="balanced"]:where(:nth-child(1 of :not([hidden]))) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="balanced"]:where(:nth-last-child(1 of :not([hidden]))) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="spacious"]:where(:nth-child(1 of :not([hidden]))) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="spacious"]:where(:nth-last-child(1 of :not([hidden]))) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
   :where(.astryx-table[data-vertical-align="middle"] > * > tr) > .astryx-table-cell[data-density] { vertical-align: middle; }
   :where(.astryx-table[data-vertical-align="top"] > * > tr) > .astryx-table-cell[data-density] { vertical-align: top; }
   :where(.astryx-table[data-vertical-align="bottom"] > * > tr) > .astryx-table-cell[data-density] { vertical-align: bottom; }
@@ -118,7 +122,7 @@
     border-inline-end-style: solid;
     border-inline-end-color: var(--color-border);
   }
-  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-cell[data-density]:where(:last-child) { border-inline-end-width: 0; }
+  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-cell[data-density]:where(:nth-last-child(1 of :not([hidden]))) { border-inline-end-width: 0; }
   /* glidingDividerStyles.cell (the glide itself is not ported). */
   .astryx-table-cell[data-density] { border-bottom-color: var(--color-border); }
 
@@ -291,10 +295,12 @@
     }
   }
   .ax-table-expand-toggle:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-icon-primary); }
-  /* Centered in the 40px column. Astryx's offset also subtracts the density padding its
-     context-menu trigger wrapper adds inside the cell (`(40px - size) / 2 - spacing-N`);
-     that wrapper arrives with ContextMenu — restore the subtraction then. */
+  /* Centered in the 40px column (chevronOffsetStyles): the offset subtracts the density
+     padding the context-menu trigger carries inside the cell (`(40px - size) / 2 - spacing-N`). */
   .astryx-table-cell[data-density] > .ax-table-expand-toggle { margin-inline-start: calc((40px - min(var(--spacing-6), 40px)) / 2); }
+  .ax-table-context-trigger[data-density="compact"] > .ax-table-expand-toggle { margin-inline-start: calc((40px - min(var(--spacing-6), 40px)) / 2 - var(--spacing-2)); }
+  .ax-table-context-trigger[data-density="balanced"] > .ax-table-expand-toggle { margin-inline-start: calc((40px - min(var(--spacing-6), 40px)) / 2 - var(--spacing-3)); }
+  .ax-table-context-trigger[data-density="spacious"] > .ax-table-expand-toggle { margin-inline-start: calc((40px - min(var(--spacing-6), 40px)) / 2 - var(--spacing-4)); }
   .ax-table-expand-glyph {
     display: inline-block;
     position: relative;
@@ -415,6 +421,67 @@
   /* The toolbar's host adds no box; without a selection it renders nothing (Astryx: null). */
   ax-table-selection-toolbar { display: contents; }
   ax-table-selection-toolbar[hidden] { display: none; }
+
+  /* ── Context menus (tableContextMenu.tsx; TableCell triggerFillStyles + densityPaddingStyles) ── */
+  /* ContextMenu.css styles `.ax-context-menu-trigger` (position, no callout/selection). A body
+     cell's trigger fills the cell and carries its density padding. */
+  .ax-table-context-trigger[data-ax-context-kind="body"] { display: block; box-sizing: border-box; block-size: 100%; inline-size: 100%; }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="compact"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="balanced"] { padding-block: var(--spacing-2); padding-inline: var(--spacing-3); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="spacious"] { padding-block: var(--spacing-3); padding-inline: var(--spacing-4); }
+  /* Deviation: the container-edge padding of the first / last cell moves onto the trigger too
+     (Astryx keeps it on the <td> and adds the trigger's density padding, doubling the inset). */
+  .astryx-table-cell.ax-table-context-cell[data-density] { padding-inline: 0; }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="compact"]:where(:not(.ax-table-expansion-cell):nth-child(1 of :not([hidden])) > *) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="compact"]:where(:nth-last-child(1 of :not([hidden])) > *) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="balanced"]:where(:not(.ax-table-expansion-cell):nth-child(1 of :not([hidden])) > *) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="balanced"]:where(:nth-last-child(1 of :not([hidden])) > *) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="spacious"]:where(:not(.ax-table-expansion-cell):nth-child(1 of :not([hidden])) > *) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
+  .ax-table-context-trigger[data-ax-context-kind="body"][data-density="spacious"]:where(:nth-last-child(1 of :not([hidden])) > *) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
+
+  /* ── Filtering (useTableFiltering filterStyles) ────────────────────────── */
+  .ax-table-filter-after { display: flex; align-items: center; flex-shrink: 0; }
+  .ax-table-filter-inline { display: flex; flex-direction: column; gap: var(--spacing-1); margin-top: var(--spacing-1); min-width: 0; }
+  .ax-table-filter-trigger {
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: var(--radius-element);
+    flex-shrink: 0;
+  }
+  .ax-table-filter-trigger:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (pointer: coarse) {
+    .ax-table-filter-trigger { min-width: 44px; min-height: 44px; }
+  }
+  .ax-table-filter-trigger:not([data-active]) { opacity: 0.35; }
+  .ax-table-filter-trigger:not([data-active]):is(th:hover *) { opacity: 1; }
+  .ax-table-filter-trigger:not([data-active]):focus-visible { opacity: 1; }
+  .ax-table-filter-trigger[data-active] { opacity: 1; }
+  .ax-table-filter-layer { display: contents; }
+  .ax-table-filter-popover-content { width: 240px; }
+  .ax-table-filter-actions { display: flex; gap: var(--spacing-2); margin-top: var(--spacing-2); }
+  .ax-table-filter-actions-spacer { flex: 1; }
+  .ax-table-filter-placeholder { height: 32px; }
+  .ax-table-filter-placeholder[data-variant="inline-compact"] { height: 28px; }
+  /* Header cells clip their content (overflowStyles); an inline filter control shrinks with them. */
+  .ax-table-filter-inline > * { min-width: 0; }
+
+  /* ── Pagination (useTablePagination styles) ─────────────────────────────── */
+  .ax-table-pagination { display: flex; }
+  .ax-table-pagination[hidden] { display: none; }
+  .ax-table-pagination[data-side="below"] { margin-top: var(--spacing-2); }
+  .ax-table-pagination[data-side="above"] { margin-bottom: var(--spacing-2); }
+  .ax-table-pagination[data-align="center"] { justify-content: center; }
+  .ax-table-pagination[data-align="end"] { justify-content: flex-end; }
+  .ax-table-pagination[data-align="start"] { justify-content: flex-start; }
+
+  /* ── Column settings picker (TableColumnSettings, port extension) ───────── */
+  ax-table-column-settings { display: contents; }
 
   /* ── Row index (useTableRowIndex) ──────────────────────────────────────── */
   .ax-table-row-index {

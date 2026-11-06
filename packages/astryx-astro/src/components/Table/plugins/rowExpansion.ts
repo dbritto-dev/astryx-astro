@@ -15,16 +15,18 @@
  * Event: `astryx-expanded-change` (cancelable) `{key, isExpanded, expandedKeys}` on the
  * `<ax-table>` — Astryx `onToggle(key)` plus the resulting state; `preventDefault()` keeps
  * the row as it is. Element API: `table.expandedKeys` (get/set).
- * Deferred: the right-click Expand/Collapse action (ContextMenu) and `animatedLayout`
- * (rows jump, as Astryx does without the handle).
+ * Context menu: every cell of an expandable row opens a menu with Expand row / Collapse row
+ * (id `row-expansion-toggle`, the chevron mirrored in RTL) — right-click anywhere in the cell,
+ * or Shift+F10 / the Menu key on its chevron.
+ * Deferred: `animatedLayout` (rows jump, as Astryx does without the handle).
  */
-import {withFeature} from '../pipeline';
+import {resolveContextActions, withFeature, type TableContextActionStates} from '../pipeline';
 import {comp, el, slot} from '../node';
 import {pixel} from '../columnUtils';
 import ExpandToggle from '../_ExpandToggle.astro';
 import ExpandTemplates from '../_ExpandTemplates.astro';
 import HiddenLabel from '../_HiddenLabel.astro';
-import type {TableColumn, TableNode, TablePlugin} from '../types';
+import type {TableColumn, TableContextAction, TableNode, TablePlugin} from '../types';
 
 export interface UseTableRowExpansionConfig<T extends Record<string, unknown>> {
   /** Keys expanded on first render. */
@@ -75,9 +77,29 @@ export function useTableRowExpansion<T extends Record<string, unknown>>(config: 
       return column.key === EXPANSION_COLUMN_KEY ? {...props, xstyle: [...props.xstyle, 'ax-table-expansion-header']} : props;
     },
 
-    transformBodyCell(props, column, item) {
-      if (!expandable(item) || column.key !== EXPANSION_COLUMN_KEY) return props;
-      return {...props, xstyle: [...props.xstyle, 'ax-table-expansion-cell']};
+    transformBodyCell(props, column, item, _columnIndex, _columns, ctx) {
+      if (!expandable(item)) return props;
+      // Every cell of an expandable row offers Expand / Collapse row in its context menu
+      // (Astryx contributes it on each cell); the client keeps the label current.
+      const isExpanded = expanded.has(getRowKey(item));
+      const priorActions = props.contextMenuActions;
+      const toggleAction: TableContextAction & TableContextActionStates = {
+        id: 'row-expansion-toggle',
+        group: 'row-expansion',
+        label: ctx.t('@astryx.tableRowExpansion.expandRow'),
+        icon: 'chevronRight',
+        __states: {
+          expand: {label: ctx.t('@astryx.tableRowExpansion.expandRow'), icon: 'chevronRight'},
+          collapse: {label: ctx.t('@astryx.tableRowExpansion.collapseRow'), icon: 'chevronDown'},
+        },
+        __state: isExpanded ? 'collapse' : 'expand',
+        __mirrorIcon: true,
+      };
+      return {
+        ...props,
+        xstyle: column.key === EXPANSION_COLUMN_KEY ? [...props.xstyle, 'ax-table-expansion-cell'] : props.xstyle,
+        contextMenuActions: () => [...resolveContextActions(priorActions), toggleAction],
+      };
     },
 
     transformBodyRow(props, item, _index, ctx) {
