@@ -514,3 +514,19 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   `components`/`plugins` (function overrides), `astryx-markdown-render` after each render.
   Finished output equals a one-shot render (tested).
 - `hasLinkClickEvent` + cancelable `astryx-link-click` replace `onLinkClick`.
+
+## Chat
+
+- Keys: `chat-density` (ChatMessageList), `chat-message` (ChatMessage: sender, explicit density);
+  subtree local `astryxChatComposer`.
+- ChatComposer: `astryx-submit` {value, tokens}, `astryx-stop`, `astryx-change` {value}; `value`,
+  `isDisabled`, `isStopShown`, `canSend`, `status`, `submit()`, `focusInput()`, `inputControl`.
+- ChatComposerInput: `astryx-change`, `astryx-files`, `astryx-paste`/`astryx-keydown` (cancelable),
+  `astryx-submit` standalone, `astryx-query` {query, kind, trigger, signal, respond, update,
+  reject}; `insertToken`, `insertText`, `expandToken`, `getTokens`, `triggers`, `pasteAsToken`.
+- ChatSendButton `astryx-send`/`astryx-stop`; ChatMessageList `astryx-scroll-to-top` {waitUntil},
+  `isStreaming`; ChatToolCalls `astryx-expanded-change`; ChatComposerDrawer
+  `astryx-collapsed-change`; ChatDictationButton `astryx-dictation-start/end/result/error`,
+  `astryx-transcript`.
+- Markdown in chat: put `<Markdown>` (or an `<ax-markdown-stream>` from a `_MarkdownKit`) in a
+  ghost ChatMessageBubble's default slot; set `list.isStreaming = true` while a reply streams.
