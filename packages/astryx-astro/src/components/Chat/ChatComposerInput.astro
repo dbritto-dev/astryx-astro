@@ -1,0 +1,228 @@
+---
+/**
+ * ChatComposerInput — the composer's rich input: a `contenteditable` with trigger menus
+ * (`@` mentions, `/` commands), inline tokens, Enter to send / Shift+Enter for a line break,
+ * message history, paste-as-token, file paste/drop and the iOS 16px font floor.
+ * Port of @astryxdesign/core Chat/ChatComposerInput.tsx, useTriggerMenu.tsx,
+ * useChatComposerTokens.ts, chatComposerSelection.ts, useChatPasteAsToken.ts and
+ * ChatPastedTextToken.tsx (behaviour in elements/chat-composer-input.ts,
+ * `<ax-chat-composer-input>`; the menu on runtime/combobox.ts).
+ *
+ * Editor semantics (as Astryx): without triggers a `role="textbox"` `aria-multiline`; with
+ * triggers a `role="combobox"` `aria-haspopup="listbox"` whose `aria-expanded` /
+ * `aria-controls` / `aria-activedescendant` follow the menu (focus never leaves the editor).
+ * Disabled: not editable, `aria-disabled`, still focusable (selection, copy, Tab).
+ *
+ * Keys: Enter sends the trimmed serialized draft (never while an IME composes; a visible
+ * trigger menu takes Enter/Tab to pick its highlighted row); Shift+Enter is a line break;
+ * ArrowUp at the very start / ArrowDown at the very end walk the history of sent messages
+ * (`hasHistory`); Backspace after a token's trailing space removes both.
+ *
+ * Triggers (`triggers`, Astryx ChatComposerTrigger): a trigger character at the start or after
+ * whitespace opens a menu above the caret, filtered by the query (single word, or up to a line
+ * break / ~64 characters with `hasMultiWordQuery`; an unmatched multi-word query hides the
+ * menu). ↑/↓ wrap, Enter/Tab pick, Escape closes and stays closed while that query grows.
+ *   - A `createStaticSource()` is server-rendered with `renderItem` and each item's `onSelect`
+ *     result (text, or a token pre-rendered as a Badge / `render()` markup): no client code.
+ *   - Asynchronous sources (the Typeahead async contract): `input.triggers = [{character,
+ *     searchSource, onSelect, renderItem}]` in the browser, or answer the bubbling
+ *     `astryx-query` {query, kind: 'search', trigger, signal, respond, update, reject} event
+ *     (claim it with `preventDefault()`; items may carry `insert: string | token`). Async
+ *     searches wait `debounceMs`, show the loading row and announce it once.
+ *
+ * Tokens: `{value, label, variant?, icon?}` (a Badge) or `{value, render}`; they serialize to
+ * `value`. A plain-text paste longer than 200 characters (graphemes) becomes an expandable
+ * pasted-text token (hover card preview + Expand) unless `pasteAsToken={false}`.
+ *
+ * Events (bubbling, composed): `astryx-change` {value}; `astryx-submit` {value, tokens} on Enter
+ * when standalone (inside a ChatComposer the composer submits); `astryx-files` {files} for a
+ * file paste/drop; `astryx-paste` (cancelable, Astryx onPaste) {text, event} — preventDefault()
+ * handles the paste yourself; `astryx-keydown` (cancelable, Astryx onKeyDown) {event} before the
+ * built-in Enter/history handling — preventDefault() keeps the key from them.
+ * API: `value`, `isDisabled`, `insertToken(token)`, `expandToken(id)`, `insertText(text)`,
+ * `focus()`, `getValue()`, `getTokens()`, `triggers`, `pasteAsToken`.
+ *
+ * Inside ChatComposer, `value`, `placeholder` and `isDisabled` default to the composer's
+ * (subtree locals key `astryxChatComposer`).
+ *
+ * Theme hooks: `.astryx-chat-composer-input`, `.astryx-trigger-menu` (the listbox).
+ * Deferred (touch extras): the tap stop on a pasted token (useTapStop).
+ *
+ * @example
+ * <ChatComposerInput triggers={[{character: '@', searchSource: createStaticSource(people),
+ *   onSelect: (item) => ({value: `@${item.id}`, label: `@${item.label}`, variant: 'blue'})}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Badge from '../Badge/Badge.astro';
+import Button from '../Button/Button.astro';
+import HoverCard from '../HoverCard/HoverCard.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {groupItems} from '../../lib/groupItems';
+import {clearance} from '../Layer/layer';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {StaticSearchSource} from '../Typeahead/createStaticSource';
+import {pastedLabelTemplates} from './clientStrings';
+import {isCustomToken, type ChatComposerToken, type ChatComposerTrigger} from './types';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './Chat.css';
+
+export type EnterKeyHint = 'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Initial draft (plain text; the element owns it afterwards: `el.value`). */
+  value?: string;
+  /** @default the composer's placeholder, else translated "Type a message…" */
+  placeholder?: string;
+  /** Rows before the editor scrolls (22px each). @default 8 */
+  maxRows?: number;
+  /** Trigger menus (`@`, `/`). */
+  triggers?: ChatComposerTrigger[];
+  /** Debounce before an asynchronous search. @default 150 */
+  debounceMs?: number;
+  /** ArrowUp / ArrowDown recall sent messages. @default true */
+  hasHistory?: boolean;
+  /** Accessible name. @default translated "Message input" */
+  label?: string;
+  /** @default the composer's, else false */
+  isDisabled?: boolean;
+  /** `false` keeps long pastes inline; `{threshold}` changes the 200-character threshold. */
+  pasteAsToken?: false | {threshold?: number};
+  /** Touch keyboard Return key label. @default 'send' */
+  enterKeyHint?: EnterKeyHint;
+  locale?: string;
+}
+
+interface ComposerContext {value?: string; placeholder?: string; isDisabled?: boolean}
+/** @internal The composer passes its context to the input it renders itself. */
+interface InternalProps {__composer?: ComposerContext}
+
+const ctx = (Astro.props as InternalProps).__composer ?? (Astro.locals as {astryxChatComposer?: ComposerContext | null}).astryxChatComposer ?? null;
+const {
+  value = ctx?.value ?? '', placeholder: placeholderProp, maxRows = 8, triggers = [], debounceMs = 150, hasHistory = true,
+  label: labelProp, isDisabled = ctx?.isDisabled ?? false, pasteAsToken, enterKeyHint = 'send', locale,
+  class: className, style, slot: _slot, __composer: _composer, ...rest
+} = Astro.props as Props & InternalProps & {slot?: string};
+const t = translator(Astro, locale);
+const lang = resolveLocale(Astro, locale);
+const label = labelProp ?? t('@astryx.chat.composerInput.label');
+const placeholder = placeholderProp ?? ctx?.placeholder ?? t('@astryx.chat.composer.placeholder');
+const editableId = uid(Astro, 'ax-chat-input');
+const layerId = uid(Astro, 'ax-chat-trigger-layer');
+const listboxId = uid(Astro, 'ax-chat-trigger-menu');
+const hasTriggers = triggers.length > 0;
+const isEmpty = value.trim().length === 0;
+const threshold = pasteAsToken === false ? undefined : (pasteAsToken?.threshold ?? 200);
+const defaultMenuLabel = t('@astryx.chatTriggerMenu.suggestions');
+const defaultLoadingText = t('@astryx.chatTriggerMenu.searching');
+
+const isStatic = (source: unknown): source is StaticSearchSource => (source as StaticSearchSource | undefined)?.kind === 'static';
+type Insert = {text: string} | {token: string};
+function insertOf(trigger: ChatComposerTrigger, item: SearchableItem): {insert: Insert; token?: ChatComposerToken} | null {
+  if (!trigger.onSelect) return null;
+  const result = trigger.onSelect(item);
+  if (typeof result === 'string') return {insert: {text: result}};
+  return {insert: {token: result.value}, token: result};
+}
+const triggerData = triggers.map((trigger) => {
+  const source = isStatic(trigger.searchSource) ? trigger.searchSource : null;
+  const items = source?.items ?? [];
+  // Display order = group order (groupItems, ungrouped last), as the menu renders it.
+  const ordered = groupItems(items).flatMap((g) => g.items);
+  return {trigger, source, rows: ordered.map((item) => ({item, keywords: source?.keywords?.(item), ...insertOf(trigger, item)}))};
+});
+const {themeClass, attrs} = themeProps('chat-composer-input');
+---
+<ax-chat-composer-input
+  {...attrs}
+  class={cx(themeClass, className)}
+  style={style}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-history={hasHistory ? undefined : 'false'}
+  data-ax-debounce={String(debounceMs)}
+  data-ax-paste-threshold={threshold === undefined ? 'off' : String(threshold)}
+  data-ax-locale={lang}
+  data-ax-pasted-label={pastedLabelTemplates(t, lang)}
+  data-ax-menu-label={defaultMenuLabel}
+  data-ax-loading-text={defaultLoadingText}
+  data-ax-layer={hasTriggers ? layerId : undefined}
+  {...rest}
+>
+  <div class="ax-chat-input-placeholder" aria-hidden="true" hidden={!isEmpty || undefined}>{placeholder}</div>
+  <div
+    id={editableId}
+    class="ax-chat-input-editable"
+    aria-label={label}
+    aria-describedby={rest['aria-describedby']}
+    tabindex="0"
+    contenteditable={isDisabled ? 'false' : 'true'}
+    enterkeyhint={enterKeyHint}
+    role={hasTriggers ? 'combobox' : 'textbox'}
+    aria-multiline={hasTriggers ? undefined : 'true'}
+    aria-expanded={hasTriggers ? 'false' : undefined}
+    aria-haspopup={hasTriggers ? 'listbox' : undefined}
+    aria-disabled={isDisabled ? 'true' : undefined}
+    style={`max-height:${maxRows * 22}px`}
+    data-ax-chat-editable=""
+  >{value}</div>
+  {hasTriggers && (
+    <ax-combobox-layer
+      id={layerId}
+      popover="manual"
+      class="ax-layer ax-layer-motion ax-popover-layer ax-chat-trigger-layer"
+      data-astryx-layer-root=""
+      data-placement="above"
+      data-align="start"
+      data-ax-outside-press="dismiss"
+      data-ax-inside={editableId}
+      style={clearance('var(--spacing-1)')}
+    >
+      <div class="astryx-popover ax-chat-trigger-surface">
+        <div id={listboxId} role="listbox" aria-label={defaultMenuLabel} class="astryx-trigger-menu"></div>
+      </div>
+    </ax-combobox-layer>
+  )}
+  {triggerData.map(({trigger, source, rows}) => (
+    <template
+      data-ax-trigger={trigger.character}
+      data-ax-static={source ? '' : undefined}
+      data-ax-multi-word={trigger.hasMultiWordQuery ? '' : undefined}
+      data-ax-menu-label={trigger.menuLabel}
+      data-ax-loading-text={trigger.loadingText}
+      data-ax-empty-text={trigger.emptySearchText ?? undefined}
+    >{rows.map(({item, keywords, insert, token}) => (
+      <div
+        role="option"
+        class="ax-chat-trigger-item"
+        tabindex="-1"
+        aria-selected="false"
+        data-ax-item={JSON.stringify({id: item.id, label: item.label, auxiliaryData: item.auxiliaryData})}
+        data-ax-label={item.label}
+        data-ax-keywords={keywords && keywords.length ? JSON.stringify(keywords.map((k) => k.toLowerCase())) : undefined}
+        data-ax-insert={insert ? JSON.stringify(insert) : undefined}
+      >{trigger.renderItem ? trigger.renderItem(item) : <span class="ax-chat-trigger-item-label">{item.label}</span>}{token && (
+        <template data-ax-token-html>{isCustomToken(token) ? token.render() : <Badge label={token.label} variant={token.variant} icon={token.icon} />}</template>
+      )}</div>
+    ))}</template>
+  ))}
+  <template data-ax-token-template><Badge label="token" variant="neutral" /></template>
+  {threshold !== undefined && (
+    <template data-ax-pasted-template>
+      <HoverCard placement="above" alignment="start" hasHoverIndication={false}>
+        <Badge label="pasted" variant="neutral" />
+        <Fragment slot="content">
+          <div class="ax-chat-pasted-preview">
+            <div class="ax-chat-pasted-text"></div>
+            <div class="ax-chat-pasted-footer">
+              <span class="ax-chat-pasted-meta"></span>
+              <Button label={t('@astryx.chat.pastedText.expand')} variant="ghost" size="sm" data-ax-chat-expand="" />
+            </div>
+          </div>
+        </Fragment>
+      </HoverCard>
+    </template>
+  )}
+</ax-chat-composer-input>
+<script>import '../../elements/chat-composer-input';</script>

@@ -1,0 +1,72 @@
+---
+/**
+ * ChatMessageBubble — the styled content container of a message ("the bubble").
+ * Port of @astryxdesign/core Chat/ChatMessageBubble.tsx.
+ *
+ * Sender and density come from the enclosing ChatMessage (cascade keys `chat-message` /
+ * `chat-density`, chatCascade.ts), else 'assistant' / 'balanced'. `filled` paints the sender
+ * fill, `ghost` keeps the inline padding without a boundary (rich AI content, Markdown, cards;
+ * add `width="100%"` to span the message column). `group` tightens the sender-side corners of
+ * consecutive bubbles (logical radii, so the tail follows reading direction). `name` /
+ * `metadata` render as siblings above / below the bubble, aligned with its text padding; the
+ * name row carries `data-chat-name`, which sets the message's `--_chat-avatar-offset`.
+ *
+ * Markdown: the default slot takes any markup — render the Markdown component (or its
+ * streaming element) inside a ghost bubble once that port lands; streamed text can also be
+ * appended to the bubble element directly.
+ *
+ * Theme hook: `.astryx-chat-message-bubble[data-sender][data-variant][data-density]`.
+ *
+ * @example
+ * <ChatMessage sender="user">
+ *   <ChatMessageBubble name="Cindy"><ChatMessageMetadata slot="metadata" timestamp="2:30 PM" status="read" />Hey!</ChatMessageBubble>
+ * </ChatMessage>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import type {SizeValue} from '../../lib/types';
+import {CHAT_DENSITY_KEY, CHAT_MESSAGE_KEY} from './chatCascade';
+import './Chat.css';
+
+export type ChatMessageBubbleVariant = 'filled' | 'ghost';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** @default 'filled' */
+  variant?: ChatMessageBubbleVariant;
+  /** Sender name above the bubble (or the `name` slot). */
+  name?: string | number;
+  /** Metadata text below the bubble (or the `metadata` slot, e.g. ChatMessageMetadata). */
+  metadata?: string | number;
+  /** Position in a run of bubbles from one sender. */
+  group?: 'first' | 'middle' | 'last';
+  /** Width (number = px); replaces the default max(80%, 280px) cap. */
+  width?: SizeValue;
+}
+
+const {variant = 'filled', name, metadata, group, width, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+
+// isRenderable: null/undefined/booleans/'' omit the row; numeric 0 remains.
+const renderable = (v: unknown) => v != null && v !== '' && typeof v !== 'boolean';
+const nameHtml = Astro.slots.has('name') ? (await Astro.slots.render('name')).trim() : null;
+const metadataHtml = Astro.slots.has('metadata') ? (await Astro.slots.render('metadata')).trim() : null;
+const hasName = nameHtml != null ? nameHtml !== '' : renderable(name);
+const hasMetadata = metadataHtml != null ? metadataHtml !== '' : renderable(metadata);
+const enrol = inherits({[CHAT_MESSAGE_KEY]: true, [CHAT_DENSITY_KEY]: true});
+const {themeClass, attrs} = themeProps('chat-message-bubble', {sender: 'assistant', variant, density: 'balanced'});
+---
+{hasName && (
+  <div data-chat-name="" class="ax-chat-bubble-name" data-ax-sender="assistant" data-ax-density="balanced" data-ax-inherit={enrol}>{nameHtml != null ? <Fragment set:html={nameHtml} /> : name}</div>
+)}
+<div
+  {...rest}
+  {...attrs}
+  class={cx(themeClass, className)}
+  data-ax-inherit={enrol}
+  data-ax-bubble-group={group}
+  style={mergeStyles(width != null ? {width: cssSize(width), 'max-width': 'none'} : null, style as StyleValue)}
+><slot /></div>
+{hasMetadata && (
+  <div class="ax-chat-bubble-meta" data-ax-sender="assistant" data-ax-density="balanced" data-ax-inherit={enrol}>{metadataHtml != null ? <Fragment set:html={metadataHtml} /> : metadata}</div>
+)}

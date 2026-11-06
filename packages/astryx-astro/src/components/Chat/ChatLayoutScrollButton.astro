@@ -1,0 +1,53 @@
+---
+/**
+ * ChatLayoutScrollButton — the floating "scroll to bottom" pill above the composer.
+ * Port of @astryxdesign/core Chat/ChatLayoutScrollButton.tsx (on Button).
+ *
+ * Two elements: the outer one centres the pill and holds the gap above the composer; the
+ * inner one is the painted pill and the theme target. Hidden, the pill fades out and is
+ * `inert` (no focus lands on an invisible control). Collapsed it is an icon-only ghost
+ * Button (chevronDown, "Scroll to bottom"); with a `label` ("New messages") it expands to
+ * show the label beside the icon.
+ *
+ * ChatLayout renders one and drives it (visibility, the "New messages" label, the click);
+ * standalone, handle the button's native `click` yourself. Element API on ChatLayout:
+ * see elements/chat-layout.ts (`setChatScrollButton(wrapper, {isVisible, label})`).
+ *
+ * Theme hook: `.astryx-chat-layout-scroll-button`.
+ *
+ * @example
+ * <ChatLayoutScrollButton isVisible label="New messages" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Whether the pill is shown. @default false */
+  isVisible?: boolean;
+  /** Expands the pill with a label (e.g. "New messages"). */
+  label?: string;
+  locale?: string;
+}
+
+const {isVisible = false, label, locale, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const defaultLabel = t('@astryx.chatLayoutScrollButton.scrollToBottom');
+const name = label ?? defaultLabel;
+const {themeClass, attrs} = themeProps('chat-layout-scroll-button');
+---
+<div class={cx('ax-chat-scroll-button-wrap', className)} data-ax-chat-scroll-button="" data-ax-default-label={defaultLabel} {...rest}>
+  <div {...attrs} class={themeClass} inert={!isVisible || undefined} data-ax-visible={isVisible ? '' : undefined} data-ax-expanded={label ? '' : undefined}>
+    <Button
+      label={name}
+      aria-label={name}
+      variant="ghost"
+      size="md"
+      isIconOnly={!label}
+      class="ax-chat-scroll-button"
+    ><Icon slot="icon" icon="chevronDown" size="md" />{label}</Button>
+  </div>
+</div>

@@ -1,0 +1,29 @@
+---
+import ChatDictationButton from './ChatDictationButton.astro';
+import ChatComposer from './ChatComposer.astro';
+import ChatComposerInput from './ChatComposerInput.astro';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const grid = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>In a composer (sendActions): dictates into the composer's input</h3>
+    <ChatComposer id="dictation-demo-composer" placeholder="Press the microphone and speak…">
+      <ChatDictationButton slot="sendActions" id="dictation-demo-button" dictation={{hasSounds: true}} />
+    </ChatComposer>
+  </section>
+  <section>
+    <h3 style={cap}>Sizes; kept visible (disabled) where the browser has no speech recognition</h3>
+    <div style={grid}>
+      <div style="display:flex;gap:var(--spacing-3);align-items:center">
+        <ChatDictationButton id="dictation-demo-sm" size="sm" isHiddenWhenUnsupported={false} />
+        <ChatDictationButton id="dictation-demo-md" isHiddenWhenUnsupported={false} />
+        <ChatDictationButton id="dictation-demo-label" isHiddenWhenUnsupported={false} label="Voice note" dictation={{lang: 'es-CO', input: '#dictation-demo-target', continuous: false}} />
+      </div>
+      <ChatComposer placeholder="Target of the “Voice note” button (es-CO)">
+        <ChatComposerInput slot="input" id="dictation-demo-target" />
+      </ChatComposer>
+    </div>
+  </section>
+</div>

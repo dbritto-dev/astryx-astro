@@ -1,0 +1,61 @@
+---
+/**
+ * ChatTokenizedText — message text with serialized token values replaced by inline token
+ * content (the same ChatComposerToken definitions a trigger's onSelect returns, so a sent
+ * message renders its @mentions / /commands exactly as the composer showed them).
+ * Port of @astryxdesign/core Chat/ChatTokenizedText.tsx.
+ *
+ * Every non-empty token `value` is matched literally (alternation in `tokens` order, as
+ * Astryx's RegExp); a badge config renders a Badge, a custom token its `render()` markup.
+ * Without tokens or matches the text renders as is. Text comes from the `text` prop or the
+ * default slot (plain text: the slot's HTML is read as text).
+ *
+ * Theme hook: `.astryx-chat-tokenized-text`.
+ *
+ * @example
+ * <ChatTokenizedText tokens={[{value: '@ada', label: '@Ada Lovelace', variant: 'blue'}]} text="Ping @ada about the draft" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Badge from '../Badge/Badge.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {isCustomToken, type ChatComposerToken} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** The message text containing serialized token values (or the default slot). */
+  text?: string;
+  /** Token definitions; each non-empty `value` is matched literally. */
+  tokens?: ChatComposerToken[];
+}
+
+const {text: textProp, tokens, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const decode = (html: string) => html
+  .replace(/<[^>]*>/g, '')
+  .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+const text = textProp ?? (Astro.slots.has('default') ? decode(await Astro.slots.render('default')) : '');
+
+type Part = {kind: 'text'; text: string} | {kind: 'token'; token: ChatComposerToken};
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const parts: Part[] = [];
+const matchable = (tokens ?? []).filter((tok) => tok.value.length > 0);
+if (!text || matchable.length === 0) {
+  parts.push({kind: 'text', text: text ?? ''});
+} else {
+  const map = new Map<string, ChatComposerToken>();
+  for (const tok of matchable) if (!map.has(tok.value)) map.set(tok.value, tok);
+  const regex = new RegExp(`(${matchable.map((tok) => escapeRegExp(tok.value)).join('|')})`, 'g');
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push({kind: 'text', text: text.slice(last, m.index)});
+    const tok = map.get(m[0]);
+    if (tok) parts.push({kind: 'token', token: tok});
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({kind: 'text', text: text.slice(last)});
+}
+const {themeClass, attrs} = themeProps('chat-tokenized-text');
+---
+<span {...attrs} class={cx(themeClass, className)} {...rest}>{parts.map((part) => part.kind === 'text' ? part.text : (
+  <span class="ax-chat-token">{isCustomToken(part.token) ? part.token.render() : <Badge label={part.token.label} variant={part.token.variant} icon={part.token.icon} />}</span>
+))}</span>

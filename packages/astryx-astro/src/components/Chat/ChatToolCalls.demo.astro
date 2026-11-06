@@ -1,0 +1,47 @@
+---
+import ChatToolCalls from './ChatToolCalls.astro';
+import ChatMessage from './ChatMessage.astro';
+import ChatMessageBubble from './ChatMessageBubble.astro';
+import Badge from '../Badge/Badge.astro';
+import type {ChatToolCallItem} from './types';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const grid = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--spacing-5);align-items:start';
+const code = (text: string) => `<pre style="margin:0;font-size:var(--text-supporting-size);font-family:var(--font-family-code);white-space:pre-wrap">${text}</pre>`;
+const editDiff = code('- outline: 2px solid blue;\n+ outline: var(--focus-outline-width) var(--focus-outline-style) var(--focus-outline-color);');
+const session: ChatToolCallItem[] = [
+  {name: 'read_file', target: 'src/Button/Button.tsx', duration: '120ms'},
+  {name: 'grep', target: 'focusOutline', node: 'navi', duration: '48ms', stats: '14 matches'},
+  {name: 'edit_file', target: 'Button.css', additions: 12, deletions: 3, duration: '0.4s'},
+  {name: 'run_tests', status: 'running', target: 'pnpm test button'},
+];
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Single calls: every status</h3>
+    <div style={grid}>
+      <ChatToolCalls calls={[{name: 'search_docs', status: 'pending', target: 'CSS anchor positioning'}]} />
+      <ChatToolCalls calls={[{name: 'run_tests', status: 'running', target: 'yarn test'}]} />
+      <ChatToolCalls calls={[{name: 'read_file', target: 'Button.tsx', duration: '1.2s'}]} />
+      <ChatToolCalls calls={[{name: 'deploy', status: 'error', target: 'staging', errorMessage: 'Permission denied'}]} />
+    </div>
+  </section>
+  <section>
+    <h3 style={cap}>Single call with an inline detail (Enter / Space / click)</h3>
+    <ChatToolCalls id="tool-demo-detail" calls={[{name: 'bash', target: 'git status --short', duration: '90ms', resultDetail: <Fragment set:html={code(' M src/Button/Button.css\n?? src/Button/Button.test.tsx')} />}]} />
+  </section>
+  <section>
+    <h3 style={cap}>Grouped: collapsed (latest call + count), expanded, custom label</h3>
+    <div style={grid}>
+      <ChatToolCalls id="tool-demo-group" calls={session.map((call) => call.name === 'edit_file' ? {...call, resultDetail: <Fragment set:html={editDiff} />} : call)} />
+      <ChatToolCalls calls={session.slice(0, 3)} defaultIsExpanded label="Investigated the focus ring" />
+    </div>
+  </section>
+  <section>
+    <h3 style={cap}>Inside an assistant message</h3>
+    <ChatMessage sender="assistant" name="Navi">
+      <ChatToolCalls calls={session.slice(0, 2)} />
+      <ChatMessageBubble variant="ghost"><p style="margin:0">I read the button source and found the focus helper. <Badge label="2 files" /></p></ChatMessageBubble>
+    </ChatMessage>
+  </section>
+</div>

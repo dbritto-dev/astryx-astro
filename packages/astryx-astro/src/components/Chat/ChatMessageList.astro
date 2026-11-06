@@ -1,0 +1,87 @@
+---
+/**
+ * ChatMessageList — the message container: `role="log"` + `aria-live="polite"`, a tab stop
+ * with an inset focus ring, density-based spacing, a spacer that pushes a short conversation
+ * to the bottom, an empty state and loading older messages at the top.
+ * Port of @astryxdesign/core Chat/ChatMessageList.tsx (+ hooks/useBusyAnnouncement.ts).
+ *
+ * New rows are announced by the log itself (rows appended into `list.contentElement` are
+ * spoken politely). While a reply streams in token by token set `isStreaming` (or
+ * `list.isStreaming = true` in the browser): the log is `aria-busy` so assistive tech waits
+ * and reads the completed message once.
+ *
+ * Density flows to messages without their own `density` (cascade key `chat-density`).
+ * `gap` overrides only the row gap (`--_ax-chat-gap`).
+ *
+ * Loading older messages (Astryx `scrollToTopAction`): set `hasScrollToTopAction` and answer
+ * the `astryx-scroll-to-top` event when the top sentinel scrolls into view —
+ * `event.detail.waitUntil(promise)` shows the spinner at the top until it settles and
+ * announces "Loading" once through the runtime (the spinner itself is silent).
+ *
+ * Inside a ChatLayout the layout observes `[data-ax-chat-list-content]` (useChatNewMessages):
+ * every height change follows the stream while locked; a new last `.astryx-chat-message`
+ * while scrolled up shows "New messages".
+ *
+ * Theme hook: `.astryx-chat-message-list[data-density]`.
+ *
+ * @example
+ * <ChatMessageList density="compact">
+ *   <ChatMessage sender="user"><ChatMessageBubble>Hi</ChatMessageBubble></ChatMessage>
+ * </ChatMessageList>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Spinner from '../Spinner/Spinner.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {stamp} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import {mergeStyles, spacing} from '../../lib/style';
+import type {SpacingStep} from '../../lib/types';
+import {CHAT_DENSITY_KEY, densityApplier} from './chatCascade';
+import type {ChatDensity} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Density for the list and its messages. @default 'balanced' */
+  density?: ChatDensity;
+  /** Gap between top-level rows; defaults to the density's gap. */
+  gap?: SpacingStep;
+  /** Where a short list rests: 'bottom' (spacer above) or 'top'. @default 'bottom' */
+  align?: 'top' | 'bottom';
+  /** A reply is streaming in: `aria-busy` until it completes. @default false */
+  isStreaming?: boolean;
+  /** Fire `astryx-scroll-to-top` when the top is reached (load older messages). @default false */
+  hasScrollToTopAction?: boolean;
+  locale?: string;
+}
+
+const {
+  density = 'balanced', gap, align = 'bottom', isStreaming = false, hasScrollToTopAction = false, locale,
+  class: className, style, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const childrenHtml = Astro.slots.has('default')
+  ? await stamp(await Astro.slots.render('default'), CHAT_DENSITY_KEY, densityApplier(density))
+  : '';
+const hasChildren = childrenHtml.trim() !== '';
+const emptyHtml = !hasChildren && Astro.slots.has('emptyState') ? (await Astro.slots.render('emptyState')).trim() : '';
+const {themeClass, attrs} = themeProps('chat-message-list', {density});
+---
+<ax-chat-message-list
+  {...rest}
+  role="log"
+  aria-live="polite"
+  aria-busy={isStreaming ? 'true' : undefined}
+  tabindex="0"
+  {...attrs}
+  class={cx(themeClass, 'ax-focus-visible', className)}
+  style={style}
+  data-ax-loading-label={hasScrollToTopAction ? t('@astryx.spinner.loading') : undefined}
+>
+  <div class="ax-chat-list-content" data-ax-chat-list-content="" data-ax-density={density} style={mergeStyles(gap != null ? {'--_ax-chat-gap': spacing(gap)} : null)}>
+    {hasScrollToTopAction && <div data-ax-chat-sentinel="" aria-hidden="true"></div>}
+    {hasScrollToTopAction && <div class="ax-chat-list-loading" data-ax-chat-loading="" hidden><Spinner size="md" aria-hidden="true" /></div>}
+    {align === 'bottom' && <div class="ax-chat-list-spacer" aria-hidden="true"></div>}
+    {hasChildren ? <Fragment set:html={childrenHtml} /> : emptyHtml !== '' ? <div class="ax-chat-list-empty"><Fragment set:html={emptyHtml} /></div> : null}
+  </div>
+</ax-chat-message-list>
+<script>import '../../elements/chat-message-list';</script>

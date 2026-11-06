@@ -1,0 +1,79 @@
+---
+/**
+ * ChatSendButton — the circular send / stop toggle of the composer.
+ * Port of @astryxdesign/core Chat/ChatSendButton.tsx (on Button).
+ *
+ *   Send: primary, arrowUp icon, label "Send", disabled while there is nothing to send.
+ *   Stop: secondary, stop icon, label "Stop", always enabled.
+ *
+ * Inside a ChatComposer it follows the composer (Astryx ChatComposerContext): the composer
+ * element switches it as its value, `isDisabled` and `isStopShown` change. `isStopShown` /
+ * `isDisabled` given here are fixed overrides, as the props are in Astryx. Outside a
+ * composer it is disabled unless `isDisabled={false}` (Astryx: `!canSend` with no context).
+ *
+ * Events (bubbling, composed; elements/chat-composer.ts): a click dispatches cancelable
+ * `astryx-send` (send state) or `astryx-stop` (stop state). Inside a composer `astryx-send`
+ * submits the draft unless prevented (Astryx `onSend` replaces the submit); `astryx-stop`
+ * is the composer's `onStop`. Custom icons: `sendIcon` / `stopIcon` slots.
+ * Rounding: `--_button-radius` (concentric inside the composer), else full.
+ *
+ * Theme hook: `.astryx-chat-send-button` (on the Button root, with its button hooks).
+ *
+ * @example
+ * <ChatComposer><ChatSendButton slot="sendButton" size="sm" /></ChatComposer>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import './Chat.css';
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'type'> {
+  /** Show the stop state (fixed; else follows the composer). */
+  isStopShown?: boolean;
+  /** Disable the send state (fixed; else follows the composer's "can send"). */
+  isDisabled?: boolean;
+  /** @default 'md' */
+  size?: 'sm' | 'md';
+  locale?: string;
+}
+
+interface ComposerContext {isStopShown?: boolean; canSend?: boolean}
+/** @internal The composer passes its context to the button it renders itself. */
+interface InternalProps {__composer?: ComposerContext}
+
+const {isStopShown: stopProp, isDisabled: disabledProp, size = 'md', locale, class: className, slot: _slot, __composer, ...rest} = Astro.props as Props & InternalProps & {slot?: string};
+const ctx = __composer ?? (Astro.locals as {astryxChatComposer?: ComposerContext | null}).astryxChatComposer ?? null;
+const t = translator(Astro, locale);
+const isStopShown = stopProp ?? ctx?.isStopShown ?? false;
+// Astryx: `!(context?.canSend ?? false)` — without a composer the send state is disabled.
+const isDisabled = disabledProp ?? !(ctx?.canSend ?? false);
+const sendLabel = t('@astryx.chatSendButton.send');
+const stopLabel = t('@astryx.chatSendButton.stop');
+const sendIconHtml = Astro.slots.has('sendIcon') ? await Astro.slots.render('sendIcon') : null;
+const stopIconHtml = Astro.slots.has('stopIcon') ? await Astro.slots.render('stopIcon') : null;
+const {themeClass, attrs} = themeProps('chat-send-button');
+---
+<Button
+  {...rest}
+  {...attrs}
+  class={cx(themeClass, className)}
+  label={isStopShown ? stopLabel : sendLabel}
+  variant={isStopShown ? 'secondary' : 'primary'}
+  size={size}
+  isIconOnly
+  isDisabled={!isStopShown && isDisabled}
+  data-ax-chat-send=""
+  data-ax-send-label={sendLabel}
+  data-ax-stop-label={stopLabel}
+  data-ax-stop-shown={isStopShown ? '' : undefined}
+  data-ax-fixed-stop={stopProp !== undefined ? String(stopProp) : undefined}
+  data-ax-fixed-disabled={disabledProp !== undefined ? String(disabledProp) : undefined}
+>
+  <Fragment slot="icon">
+    <span data-ax-chat-icon="send" class="ax-chat-send-icon" hidden={isStopShown || undefined}>{sendIconHtml != null ? <Fragment set:html={sendIconHtml} /> : <Icon icon="arrowUp" />}</span>
+    <span data-ax-chat-icon="stop" class="ax-chat-send-icon" hidden={!isStopShown || undefined}>{stopIconHtml != null ? <Fragment set:html={stopIconHtml} /> : <Icon icon="stop" />}</span>
+  </Fragment>
+</Button>
+<script>import '../../elements/chat-composer';</script>

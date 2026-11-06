@@ -1,0 +1,30 @@
+---
+/**
+ * ChatComposerTokenElement — one token chip outside the composer input, in the exact span the
+ * input serializes (`data-astryx-token`, `data-astryx-token-value`, `contenteditable="false"`),
+ * so it serializes and looks like the tokens inside ChatComposerInput.
+ * Port of @astryxdesign/core Chat/ChatComposerInput.tsx ChatComposerTokenElement.
+ *
+ * @example
+ * <ChatComposerTokenElement token={{value: '@ada', label: '@Ada', variant: 'blue'}} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Badge from '../Badge/Badge.astro';
+import {cx} from '../../lib/themeProps';
+import {isCustomToken, type ChatComposerToken} from './types';
+import './Chat.css';
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** A badge config `{value, label, variant?, icon?}` or a custom `{value, render}`. */
+  token: ChatComposerToken;
+}
+
+const {token, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+---
+<span
+  class={cx('ax-chat-token', className)}
+  {...rest}
+  data-astryx-token=""
+  data-astryx-token-value={token.value}
+  contenteditable="false"
+>{isCustomToken(token) ? token.render() : <Badge label={token.label} variant={token.variant} icon={token.icon} />}</span>
