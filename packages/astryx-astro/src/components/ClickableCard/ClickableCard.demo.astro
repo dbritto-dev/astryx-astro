@@ -1,0 +1,72 @@
+---
+import ClickableCard from './ClickableCard.astro';
+import type {CardVariant} from '../Card/Card.astro';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import type {Elevation} from '../../lib/types';
+
+const variants: CardVariant[] = ['default', 'transparent', 'muted', 'blue', 'cyan', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--spacing-3)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const title = 'margin:0;font-weight:var(--font-weight-semibold)';
+const sub = 'margin:var(--spacing-1) 0 0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section data-test="interactive">
+    <h3 style={cap}>Link and button cards with nested controls</h3>
+    <div style={grid}>
+      <ClickableCard label="Settings" href="#cc-target" data-test="link-card">
+        <p style={title}>Settings</p>
+        <p style={sub}>Manage your preferences</p>
+        <div style="margin-top:var(--spacing-3)"><Button label="Nested action" size="sm" data-test="nested" /></div>
+      </ClickableCard>
+      <ClickableCard label="Open details" elevation="low" data-test="button-card">
+        <p style={title}>Button card</p>
+        <p style={sub}>Click anywhere to activate</p>
+        <div style="margin-top:var(--spacing-3);display:flex;gap:var(--spacing-2)">
+          <Button label="Share" size="sm" variant="ghost" icon="externalLink" data-test="nested-button" />
+          <a href="#cc-target" data-test="nested-link" style="font-size:var(--text-supporting-size);color:var(--color-accent)">Nested link</a>
+        </div>
+      </ClickableCard>
+      <ClickableCard label="Docs in a new tab" href="#cc-target" target="_blank" variant="blue" data-test="blank-card">
+        <p style={title}><Icon icon="externalLink" size="sm" /> target=_blank</p>
+        <p style={sub}>Opens in a new tab</p>
+      </ClickableCard>
+      <ClickableCard label="Disabled link" href="#cc-target" isDisabled data-test="disabled-card">
+        <p style={title}>Disabled</p>
+        <p style={sub}>Keeps its tab stop, inert</p>
+      </ClickableCard>
+      <ClickableCard label="Disabled button" isDisabled variant="muted" data-test="disabled-button-card">
+        <p style={title}>Disabled button</p>
+      </ClickableCard>
+      <ClickableCard label="Blocked" href="javascript:alert(1)" data-test="blocked-card">
+        <p style={title}>Blocked destination</p>
+        <p style={sub}>Inert, not disabled</p>
+      </ClickableCard>
+    </div>
+    <p id="cc-target" style="margin:var(--spacing-2) 0 0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)">Last click: <output data-test="log">none</output></p>
+  </section>
+
+  <section>
+    <h3 style={cap}>Variants</h3>
+    <div style={grid}>{variants.map((variant) => <ClickableCard label={variant} variant={variant} padding={3}><p style={title}>{variant}</p></ClickableCard>)}</div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Elevation, padding and size</h3>
+    <div style={grid}>
+      {elevations.map((elevation) => <ClickableCard label={`Elevation ${elevation}`} elevation={elevation}><p style={title}>elevation="{elevation}"</p></ClickableCard>)}
+      <ClickableCard label="Padding 6" padding={6}><p style={title}>padding={6}</p></ClickableCard>
+      <ClickableCard label="Fixed size" width={180} height={96} maxWidth={200}><p style={title}>width / height / maxWidth</p></ClickableCard>
+    </div>
+  </section>
+</div>
+<script>
+  const log = document.querySelector('[data-test="log"]');
+  document.querySelector('[data-test="interactive"]')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const card = target.closest('.astryx-clickable-card');
+    if (log) log.textContent = `${target.tagName.toLowerCase()} in ${card?.getAttribute('data-test') ?? '?'}`;
+  });
+</script>

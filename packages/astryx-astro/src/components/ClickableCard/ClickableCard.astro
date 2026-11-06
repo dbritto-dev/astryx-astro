@@ -1,0 +1,112 @@
+---
+/**
+ * ClickableCard — a Card that acts as one navigation or action target. Port of
+ * @astryxdesign/core ClickableCard/ClickableCard.tsx (styles), composing Card/Card.tsx, with
+ * hooks/useClickableContainer.ts (behaviors/clickable.ts), Link/useLinkComponent.ts,
+ * utils/safeUrl.ts, utils/disabledInteraction.ts and utils/focusOutline.stylex.ts.
+ *
+ * Theme hooks: the Card's `.astryx-card[data-variant][data-elevation]` plus
+ * `.astryx-clickable-card[data-variant]`; private var `--_press-overlay` (the `::after`
+ * hover / pressed overlay colour). The card surface is a plain `<div>` (no role, no
+ * tabindex); a visually hidden `<button>` — or `<a href>` with `href` — carries the role, the
+ * `label` as its accessible name and the tab stop, and the card paints the focus ring
+ * (:has(:focus-visible)).
+ *
+ * Activation (useClickableContainer): a click anywhere on the surface that is not inside a
+ * nested control (button, link, input, role-based controls, a nested clickable container,
+ * a layer surface) and does not end a text selection activates the hidden control; nested
+ * controls keep their own clicks. With `href` (safeHref-checked): Ctrl/Cmd-click or
+ * `target="_blank"` opens a new tab (`noopener`), a middle click on the surface opens a new
+ * tab, a plain click goes through the link (so a router's link component sees it).
+ * Without `href` (Astryx `onClick`): listen for `click` on the card — every activation is
+ * exactly one click on the hidden button, which bubbles to the card.
+ * `isDisabled`: 50% opacity, no overlay, the hidden control keeps its tab stop with
+ * `aria-disabled="true"` and is inert (AST-085); a disabled link renders no destination.
+ * A blocked destination renders the link without href (inert, not disabled).
+ *
+ * Not ported: the touch press controller (`data-astryx-press` / pressedAlpha) — coarse
+ * pointers keep the native :active paint; the remount focus hand-off (no remount in Astro).
+ *
+ * @example
+ * <ClickableCard label="Settings" href="/settings"><Text weight="bold">Settings</Text></ClickableCard>
+ * <ClickableCard label="Open details" elevation="low">…<Button label="Share" /></ClickableCard>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Card, {type CardVariant} from '../Card/Card.astro';
+import type {Elevation, SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {safeHref} from '../../lib/safeUrl';
+import {computeTargetAndRel, resolveLinkComponent, type LinkComponentType} from '../Link/linkComponent';
+import './ClickableCard.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Accessible name of the card's hidden control (required). Prefer the card's visible title. */
+  label: string;
+  /** Navigation URL (safeHref-checked). Without it the card is a button (listen for `click`). */
+  href?: string | URL;
+  /** Link target for `href`. @default '_self' */
+  target?: string;
+  /** Link component for `href` (tag or Astro component); default Astro.locals.astryxLinkComponent ?? 'a'. */
+  as?: LinkComponentType;
+  /** Keeps its tab stop with aria-disabled; activation blocked; no live destination. @default false */
+  isDisabled?: boolean;
+  /** Internal padding (spacing step). @default the theme's card padding (4) */
+  padding?: SpacingStep;
+  /** @default 'default' */
+  variant?: CardVariant;
+  /** Resting shadow depth, often raised to signal the whole card is clickable. @default 'none' */
+  elevation?: Elevation;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+}
+
+const {
+  label,
+  href,
+  target: targetProp,
+  as,
+  isDisabled = false,
+  padding,
+  variant = 'default',
+  elevation = 'none',
+  width,
+  height,
+  maxWidth,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const isLink = href != null;
+const safe = isLink && !isDisabled ? safeHref(href) : undefined;
+const {target, rel} = computeTargetAndRel(isDisabled ? undefined : targetProp, undefined);
+const LinkTag = safe != null ? resolveLinkComponent(as, Astro) : 'a';
+const {themeClass, attrs: themeAttrs} = themeProps('clickable-card', {variant});
+const mode = isDisabled ? undefined : isLink ? (safe != null ? 'link' : undefined) : 'button';
+---
+<Card
+  {...rest}
+  {...themeAttrs}
+  class={cx(themeClass, 'ax-focus-within', className as string | undefined)}
+  padding={padding}
+  variant={variant}
+  elevation={elevation}
+  width={width}
+  height={height}
+  maxWidth={maxWidth}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-clickable={mode}
+>
+  {isLink ? (
+    isDisabled || safe == null ? (
+      <a class="ax-clickable-card-action" role={isDisabled ? 'link' : undefined} aria-label={label} aria-disabled={isDisabled ? 'true' : undefined} tabindex="0" data-ax-clickable-action></a>
+    ) : (
+      <LinkTag class="ax-clickable-card-action" href={safe} target={target} rel={rel} aria-label={label} tabindex="0" data-ax-clickable-action></LinkTag>
+    )
+  ) : (
+    <button type="button" class="ax-clickable-card-action" aria-label={label} aria-disabled={isDisabled ? 'true' : undefined} data-ax-clickable-action></button>
+  )}
+  <slot />
+</Card>
+{mode && <script>import '../../behaviors/clickable';</script>}
+{isDisabled && <script>import '../../elements/runtime/disabledInteraction';</script>}

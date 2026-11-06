@@ -1,0 +1,102 @@
+---
+import Stepper from './Stepper.astro';
+import Step from './Step.astro';
+import Badge from '../Badge/Badge.astro';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+
+const cap = 'margin:0 0 var(--spacing-3);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const box = 'display:grid;gap:var(--spacing-3)';
+---
+<div style="display:grid;gap:var(--spacing-8);color:var(--color-text-primary)">
+  <section style={box} data-test="wizard">
+    <h3 style={cap}>Non-linear (clickable steps), statuses, optional, end content</h3>
+    <Stepper activeStep={1} isNonLinear id="stepper-wizard" data-test="nonlinear">
+      <Step step={0} label="Account" description="Email and password" />
+      <Step step={1} label="Profile" description="Name and photo" />
+      <Step step={2} label="Billing" status="error" description="Card declined" />
+      <Step step={3} label="Team" isOptional />
+      <Step step={4} label="Review" isDisabled description="Finish billing first"><Badge slot="endContent" label="New" variant="blue" /></Step>
+    </Stepper>
+    <div style="display:flex;gap:var(--spacing-2)">
+      <Button label="Back" size="sm" data-test="back" />
+      <Button label="Next" size="sm" variant="primary" data-test="next" />
+    </div>
+  </section>
+
+  <section style={box}>
+    <h3 style={cap}>On-track indicators (horizontal), density, indicator presets</h3>
+    <Stepper activeStep={2} indicatorPosition="on-track" isNonLinear data-test="on-track">
+      <Step step={0} label="Cart" status="success" />
+      <Step step={1} label="Shipping" status="warning" />
+      <Step step={2} label="Payment" />
+      <Step step={3} label="Confirm" />
+    </Stepper>
+    <Stepper activeStep={1} density="compact" label="Compact density">
+      <Step step={0} label="Number" indicator="number" />
+      <Step step={1} label="Accent" status="accent" />
+      <Step step={2} label="No indicator" indicator="none" />
+      <Step step={3} label="Custom"><Icon slot="indicator" icon="calendar" size="sm" /></Step>
+    </Stepper>
+    <Stepper activeStep={1} density="spacious" indicatorPosition="on-track" label="Spacious on-track" style="--step-connector-gap: var(--spacing-1)">
+      <Step step={0} label="Gap" description="--step-connector-gap" />
+      <Step step={1} label="Around" />
+      <Step step={2} label="Nodes" />
+    </Stepper>
+  </section>
+
+  <section style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-6)">
+    <div>
+      <h3 style={cap}>Vertical, with content</h3>
+      <Stepper activeStep={1} orientation="vertical" isNonLinear label="Vertical stepper" data-test="vertical">
+        <Step step={0} label="Create project" description="Name it" />
+        <Step step={1} label="Invite people" description="Optional teammates">
+          <div style="display:flex;gap:var(--spacing-2)"><Button label="Invite" size="sm" /><Button label="Skip" size="sm" variant="ghost" /></div>
+        </Step>
+        <Step step={2} label="Deploy" />
+      </Stepper>
+    </div>
+    <div>
+      <h3 style={cap}>Vertical on-track</h3>
+      <Stepper activeStep={2} orientation="vertical" indicatorPosition="on-track" label="Vertical on-track">
+        <Step step={0} label="Ordered" description="Mar 2, 9:41" />
+        <Step step={1} label="Packed"><p style="margin:0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)">Content continues the rail.</p></Step>
+        <Step step={2} label="Shipped" description="In transit" />
+        <Step step={3} label="Delivered" />
+      </Stepper>
+    </div>
+  </section>
+
+  <section style={box}>
+    <h3 style={cap}>Compact (narrow container collapses to a summary row)</h3>
+    <div style="max-width:320px" data-test="compact-host">
+      <Stepper activeStep={1} isNonLinear label="Narrow stepper" data-test="compact">
+        <Step step={0} label="One" />
+        <Step step={1} label="Two" description="Current step" />
+        <Step step={2} label="Three" isDisabled />
+        <Step step={3} label="Four" />
+      </Stepper>
+    </div>
+    <div style="max-width:320px">
+      <Stepper activeStep={2} indicatorPosition="on-track" horizontalOptions={{minimumStepWidth: 112, collapsedVariant: 'withLabel'}} label="Narrow on-track">
+        <Step step={0} label="One" />
+        <Step step={1} label="Two" />
+        <Step step={2} label="Three" />
+        <Step step={3} label="Four" />
+      </Stepper>
+    </div>
+    <div style="max-width:320px">
+      <Stepper activeStep={1} horizontalOptions={{minimumStepWidth: 112, collapsedVariant: 'hiddenLabel'}} label="Bare track">
+        <Step step={0} label="One" />
+        <Step step={1} label="Two" />
+        <Step step={2} label="Three" />
+        <Step step={3} label="Four" />
+      </Stepper>
+    </div>
+  </section>
+</div>
+<script>
+  const stepper = document.getElementById('stepper-wizard') as (HTMLElement & {activeStep: number}) | null;
+  document.querySelector('[data-test="back"]')?.addEventListener('click', () => { if (stepper) stepper.activeStep = Math.max(0, stepper.activeStep - 1); });
+  document.querySelector('[data-test="next"]')?.addEventListener('click', () => { if (stepper) stepper.activeStep = Math.min(4, stepper.activeStep + 1); });
+</script>

@@ -1,0 +1,157 @@
+---
+/**
+ * One treeitem and its child group (internal, recursive). Port of @astryxdesign/core
+ * TreeList/TreeListItem.tsx and TreeList/TreeListBranches.tsx; see TreeList.astro.
+ */
+import Icon from '../Icon/Icon.astro';
+import type {TreeListDensity, TreeListItemData, TreeListVariant} from './treeListTypes';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {safeHref} from '../../lib/safeUrl';
+import {uid} from '../../lib/uid';
+import {resolveLinkComponent} from '../Link/linkComponent';
+
+interface Props {
+  item: TreeListItemData;
+  level: number;
+  isLast: boolean;
+  ancestorsIsLast: boolean[];
+  posInSet: number;
+  setSize: number;
+  ctx: {
+    density: TreeListDensity;
+    variant: TreeListVariant;
+    hasExpandableItems: boolean;
+    tabbableId: string | undefined;
+    slots: Map<string, string>;
+    toggleLabel: string;
+  };
+}
+
+const {item, level, isLast, ancestorsIsLast, posInSet, setSize, ctx} = Astro.props;
+const {density, variant, hasExpandableItems, tabbableId, slots, toggleLabel} = ctx;
+
+const id = item.id;
+const children = item.children ?? [];
+const hasChildren = children.length > 0;
+const isExpanded = hasChildren && item.isExpanded === true;
+const isDisabled = item.isDisabled === true;
+const isSelected = item.isSelected === true;
+const hasOnClick = item.interactiveRole === 'button';
+const href = item.href;
+const isInteractive = hasOnClick || href != null;
+// Row surface: a link row forwards to its link; a parent without onClick toggles.
+const rowKind = href != null && !hasOnClick && !hasChildren ? 'link' : hasOnClick ? 'button' : hasChildren ? 'toggle' : undefined;
+const safe = href != null && !isDisabled ? safeHref(href) : undefined;
+const LinkTag = safe != null ? resolveLinkComponent(undefined, Astro) : 'a';
+
+const labelId = uid(Astro, 'ax-tree-label');
+const hasDescription = item.description != null;
+const descriptionId = hasDescription ? uid(Astro, 'ax-tree-desc') : undefined;
+const labelHtml = slots.get(`label:${id}`) ?? '';
+const startHtml = slots.get(`start:${id}`) ?? '';
+const endHtml = slots.get(`end:${id}`) ?? '';
+const hasStart = startHtml !== '' || (item.startContent != null && item.startContent !== '');
+const hasEnd = endHtml !== '' || (item.endContent != null && item.endContent !== '');
+
+// Per-level indent; a leaf in a tree with any parent reserves the chevron column.
+const indent = !hasChildren && hasExpandableItems
+  ? `calc(${level} * var(--tree-list-indent) + var(--spacing-4) + var(--spacing-2))`
+  : `calc(${level} * var(--tree-list-indent))`;
+
+// TreeListBranches: ancestor continuation lines + this row's own connector.
+const GUIDE_START = 'calc(var(--spacing-2) + var(--spacing-4) / 2 - var(--spacing-5) / 2)';
+const guides: {offset: string; last: boolean}[] = [];
+ancestorsIsLast.forEach((ancestorIsLast, l) => {
+  if (!ancestorIsLast && l !== level - 1) guides.push({offset: `calc(${GUIDE_START} + ${l} * var(--tree-list-indent))`, last: false});
+});
+if (level > 0) guides.push({offset: `calc(${GUIDE_START} + ${level - 1} * var(--tree-list-indent))`, last: isLast});
+const guideTarget = themeProps('tree-list-guide');
+
+const row = themeProps('tree-list-item', {density, selected: isSelected ? 'selected' : null, disabled: isDisabled ? 'disabled' : null});
+const label = themeProps('tree-list-item-label', {selected: isSelected ? 'selected' : null});
+const chevron = themeProps('tree-list-chevron', {state: isExpanded ? 'expanded' : 'collapsed'});
+const describedBy = descriptionId;
+const childAncestors = hasChildren ? [...ancestorsIsLast, isLast] : ancestorsIsLast;
+const Self = Astro.self;
+---
+<li
+  role="treeitem"
+  aria-labelledby={labelId}
+  aria-describedby={describedBy}
+  aria-expanded={hasChildren ? String(isExpanded) : undefined}
+  aria-selected={isSelected ? 'true' : undefined}
+  aria-disabled={isDisabled ? 'true' : undefined}
+  aria-level={level + 1}
+  aria-posinset={posInSet}
+  aria-setsize={setSize}
+  tabindex={!isDisabled && id === tabbableId ? 0 : -1}
+  data-tree-id={id}
+  data-tree-level={level + 1}
+  data-tree-disabled={isDisabled ? '' : undefined}
+  class="ax-tree-node ax-focus-publish"
+>
+  {variant !== 'noGuides' && guides.length > 0 && (
+    <div class="ax-tree-branches">
+      {guides.map((guide) => (
+        <div class="ax-tree-guide-column" style={`inset-inline-start:${guide.offset}`}>
+          <div class={guideTarget.themeClass} data-ax-last={guide.last ? '' : undefined}></div>
+        </div>
+      ))}
+    </div>
+  )}
+  <div class="ax-tree-row-wrap">
+    <div
+      class={cx(row.themeClass, 'ax-focus-within-or-published', (isInteractive || rowKind === 'toggle') && 'ax-overlay-image', item.class)}
+      {...row.attrs}
+      data-ax-interactive={isInteractive || rowKind === 'toggle' ? '' : undefined}
+      data-ax-row={rowKind}
+      style={mergeStyles({'--_tree-indent': indent}, item.style as StyleValue)}
+    >
+      <div class="ax-tree-indent">
+        {hasChildren && (
+          <button
+            type="button"
+            class={chevron.themeClass}
+            {...chevron.attrs}
+            aria-expanded={String(isExpanded)}
+            aria-label={toggleLabel}
+            aria-disabled={isDisabled ? 'true' : undefined}
+            tabindex="-1"
+            data-tree-toggle=""
+          ><Icon icon="chevronRight" size="sm" color="inherit" class="ax-tree-chevron" /></button>
+        )}
+        {hasStart && <span class="ax-tree-start">{startHtml !== '' ? <Fragment set:html={startHtml} /> : <Icon icon={item.startContent} size="sm" />}</span>}
+        {href != null && isDisabled ? (
+          <a class="ax-tree-action" role="link" aria-disabled="true" aria-labelledby={labelId} aria-describedby={describedBy} tabindex="-1">
+            <span id={labelId} class={label.themeClass} {...label.attrs}>{labelHtml !== '' ? <Fragment set:html={labelHtml} /> : item.label}</span>
+            {hasDescription && <span id={descriptionId} class="ax-tree-description">{item.description}</span>}
+          </a>
+        ) : href != null ? (
+          <LinkTag class="ax-tree-action" href={safe} target={item.target} aria-labelledby={labelId} aria-describedby={describedBy} tabindex="-1" data-ax-tree-link="">
+            <span id={labelId} class={label.themeClass} {...label.attrs}>{labelHtml !== '' ? <Fragment set:html={labelHtml} /> : item.label}</span>
+            {hasDescription && <span id={descriptionId} class="ax-tree-description">{item.description}</span>}
+          </LinkTag>
+        ) : hasOnClick ? (
+          <button type="button" class="ax-tree-action" aria-disabled={isDisabled ? 'true' : undefined} aria-labelledby={labelId} aria-describedby={describedBy} tabindex="-1" data-ax-tree-action="">
+            <span id={labelId} class={label.themeClass} {...label.attrs}>{labelHtml !== '' ? <Fragment set:html={labelHtml} /> : item.label}</span>
+            {hasDescription && <span id={descriptionId} class="ax-tree-description">{item.description}</span>}
+          </button>
+        ) : (
+          <span class="ax-tree-content">
+            <span id={labelId} class={label.themeClass} {...label.attrs}>{labelHtml !== '' ? <Fragment set:html={labelHtml} /> : item.label}</span>
+            {hasDescription && <span id={descriptionId} class="ax-tree-description">{item.description}</span>}
+          </span>
+        )}
+        {hasEnd && <span class="ax-tree-end">{endHtml !== '' ? <Fragment set:html={endHtml} /> : item.endContent}</span>}
+      </div>
+    </div>
+  </div>
+  {hasChildren && (
+    <ul role="group" class="ax-tree-group" hidden={isExpanded ? undefined : 'until-found'}>
+      {children.map((child, index) => (
+        <Self item={child} level={level + 1} isLast={index === children.length - 1} ancestorsIsLast={childAncestors} posInSet={index + 1} setSize={children.length} ctx={ctx} />
+      ))}
+    </ul>
+  )}
+</li>

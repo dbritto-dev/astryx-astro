@@ -1,0 +1,214 @@
+/*
+ * Port of @astryxdesign/core TreeList/TreeList.tsx (styles), TreeList/TreeListItem.tsx
+ * (styles, densityStyles, descriptionSizeStyles) and TreeList/TreeListBranches.tsx (styles).
+ * Row rule groups follow the React stylex.props() order: contentWrapper → focusLift →
+ * density → interactive → overlay (shared .ax-overlay-image) → disabled → selected.
+ *
+ * `animatedLayout` ([data-ax-animate]): a child group's height glides between 0 and auto
+ * on Astryx's `springs.settle` (sampled into linear(), as Collapsible), the chevron turns on
+ * the same timing. Reduce Motion (media query or [data-astryx-reduced-motion]): no travel.
+ * Not ported: rowPressLayerStyles (touch press layer, deferred).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Root ─────────────────────────────────────────────────────────────── */
+  .astryx-tree-list {
+    display: block;
+    position: relative;
+    isolation: isolate;
+    --tree-list-indent: var(--spacing-4);
+    --tree-list-row-gap: var(--spacing-0-5);
+    --_tree-settle: linear(0 0%, 0.058 4.167%, 0.18 8.333%, 0.321 12.5%, 0.455 16.667%, 0.573 20.833%, 0.671 25%, 0.75 29.167%, 0.812 33.333%, 0.86 37.5%, 0.897 41.667%, 0.924 45.833%, 0.944 50%, 0.96 54.167%, 0.971 58.333%, 0.979 62.5%, 0.985 66.667%, 0.989 70.833%, 0.992 75%, 0.994 79.167%, 0.996 83.333%, 0.997 87.5%, 0.998 91.667%, 0.999 95.833%, 1 100%);
+    --_tree-settle-duration: 735ms;
+  }
+  .ax-tree-root {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+  }
+  .ax-tree-header { margin-bottom: var(--spacing-2); }
+
+  /* ── Treeitem (<li>): publishes its own focus to its row ─────────────── */
+  .ax-tree-node {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+    width: 100%;
+    --_tree-focus-z: auto;
+    outline: none;
+  }
+  .ax-tree-node:focus-visible { --_tree-focus-z: 2; }
+
+  .ax-tree-group {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+  }
+
+  .ax-tree-branches { padding-inline-start: var(--spacing-2); }
+
+  .ax-tree-row-wrap {
+    position: relative;
+    padding-block: calc(var(--tree-list-row-gap, 0px) / 2);
+  }
+
+  /* ── Row (theme target) ───────────────────────────────────────────────── */
+  .astryx-tree-list-item {
+    border-radius: var(--radius-element);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+    text-align: start;
+    /* focusLift: the row whose ring shows sits above the guides. */
+    z-index: var(--_tree-focus-z, auto);
+  }
+  .astryx-tree-list-item:has(:focus-visible) { z-index: 2; }
+
+  .astryx-tree-list-item[data-density="compact"] { padding-block: var(--spacing-1); font-size: var(--text-body-size); line-height: var(--text-body-leading); }
+  .astryx-tree-list-item[data-density="balanced"] { padding-block: var(--spacing-2); font-size: var(--text-body-size); line-height: var(--text-body-leading); }
+  .astryx-tree-list-item[data-density="spacious"] { padding-block: var(--spacing-3); font-size: var(--text-body-size); line-height: var(--text-body-leading); }
+
+  .astryx-tree-list-item[data-ax-interactive] {
+    cursor: pointer;
+    transition-property: background-image;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+
+  .astryx-tree-list-item[data-disabled] {
+    cursor: default;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  .astryx-tree-list-item[data-selected] { background-color: var(--color-accent-muted); }
+
+  /* Per-level indent inside the row box, so nested fills still span the list. */
+  .ax-tree-indent {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: inherit;
+    gap: inherit;
+    padding-inline-start: var(--_tree-indent, 0px);
+  }
+
+  /* ── Label column ─────────────────────────────────────────────────────── */
+  .ax-tree-content,
+  .ax-tree-action {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    text-align: start;
+  }
+  .ax-tree-action {
+    cursor: inherit;
+    font: inherit;
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+  }
+  .ax-tree-action:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  .astryx-tree-list-item-label { color: var(--color-text-primary); }
+  .ax-tree-description {
+    color: var(--color-text-secondary);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+  }
+
+  .ax-tree-start {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+  .ax-tree-end {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    margin-inline-start: auto;
+  }
+
+  /* ── Chevron toggle ───────────────────────────────────────────────────── */
+  .astryx-tree-list-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    font-size: var(--spacing-4);
+    cursor: pointer;
+    color: var(--color-icon-secondary);
+    border-radius: var(--radius-inner);
+    border-width: 0;
+    padding: 0;
+  }
+  .astryx-tree-list-chevron:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* The glyph's box is pinned to the 16px column ([data-size] outranks Icon's size rules). */
+  .ax-tree-chevron.astryx-icon[data-size] {
+    display: flex;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    font-size: var(--spacing-4);
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform: rotate(0deg);
+  }
+  .ax-tree-chevron.astryx-icon[data-size]:is([dir="rtl"] *) { transform: scaleX(-1) rotate(0deg); }
+  [aria-expanded="true"] > .ax-tree-chevron.astryx-icon[data-size] { transform: rotate(90deg); }
+  [aria-expanded="true"] > .ax-tree-chevron.astryx-icon[data-size]:is([dir="rtl"] *) { transform: scaleX(-1) rotate(90deg); }
+
+  /* ── Guides (TreeListBranches) ────────────────────────────────────────── */
+  .ax-tree-guide-column {
+    height: 100%;
+    position: absolute;
+    width: var(--spacing-5);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .astryx-tree-list-guide {
+    border-radius: 1px;
+    inset-inline-start: 0;
+    margin: auto;
+    position: absolute;
+    inset-inline-end: 0;
+    width: 1px;
+    background-color: var(--color-border-emphasized);
+    height: calc(100% + 1px);
+  }
+  /* Last in its group: no sibling below, so the connector ends at the row box. */
+  .astryx-tree-list-guide[data-ax-last] { height: calc(100% - var(--tree-list-row-gap, 0px) / 2); }
+
+  /* ── animatedLayout ───────────────────────────────────────────────────── */
+  @supports (interpolate-size: allow-keywords) {
+    .astryx-tree-list[data-ax-animate] .ax-tree-group {
+      interpolate-size: allow-keywords;
+      transition-property: height, opacity, content-visibility;
+      transition-duration: var(--_tree-settle-duration);
+      transition-timing-function: var(--_tree-settle);
+      transition-behavior: allow-discrete;
+    }
+    .astryx-tree-list[data-ax-animate] .ax-tree-group[hidden] {
+      height: 0;
+      opacity: 0;
+    }
+    .astryx-tree-list[data-ax-animate] .ax-tree-group:is([hidden], [data-ax-transition]) { overflow: clip; }
+    .astryx-tree-list[data-ax-animate] .ax-tree-chevron.astryx-icon[data-size] {
+      transition-duration: var(--_tree-settle-duration);
+      transition-timing-function: var(--_tree-settle);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-tree-list[data-ax-animate] :is(.ax-tree-group, .ax-tree-chevron.astryx-icon[data-size]) { transition-duration: 0s; }
+  }
+  [data-astryx-reduced-motion] .astryx-tree-list[data-ax-animate] :is(.ax-tree-group, .ax-tree-chevron.astryx-icon[data-size]) { transition-duration: 0s; }
+}

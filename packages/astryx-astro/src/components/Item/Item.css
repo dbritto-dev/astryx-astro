@@ -1,0 +1,217 @@
+/*
+ * Port of @astryxdesign/core Item/Item.tsx (styles, densityStyles, dynamicStyles) and the
+ * panel styles of Item/ItemSwipeLayer.tsx. Rule groups follow the React stylex.props() order
+ * on the root: root → density → alignStart / alignFirstLine → interactive → overlay
+ * (shared .ax-overlay-bg / .ax-overlay-image) → linkRoot → highlighted → selected →
+ * disabled → swipeRoot. Not ported: rowPressLayerStyles (touch press layer, deferred).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-lines { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── Root ─────────────────────────────────────────────────────────────── */
+  .astryx-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    /* The inline inset is published so List's edge treatments can compensate for it. */
+    --_item-inset-inline: var(--spacing-2);
+    padding-inline: var(--_item-inset-inline);
+    position: relative;
+    box-sizing: border-box;
+    text-align: start;
+    border-radius: var(--radius-element);
+  }
+
+  .astryx-item[data-density="compact"] { padding-block: var(--spacing-1); }
+  .astryx-item[data-density="balanced"] { padding-block: var(--spacing-2); }
+  .astryx-item[data-density="spacious"] {
+    padding-block: var(--spacing-3);
+    --_item-inset-inline: var(--spacing-3);
+  }
+
+  .astryx-item[data-align="start"] { align-items: flex-start; }
+  /* first-line: every slot carries a label-sized strut, so baseline alignment centers each
+     slot on the label's first line (pure CSS, no measurement). */
+  .astryx-item[data-align="first-line"] { align-items: baseline; }
+
+  .astryx-item[data-ax-interactive] {
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast-min);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-item[data-ax-interactive]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* A row whose root is the link: the browser's anchor paint stays out of it. */
+  .astryx-item[data-ax-link-root] {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .astryx-item[data-highlighted] { background-color: var(--color-overlay-hover); }
+  .astryx-item[data-selected] { background-color: var(--color-accent-muted); }
+
+  .astryx-item[data-disabled]:not([data-ax-parent-role]) {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* Swipe root: translates by the drag's travel (gesture deferred; at rest 0px). */
+  .astryx-item[data-ax-swipe] {
+    touch-action: pan-y pinch-zoom;
+    transform: translate3d(var(--_item-swipe-travel, 0px), 0, 0);
+    transition-property: background-color, transform;
+    transition-duration: var(--duration-fast-min), var(--_item-swipe-duration, 0s);
+    transition-timing-function: var(--ease-standard), ease-out;
+  }
+
+  /* ── Marker column cell (numbered List rows) ──────────────────────────── */
+  .ax-item-marker-content {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: inherit;
+    align-self: stretch;
+    gap: inherit;
+  }
+  .astryx-item[data-align="first-line"] > .ax-item-marker-content { align-self: baseline; }
+
+  /* ── Slots ────────────────────────────────────────────────────────────── */
+  .ax-item-start {
+    flex: 0 0 auto;
+    display: flex;
+  }
+  .ax-item-end {
+    flex: 0 0 auto;
+    display: flex;
+    margin-inline-start: auto;
+  }
+  :is(.ax-item-start, .ax-item-end)[data-ax-first-line] { align-items: center; }
+  :is(.ax-item-start, .ax-item-end)[data-ax-first-line]::before {
+    content: "\200B";
+    content: "\200B" / "";
+    inline-size: 0;
+    overflow: hidden;
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+  }
+
+  /* ── Label column: plain content, invisible button or invisible link ──── */
+  .ax-item-content,
+  .ax-item-action {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    text-align: start;
+  }
+  .ax-item-action {
+    cursor: inherit;
+    color: inherit;
+    text-decoration: none;
+    outline: none;
+  }
+  .ax-item-action:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* layout="inline": label and description share one line, description yields first. */
+  :is(.ax-item-content, .ax-item-action)[data-ax-inline] {
+    flex-direction: row;
+    align-items: center;
+    column-gap: var(--spacing-1);
+  }
+  [data-ax-inline] > .ax-item-label { flex-shrink: 0; }
+  [data-ax-inline] > .ax-item-description { flex-shrink: 1; min-width: 0; }
+
+  :is(.ax-item-content, .ax-item-action, .ax-item-end, .astryx-item-swipe-action)[data-ax-dimmed] { opacity: 0.5; }
+
+  .ax-item-label {
+    color: var(--_item-label-color, var(--color-text-primary));
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+  }
+  .ax-item-description {
+    color: var(--_item-description-color, var(--color-text-secondary));
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+  }
+  :is(.ax-item-label, .ax-item-description)[data-ax-truncate="single"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  :is(.ax-item-label, .ax-item-description)[data-ax-truncate="multi"] {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--_ax-lines);
+  }
+
+  /* ── Swipe panels (ItemSwipeLayer): zero-width and inert at rest ──────── */
+  .astryx-item-swipe-panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    display: flex;
+    align-items: stretch;
+    box-sizing: border-box;
+    overflow: hidden;
+    border-radius: inherit;
+    transform: translate3d(calc(-1 * var(--_item-swipe-travel, 0px)), 0, 0);
+    transition-property: transform, width;
+    transition-duration: var(--_item-swipe-duration, 0s), var(--_item-swipe-duration, 0s);
+    transition-timing-function: ease-out, ease-out;
+  }
+  .astryx-item-swipe-panel[data-side="leading"] {
+    inset-inline-start: 0;
+    justify-content: flex-start;
+    width: max(0px, calc(var(--_item-swipe-travel, 0px) * var(--_item-swipe-dir, 1)));
+  }
+  .astryx-item-swipe-panel[data-side="trailing"] {
+    inset-inline-end: 0;
+    justify-content: flex-end;
+    width: max(0px, calc(-1 * var(--_item-swipe-travel, 0px) * var(--_item-swipe-dir, 1)));
+  }
+  .astryx-item-swipe-panel[data-ax-variant="neutral"] { background-color: var(--color-neutral); color: var(--color-text-primary); }
+  .astryx-item-swipe-panel[data-ax-variant="accent"] { background-color: var(--color-accent); color: var(--color-on-accent); }
+  .astryx-item-swipe-panel[data-ax-variant="destructive"] { background-color: var(--color-error); color: var(--color-on-error); }
+
+  .ax-item-swipe-entries {
+    display: flex;
+    flex-shrink: 0;
+    height: 100%;
+    background-color: var(--color-background-surface);
+  }
+  .astryx-item-swipe-panel[data-side="leading"] > .ax-item-swipe-entries { flex-direction: row-reverse; }
+
+  .astryx-item-swipe-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-1);
+    min-width: 72px;
+    height: 100%;
+    padding-inline: var(--spacing-3);
+    box-sizing: border-box;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    appearance: none;
+    cursor: pointer;
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--text-supporting-leading);
+    white-space: nowrap;
+  }
+  .astryx-item-swipe-action:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-item-swipe-action[data-variant="neutral"] { background-color: var(--color-neutral); color: var(--color-text-primary); }
+  .astryx-item-swipe-action[data-variant="accent"] { background-color: var(--color-accent); color: var(--color-on-accent); }
+  .astryx-item-swipe-action[data-variant="destructive"] { background-color: var(--color-error); color: var(--color-on-error); }
+  @media (forced-colors: active) {
+    .astryx-item-swipe-action[data-variant="destructive"] { border-width: 1px; border-style: solid; border-color: CanvasText; }
+  }
+}

@@ -1,0 +1,121 @@
+---
+/**
+ * Outline — a table-of-contents `<nav>` of in-page links with a sliding active indicator.
+ * Port of @astryxdesign/core Outline/Outline.tsx (styles, densityStyles, indentStyles,
+ * moveFocusTo), Outline/useScrollSpy.ts and Outline/useOutlineFromMarkdown.ts (the `markdown`
+ * prop, via lib/markdown parseOutlineFromMarkdown), with Link/useLinkComponent.ts,
+ * utils/focusOutline.stylex.ts and utils/interactionOverlay.stylex.ts. Behaviour:
+ * src/behaviors/outline.ts (`data-ax-outline`), so the root stays a native `<nav>` landmark.
+ *
+ * Theme hooks: `.astryx-outline[data-density]`, `.astryx-outline-item[data-level]` with the
+ * `data-active="active"` state, `.astryx-outline-indicator`.
+ *
+ * Scroll-spy (uncontrolled, no `activeId`): on scroll (rAF-throttled) and resize the active
+ * item is the last heading whose top has passed its activation line — the scroll root's top
+ * + `offset` + the heading's own `scroll-margin-top`, exactly where navigating to it lands
+ * it; the first item at the top, the last at the bottom. The active link gets
+ * `aria-current="location"`, and the indicator follows it through CSS anchor positioning
+ * (rect fallback where unsupported). The scroll root is `scrollContainer` (a selector), else
+ * the nearest scrollable ancestor, else the viewport.
+ * Navigation (click, or Space on a link; Enter is the native click): modified clicks and
+ * targets missing from the DOM are left to the browser. Otherwise the jump is ours: smooth
+ * scroll (instant under reduced motion), `history.pushState('#id')`, focus moved to the
+ * target without scrolling (WCAG 2.4.3; a non-focusable target gets tabindex="-1"), and the
+ * indicator lands once the scroll settles (`scrollend`, 1.2s fallback, a manual scroll
+ * hands back to tracking). `hasScrollOnClick={false}` performs no scroll.
+ * Events (bubbling, composed; Astryx callbacks): `astryx-active-id-change` {id},
+ * `astryx-navigate-start` {id}, `astryx-navigate-end` {id} (exactly once per start).
+ * Controlled (`activeId`): no scroll-spy; set `nav.activeId = id` to move it.
+ *
+ * Keyboard: each link is in the normal Tab order; no arrow-key movement (as Astryx).
+ *
+ * @example
+ * <Outline items={[{id: 'intro', label: 'Introduction', level: 2}, {id: 'api', label: 'API', level: 3}]} />
+ * <Outline markdown={source} scrollContainer="#doc" offset={64} density="compact" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {parseOutlineFromMarkdown, type OutlineItem} from '../../lib/markdown';
+import {resolveLinkComponent} from '../Link/linkComponent';
+import './Outline.css';
+
+export type {OutlineItem};
+
+export interface Props extends HTMLAttributes<'nav'> {
+  /** Ordered heading items ({id, label, level 1–6}); ids match the target headings. */
+  items?: OutlineItem[];
+  /** Markdown source to build `items` from (Astryx useOutlineFromMarkdown). */
+  markdown?: string;
+  /** The active item. When set, scroll-spy is off (controlled). */
+  activeId?: string;
+  /** Accessible name of the nav landmark. @default translated 'Table of contents' */
+  label?: string;
+  /** Item padding. @default 'default' */
+  density?: 'default' | 'compact';
+  /** Height in px of a fixed header over the scroll root (activation line and landing). @default 0 */
+  offset?: number;
+  /** CSS selector of the scroll container to track (Astryx scrollContainerRef). */
+  scrollContainer?: string;
+  /** Whether activating an item scrolls to it. @default true */
+  hasScrollOnClick?: boolean;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {
+  items: itemsProp,
+  markdown,
+  activeId,
+  label: labelProp,
+  density = 'default',
+  offset = 0,
+  scrollContainer,
+  hasScrollOnClick = true,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.outline.label');
+const items: OutlineItem[] = itemsProp ?? (markdown != null ? parseOutlineFromMarkdown(markdown) : []);
+const resolvedActiveId = activeId ?? items[0]?.id;
+const LinkTag = resolveLinkComponent(undefined, Astro);
+const root = themeProps('outline', {density});
+---
+<nav
+  {...rest}
+  aria-label={label}
+  {...root.attrs}
+  class={cx(root.themeClass, className as string | undefined)}
+  style={mergeStyles(style as StyleValue)}
+  data-ax-outline
+  data-ax-controlled={activeId !== undefined ? '' : undefined}
+  data-ax-offset={offset !== 0 ? String(offset) : undefined}
+  data-ax-scroll-container={scrollContainer}
+  data-ax-no-scroll={hasScrollOnClick ? undefined : ''}
+>
+  <ul class="ax-outline-list" role="list">
+    {items.map((item) => {
+      const isActive = item.id === resolvedActiveId;
+      const link = themeProps('outline-item', {active: isActive ? 'active' : null, level: item.level});
+      return (
+        <li class="ax-outline-entry" role="listitem">
+          <LinkTag
+            href={`#${item.id}`}
+            aria-current={isActive ? 'location' : undefined}
+            class={cx(link.themeClass, 'ax-focus-visible', 'ax-overlay-bg')}
+            {...link.attrs}
+            data-ax-outline-id={item.id}
+          ><span class="ax-outline-label">{item.label}</span></LinkTag>
+        </li>
+      );
+    })}
+  </ul>
+  <div class="ax-outline-track" aria-hidden="true"><span class="ax-outline-divider"></span></div>
+  <span class={themeProps('outline-indicator').themeClass} aria-hidden="true"></span>
+</nav>
+<script>import '../../behaviors/outline';</script>

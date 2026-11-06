@@ -1,0 +1,144 @@
+/*
+ * Port of @astryxdesign/core Banner/Banner.tsx (styles, statusStyles, statusControlStyles,
+ * elevationStyles) and Layout/edgeCompensation.stylex.ts (edgeCompSlot.inset). Rule groups
+ * follow the React stylex.props() order per element: frame (root → elevation →
+ * rootElevatedCard); header (header → headerCentered → status → card radius); text; end area
+ * (endArea → edge compensation); content (contentArea → contentAreaCard); chevron.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Frame (root) ─────────────────────────────────────────────────────── */
+  .astryx-banner-frame {
+    display: flex;
+    flex-direction: column;
+    font-family: inherit;
+  }
+  .astryx-banner-frame[hidden] { display: none; }
+  .astryx-banner-frame[data-elevation="none"] { box-shadow: none; }
+  .astryx-banner-frame[data-elevation="low"] { box-shadow: var(--shadow-low); }
+  .astryx-banner-frame[data-elevation="med"] { box-shadow: var(--shadow-med); }
+  .astryx-banner-frame[data-elevation="high"] { box-shadow: var(--shadow-high); }
+  .astryx-banner-frame[data-container="card"]:not([data-elevation="none"]) { border-radius: var(--_banner-radius, var(--radius-container)); }
+
+  /* ── Header ───────────────────────────────────────────────────────────── */
+  .astryx-banner {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    column-gap: var(--spacing-2);
+    row-gap: var(--spacing-3);
+    padding-block: var(--spacing-3);
+    padding-inline: var(--spacing-4);
+  }
+  .astryx-banner[data-ax-centered] { align-items: center; }
+
+  .astryx-banner[data-status="info"] { background-color: var(--color-info-muted); color: var(--color-on-info-muted); }
+  .astryx-banner[data-status="warning"] { background-color: var(--color-warning-muted); color: var(--color-on-warning-muted); }
+  .astryx-banner[data-status="error"] { background-color: var(--color-error-muted); color: var(--color-on-error-muted); }
+  .astryx-banner[data-status="success"] { background-color: var(--color-success-muted); color: var(--color-on-success-muted); }
+  @media (forced-colors: active) {
+    /* Forced colors replace status fills with Canvas; the boundary keeps the fill's shape. */
+    .astryx-banner[data-ax-status-fill] { outline: 1px solid CanvasText; outline-offset: -1px; }
+  }
+
+  /* Card: all corners when standalone, top corners only while the content shows. */
+  .astryx-banner[data-container="card"] { border-radius: var(--_banner-radius, var(--radius-container)); }
+  .astryx-banner-frame:has(> .astryx-banner-content:not([hidden])) > .astryx-banner[data-container="card"] {
+    border-start-start-radius: var(--_banner-radius, var(--radius-container));
+    border-start-end-radius: var(--_banner-radius, var(--radius-container));
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  .ax-banner-icon-wrap {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .ax-banner-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1;
+    min-width: 0;
+  }
+  /* The wrap threshold: with endContent the end area moves to its own row first. */
+  .ax-banner-text[data-ax-with-end] { flex-basis: 8rem; }
+
+  .ax-banner-title {
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-label-leading);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+    --_astryx-text-overflow-wrap: anywhere;
+  }
+  .astryx-banner-description {
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--text-supporting-size);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+    --_astryx-text-overflow-wrap: anywhere;
+  }
+  /* Built-in title and description inherit the status header's on-muted colour. */
+  .astryx-banner[data-ax-status-fill] .ax-banner-title,
+  .astryx-banner[data-ax-status-fill] .astryx-banner-description { color: inherit; }
+
+  /* ── End area (layout row, no theme target) ───────────────────────────── */
+  .ax-banner-end {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+    flex-shrink: 0;
+    /* Consumer endContent gets the ordinary text context back. */
+    color: var(--color-text-primary);
+    max-width: 100%;
+    margin-block: calc(-1 * (var(--spacing-3) - var(--spacing-2)));
+  }
+  /* Edge compensation (contract #15). StyleX replaces endArea's `auto` inline-start margin
+     with this conditional value, so the margin exists only here. Tooltip layers (popover
+     siblings of their trigger) do not count as the first/last item. */
+  .ax-banner-end:has(> [data-astryx-edge-comp]:nth-child(1 of :not([popover]))) { margin-inline-start: calc(-1 * var(--spacing-2)); }
+  .ax-banner-end:has(> [data-astryx-edge-comp]:nth-last-child(1 of :not([popover]))) { margin-inline-end: calc(-1 * var(--spacing-2)); }
+
+  /* Built-in controls opt back into the status foreground (their own element only). */
+  .astryx-banner[data-status="info"] .ax-banner-control { --color-text-primary: var(--color-on-info-muted); }
+  .astryx-banner[data-status="warning"] .ax-banner-control { --color-text-primary: var(--color-on-warning-muted); }
+  .astryx-banner[data-status="error"] .ax-banner-control { --color-text-primary: var(--color-on-error-muted); }
+  .astryx-banner[data-status="success"] .ax-banner-control { --color-text-primary: var(--color-on-success-muted); }
+
+  /* The chevron Icon itself turns (the element a theme targets). */
+  .ax-banner-chevron.astryx-icon {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-banner-chevron.astryx-icon { transition-duration: 0s; }
+  }
+  [aria-expanded="true"] .ax-banner-chevron.astryx-icon { transform: rotate(180deg); }
+
+  /* ── Content area ─────────────────────────────────────────────────────── */
+  .astryx-banner-content {
+    background-color: var(--color-background-card);
+    padding-block: var(--spacing-3);
+    padding-inline: var(--spacing-4);
+    border-inline-start: var(--border-width) solid var(--color-border);
+    border-inline-end: var(--border-width) solid var(--color-border);
+    border-block-end: var(--border-width) solid var(--color-border);
+  }
+  .astryx-banner-content[hidden] { display: none; }
+  .astryx-banner-content[data-container="card"] {
+    border-end-start-radius: var(--_banner-radius, var(--radius-container));
+    border-end-end-radius: var(--_banner-radius, var(--radius-container));
+  }
+}

@@ -1,0 +1,368 @@
+/*
+ * Port of @astryxdesign/core Stepper/Stepper.tsx (styles) and Stepper/Step.tsx (styles, the
+ * CONNECTOR FILL block, the four layouts). Steps carry `data-ax-layout` = sep-h | sep-v |
+ * ot-h | ot-v and their density spacing as `--_ax-step-pad` (on-track) / `--_ax-step-inline`
+ * (separated inline pad).
+ *
+ * Connector fill: every segment is the unfilled track; the accent fill is a ::before scaled
+ * along the track (vertical from the top, horizontal from the inline start). Only a single
+ * step forward animates: the behaviour writes `--_ax-fill-duration` / `--_ax-fill-delay`
+ * (slices of --duration-medium, linear) on the segments of that span before flipping
+ * `data-ax-fill`; everything else, mount included, lands at once. Reduce motion: always 0s.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-step-pad { syntax: "*"; inherits: true; }
+@property --_ax-step-inline { syntax: "*"; inherits: true; }
+
+@layer astryx-base {
+  /* ── Stepper ──────────────────────────────────────────────────────────── */
+  .astryx-stepper {
+    --step-connector-gap: inherit;
+    display: flex;
+    width: 100%;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+  .astryx-stepper[data-orientation="horizontal"] { flex-direction: row; align-items: flex-start; gap: var(--spacing-1); }
+  .astryx-stepper[data-orientation="vertical"] { flex-direction: column; gap: var(--spacing-1); }
+  .astryx-stepper[data-orientation="horizontal"][data-indicator-position="on-track"] { gap: 0; }
+  .astryx-stepper[data-orientation="vertical"][data-indicator-position="on-track"] { gap: 0; }
+
+  .astryx-stepper-frame {
+    --step-connector-gap: 0px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+  }
+  .astryx-stepper-summary {
+    align-items: center;
+    display: flex;
+    gap: var(--spacing-2);
+    justify-content: space-between;
+    min-width: 0;
+  }
+  .astryx-stepper-summary[hidden] { display: none; }
+  .ax-stepper-summary-body {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+    text-align: center;
+  }
+  /* The current step, named below the collapsed track (summaryRoot). */
+  .ax-stepper-summary-body > .astryx-step {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    min-width: 0;
+  }
+
+  .ax-step-summary-description {
+    display: block;
+    font-size: var(--text-supporting-size);
+    line-height: var(--spacing-4);
+    color: var(--color-text-secondary);
+  }
+
+  /* ── Step roots per layout ────────────────────────────────────────────── */
+  .astryx-step { list-style-type: none; }
+  .astryx-step[data-ax-layout="sep-h"] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    flex: 1;
+    min-width: 0;
+  }
+  .astryx-step[data-ax-layout="sep-h"] > .ax-step-body { display: contents; }
+  .astryx-step[data-ax-layout="sep-v"] {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    position: relative;
+    gap: var(--spacing-0-5);
+  }
+  .astryx-step[data-ax-layout="sep-v"] > .ax-step-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .astryx-step[data-ax-layout="ot-v"] {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .astryx-step[data-ax-layout="ot-h"] {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* ── Separated bars ───────────────────────────────────────────────────── */
+  .astryx-step[data-ax-layout="sep-h"] > .astryx-step-bar {
+    width: 100%;
+    height: var(--spacing-1);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    margin-block-end: var(--spacing-0-5);
+  }
+  .astryx-step[data-ax-layout="sep-v"] > .astryx-step-bar {
+    width: var(--spacing-1);
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    align-self: stretch;
+  }
+
+  /* ── Connector track + fill (shared by bars and on-track segments) ────── */
+  .ax-step-seg {
+    position: relative;
+    background-color: var(--color-border);
+  }
+  .ax-step-seg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: var(--color-accent);
+    transition-property: transform;
+    transition-duration: var(--_ax-fill-duration, 0s);
+    transition-delay: var(--_ax-fill-delay, 0s);
+    transition-timing-function: linear;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-step-seg::before { transition-duration: 0s; transition-delay: 0s; }
+  }
+  [data-astryx-reduced-motion] .ax-step-seg::before { transition-duration: 0s; transition-delay: 0s; }
+  /* Vertical track: grows down the block axis in LTR and RTL alike. */
+  :is([data-ax-layout="sep-v"], [data-ax-layout="ot-v"]) .ax-step-seg::before { transform-origin: center top; transform: scaleY(0); }
+  :is([data-ax-layout="sep-v"], [data-ax-layout="ot-v"]) .ax-step-seg[data-ax-fill="filled"]::before { transform: scaleY(1); }
+  /* Horizontal track: grows from the inline start. */
+  :is([data-ax-layout="sep-h"], [data-ax-layout="ot-h"]) .ax-step-seg::before { transform-origin: left center; transform: scaleX(0); }
+  :is([data-ax-layout="sep-h"], [data-ax-layout="ot-h"]) .ax-step-seg:is([dir="rtl"] *)::before { transform-origin: right center; }
+  :is([data-ax-layout="sep-h"], [data-ax-layout="ot-h"]) .ax-step-seg[data-ax-fill="filled"]::before { transform: scaleX(1); }
+
+  /* ── Head: the density-padded hover target (button when clickable) ────── */
+  .ax-step-head {
+    box-sizing: border-box;
+    text-align: start;
+    background-color: transparent;
+  }
+  /* Separated: density block padding + the inline pad the content slot re-applies. */
+  .astryx-step:is([data-ax-layout="sep-h"], [data-ax-layout="sep-v"]) > .ax-step-body > .ax-step-head {
+    padding-block: var(--_ax-step-pad);
+    padding-inline: var(--_ax-step-inline);
+  }
+  button.ax-step-head {
+    cursor: pointer;
+    border-radius: var(--radius-element);
+    transition-property: background-color;
+    transition-duration: var(--duration-fast-min);
+    transition-timing-function: var(--ease-standard);
+  }
+  button.ax-step-head:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (prefers-reduced-motion: reduce) {
+    button.ax-step-head { transition-duration: 0s; }
+  }
+  :where(.astryx-step:is([data-ax-layout="sep-h"], [data-ax-layout="sep-v"]) > .ax-step-body) > button.ax-step-head {
+    align-items: stretch;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  /* On-track vertical: [rail] [label] row, padded on both axes. */
+  [data-ax-layout="ot-v"] > .ax-step-head {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--spacing-2);
+    width: 100%;
+    padding-block: var(--_ax-step-pad);
+    padding-inline: var(--_ax-step-pad);
+  }
+  /* On-track horizontal: track over label, block padding only. */
+  [data-ax-layout="ot-h"] > .ax-step-head {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    padding-block: var(--_ax-step-pad);
+  }
+
+  /* ── Indicator ────────────────────────────────────────────────────────── */
+  .astryx-step-indicator[data-ax-kind="icon"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    flex-shrink: 0;
+  }
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="completed"],
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="in-progress"],
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="accent"] { color: var(--color-accent); }
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="not-started"] { color: var(--color-icon-secondary); }
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="success"] { color: var(--color-icon-success); }
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="warning"] { color: var(--color-icon-warning); }
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="error"] { color: var(--color-icon-error); }
+  .astryx-step-indicator[data-ax-kind="icon"][data-ax-tone="disabled"] { color: var(--color-icon-disabled); opacity: 0.5; }
+
+  .astryx-step-indicator[data-ax-kind="number"] {
+    display: grid;
+    place-items: center;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    flex-shrink: 0;
+    text-align: center;
+  }
+  @media (forced-colors: active) {
+    .astryx-step-indicator[data-ax-kind="number"] { outline: 1px solid CanvasText; outline-offset: -1px; }
+  }
+  .astryx-step-indicator[data-ax-kind="number"]:is([data-ax-tone="completed"], [data-ax-tone="in-progress"]) { background-color: var(--color-accent); color: var(--color-background-surface); }
+  .astryx-step-indicator[data-ax-kind="number"][data-ax-tone="not-started"] { background-color: var(--color-background-muted); color: var(--color-text-secondary); }
+  .astryx-step-indicator[data-ax-kind="number"][data-ax-tone="disabled"] { background-color: var(--color-background-muted); color: var(--color-text-disabled); opacity: 0.5; }
+  .astryx-step-indicator[data-ax-kind="number"][data-ax-tone="accent"] { background-color: var(--color-accent); color: var(--color-on-accent); }
+  .astryx-step-indicator[data-ax-kind="number"][data-ax-tone="success"] { background-color: var(--color-success); color: var(--color-on-success); }
+  .astryx-step-indicator[data-ax-kind="number"][data-ax-tone="warning"] { background-color: var(--color-warning); color: var(--color-on-warning); }
+  .astryx-step-indicator[data-ax-kind="number"][data-ax-tone="error"] { background-color: var(--color-error); color: var(--color-on-error); }
+
+  /* ── Label row, label, optional, description ──────────────────────────── */
+  .ax-step-icon-label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-width: 0;
+  }
+  .astryx-step-label {
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .astryx-step-label[data-progress="not-started"] { color: var(--color-text-secondary); }
+  .astryx-step-label[data-progress="in-progress"] { font-weight: var(--font-weight-semibold); }
+  .astryx-step-label[data-disabled] { color: var(--color-text-disabled); font-weight: var(--font-weight-normal); }
+  .ax-step-optional {
+    font-size: var(--text-body-size);
+    color: var(--color-text-secondary);
+  }
+  .ax-step-description-row { padding-inline-start: var(--spacing-0); }
+  [data-ax-has-indicator] .ax-step-description-row { padding-inline-start: var(--spacing-6); }
+  .astryx-step-description {
+    display: block;
+    font-size: var(--text-supporting-size);
+    line-height: var(--spacing-4);
+    color: var(--color-text-secondary);
+  }
+
+  /* ── Content slot ─────────────────────────────────────────────────────── */
+  .astryx-step:is([data-ax-layout="sep-h"], [data-ax-layout="sep-v"]) > .ax-step-body > .ax-step-content {
+    padding-block-start: var(--spacing-2);
+    padding-inline-start: var(--_ax-step-inline);
+    padding-inline-end: var(--_ax-step-inline);
+  }
+  .astryx-step:is([data-ax-layout="sep-h"], [data-ax-layout="sep-v"])[data-ax-has-indicator] > .ax-step-body > .ax-step-content {
+    padding-inline-start: calc(var(--_ax-step-inline) + var(--spacing-6));
+  }
+  [data-ax-layout="ot-h"] > .ax-step-content { padding-block-start: var(--spacing-2); }
+  .ax-step-ot-content-wrap { position: relative; }
+  .ax-step-ot-content-wrap > .ax-step-content {
+    padding-block-start: var(--spacing-2);
+    padding-inline-start: calc(var(--_ax-step-pad) + var(--spacing-6));
+    padding-inline-end: var(--_ax-step-pad);
+  }
+
+  /* ── On-track rails and segments ──────────────────────────────────────── */
+  .ax-step-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: var(--spacing-4);
+    flex-shrink: 0;
+    align-self: stretch;
+    margin-block: calc(-1 * var(--_ax-step-pad));
+  }
+  .ax-step-rail > .ax-step-seg {
+    width: var(--spacing-1);
+    flex-shrink: 0;
+    border-radius: 0;
+  }
+  .ax-step-rail > .ax-step-seg[data-ax-seg="lead"] { height: var(--_ax-step-pad); }
+  .ax-step-rail > .ax-step-seg[data-ax-seg="rail"] { flex: 1; min-height: var(--spacing-2); }
+  [data-ax-has-indicator] .ax-step-rail > .ax-step-seg[data-ax-seg="lead"] { clip-path: inset(0 0 max(0px, min(var(--step-connector-gap, 0px), var(--spacing-2))) 0); }
+  [data-ax-has-indicator] .ax-step-rail > .ax-step-seg[data-ax-seg="rail"] { clip-path: inset(max(0px, min(var(--step-connector-gap, 0px), var(--spacing-2))) 0 0 0); }
+  .ax-step-ot-content-wrap > .ax-step-seg {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: calc(var(--_ax-step-pad) + (var(--spacing-4) - var(--spacing-1)) / 2);
+    width: var(--spacing-1);
+  }
+
+  .ax-step-track-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+  }
+  .ax-step-track-row > .ax-step-seg {
+    height: var(--spacing-1);
+    flex: 1;
+    min-width: var(--spacing-2);
+    border-radius: 0;
+  }
+  [data-ax-has-indicator] .ax-step-track-row > .ax-step-seg[data-ax-seg="lead"] { clip-path: inset(0 max(0px, min(var(--step-connector-gap, 0px), var(--spacing-2))) 0 0); }
+  [data-ax-has-indicator] .ax-step-track-row > .ax-step-seg[data-ax-seg="lead"]:is([dir="rtl"] *) { clip-path: inset(0 0 0 max(0px, min(var(--step-connector-gap, 0px), var(--spacing-2)))); }
+  [data-ax-has-indicator] .ax-step-track-row > .ax-step-seg[data-ax-seg="rail"] { clip-path: inset(0 0 0 max(0px, min(var(--step-connector-gap, 0px), var(--spacing-2)))); }
+  [data-ax-has-indicator] .ax-step-track-row > .ax-step-seg[data-ax-seg="rail"]:is([dir="rtl"] *) { clip-path: inset(0 max(0px, min(var(--step-connector-gap, 0px), var(--spacing-2))) 0 0); }
+
+  /* The step's own position hides the outer caps (stepMarker :first-child / :last-child). */
+  .astryx-step:first-child .ax-step-seg[data-ax-hide="first"] { visibility: hidden; }
+  .astryx-step:last-child .ax-step-seg[data-ax-hide="last"] { visibility: hidden; }
+
+  .ax-step-ot-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    flex: 1;
+    gap: var(--spacing-0-5);
+    min-width: 0;
+  }
+  .ax-step-label-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-0-5);
+    text-align: center;
+    margin-block-start: var(--_ax-step-pad);
+  }
+  .ax-step-label-line {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+  [data-ax-layout="ot-v"] .ax-step-label-line { gap: var(--spacing-2); }
+  [data-ax-layout="ot-h"] .ax-step-label-line,
+  .ax-stepper-summary-body .ax-step-label-line {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-1);
+  }
+
+  /* ── Compact horizontal layout ────────────────────────────────────────── */
+  .ax-step-compact-name { display: none; }
+  .astryx-stepper[data-ax-compact] .ax-step-compact-name { display: contents; }
+  .astryx-stepper[data-ax-compact] :is([data-ax-full], [data-ax-compact-hide]) { display: none; }
+  .astryx-stepper[data-ax-compact] .ax-step-head { cursor: default; }
+}
