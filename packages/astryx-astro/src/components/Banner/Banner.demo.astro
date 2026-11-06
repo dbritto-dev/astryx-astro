@@ -1,0 +1,56 @@
+---
+import Banner, {type BannerStatus} from './Banner.astro';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import type {Elevation} from '../../lib/types';
+
+const statuses: BannerStatus[] = ['info', 'success', 'warning', 'error'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const col = 'display:grid;gap:var(--spacing-3);max-width:640px';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Statuses</h3>
+    <div style={col}>
+      {statuses.map((status) => <Banner status={status} title={`${status[0].toUpperCase()}${status.slice(1)} banner`} description="Supporting description text for this message." />)}
+    </div>
+  </section>
+
+  <section data-test="interactive">
+    <h3 style={cap}>Dismiss, actions and expandable details</h3>
+    <div style={col}>
+      <button type="button" data-test="before">Focus origin</button>
+      <Banner status="error" title="Payment failed" description="Your card was declined." isDismissable role="alert" id="banner-dismiss">
+        <Fragment slot="endContent"><Button label="Retry" size="sm" variant="ghost" /></Fragment>
+      </Banner>
+      <Banner status="warning" title="3 fields need attention" description="Expand for the list." isDismissable id="banner-expand">
+        <ul style="margin:0;padding-inline-start:var(--spacing-5)">
+          <li>Email address is invalid</li>
+          <li>Password must be at least 8 characters</li>
+          <li>Accept the terms to continue</li>
+        </ul>
+      </Banner>
+      <Banner status="info" title="Starts open" collapsible={{defaultIsOpen: true}} id="banner-open">
+        <p style="margin:0">Details are visible on load; the toggle collapses them.</p>
+      </Banner>
+      <Banner status="success" title="Always visible details" collapsible={false} id="banner-pinned">
+        <p style="margin:0">collapsible=&#123;false&#125;: no toggle, no aria-expanded.</p>
+      </Banner>
+      <Banner status="info" title="A long single-line title with actions beside it" role="status">
+        <Fragment slot="endContent"><Button label="Undo" size="sm" variant="secondary" /><Button label="View" size="sm" variant="ghost" /></Fragment>
+      </Banner>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Container, elevation, custom icon</h3>
+    <div style={col}>
+      <Banner status="info" container="section" title="Section banner" description="Full width, no radius." />
+      {elevations.map((elevation) => <Banner status="success" elevation={elevation} title={`elevation="${elevation}"`} isDismissable dismissLabel="Hide message" />)}
+      <Banner status="warning" title="Custom icon"><Icon slot="icon" icon="wrench" size="md" /></Banner>
+      <Banner status="info" icon="calendar" title="Icon prop" description={'icon="calendar"'} />
+      <Banner status="error" container="section" title="Section with content" collapsible={{defaultIsOpen: true}}><p style="margin:0">Content area in a section banner.</p></Banner>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,237 @@
+---
+/**
+ * Step — one step of a Stepper (render it inside one). Port of @astryxdesign/core
+ * Stepper/Step.tsx (styles, the four layouts: separated / on-track × horizontal / vertical,
+ * the indicator resolution, status text, connector fill) and Stepper/stepper.stylex.ts
+ * (stepMarker → the step's own :first-child / :last-child position).
+ *
+ * Theme hooks: `.astryx-step[data-progress][data-status]` (the `<li>`, and the compact summary),
+ * `.astryx-step-indicator[data-progress][data-status]`,
+ * `.astryx-step-label[data-progress][data-status][data-disabled]`,
+ * `.astryx-step-description[data-progress][data-status]`, `.astryx-step-bar` (separated
+ * connector), `.astryx-step-connector` (on-track segments).
+ *
+ * Progress (completed / in-progress / not-started) comes from the Stepper's `activeStep`; the
+ * active `<li>` has `aria-current="step"`. `status` (accent | success | warning | error) only
+ * recolours the indicator — success/warning/error also swap in the themed status glyph on
+ * non-current steps — and reaches assistive technology as visually hidden text ("completed",
+ * "warning", "error"; a completed step says "completed"). `indicator`: 'auto' (number until
+ * reached, then a check; a ring on the current step), 'number', 'none', or custom markup in
+ * the `indicator` slot. `isOptional` appends "• Optional"; the `endContent` slot ends the
+ * label row; the default slot is the step's content (hidden, still mounted, when a
+ * horizontal Stepper is compact). `density` overrides the Stepper's.
+ *
+ * @example
+ * <Step step={0} label="Account" description="Email and password" />
+ * <Step step={1} label="Payment" status="error" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {cleanSlotHtml} from '../Button/buttonCascade';
+import {stepperContext} from './stepperContext';
+import {
+  CHECK_CIRCLE_SVG, CURRENT_SVG, OT_ARRIVAL_SHARE_H, OT_ARRIVAL_SHARE_V, OT_RAIL_SHARE_OF_LEAVING,
+  indicatorState, isFilled, statusWord, type StepIndicatorPreset, type StepStatus,
+} from './stepState';
+import './Stepper.css';
+
+export type {StepStatus, StepIndicatorPreset};
+export type StepDensity = 'compact' | 'balanced' | 'spacious';
+
+export interface Props extends HTMLAttributes<'li'> {
+  /** Zero-based index of this step. */
+  step: number;
+  /** Step label text. */
+  label: string;
+  /** Description below the label (describes a clickable step). */
+  description?: string;
+  /** Semantic status (indicator colour and glyph; never the connector). */
+  status?: StepStatus;
+  /** Keeps a clickable step focusable with aria-disabled; activation withheld. @default false */
+  isDisabled?: boolean;
+  /** Appends "• Optional". @default false */
+  isOptional?: boolean;
+  /** Indicator preset; custom markup goes in the `indicator` slot. @default 'auto' */
+  indicator?: StepIndicatorPreset;
+  /** Overrides the Stepper's density. */
+  density?: StepDensity;
+  'data-testid'?: string;
+}
+
+const ctx = stepperContext.getStore();
+if (!ctx) throw new Error('Step must be rendered inside a Stepper.');
+
+const {
+  step,
+  label,
+  description,
+  status,
+  isDisabled = false,
+  isOptional = false,
+  indicator: indicatorProp = 'auto',
+  density: densityProp,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, ctx.locale);
+const {activeStep, orientation, indicatorPosition, isNonLinear} = ctx;
+const density = densityProp ?? ctx.density;
+const isVertical = orientation === 'vertical';
+const isOnTrack = indicatorPosition === 'on-track';
+const hasButton = isNonLinear;
+
+const customHtml = Astro.slots.has('indicator') ? (await cleanSlotHtml(await Astro.slots.render('indicator'), 'indicator')).trim() : '';
+const endHtml = Astro.slots.has('endContent') ? (await cleanSlotHtml(await Astro.slots.render('endContent'), 'endContent')).trim() : '';
+const contentHtml = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+const isCustom = customHtml !== '';
+const indicator: StepIndicatorPreset = isCustom ? 'auto' : indicatorProp;
+const hasIndicator = isCustom || indicator !== 'none';
+const hasDescription = description != null && description !== '';
+const hasContent = contentHtml !== '';
+
+const ind = indicatorState({step, activeStep, status, indicator, isCustom, isDisabled});
+const {progress} = ind;
+const isActive = progress === 'in-progress';
+const word = statusWord(status, progress);
+const wordText = (w: string | null) => (w == null ? '' : t(`@astryx.step.status.${w}`));
+const statusText = wordText(word);
+const nameFor = (w: string | null) => (w != null
+  ? t('@astryx.step.goToStepWithStatus', {stepNumber: step + 1, label, status: wordText(w)})
+  : t('@astryx.step.goToStep', {stepNumber: step + 1, label}));
+// The name a step gets when it completes (status-free steps then say "completed").
+const completedName = nameFor(statusWord(status, 'completed'));
+const pendingName = nameFor(statusWord(status, 'not-started'));
+const descriptionId = hasDescription ? uid(Astro, 'ax-step-desc') : undefined;
+const statusGlyphIcon = status === 'success' || status === 'warning' || status === 'error' ? status : null;
+
+const themeState = {progress, status: status ?? undefined};
+const stepTarget = themeProps('step', themeState);
+const indicatorTarget = themeProps('step-indicator', themeState);
+const labelTarget = themeProps('step-label', {...themeState, disabled: isDisabled ? 'disabled' : null});
+const descriptionTarget = themeProps('step-description', themeState);
+const barTarget = themeProps('step-bar');
+const connectorTarget = themeProps('step-connector');
+
+const densitySpace = density === 'compact' ? 'var(--spacing-1)' : density === 'spacious' ? 'var(--spacing-3)' : 'var(--spacing-2)';
+const separatedInline = density === 'spacious' ? 'var(--spacing-3)' : 'var(--spacing-2)';
+const layout = `${isOnTrack ? 'ot' : 'sep'}-${isVertical ? 'v' : 'h'}`;
+
+// Connector segments: fill rule + this segment's slice of its node-to-node span.
+const arrival = isVertical ? OT_ARRIVAL_SHARE_V : OT_ARRIVAL_SHARE_H;
+const leaving = 1 - arrival;
+const hasContentSeg = isOnTrack && isVertical && hasContent;
+const railShare = leaving * (hasContentSeg ? OT_RAIL_SHARE_OF_LEAVING : 1);
+const seg = (rule: 'le' | 'lt', span: number, offset: number, share: number) => ({
+  'data-ax-fill': isFilled(rule, step, activeStep) ? 'filled' : 'empty',
+  'data-ax-fill-rule': rule,
+  'data-ax-span': String(span),
+  'data-ax-offset': String(Number(offset.toFixed(4))),
+  'data-ax-share': String(Number(share.toFixed(4))),
+});
+const barSeg = seg('le', step - 1, 0, 1);
+const beforeSeg = seg('le', step - 1, leaving, arrival);
+const railSeg = seg('lt', step, 0, railShare);
+const contentSeg = seg('lt', step, railShare, leaving - railShare);
+
+const glyphHtml = ind.glyph === 'number' ? String(step + 1) : ind.glyph === 'check' ? CHECK_CIRCLE_SVG : ind.glyph === 'current' ? CURRENT_SVG : null;
+const optionalLabel = t('@astryx.step.optional');
+const headAttrs: Record<string, unknown> = hasButton
+  ? {type: 'button', 'aria-label': nameFor(word),
+     'aria-describedby': descriptionId, 'aria-disabled': isDisabled ? 'true' : undefined,
+     'data-ax-step-button': '', 'data-ax-name': pendingName, 'data-ax-name-completed': completedName}
+  : {};
+const Head = hasButton ? 'button' : 'div';
+const headClass = cx('ax-step-head', hasButton && 'ax-overlay-bg ax-focus-visible');
+const liAttrs: Record<string, unknown> = {
+  ...rest,
+  ...stepTarget.attrs,
+  class: cx(stepTarget.themeClass, className as string | undefined),
+  style: mergeStyles({'--_ax-step-pad': densitySpace, '--_ax-step-inline': separatedInline}, style as StyleValue),
+  'aria-current': isActive ? 'step' : undefined,
+  'data-ax-step': String(step),
+  'data-ax-layout': layout,
+  'data-ax-density': density,
+  'data-ax-indicator': isCustom ? 'custom' : indicator,
+  'data-ax-disabled': isDisabled ? '' : undefined,
+  'data-ax-has-indicator': hasIndicator ? '' : undefined,
+};
+---
+<li {...liAttrs}>
+  {!isOnTrack && <div class={cx(barTarget.themeClass, 'ax-step-seg')} {...barSeg} aria-hidden="true"></div>}
+  {isOnTrack ? (
+    <Fragment>
+      <Head class={headClass} {...headAttrs}>
+        {isVertical ? (
+          <Fragment>
+            <div class="ax-step-rail">
+              <div class={cx(connectorTarget.themeClass, 'ax-step-seg')} {...beforeSeg} data-ax-seg="lead" data-ax-hide="first" aria-hidden="true"></div>
+              {hasIndicator && <div class={indicatorTarget.themeClass} {...indicatorTarget.attrs} data-ax-kind={ind.kind} data-ax-tone={ind.tone} aria-hidden="true">{isCustom ? <Fragment set:html={customHtml} /> : glyphHtml != null ? <Fragment set:html={glyphHtml} /> : <Icon icon={ind.glyph!} size="sm" color={isDisabled ? 'disabled' : (ind.glyph as 'success')} />}</div>}
+              <div class={cx(connectorTarget.themeClass, 'ax-step-seg')} {...railSeg} data-ax-seg="rail" data-ax-hide="last" aria-hidden="true"></div>
+            </div>
+            {' '}
+            <div class="ax-step-ot-body">
+              <div class="ax-step-label-line">
+                <span class={labelTarget.themeClass} {...labelTarget.attrs}>{label}</span>
+                <VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden>
+                {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional">{optionalLabel}</span></Fragment>}
+                {endHtml !== '' && <Fragment set:html={endHtml} />}
+              </div>
+              {hasDescription && <span id={descriptionId} class={descriptionTarget.themeClass} {...descriptionTarget.attrs}>{description}</span>}
+            </div>
+          </Fragment>
+        ) : (
+          <Fragment>
+            <div class="ax-step-track-row">
+              <div class={cx(connectorTarget.themeClass, 'ax-step-seg')} {...beforeSeg} data-ax-seg="lead" data-ax-hide="first" aria-hidden="true"></div>
+              {hasIndicator && <div class={indicatorTarget.themeClass} {...indicatorTarget.attrs} data-ax-kind={ind.kind} data-ax-tone={ind.tone} aria-hidden="true">{isCustom ? <Fragment set:html={customHtml} /> : glyphHtml != null ? <Fragment set:html={glyphHtml} /> : <Icon icon={ind.glyph!} size="sm" color={isDisabled ? 'disabled' : (ind.glyph as 'success')} />}</div>}
+              <div class={cx(connectorTarget.themeClass, 'ax-step-seg')} {...railSeg} data-ax-seg="rail" data-ax-hide="last" aria-hidden="true"></div>
+            </div>
+            {' '}
+            <div class="ax-step-label-wrap" data-ax-full>
+              <div class="ax-step-label-line">
+                <span class={labelTarget.themeClass} {...labelTarget.attrs}>{label}</span>
+                <VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden>
+                {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional">{optionalLabel}</span></Fragment>}
+                {endHtml !== '' && <Fragment set:html={endHtml} />}
+              </div>
+              {hasDescription && <span id={descriptionId} class={descriptionTarget.themeClass} {...descriptionTarget.attrs}>{description}</span>}
+            </div>
+          </Fragment>
+        )}
+      </Head>
+      {!isVertical && <span class="ax-step-compact-name"><VisuallyHidden>{label}</VisuallyHidden><VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden></span>}
+      {hasContent && (isVertical ? (
+        <div class="ax-step-ot-content-wrap">
+          <div class={cx(connectorTarget.themeClass, 'ax-step-seg')} {...contentSeg} data-ax-seg="content" data-ax-hide="last" aria-hidden="true"></div>
+          <div class="ax-step-content"><Fragment set:html={contentHtml} /></div>
+        </div>
+      ) : (
+        <div class="ax-step-content" data-ax-compact-hide><Fragment set:html={contentHtml} /></div>
+      ))}
+    </Fragment>
+  ) : (
+    <div class="ax-step-body">
+      <Head class={headClass} {...headAttrs} data-ax-full={isVertical ? undefined : ''}>
+        <div class="ax-step-icon-label">
+          {hasIndicator && <div class={indicatorTarget.themeClass} {...indicatorTarget.attrs} data-ax-kind={ind.kind} data-ax-tone={ind.tone} aria-hidden="true">{isCustom ? <Fragment set:html={customHtml} /> : glyphHtml != null ? <Fragment set:html={glyphHtml} /> : <Icon icon={ind.glyph!} size="sm" color={isDisabled ? 'disabled' : (ind.glyph as 'success')} />}</div>}
+          {' '}
+          <span class={labelTarget.themeClass} {...labelTarget.attrs}>{label}</span>
+          <VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden>
+          {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional">{optionalLabel}</span></Fragment>}
+          {endHtml !== '' && <Fragment set:html={endHtml} />}
+        </div>
+        {hasDescription && <div id={descriptionId} class="ax-step-description-row"><span class={descriptionTarget.themeClass} {...descriptionTarget.attrs}>{description}</span></div>}
+      </Head>
+      {!isVertical && <span class="ax-step-compact-name"><VisuallyHidden>{label}</VisuallyHidden><VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden></span>}
+      {hasContent && <div class="ax-step-content" data-ax-compact-hide><Fragment set:html={contentHtml} /></div>}
+    </div>
+  )}
+  {statusGlyphIcon && indicator === 'auto' && !isCustom && <template data-ax-status-glyph><Icon icon={statusGlyphIcon} size="sm" color={isDisabled ? 'disabled' : statusGlyphIcon} /></template>}
+</li>

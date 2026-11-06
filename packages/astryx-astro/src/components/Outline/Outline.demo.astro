@@ -1,0 +1,44 @@
+---
+import Outline, {type OutlineItem} from './Outline.astro';
+
+const items: OutlineItem[] = [
+  {id: 'ol-intro', label: 'Introduction', level: 1},
+  {id: 'ol-install', label: 'Installation', level: 2},
+  {id: 'ol-config', label: 'Configuration', level: 3},
+  {id: 'ol-env', label: 'Environment variables', level: 4},
+  {id: 'ol-usage', label: 'Usage', level: 2},
+  {id: 'ol-theming', label: 'Theming', level: 2},
+  {id: 'ol-tokens', label: 'Tokens and private variables for themes', level: 5},
+  {id: 'ol-faq', label: 'FAQ', level: 2},
+];
+const markdown = `# Guide\n\n## Getting started\n\nText.\n\n### Requirements\n\n## Deploying\n\n### Static hosts\n\n### Servers\n`;
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const para = 'margin:0 0 var(--spacing-3);color:var(--color-text-secondary);line-height:1.6';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Scroll-spy over a scroll container (scrollContainer, offset)</h3>
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:var(--spacing-4);align-items:start">
+      <div id="outline-doc" data-test="scroller" style="height:320px;overflow:auto;border:1px solid var(--color-border);border-radius:var(--radius-element);padding:0 var(--spacing-4);position:relative">
+        <div style="position:sticky;top:0;height:40px;display:flex;align-items:center;background:var(--color-background-surface);border-bottom:1px solid var(--color-border);font-size:var(--text-supporting-size);color:var(--color-text-secondary);z-index:1">Sticky header (offset 40)</div>
+        {items.map((item) => (
+          <section>
+            <h4 id={item.id} style="margin:var(--spacing-4) 0 var(--spacing-2);scroll-margin-top:8px">{item.label}</h4>
+            <p style={para}>Paragraph text for {item.label}. The outline marks the last heading whose top has passed its activation line, which is exactly where navigating to it lands it.</p>
+            <p style={para}>A second paragraph keeps each section tall enough to scroll through.</p>
+          </section>
+        ))}
+        <div style="height:120px"></div>
+      </div>
+      <Outline items={items} scrollContainer="#outline-doc" offset={40} data-test="spy" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>From Markdown, compact, controlled, no scroll on click</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-4)">
+      <Outline markdown={markdown} density="compact" label="Guide contents" hasScrollOnClick={false} />
+      <Outline items={items.slice(0, 5)} activeId="ol-config" density="compact" data-test="controlled" label="Controlled outline" />
+    </div>
+  </section>
+</div>

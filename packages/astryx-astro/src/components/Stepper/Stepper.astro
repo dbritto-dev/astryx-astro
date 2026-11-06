@@ -1,0 +1,137 @@
+---
+/**
+ * Stepper — progress through a multi-step flow: an `<ol>` of Steps with connector segments,
+ * `aria-current="step"` on the active one. Port of @astryxdesign/core Stepper/Stepper.tsx
+ * (styles, compact horizontal layout, summary controls), Stepper/StepperContext.ts and
+ * Stepper/Step.tsx (see Step.astro). Behaviour: src/behaviors/stepper.ts (`data-ax-stepper`
+ * on the `<ol>`).
+ *
+ * Theme hooks: `.astryx-stepper[data-orientation][data-indicator-position]` (the `<ol>`;
+ * public var `--step-connector-gap`), `.astryx-stepper-frame` (horizontal only: the layout box
+ * holding the list and the compact summary — `class` / `style` go here when horizontal),
+ * `.astryx-stepper-summary`, plus the Step targets.
+ *
+ * Context (Astryx StepperContext): Steps read activeStep, orientation, indicatorPosition,
+ * density (their default) and non-linearity from the Stepper they render in
+ * (stepperContext.ts — a render-scoped context, not attribute stamping, because the Step's
+ * whole markup depends on it).
+ *
+ * `isNonLinear` (Astro stand-in for Astryx `onStepClick`): steps render `<button>`s named
+ * "Go to step N: Label[, status]"; a disabled step keeps its button with aria-disabled.
+ * Activating a step (or a compact previous/next control) dispatches `astryx-step-click`
+ * {index} (bubbling, composed, cancelable) on the `<ol>`; unless it is cancelled the stepper
+ * moves to that step. `ol.activeStep` (get/set) moves it programmatically. Only a single step
+ * forward animates the connector fill (`--duration-medium`, linear, staggered across the
+ * on-track segments); reduced motion and every other change land at once.
+ *
+ * Compact horizontal layout (Astryx measures, so this does): when the list's width divided by
+ * the step count is below `horizontalOptions.minimumStepWidth` (112), labels and step buttons
+ * leave the layout (the list keeps visually hidden names and statuses), step content hides
+ * (mounted), and a summary row under the track names the current step — with
+ * previous/next IconButtons when `collapsedVariant` is 'withLabelAndControls' (default) and the
+ * stepper is non-linear, a label alone for 'withLabel', nothing for 'hiddenLabel'.
+ *
+ * @example
+ * <Stepper activeStep={1}>
+ *   <Step step={0} label="Account" />
+ *   <Step step={1} label="Profile" />
+ *   <Step step={2} label="Review" />
+ * </Stepper>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {stepperContext} from './stepperContext';
+import './Stepper.css';
+
+export type StepperOrientation = 'horizontal' | 'vertical';
+export type StepperIndicatorPosition = 'separated' | 'on-track';
+export type StepperCollapsedVariant = 'withLabelAndControls' | 'withLabel' | 'hiddenLabel';
+
+export interface StepperHorizontalOptions {
+  /** Minimum width per step before a horizontal Stepper collapses. @default 112 */
+  minimumStepWidth?: number;
+  /** Compact presentation. @default 'withLabelAndControls' */
+  collapsedVariant?: StepperCollapsedVariant;
+}
+
+export interface Props extends HTMLAttributes<'ol'> {
+  /** Zero-based index of the active step. */
+  activeStep: number;
+  /** @default 'horizontal' */
+  orientation?: StepperOrientation;
+  /** Astro stand-in for Astryx `onStepClick`: clickable steps + `astryx-step-click`. @default false */
+  isNonLinear?: boolean;
+  /** Accessible label of the list. @default translated 'Progress' */
+  label?: string;
+  /** Default density of the steps. @default 'balanced' */
+  density?: 'compact' | 'balanced' | 'spacious';
+  /** Indicator in the label row, or as a node on the track. @default 'separated' */
+  indicatorPosition?: StepperIndicatorPosition;
+  /** Horizontal-only collapse options. */
+  horizontalOptions?: StepperHorizontalOptions;
+  locale?: string;
+}
+
+const {
+  activeStep,
+  orientation = 'horizontal',
+  isNonLinear = false,
+  label: labelProp,
+  density = 'balanced',
+  indicatorPosition = 'separated',
+  horizontalOptions,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.stepper.label');
+const isHorizontal = orientation === 'horizontal';
+const minimumStepWidth = horizontalOptions?.minimumStepWidth ?? 112;
+const collapsedVariant = horizontalOptions?.collapsedVariant ?? 'withLabelAndControls';
+const showsControls = collapsedVariant === 'withLabelAndControls' && isNonLinear;
+const hasSummary = isHorizontal && collapsedVariant !== 'hiddenLabel';
+
+const stepsHtml = Astro.slots.has('default')
+  ? await stepperContext.run({activeStep, orientation, indicatorPosition, density, isNonLinear, locale}, () => Astro.slots.render('default'))
+  : '';
+
+const list = themeProps('stepper', {orientation, indicatorPosition});
+const frame = themeProps('stepper-frame');
+const summary = themeProps('stepper-summary');
+const previousLabel = t('@astryx.stepper.previousStep');
+const nextLabel = t('@astryx.stepper.nextStep');
+const listAttrs: Record<string, unknown> = {
+  'aria-label': label,
+  ...rest,
+  ...list.attrs,
+  class: cx(list.themeClass, !isHorizontal && (className as string | undefined)),
+  style: isHorizontal ? undefined : mergeStyles(style as StyleValue),
+  'data-ax-stepper': '',
+  'data-ax-active-step': String(activeStep),
+  'data-ax-min-step-width': isHorizontal ? String(minimumStepWidth) : undefined,
+  'data-ax-non-linear': isNonLinear ? '' : undefined,
+  'data-ax-completed-label': t('@astryx.step.status.completed'),
+};
+---
+{isHorizontal ? (
+  <div class={cx(frame.themeClass, className as string | undefined)} style={mergeStyles(style as StyleValue)}>
+    <ol {...listAttrs}><Fragment set:html={stepsHtml} /></ol>
+    {hasSummary && (
+      <div class={summary.themeClass} hidden data-ax-stepper-summary>
+        {showsControls && <IconButton variant="ghost" label={previousLabel} tooltip={previousLabel} data-ax-stepper-control="-1"><Icon slot="icon" icon="chevronLeft" class="ax-mirror-rtl" /></IconButton>}
+        <div class="ax-stepper-summary-body" aria-hidden="true" data-ax-stepper-summary-body></div>
+        {showsControls && <IconButton variant="ghost" label={nextLabel} tooltip={nextLabel} data-ax-stepper-control="1"><Icon slot="icon" icon="chevronRight" class="ax-mirror-rtl" /></IconButton>}
+      </div>
+    )}
+  </div>
+) : (
+  <ol {...listAttrs}><Fragment set:html={stepsHtml} /></ol>
+)}
+<script>import '../../behaviors/stepper';</script>

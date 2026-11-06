@@ -1,0 +1,121 @@
+/*
+ * Port of @astryxdesign/core Outline/Outline.tsx (styles, densityStyles, indentStyles).
+ * Link rule groups follow the React order: link → overlay (shared .ax-overlay-bg) → density →
+ * indent (getIndentStyle: level 1–2 → 1, 3 → 2, 4 → 3, 5–6 → 4) → active → activeAnchor.
+ * The indicator is anchored to the active link (`--outline-active`); `anchor-scope` keeps
+ * several outlines on one page apart. Reduced motion: the indicator jumps (contract #25).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-outline {
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    gap: var(--spacing-0-5);
+    width: 100%;
+    anchor-scope: --outline-active;
+  }
+
+  .ax-outline-track {
+    position: relative;
+    width: 2px;
+    flex-shrink: 0;
+    order: -1;
+  }
+  .ax-outline-divider {
+    position: absolute;
+    inset-block-start: 0;
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    width: 2px;
+    background-color: var(--color-border);
+    border-radius: var(--radius-full);
+    pointer-events: none;
+  }
+
+  .astryx-outline-indicator {
+    position: absolute;
+    inset-inline-start: 0;
+    width: 2px;
+    background-color: var(--color-icon-primary);
+    border-radius: var(--radius-full);
+    pointer-events: none;
+    z-index: 1;
+    position-anchor: --outline-active;
+    top: anchor(--outline-active top, 0px);
+    height: anchor-size(--outline-active height, 0px);
+    transition-property: top, height;
+    transition-duration: var(--duration-fast-min);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-outline-indicator { transition-duration: 0s; }
+  }
+  [data-astryx-reduced-motion] .astryx-outline-indicator { transition-duration: 0s; }
+
+  .ax-outline-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    flex: 1;
+    min-width: 0;
+  }
+  .ax-outline-entry {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .astryx-outline-item {
+    align-items: center;
+    border-radius: var(--radius-element);
+    box-sizing: border-box;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    font-weight: var(--font-weight-normal);
+    position: relative;
+    text-align: start;
+    text-decoration: none;
+    transition-duration: var(--duration-fast);
+    transition-property: background-color, color;
+    transition-timing-function: var(--ease-standard);
+    width: 100%;
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+  }
+  .astryx-outline-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .astryx-outline-item:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-text-primary); }
+  }
+
+  .astryx-outline[data-density="default"] .astryx-outline-item {
+    padding-block: var(--spacing-2);
+    padding-inline-end: var(--spacing-2);
+  }
+  .astryx-outline[data-density="compact"] .astryx-outline-item {
+    padding-block: var(--spacing-1);
+    padding-inline-end: var(--spacing-2);
+  }
+
+  .astryx-outline-item:is([data-level="1"], [data-level="2"]) { padding-inline-start: var(--spacing-3); }
+  .astryx-outline-item[data-level="3"] { padding-inline-start: var(--spacing-7); }
+  .astryx-outline-item[data-level="4"] { padding-inline-start: var(--spacing-11); }
+  .astryx-outline-item:is([data-level="5"], [data-level="6"]) { padding-inline-start: var(--spacing-12); }
+
+  .astryx-outline-item[data-active] {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold);
+    anchor-name: --outline-active;
+  }
+
+  .ax-outline-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

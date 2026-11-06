@@ -1,0 +1,197 @@
+---
+/**
+ * Banner — a persistent status message: a coloured header (icon, title, description,
+ * actions, dismiss, expand toggle) over an optional card-background content area.
+ * Port of @astryxdesign/core Banner/Banner.tsx (styles, statusStyles, statusControlStyles,
+ * elevationStyles), with Collapsible/useCollapsible.ts (the disclosure config),
+ * Layout/edgeCompensation.stylex.ts and the Button/Icon it composes. Behaviour:
+ * src/elements/banner.ts (<ax-banner>).
+ *
+ * Theme hooks: `.astryx-banner-frame[data-container][data-elevation]` (the root),
+ * `.astryx-banner[data-container][data-status]` (the header), `.astryx-banner-icon[data-status]`
+ * (the default status Icon itself, or the wrapper of a custom icon),
+ * `.astryx-banner-description`, `.astryx-banner-content[data-container][data-status]`; private var
+ * `--_banner-radius`. Title and description set `--_astryx-text-overflow-wrap: anywhere`.
+ *
+ * Semantics: the root has no live-region role; pass `role="status"` (or `role="alert"` for
+ * urgent content) yourself. Dismiss (`isDismissable`): a ghost icon-only Button named
+ * "Dismiss {title}" (translated; "Dismiss" for a slotted title — set `dismissLabel` then),
+ * tooltip "Dismiss" / `dismissLabel`. It hides the banner (`hidden`), dispatches
+ * `astryx-dismiss`, and returns focus to where it came from before entering the banner.
+ * Children (default slot) sit behind an expand toggle by default and start collapsed:
+ * `collapsible={false}` pins them open with no toggle, `{defaultIsOpen: true}` starts open,
+ * `{isOpen}` is controlled (the toggle only dispatches; set `banner.isOpen`). The toggle has
+ * `aria-expanded`, `aria-controls` (while the content shows) and a translated
+ * Expand/Collapse name. Events (bubbling, composed): `astryx-open-change` {isOpen} (user
+ * toggle), `astryx-dismiss` {}. Element API: `isOpen` (get/set), `open()`, `close()`,
+ * `toggle()`, `dismiss()`, `isDismissed`.
+ *
+ * Deferred touch extras: slide-across press on the action row (contract #6).
+ *
+ * @example
+ * <Banner status="info" title="New update available" />
+ * <Banner status="error" title="3 fields need attention" isDismissable role="alert"><ul>…</ul></Banner>
+ * <Banner status="warning" title="Changes" collapsible={{defaultIsOpen: true}}><p>Details…</p></Banner>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName, IconName} from '../Icon/iconRegistry';
+import type {Elevation} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {cleanSlotHtml} from '../Button/buttonCascade';
+import './Banner.css';
+
+/** Built-in statuses; themes may add more (Astryx BannerStatusMap). */
+export type BannerStatus = 'info' | 'warning' | 'error' | 'success' | (string & {});
+export type BannerContainer = 'card' | 'section' | (string & {});
+
+export interface BannerCollapsibleConfig {
+  /** Initial open state (Banner starts closed). @default false */
+  defaultIsOpen?: boolean;
+  /** Controlled open state: the toggle only dispatches `astryx-open-change`. */
+  isOpen?: boolean;
+}
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'title'> {
+  /** Status controlling the icon and colours. */
+  status: BannerStatus;
+  /** Title text, or markup in the `title` slot. */
+  title?: string;
+  /** Description below the title, or markup in the `description` slot. */
+  description?: string;
+  /** Replace the status icon: an icon name / SVG string / Astro component, or the `icon` slot. */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** Show the dismiss button (hides the banner, dispatches `astryx-dismiss`). @default false */
+  isDismissable?: boolean;
+  /** Accessible name and tooltip of the dismiss button (already translated). */
+  dismissLabel?: string;
+  /** Card (rounded) or full-width section. @default 'card' */
+  container?: BannerContainer;
+  /** Resting shadow depth. @default 'none' */
+  elevation?: Elevation;
+  /** Disclosure of the children: true (collapsed), false (always shown), or a config. @default true */
+  collapsible?: boolean | BannerCollapsibleConfig;
+  /** Locale for the built-in control names. */
+  locale?: string;
+}
+
+const DEFAULT_ICONS: Record<string, IconName> = {info: 'info', warning: 'warning', error: 'error', success: 'success'};
+const KNOWN_STATUS = new Set(['info', 'warning', 'error', 'success']);
+
+const {
+  status,
+  title,
+  description,
+  icon,
+  isDismissable = false,
+  dismissLabel,
+  container = 'card',
+  elevation = 'none',
+  collapsible = true,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const slot = async (name: string) => (Astro.slots.has(name) ? (await cleanSlotHtml(await Astro.slots.render(name), name)).trim() : '');
+const titleHtml = await slot('title');
+const descriptionHtml = await slot('description');
+const iconHtml = await slot('icon');
+const endHtml = await slot('endContent');
+const childrenHtml = await slot('default');
+
+const hasDescription = descriptionHtml !== '' || (description != null && description !== '');
+const hasCustomIcon = iconHtml !== '' || (icon != null && icon !== '');
+const hasEnd = endHtml !== '';
+const hasChildren = childrenHtml !== '';
+const config = typeof collapsible === 'object' && collapsible != null ? collapsible : {};
+const isCollapsible = collapsible !== false;
+const isControlled = config.isOpen !== undefined;
+const isExpanded = config.isOpen ?? config.defaultIsOpen ?? false;
+const hasToggle = isCollapsible && hasChildren;
+const showContent = hasChildren && (!isCollapsible || isExpanded);
+const showEndArea = hasEnd || isDismissable || hasToggle;
+const isSingleLine = !hasDescription && (hasEnd || isDismissable);
+const isKnown = KNOWN_STATUS.has(status);
+const defaultIcon = DEFAULT_ICONS[status];
+const contentId = uid(Astro, 'ax-banner-content');
+
+const dismiss = t('@astryx.banner.dismiss');
+const dismissTooltip = dismissLabel ?? dismiss;
+const dismissName = dismissLabel ?? (titleHtml === '' && title != null ? t('@astryx.banner.dismissTitled', {dismiss, title}) : dismiss);
+const expandLabel = t('@astryx.banner.expand');
+const collapseLabel = t('@astryx.banner.collapse');
+const toggleLabel = isExpanded ? collapseLabel : expandLabel;
+
+const frame = themeProps('banner-frame', {container, elevation});
+const header = themeProps('banner', {container, status});
+const iconTarget = themeProps('banner-icon', {status});
+const descriptionTarget = themeProps('banner-description');
+const content = themeProps('banner-content', {container, status});
+---
+<ax-banner
+  {...rest}
+  {...frame.attrs}
+  class={cx(frame.themeClass, className as string | undefined)}
+  style={mergeStyles(style as StyleValue)}
+  data-ax-controlled={isControlled ? '' : undefined}
+>
+  <div class={header.themeClass} {...header.attrs} data-ax-centered={isSingleLine ? '' : undefined} data-ax-status-fill={isKnown ? '' : undefined}>
+    {hasCustomIcon ? (
+      <div class={cx('ax-banner-icon-wrap', iconTarget.themeClass)} {...iconTarget.attrs} aria-hidden="true">
+        {iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon} size="md" color="inherit" />}
+      </div>
+    ) : (
+      <div class="ax-banner-icon-wrap" aria-hidden="true">
+        {defaultIcon != null && <Icon icon={defaultIcon} size="md" color="inherit" class={iconTarget.themeClass} {...iconTarget.attrs} />}
+      </div>
+    )}
+    <div class="ax-banner-text" data-ax-with-end={hasEnd ? '' : undefined}>
+      <div class="ax-banner-title">{titleHtml !== '' ? <Fragment set:html={titleHtml} /> : title}</div>
+      {hasDescription && <div class={descriptionTarget.themeClass}>{descriptionHtml !== '' ? <Fragment set:html={descriptionHtml} /> : description}</div>}
+    </div>
+    {showEndArea && (
+      <div class="ax-banner-end">
+        {hasEnd && <Fragment set:html={endHtml} />}
+        {hasToggle && (
+          <Button
+            variant="ghost"
+            size="sm"
+            isIconOnly
+            label={toggleLabel}
+            tooltip={toggleLabel}
+            class="ax-banner-control"
+            aria-expanded={isExpanded ? 'true' : 'false'}
+            aria-controls={showContent ? contentId : undefined}
+            data-ax-banner-toggle
+            data-ax-expand-label={expandLabel}
+            data-ax-collapse-label={collapseLabel}
+          ><Icon slot="icon" icon="chevronDown" size="sm" color="inherit" class="ax-banner-chevron" /></Button>
+        )}
+        {isDismissable && (
+          <Button
+            variant="ghost"
+            size="sm"
+            isIconOnly
+            label={dismissName}
+            tooltip={dismissTooltip}
+            class="ax-banner-control"
+            data-ax-banner-dismiss
+          ><Icon slot="icon" icon="close" size="sm" color="inherit" /></Button>
+        )}
+      </div>
+    )}
+  </div>
+  {hasChildren && (
+    <div id={hasToggle ? contentId : undefined} class={content.themeClass} {...content.attrs} hidden={showContent ? undefined : true}>
+      <Fragment set:html={childrenHtml} />
+    </div>
+  )}
+</ax-banner>
+{(isDismissable || hasToggle) && <script>import '../../elements/banner';</script>}

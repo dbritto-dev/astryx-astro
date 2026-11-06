@@ -1,0 +1,100 @@
+---
+import Item, {type ItemAlign, type ItemDensity} from './Item.astro';
+import Avatar from '../Avatar/Avatar.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Button from '../Button/Button.astro';
+
+const densities: ItemDensity[] = ['compact', 'balanced', 'spacious'];
+const aligns: ItemAlign[] = ['center', 'start', 'first-line'];
+const col = 'display:grid;gap:var(--spacing-1);max-width:420px';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const box = 'border:1px dashed var(--color-border);border-radius:var(--radius-element)';
+const dot = '<svg viewBox="0 0 8 8" width="8" height="8" aria-hidden="true"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Slots</h3>
+    <div style={col}>
+      <Item label="Ada Lovelace" description="Analytical Engine programmer">
+        <Avatar slot="startContent" name="Ada Lovelace" size="sm" />
+        <Badge slot="endContent" label="Admin" variant="blue" />
+      </Item>
+      <Item label="Release notes" description="Updated 2 hours ago">
+        <Icon slot="startContent" icon="info" size="sm" color="secondary" />
+        <span slot="endContent" style="color:var(--color-text-secondary);font-size:var(--text-supporting-size)">2h ago</span>
+      </Item>
+      <Item><span slot="label"><strong>Rich</strong> label markup</span><span slot="description">Rich <em>description</em> content</span></Item>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Density</h3>
+    <div style={col}>{densities.map((density) => <Item label={`density="${density}"`} description="Supporting text" density={density} style={box}><Icon slot="startContent" icon="calendar" size="sm" /></Item>)}</div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Align (wrapped label beside a small mark)</h3>
+    <div style={col}>
+      {aligns.map((align) => (
+        <Item align={align} labelLines={3} label={`align="${align}" — a long label that wraps onto a second line so the slot alignment shows`} style={box}>
+          <Icon slot="startContent" icon={dot} size="xsm" color="accent" />
+          <span slot="endContent" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)">9:41</span>
+        </Item>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Truncation and inline layout</h3>
+    <div style={col}>
+      <Item label="A string label is truncated to a single line by default when it is far too long" description="So is a string description, which also stays on one line when it runs long" />
+      <Item labelLines={2} descriptionLines={2} label="labelLines={2}: this long label is allowed to wrap onto two lines before it ellipsizes at the end" description="descriptionLines={2}: the description wraps to two lines and then ellipsizes, which keeps tall rows in check" />
+      <Item layout="inline" label="Inline layout" description="description shares the line and ellipsizes first" style={box} />
+    </div>
+  </section>
+
+  <section data-test="interactive">
+    <h3 style={cap}>Interactive rows (whole-row activation; nested controls keep their own)</h3>
+    <div style={col}>
+      <Item label="Button row" description={'interactiveRole="button"'} interactiveRole="button" data-test="button-row">
+        <Icon slot="startContent" icon="wrench" size="sm" />
+        <Button slot="endContent" label="Nested" size="sm" variant="ghost" data-test="nested" />
+      </Item>
+      <Item label="Link row" description="href → invisible link" href="#item-target" data-test="link-row">
+        <Icon slot="startContent" icon="externalLink" size="sm" />
+        <Button slot="endContent" label="Nested" size="sm" variant="ghost" data-test="nested-link" />
+      </Item>
+      <Item label="Delegate row" description="interactiveRef → the checkbox owns the action" interactiveRef="input" data-test="delegate-row">
+        <input slot="startContent" type="checkbox" aria-label="Delegate row" data-ax-inherit="item-description" data-test="delegate-input" />
+      </Item>
+      <Item label="Highlighted" isHighlighted interactiveRole="button" />
+      <Item label="Selected" description="aria-current on a plain row" isSelected interactiveRole="button" data-test="selected" />
+      <Item label="Disabled button row" isDisabled interactiveRole="button" data-test="disabled-row"><Icon slot="startContent" icon="stop" size="sm" /></Item>
+      <Item label="Disabled link row" isDisabled href="#item-target" data-test="disabled-link" />
+      <Item label="Blocked destination" href="javascript:alert(1)" data-test="blocked" />
+    </div>
+    <p id="item-target" style="margin:var(--spacing-2) 0 0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)">Last click: <output data-test="log">none</output></p>
+  </section>
+
+  <section>
+    <h3 style={cap}>Roles (the parent owns keyboard access)</h3>
+    <div role="listbox" aria-label="Fruit" style={col}>
+      <Item role="option" label="Apple" isSelected density="compact" />
+      <Item role="option" label="Banana" isHighlighted density="compact" />
+      <Item role="option" label="Cherry" isDisabled density="compact" />
+    </div>
+    <ul style={`${col};list-style:none;padding:0;margin-top:var(--spacing-2)`}>
+      <Item as="li" role="listitem" label="As <li>" description="Swipe actions render themed panels (gesture deferred)" swipeActions={{leading: [{label: 'Unread', icon: 'checkDouble', variant: 'neutral'}], trailing: [{label: 'Archive', variant: 'accent'}, {label: 'Delete', icon: 'close', variant: 'destructive'}]}} />
+      <Item as="li" role="listitem" label="Commit swipe" swipeBehavior="commit" swipeActions={{trailing: [{label: 'Delete', variant: 'destructive', hasRemoval: true}]}} />
+    </ul>
+  </section>
+</div>
+<script>
+  const log = document.querySelector('[data-test="log"]');
+  document.querySelector('[data-test="interactive"]')?.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    const row = target.closest('.astryx-item');
+    if (log) log.textContent = `${target.tagName.toLowerCase()} in ${row?.getAttribute('data-test') ?? '?'}`;
+  });
+</script>

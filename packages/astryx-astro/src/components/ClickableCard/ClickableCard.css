@@ -1,0 +1,95 @@
+/*
+ * Port of @astryxdesign/core ClickableCard/ClickableCard.tsx (styles: interactive, overlay,
+ * borderless / bordered, borderedHoverOnPointer, disabled, srOnly), applied after Card's own
+ * rules (StyleX xstyle passed to Card wins). The overrides of Card's border rules use
+ * `.astryx-card.astryx-clickable-card` so they win by specificity, not by bundle order.
+ * Not ported: the press controller arms (`data-astryx-press`), deferred with touch extras.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-clickable-card {
+    position: relative;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  /* Borderless variants (everything except `default`): the overlay covers the full box. */
+  .astryx-card.astryx-clickable-card:not([data-variant="default"]) { border-width: 0; }
+
+  /* Bordered (`default`): the border sits inside the padding and emphasizes on hover. */
+  .astryx-card.astryx-clickable-card[data-variant="default"] {
+    border-color: var(--color-border);
+    padding-inline-start: calc(var(--container-padding-inline-start) - var(--border-width));
+    padding-inline-end: calc(var(--container-padding-inline-end) - var(--border-width));
+    padding-block-start: calc(var(--container-padding-block-start) - var(--border-width));
+    padding-block-end: calc(var(--container-padding-block-end) - var(--border-width));
+    transition-property: border-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .astryx-card.astryx-clickable-card[data-variant="default"] { transition-duration: 0s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-card.astryx-clickable-card[data-variant="default"] {
+      transition-property: opacity;
+      transition-duration: min(var(--duration-exit), 200ms);
+      transition-timing-function: var(--ease-exit);
+    }
+  }
+
+  /* Hover and pressed overlay: the ::after paints --_press-overlay (enabled cards only). */
+  .astryx-clickable-card:not([data-ax-disabled]) { --_press-overlay: transparent; }
+  .astryx-clickable-card:not([data-ax-disabled]):active { --_press-overlay: var(--color-overlay-pressed); }
+  @media (pointer: coarse) {
+    .astryx-clickable-card:not([data-ax-disabled]):active { --_press-overlay: transparent; }
+  }
+  @media (hover: hover) {
+    .astryx-clickable-card:not([data-ax-disabled]):hover { --_press-overlay: var(--color-overlay-hover); }
+    .astryx-clickable-card:not([data-ax-disabled]):hover:active { --_press-overlay: var(--color-overlay-pressed); }
+  }
+  .astryx-clickable-card:not([data-ax-disabled])::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-color: var(--_press-overlay);
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .astryx-clickable-card:not([data-ax-disabled])::after { transition-duration: 0s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-clickable-card:not([data-ax-disabled])::after {
+      transition-property: opacity;
+      transition-duration: min(var(--duration-exit), 200ms);
+      transition-timing-function: var(--ease-exit);
+    }
+  }
+
+  @media (hover: hover) {
+    .astryx-card.astryx-clickable-card[data-variant="default"]:not([data-ax-disabled]):hover { border-color: var(--color-border-emphasized); }
+  }
+
+  .astryx-clickable-card[data-ax-disabled] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  /* The hidden control that carries the role, name and tab stop. */
+  .ax-clickable-card-action {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

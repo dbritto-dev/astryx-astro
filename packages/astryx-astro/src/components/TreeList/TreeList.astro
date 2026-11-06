@@ -1,0 +1,146 @@
+---
+/**
+ * TreeList — a data-driven tree (`role="tree"`) for hierarchical data, with branch guides,
+ * expand/collapse and the APG tree keyboard model. Port of @astryxdesign/core
+ * TreeList/TreeList.tsx (styles, collectExpandedKeys, findInitialTabbableId),
+ * TreeList/TreeListItem.tsx, TreeList/TreeListBranches.tsx, TreeList/TreeListTypes.ts,
+ * hooks/useTreeFocus.ts, utils/typeaheadMatch.ts (runtime typeahead.ts),
+ * hooks/useClickableContainer.ts (link rows), utils/focusReturn.ts and
+ * motion/animatedLayout (CSS, as Collapsible). Behaviour: src/elements/tree-list.ts
+ * (<ax-tree-list>).
+ *
+ * Theme hooks: `.astryx-tree-list[data-density][data-variant]` (public vars
+ * `--tree-list-indent`, `--tree-list-row-gap`), `.astryx-tree-list-item[data-density]` with
+ * `data-selected="selected"` / `data-disabled`, `.astryx-tree-list-chevron[data-state]`,
+ * `.astryx-tree-list-item-label[data-selected]`, `.astryx-tree-list-guide`; private vars
+ * `--_tree-indent`, `--_tree-focus-z`.
+ *
+ * Items (`TreeListItemData`): `label` (or slot `label:<id>`), `description`, `startContent`
+ * (icon name / SVG / Astro component, or slot `start:<id>`), `endContent` (text, or slot
+ * `end:<id>`), `children`, `isExpanded` (initial), `isSelected`, `isDisabled`, `href` /
+ * `target` (link row: the whole row follows the link; modifier and middle clicks keep their
+ * meaning), `interactiveRole: 'button'` (Astryx `onClick`: an invisible button; listen for
+ * `astryx-select`), `class` / `style` on the row. Expansion is owned by the element after
+ * SSR; collapsed groups render `hidden="until-found"` (find-in-page expands them).
+ *
+ * Keyboard (one Tab stop, roving): ↓/↑ next/previous visible row (disabled skipped, no wrap);
+ * → expands a collapsed parent, moves into an expanded one; ← collapses an expanded parent,
+ * else moves to the parent (arrows swap under RTL); Home/End; Enter/Space activate the row's
+ * link or button, else toggle a parent; `*` expands every sibling of the focused row (APG
+ * option — not in Astryx 0.7.9); printable keys typeahead on the label (500ms buffer).
+ * Focus inside a collapsing branch moves to the branch's row (ring only after keyboard input).
+ *
+ * Events (bubbling, composed): `astryx-expanded-change` {id, isExpanded} after user input;
+ * `astryx-select` {id, event} when a button row (`interactiveRole`) is activated.
+ * Element API: `expand(id)`, `collapse(id)`, `toggle(id)`, `isExpanded(id)`, `expandedIds`,
+ * `selectedId` (get/set: moves the selected state, like an updated `isSelected`).
+ *
+ * `animatedLayout` (boolean; Astryx takes a useAnimatedLayout handle): the child group's
+ * height glides on Astryx's settle spring and the chevron turns on the same timing; Reduce
+ * Motion jumps. Deferred touch extras: the row press layer / press controller.
+ * Deviation: every row draws the focus ring (Astryx draws none on a non-interactive leaf).
+ *
+ * @example
+ * <TreeList aria-label="Files" items={[{id: 'src', label: 'src', isExpanded: true, children: [{id: 'app', label: 'App.tsx'}]}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import TreeListItem from './_TreeListItem.astro';
+import type {TreeListDensity, TreeListItemData, TreeListVariant} from './treeListTypes';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import './TreeList.css';
+
+export type {TreeListDensity, TreeListItemData, TreeListVariant};
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Recursive item data (see header). */
+  items: TreeListItemData[];
+  /** Row spacing. @default 'balanced' */
+  density?: TreeListDensity;
+  /** Connector lines between parent and child rows, or indentation alone. @default 'lineGuides' */
+  variant?: TreeListVariant;
+  /** Header text (or the `header` slot) naming the tree via aria-labelledby. */
+  header?: string;
+  /** Glide expand/collapse (Astryx `animatedLayout`). @default false */
+  animatedLayout?: boolean;
+  'data-testid'?: string;
+  /** Locale for the chevron's name. */
+  locale?: string;
+}
+
+const {
+  items,
+  density = 'balanced',
+  variant = 'lineGuides',
+  header,
+  animatedLayout = false,
+  locale,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledby,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const headerHtml = Astro.slots.has('header') ? (await Astro.slots.render('header')).trim() : '';
+const hasHeader = headerHtml !== '' || (header != null && header !== '');
+const headerId = hasHeader ? uid(Astro, 'ax-tree-header') : undefined;
+
+// Per-item slot markup (label:<id>, start:<id>, end:<id>), rendered once up front.
+const slots = new Map<string, string>();
+const collect = async (list: TreeListItemData[]) => {
+  for (const item of list) {
+    for (const part of ['label', 'start', 'end']) {
+      const name = `${part}:${item.id}`;
+      if (Astro.slots.has(name)) slots.set(name, (await Astro.slots.render(name)).trim());
+    }
+    if (item.children) await collect(item.children);
+  }
+};
+await collect(items);
+
+const hasExpandableItems = items.some((item) => (item.children?.length ?? 0) > 0);
+
+// Roving seed: the first selected enabled visible row, else the first enabled visible row.
+let firstEnabled: string | undefined;
+const seedWalk = (list: TreeListItemData[]): string | undefined => {
+  for (const item of list) {
+    if (item.isSelected && item.isDisabled !== true) return item.id;
+    if (firstEnabled == null && item.isDisabled !== true) firstEnabled = item.id;
+    if (item.isExpanded && (item.children?.length ?? 0) > 0) {
+      const found = seedWalk(item.children!);
+      if (found != null) return found;
+    }
+  }
+  return undefined;
+};
+const tabbableId = seedWalk(items) ?? firstEnabled ?? items[0]?.id;
+
+const root = themeProps('tree-list', {density, variant});
+const ctx = {
+  density,
+  variant,
+  hasExpandableItems,
+  tabbableId,
+  slots,
+  toggleLabel: t('@astryx.treeList.toggleChildren'),
+};
+---
+<ax-tree-list
+  {...rest}
+  {...root.attrs}
+  class={cx(root.themeClass, className as string | undefined)}
+  style={mergeStyles(style as StyleValue)}
+  data-ax-animate={animatedLayout ? '' : undefined}
+>
+  {hasHeader && <div id={headerId} class="ax-tree-header">{headerHtml !== '' ? <Fragment set:html={headerHtml} /> : header}</div>}
+  <ul role="tree" class="ax-tree-root" aria-label={hasHeader ? undefined : ariaLabel} aria-labelledby={hasHeader ? headerId : ariaLabelledby}>
+    {items.map((item, index) => (
+      <TreeListItem item={item} level={0} isLast={index === items.length - 1} ancestorsIsLast={[]} posInSet={index + 1} setSize={items.length} ctx={ctx} />
+    ))}
+  </ul>
+</ax-tree-list>
+<script>import '../../elements/tree-list';</script>
