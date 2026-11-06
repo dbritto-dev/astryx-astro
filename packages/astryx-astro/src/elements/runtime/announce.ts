@@ -15,8 +15,10 @@
  *   modal's own regions (direct children `[data-astryx-modal-live-region]`). The modal is the
  *   one enclosing `from`, else the topmost open modal (last presented).
  *
- * SSR-safe: nothing touches the DOM until the first call.
+ * SSR-safe: nothing touches the DOM until the first call. One set of regions per page: the
+ * state is a `globalSingleton`, shared by every copy of this module.
  */
+import {globalSingleton} from './global';
 
 export type AnnouncePoliteness = 'polite' | 'assertive';
 
@@ -41,8 +43,17 @@ const VISUALLY_HIDDEN_CSS =
 interface Pending { text: string; holders: number }
 interface RegionState { pending: Pending[]; frame: number | null; timer: ReturnType<typeof setTimeout> | null }
 
-const states = new WeakMap<HTMLElement, RegionState>();
-let bodyRegions: Record<AnnouncePoliteness, HTMLElement> | null = null;
+interface AnnounceState {
+  regions: WeakMap<HTMLElement, RegionState>;
+  bodyRegions: Record<AnnouncePoliteness, HTMLElement> | null;
+  /** Open dialogs in the order they were presented (the last open modal is on top). */
+  presented: HTMLDialogElement[];
+  watching: boolean;
+}
+
+const shared: AnnounceState = globalSingleton('announce', () => ({regions: new WeakMap(), bodyRegions: null, presented: [], watching: false}));
+const states = shared.regions;
+const presented = shared.presented;
 
 function makeRegion(politeness: AnnouncePoliteness, attr: string): HTMLElement {
   const el = document.createElement('div');
@@ -55,8 +66,8 @@ function makeRegion(politeness: AnnouncePoliteness, attr: string): HTMLElement {
 }
 
 function bodyRegion(politeness: AnnouncePoliteness): HTMLElement {
-  if (!bodyRegions) bodyRegions = {polite: makeRegion('polite', BODY_ATTR), assertive: makeRegion('assertive', BODY_ATTR)};
-  const region = bodyRegions[politeness];
+  if (!shared.bodyRegions) shared.bodyRegions = {polite: makeRegion('polite', BODY_ATTR), assertive: makeRegion('assertive', BODY_ATTR)};
+  const region = shared.bodyRegions[politeness];
   if (!region.isConnected) document.body.appendChild(region);
   return region;
 }
@@ -73,12 +84,9 @@ function modalRegion(dialog: HTMLDialogElement, politeness: AnnouncePoliteness):
 // ── Which modal is on top ────────────────────────────────────────────────────
 // `showModal()` sets `open` as it is called, so the order of the attribute records is the
 // top-layer order; the last one still open as a modal is on top.
-const presented: HTMLDialogElement[] = [];
-let watching = false;
-
 function watchDialogs() {
-  if (watching || typeof MutationObserver === 'undefined') return;
-  watching = true;
+  if (shared.watching || typeof MutationObserver === 'undefined') return;
+  shared.watching = true;
   for (const dialog of document.querySelectorAll('dialog[open]')) presented.push(dialog as HTMLDialogElement);
   new MutationObserver((records) => {
     for (const r of records) {
@@ -182,7 +190,7 @@ function clearRegion(target: HTMLElement) {
 /** Withdraw whatever the page regions (and the top modal's) hold or are about to hold. */
 export function clearAnnouncements(politeness: AnnouncePoliteness = 'polite'): void {
   if (typeof document === 'undefined') return;
-  if (bodyRegions) clearRegion(bodyRegions[politeness]);
+  if (shared.bodyRegions) clearRegion(shared.bodyRegions[politeness]);
   const modal = topmostModal();
   const region = modal?.querySelector<HTMLElement>(`:scope > [${MODAL_ATTR}="${politeness}"]`);
   if (region) clearRegion(region);

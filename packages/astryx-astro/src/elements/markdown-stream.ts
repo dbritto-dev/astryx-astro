@@ -63,6 +63,7 @@ import {
   type MarkdownInlineNodes,
 } from '../components/Markdown/markdownPipeline';
 import {createIdSource, ENGLISH_STRINGS, readKit, type MarkdownKit} from '../components/Markdown/markdownKit';
+import {globalSingleton} from './runtime/global';
 import {computeBoundaries} from '../lib/markdown/streaming';
 import type {MarkdownPluginEntry} from '../lib/markdown/plugins/protocol';
 import type {CodeLanguage} from '../lib/codeblock';
@@ -93,7 +94,8 @@ export interface MarkdownStreamConfig {
 }
 
 const TAG = 'ax-markdown-stream';
-let clientDocs = 0;
+/** Client document id counter, page-wide (shared by every copy of this module). */
+const clientDocs = globalSingleton('markdown-stream-docs', () => ({count: 0}));
 
 const segmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity: 'grapheme'}) : null;
 
@@ -153,7 +155,7 @@ export class MarkdownStreamElement extends HTMLElement {
       }
     }
     this.#loadKit(this.getAttribute('data-ax-kit'));
-    this.#docId = this.getAttribute('data-ax-doc') ?? `ax-md-c${++clientDocs}`;
+    this.#docId = this.getAttribute('data-ax-doc') ?? `ax-md-c${++clientDocs.count}`;
     if (!this.hasAttribute('data-ax-doc')) this.setAttribute('data-ax-doc', this.#docId);
     const display = this.#config.display ?? 'block';
     this.classList.add('astryx-markdown');

@@ -41,6 +41,7 @@ import {outsideDismissalCount, registerLayer, shouldDismissOnCloseRequest} from 
 import {focusForLastInput, returnFocusForLastInput} from './runtime/modality';
 import {isFocusLost, tabbables} from './runtime/dom';
 import {notifyTopLayerEntry, supplyModalOutlet} from './runtime/modalOutlet';
+import {brandClass, globalSingleton} from './runtime/global';
 
 export type DialogPurpose = 'required' | 'form' | 'info';
 export type DialogOpenChangeReason = 'escape' | 'outside' | 'api' | 'toggle';
@@ -540,13 +541,15 @@ export class DialogElement extends ModalHostElement {
   }
 }
 
+// Drawer, MobileNav and BottomSheet extend it from their own modules (maybe another copy).
+brandClass(ModalHostElement, 'modal-host-element');
 defineHost('ax-dialog', DialogElement);
 
-// ── Invoker commands where the engine has none (one delegated listener per document) ──
-const FALLBACK = Symbol.for('astryx-astro/dialog-commands/v1');
+// ── Invoker commands where the engine has none (one delegated listener per page) ──
+const commands = globalSingleton('dialog-commands', () => ({listening: false}));
 const hasInvokers = typeof HTMLButtonElement !== 'undefined' && 'commandForElement' in HTMLButtonElement.prototype;
-if (typeof document !== 'undefined' && !hasInvokers && !(document as Document & {[FALLBACK]?: true})[FALLBACK]) {
-  Object.defineProperty(document, FALLBACK, {value: true});
+if (typeof document !== 'undefined' && !hasInvokers && !commands.listening) {
+  commands.listening = true;
   document.addEventListener('click', (event) => {
     const button = (event.target as Element | null)?.closest?.<HTMLButtonElement>('button[commandfor][command]');
     if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;

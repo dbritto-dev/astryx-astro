@@ -16,6 +16,7 @@
  * `fillMessage` (server-rendered message templates, see Field/clientMessages.ts).
  */
 import {getLastPointerType} from './runtime/modality';
+import {globalSingleton} from './runtime/global';
 
 export const INTERACTIVE_SELECTOR = [
   'button', 'a', 'input', 'select', 'textarea', '[role="button"]', '[role="link"]', '[role="checkbox"]',
@@ -115,7 +116,8 @@ export function formatNumber(value: number, locale: string, options?: Intl.Numbe
 }
 
 // ── Delegated behaviours ────────────────────────────────────────────────────
-const LISTENING = Symbol.for('astryx-astro/field/v1');
+/** Documents with the delegated listener, page-wide (shared by every copy of this module). */
+const installed = globalSingleton('field', () => new WeakSet<Document>());
 
 function onDocumentClick(event: MouseEvent) {
   const target = event.target;
@@ -140,9 +142,8 @@ function onDocumentClick(event: MouseEvent) {
 }
 
 export function installFieldBehaviors(doc: Document = document): void {
-  const holder = doc as Document & {[LISTENING]?: true};
-  if (holder[LISTENING]) return;
-  Object.defineProperty(holder, LISTENING, {value: true});
+  if (installed.has(doc)) return;
+  installed.add(doc);
   doc.addEventListener('click', onDocumentClick);
 }
 

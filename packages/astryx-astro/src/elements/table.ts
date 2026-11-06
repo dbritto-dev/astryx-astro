@@ -25,11 +25,12 @@
  * `paging` (client paging), `activeColumnKeys` (column settings).
  */
 import {AxScrollableArea} from './scrollable-area';
+import {globalSingleton} from './runtime/global';
 
 export type TableBehavior = (table: AxTable) => void | (() => void);
 
-const behaviors = new Map<string, TableBehavior>();
-const live = new Set<AxTable>();
+// Page-wide (every copy of this module shares them): registered behaviours and live tables.
+const {behaviors, live} = globalSingleton('table-behaviors', () => ({behaviors: new Map<string, TableBehavior>(), live: new Set<AxTable>()}));
 
 /** Register a behaviour for tables whose `data-ax-features` contains `name` (first registration wins). */
 export function registerTableBehavior(name: string, setup: TableBehavior): void {

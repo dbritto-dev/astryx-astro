@@ -16,6 +16,7 @@
  *     components/Chat/ChatDictationButton.astro for attributes and events).
  */
 import {defineElement} from './runtime/layer';
+import {globalSingleton} from './runtime/global';
 import type {ChatComposerInputElement} from './chat-composer-input';
 
 const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
@@ -56,11 +57,12 @@ interface VolumeAnalyser {
   cleanup(): void;
 }
 
-let sharedAudioCtx: AudioContext | null = null;
+/** One AudioContext per page, shared by every copy of this module. */
+const audio = globalSingleton('chat-dictation-audio', () => ({context: null as AudioContext | null}));
 function defaultAudioContext(): AudioContext {
-  if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') sharedAudioCtx = new AudioContext();
-  if (sharedAudioCtx.state === 'suspended') void sharedAudioCtx.resume();
-  return sharedAudioCtx;
+  if (!audio.context || audio.context.state === 'closed') audio.context = new AudioContext();
+  if (audio.context.state === 'suspended') void audio.context.resume();
+  return audio.context;
 }
 
 async function createVolumeAnalyser(getCtx: () => AudioContext): Promise<VolumeAnalyser | null> {

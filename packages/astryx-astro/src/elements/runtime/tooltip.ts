@@ -45,6 +45,7 @@ import {announceText} from './announce';
 import {LayerElement, defineElement, type OpenChangeReason} from './layer';
 import {noteOutsideDismissal, type DismissReason, type LayerOutsidePress} from './layerStack';
 import {isTouchInteraction} from './modality';
+import {globalSingleton} from './global';
 
 type FocusTrigger = 'auto' | 'always' | 'never';
 type TouchTrigger = 'auto' | 'tap' | 'none';
@@ -95,8 +96,15 @@ export function isActionTrigger(element: HTMLElement): boolean {
 }
 
 // ── Group handoff ───────────────────────────────────────────────────────────
-let activeTooltip: HoverLayerElement | null = null;
-let lastTooltipClosedAt = -Infinity;
+// Page-wide (every copy of this module shares it): the open tooltip, when the last one closed,
+// the touch tap in flight, and the documents whose delegated listeners are installed.
+interface HoverState {
+  activeTooltip: HoverLayerElement | null;
+  lastTooltipClosedAt: number;
+  tapStart: {trigger: HTMLElement; layer: HoverLayerElement} | null;
+  listening: WeakSet<Document>;
+}
+const hover: HoverState = globalSingleton('hover-layers', () => ({activeTooltip: null, lastTooltipClosedAt: -Infinity, tapStart: null, listening: new WeakSet()}));
 const now = () => (typeof performance === 'undefined' ? Date.now() : performance.now());
 
 abstract class HoverLayerElement extends LayerElement {
@@ -311,8 +319,9 @@ abstract class HoverLayerElement extends LayerElement {
     // A controlled tooltip takes no part in the handoff: it is shown because its owner says so.
     // A pinned tooltip stays: only a hover/focus preview is handed off.
     if (this.kind === 'tooltip' && this.controlledOpen === undefined) {
-      if (activeTooltip && activeTooltip !== this && activeTooltip.isOpen && !activeTooltip.isPinned) activeTooltip.hideNow('hover');
-      activeTooltip = this;
+      const active = hover.activeTooltip;
+      if (active && active !== this && active.isOpen && !active.isPinned) active.hideNow('hover');
+      hover.activeTooltip = this;
     }
   }
 
@@ -321,9 +330,9 @@ abstract class HoverLayerElement extends LayerElement {
   }
 
   protected willClose(): void {
-    if (this.kind === 'tooltip' && activeTooltip === this) {
-      activeTooltip = null;
-      lastTooltipClosedAt = now();
+    if (this.kind === 'tooltip' && hover.activeTooltip === this) {
+      hover.activeTooltip = null;
+      hover.lastTooltipClosedAt = now();
     }
   }
 
@@ -448,8 +457,9 @@ function numberAttr(el: Element, name: string, fallback: number): number {
 }
 
 function handoffActive(next: HoverLayerElement): boolean {
-  if (activeTooltip && activeTooltip !== next && activeTooltip.isOpen && !activeTooltip.isPinned) return true;
-  return now() - lastTooltipClosedAt < SKIP_DELAY_MS;
+  const active = hover.activeTooltip;
+  if (active && active !== next && active.isOpen && !active.isPinned) return true;
+  return now() - hover.lastTooltipClosedAt < SKIP_DELAY_MS;
 }
 
 /** `<ax-tooltip>` */
@@ -586,13 +596,9 @@ function surfacesFrom(target: EventTarget | null): HoverLayerElement[] {
 }
 
 const within = (el: Element, node: EventTarget | null) => node instanceof Node && el.contains(node);
-const LISTENING = Symbol.for('astryx-astro/hover-layers/v1');
-let tapStart: {trigger: HTMLElement; layer: HoverLayerElement} | null = null;
-
 function listen(doc: Document) {
-  const holder = doc as Document & {[LISTENING]?: true};
-  if (holder[LISTENING]) return;
-  Object.defineProperty(holder, LISTENING, {value: true});
+  if (hover.listening.has(doc)) return;
+  hover.listening.add(doc);
   doc.addEventListener('pointerover', (event) => {
     if (event.pointerType === 'touch') return;
     const related = event.relatedTarget as Node | null;
@@ -619,16 +625,16 @@ function listen(doc: Document) {
   });
   doc.addEventListener('pointerdown', (event) => {
     const pairs = pairsFrom(event.target);
-    tapStart = event.pointerType === 'touch' && pairs.length ? {trigger: pairs[0][0], layer: pairs[0][1]} : null;
+    hover.tapStart = event.pointerType === 'touch' && pairs.length ? {trigger: pairs[0][0], layer: pairs[0][1]} : null;
     for (const [trigger, layer] of pairs) layer.onTriggerPointerDown(event, trigger);
   });
   doc.addEventListener('pointerup', (event) => {
-    const start = tapStart;
-    tapStart = null;
+    const start = hover.tapStart;
+    hover.tapStart = null;
     if (!start || event.pointerType !== 'touch' || !within(start.trigger, event.target)) return;
     start.layer.onTriggerTap(start.trigger);
   });
-  doc.addEventListener('pointercancel', () => { tapStart = null; });
+  doc.addEventListener('pointercancel', () => { hover.tapStart = null; });
 }
 
 if (typeof document !== 'undefined') listen(document);

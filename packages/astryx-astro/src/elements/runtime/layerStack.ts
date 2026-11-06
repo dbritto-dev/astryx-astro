@@ -23,9 +23,12 @@
  *   ("the topmost layer consumes the outside press"). `'native'` layers (popover="auto") are
  *   light-dismissed by the browser; the stack only records and consumes the press.
  *
- * SSR-safe; listeners attach to a document with its first layer and leave with its last.
+ * SSR-safe; listeners attach to a document with its first layer and leave with its last. One
+ * stack per page: the state (and the listener functions) is a `globalSingleton`, so a second
+ * copy of this module shares it instead of adding a second Escape listener.
  */
 import {isImeKeyEvent} from './dom';
+import {globalSingleton} from './global';
 
 export type LayerEscapeBehavior = 'close' | 'block';
 /** How a layer answers a press outside it. `ignore` layers are transparent to outside presses. */
@@ -52,11 +55,49 @@ interface Entry extends LayerEntry {
   doc: Document;
 }
 
-const entries: Entry[] = [];
-let nextSeq = 0;
-const countByDoc = new Map<Document, number>();
-const composing = new Set<Document>();
-const outsideDismissals = new WeakMap<Document, number>();
+interface Listeners {
+  keydown: (event: KeyboardEvent) => void;
+  compositionStart: (event: Event) => void;
+  compositionEnd: (event: Event) => void;
+  pointerDown: (event: PointerEvent) => void;
+  pointerUp: (event: PointerEvent) => void;
+  pointerCancel: () => void;
+}
+
+interface StackState {
+  entries: Entry[];
+  nextSeq: number;
+  countByDoc: Map<Document, number>;
+  composing: Set<Document>;
+  outsideDismissals: WeakMap<Document, number>;
+  /** The layer that owns the press in flight (it started outside it). */
+  pressOwner: Entry | null;
+  /** The first copy's listener functions: every copy adds and removes these. */
+  listeners: Listeners;
+  gesture: number;
+  clickedGesture: number | null;
+  counting: boolean;
+}
+
+const state: StackState = globalSingleton('layer-stack', () => ({
+  entries: [],
+  nextSeq: 0,
+  countByDoc: new Map(),
+  composing: new Set(),
+  outsideDismissals: new WeakMap(),
+  pressOwner: null,
+  listeners: {
+    keydown: dispatchLayerEscapeKeyDown,
+    compositionStart: onCompositionStart,
+    compositionEnd: onCompositionEnd,
+    pointerDown: onPointerDown,
+    pointerUp: onPointerUp,
+    pointerCancel: onPointerCancel,
+  },
+  gesture: 0,
+  clickedGesture: null,
+  counting: false,
+}));
 
 const valueOf = <T>(v: T | (() => T)): T => (typeof v === 'function' ? (v as () => T)() : v);
 
@@ -75,7 +116,7 @@ function compare(a: Entry, b: Entry): number {
 
 function topmost(doc: Document | null, filter?: (e: Entry) => boolean): Entry | null {
   let top: Entry | null = null;
-  for (const e of entries) {
+  for (const e of state.entries) {
     if (e.doc !== doc || !isPresent(e) || (filter && !filter(e))) continue;
     if (!top || compare(e, top) > 0) top = e;
   }
@@ -105,7 +146,6 @@ export function dispatchLayerEscapeKeyDown(event: KeyboardEvent): void {
 }
 
 // ── Outside press ───────────────────────────────────────────────────────────
-let pressOwner: Entry | null = null;
 
 function takesOutside(e: Entry) {
   return valueOf(e.outsidePress ?? 'ignore') !== 'ignore';
@@ -118,12 +158,12 @@ function inside(e: Entry, path: ReadonlyArray<EventTarget>): boolean {
 
 function onPointerDown(event: PointerEvent) {
   const owner = topmost(documentOf(event), takesOutside);
-  pressOwner = owner && !inside(owner, event.composedPath()) ? owner : null;
+  state.pressOwner = owner && !inside(owner, event.composedPath()) ? owner : null;
 }
 
 function onPointerUp(event: PointerEvent) {
-  const owner = pressOwner;
-  pressOwner = null;
+  const owner = state.pressOwner;
+  state.pressOwner = null;
   if (!owner || !isPresent(owner) || inside(owner, event.composedPath())) return;
   // The owner must still be the one on top: a layer that opened during the press owns it now.
   if (topmost(owner.doc, takesOutside) !== owner) return;
@@ -133,47 +173,49 @@ function onPointerUp(event: PointerEvent) {
 }
 
 function onPointerCancel() {
-  pressOwner = null;
+  state.pressOwner = null;
 }
 
 /** Record that a layer in `doc` is closing because a press or focus went outside it. */
 export function noteOutsideDismissal(doc: Document): void {
-  outsideDismissals.set(doc, (outsideDismissals.get(doc) ?? 0) + 1);
+  state.outsideDismissals.set(doc, (state.outsideDismissals.get(doc) ?? 0) + 1);
 }
 
 /** How many layers an outside press has closed in `doc`: a modal backdrop compares it across a press. */
 export function outsideDismissalCount(doc: Document): number {
-  return outsideDismissals.get(doc) ?? 0;
+  return state.outsideDismissals.get(doc) ?? 0;
 }
 
 // ── IME ─────────────────────────────────────────────────────────────────────
-function onCompositionStart(event: Event) { composing.add(event.currentTarget as Document); }
-function onCompositionEnd(event: Event) { composing.delete(event.currentTarget as Document); }
+function onCompositionStart(event: Event) { state.composing.add(event.currentTarget as Document); }
+function onCompositionEnd(event: Event) { state.composing.delete(event.currentTarget as Document); }
 
 /** Whether an IME composition is running in a document that holds a layer. */
 export function isTextComposing(): boolean {
-  return composing.size > 0;
+  return state.composing.size > 0;
 }
 
 function start(doc: Document) {
-  doc.addEventListener('keydown', dispatchLayerEscapeKeyDown);
-  doc.addEventListener('compositionstart', onCompositionStart, true);
-  doc.addEventListener('compositionend', onCompositionEnd, true);
-  doc.addEventListener('blur', onCompositionEnd, true);
-  doc.addEventListener('pointerdown', onPointerDown, true);
-  doc.addEventListener('pointerup', onPointerUp, true);
-  doc.addEventListener('pointercancel', onPointerCancel, true);
+  const l = state.listeners;
+  doc.addEventListener('keydown', l.keydown);
+  doc.addEventListener('compositionstart', l.compositionStart, true);
+  doc.addEventListener('compositionend', l.compositionEnd, true);
+  doc.addEventListener('blur', l.compositionEnd, true);
+  doc.addEventListener('pointerdown', l.pointerDown, true);
+  doc.addEventListener('pointerup', l.pointerUp, true);
+  doc.addEventListener('pointercancel', l.pointerCancel, true);
 }
 
 function stop(doc: Document) {
-  doc.removeEventListener('keydown', dispatchLayerEscapeKeyDown);
-  doc.removeEventListener('compositionstart', onCompositionStart, true);
-  doc.removeEventListener('compositionend', onCompositionEnd, true);
-  doc.removeEventListener('blur', onCompositionEnd, true);
-  doc.removeEventListener('pointerdown', onPointerDown, true);
-  doc.removeEventListener('pointerup', onPointerUp, true);
-  doc.removeEventListener('pointercancel', onPointerCancel, true);
-  composing.delete(doc);
+  const l = state.listeners;
+  doc.removeEventListener('keydown', l.keydown);
+  doc.removeEventListener('compositionstart', l.compositionStart, true);
+  doc.removeEventListener('compositionend', l.compositionEnd, true);
+  doc.removeEventListener('blur', l.compositionEnd, true);
+  doc.removeEventListener('pointerdown', l.pointerDown, true);
+  doc.removeEventListener('pointerup', l.pointerUp, true);
+  doc.removeEventListener('pointercancel', l.pointerCancel, true);
+  state.composing.delete(doc);
 }
 
 /**
@@ -182,19 +224,19 @@ function stop(doc: Document) {
  */
 export function registerLayer(entry: LayerEntry): () => void {
   const doc = entry.element.ownerDocument;
-  const full: Entry = {...entry, seq: nextSeq++, doc};
-  entries.push(full);
-  const count = countByDoc.get(doc) ?? 0;
-  countByDoc.set(doc, count + 1);
+  const full: Entry = {...entry, seq: state.nextSeq++, doc};
+  state.entries.push(full);
+  const count = state.countByDoc.get(doc) ?? 0;
+  state.countByDoc.set(doc, count + 1);
   if (count === 0) start(doc);
   return () => {
-    const at = entries.indexOf(full);
+    const at = state.entries.indexOf(full);
     if (at === -1) return;
-    entries.splice(at, 1);
-    if (pressOwner === full) pressOwner = null;
-    const left = (countByDoc.get(doc) ?? 1) - 1;
-    if (left > 0) countByDoc.set(doc, left);
-    else { countByDoc.delete(doc); stop(doc); }
+    state.entries.splice(at, 1);
+    if (state.pressOwner === full) state.pressOwner = null;
+    const left = (state.countByDoc.get(doc) ?? 1) - 1;
+    if (left > 0) state.countByDoc.set(doc, left);
+    else { state.countByDoc.delete(doc); stop(doc); }
   };
 }
 
@@ -220,28 +262,24 @@ export function shouldDismissOnCloseRequest(element: HTMLElement): boolean {
 // ── Gesture identity (gestureCounter.ts) ─────────────────────────────────────
 // A light dismiss and the trigger's own click come from one press; counting gestures (not
 // timestamps) tells "the click of the press that dismissed the layer" from a fresh one.
-let gesture = 0;
-let clickedGesture: number | null = null;
-let counting = false;
-
 function count() {
-  if (counting || typeof document === 'undefined') return;
-  counting = true;
-  document.addEventListener('pointerdown', () => { gesture += 1; }, true);
-  document.addEventListener('keydown', () => { gesture += 1; }, true);
-  document.addEventListener('click', () => { clickedGesture = gesture; }, true);
+  if (state.counting || typeof document === 'undefined') return;
+  state.counting = true;
+  document.addEventListener('pointerdown', () => { state.gesture += 1; }, true);
+  document.addEventListener('keydown', () => { state.gesture += 1; }, true);
+  document.addEventListener('click', () => { state.clickedGesture = state.gesture; }, true);
 }
 
 /** Identifies the user gesture in flight: two reads that agree happened within one press. */
 export function currentGesture(): number {
   count();
-  return gesture;
+  return state.gesture;
 }
 
 /** Whether the click of the current gesture already ran. */
 export function currentGestureHasClicked(): boolean {
   count();
-  return clickedGesture === gesture;
+  return state.clickedGesture === state.gesture;
 }
 
 if (typeof document !== 'undefined') count();

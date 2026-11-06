@@ -32,6 +32,7 @@ import './date-range-input';
 import '../behaviors/token';
 import {announce} from './runtime/announce';
 import {isImeKeyEvent} from './runtime/dom';
+import {globalSingleton} from './runtime/global';
 import {emit, fillMessage, fillPlural, formatNumber} from './field';
 import type {LayerElement} from './runtime/layer';
 import type {TokenizerChangeDetail, TokenizerElement, TokenizerItem} from './tokenizer';
@@ -463,7 +464,8 @@ type EditorState =
   | {type: 'adding'; partial: PartialFilter}
   | {type: 'editing'; index: number; partial: PartialFilter};
 
-let tokenNames = 0;
+/** Token-name id counter, page-wide (shared by every copy of this module). */
+const tokenNames = globalSingleton('power-search-token-names', () => ({count: 0}));
 
 export class PowerSearchElement extends Base {
   #config: InternalConfig | null = null;
@@ -601,7 +603,7 @@ export class PowerSearchElement extends Base {
     const frag = cloneTemplate(this.querySelector<HTMLTemplateElement>(`:scope > template[data-ax-filter-token="${canInteract ? 'interactive' : 'static'}"]`))
       ?? doc.createDocumentFragment();
     const name = frag.querySelector<HTMLElement>('[data-ax-token-name]');
-    const nameId = `${this.id || 'ax-power-search'}-token-name-${++tokenNames}`;
+    const nameId = `${this.id || 'ax-power-search'}-token-name-${++tokenNames.count}`;
     if (name) {
       name.id = nameId;
       name.textContent = text.full;
