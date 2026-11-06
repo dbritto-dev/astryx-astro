@@ -1,0 +1,66 @@
+---
+/**
+ * Internal: renders `consumer` (_MarkdownDocument.astro) with the kit atoms as lazy named
+ * slots — the theme-dependent leaves only real Astro components can render (markdownKit.ts).
+ * A slot renders only when the document asks for it, so a document without code renders no
+ * copy button, and so on. Placeholders (`PH.*`) mark the per-instance values.
+ *
+ * Atoms and what they port:
+ *   atom:copy                 CodeBlock's copy IconButton + Tooltip (CodeBlock/_CopyButton.astro)
+ *   atom:chevron              CodeBlock's collapse chevron Icon
+ *   atom:task-(un)checked     ListItem's task marker: <CheckboxInput size="sm" isLabelHidden isReadOnly>
+ *   atom:checkbox-(un)checked CheckboxListItem's CheckboxInput (+ _CheckboxSlot's value / labelledby)
+ *   atom:heading-copy         HeadingLinksRenderer's ghost sm icon-only Button (# / check)
+ *   atom:link                 the LinkProvider component, for internal links
+ *   atom:citation-icon        an Astro component `source.icon`, as Citation renders it (sm Icon)
+ */
+import CopyButton from '../CodeBlock/_CopyButton.astro';
+import Icon from '../Icon/Icon.astro';
+import CheckboxInput from '../CheckboxInput/CheckboxInput.astro';
+import CheckboxSlot from '../CheckboxList/_CheckboxSlot.astro';
+import Button from '../Button/Button.astro';
+import {translator} from '../../lib/i18n';
+import {resolveLinkComponent} from '../LinkProvider/linkComponent';
+import {CHECKBOX_ITEM_KEY} from '../CheckboxList/checkboxListContext';
+import {PH} from './markdownKit';
+
+interface Props {
+  consumer: (...args: any[]) => unknown;
+  props: Record<string, unknown>;
+}
+
+const {consumer: Consumer, props} = Astro.props as {consumer: any; props: Record<string, unknown>};
+const locale = props.locale as string | undefined;
+const t = translator(Astro, locale);
+const copyLabel = t('@astryx.codeBlock.copyCode');
+const copiedLabel = t('@astryx.codeBlock.copied');
+const checkboxLabel = t('@astryx.checkboxList.item.checkbox');
+const headingCopied = t('@astryx.markdownHeadingLinks.copied');
+const LinkComponent = resolveLinkComponent(Astro) as any;
+const hasLinkComponent = typeof LinkComponent !== 'string';
+// CheckboxListItem enrols its checkbox in these keys; the item stamps `checkbox-list-item`
+// (_CheckboxSlot) and Item consumes `item-description` (the document does, see there).
+const checkboxInherit = `${CHECKBOX_ITEM_KEY} item-description`;
+---
+<Consumer {...props} hasLinkComponent={hasLinkComponent}>
+  <Fragment slot="atom:copy"><CopyButton iconSlot="code-block-copy" themeClass="astryx-code-block-copy-button" label={copyLabel} copiedLabel={copiedLabel} tip={copyLabel} copiedTip={copyLabel} announce={copiedLabel} from={PH.source} locale={locale} /></Fragment>
+  <Fragment slot="atom:chevron"><Icon icon="chevronRight" size="xsm" color="inherit" class="ax-codeblock-chevron-icon" /></Fragment>
+  <Fragment slot="atom:task-checked"><CheckboxInput size="sm" value={true} label={PH.label} isLabelHidden isReadOnly locale={locale} /></Fragment>
+  <Fragment slot="atom:task-unchecked"><CheckboxInput size="sm" value={false} label={PH.label} isLabelHidden isReadOnly locale={locale} /></Fragment>
+  <Fragment slot="atom:checkbox-checked"><CheckboxSlot attrs={{value: PH.value, 'aria-labelledby': PH.labelledBy}}><CheckboxInput id={PH.checkboxId} label={checkboxLabel} isLabelHidden value={true} isDisabled={false} isReadOnly isLoading={false} size="sm" locale={locale} data-ax-inherit={checkboxInherit} data-ax-checkbox-list-input="" /></CheckboxSlot></Fragment>
+  <Fragment slot="atom:checkbox-unchecked"><CheckboxSlot attrs={{value: PH.value, 'aria-labelledby': PH.labelledBy}}><CheckboxInput id={PH.checkboxId} label={checkboxLabel} isLabelHidden value={false} isDisabled={false} isReadOnly isLoading={false} size="sm" locale={locale} data-ax-inherit={checkboxInherit} data-ax-checkbox-list-input="" /></CheckboxSlot></Fragment>
+  <Fragment slot="atom:heading-copy"><Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    label={PH.label}
+    isIconOnly
+    class="ax-markdown-heading-copy"
+    locale={locale}
+    data-ax-markdown-heading-link={PH.url}
+    data-ax-copy-label={PH.label}
+    data-ax-copied-label={headingCopied}
+  ><span slot="icon" aria-hidden="true" class="ax-markdown-heading-glyph"><span class="ax-markdown-heading-state" data-state="idle">#</span><span class="ax-markdown-heading-state" data-state="copied"><Icon icon="check" size="sm" color="inherit" /></span></span></Button></Fragment>
+  {hasLinkComponent && <Fragment slot="atom:link"><LinkComponent href={PH.href} class="ax-markdown-link">{PH.children}</LinkComponent></Fragment>}
+  <template slot="atom:citation-icon">{(icon: unknown) => <Icon icon={icon as never} size="sm" />}</template>
+</Consumer>

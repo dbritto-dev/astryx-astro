@@ -1,0 +1,116 @@
+---
+/**
+ * Markdown — renders a Markdown string as Astryx components. Port of @astryxdesign/core
+ * Markdown/Markdown.tsx, plugin-renderer/MarkdownPluginNodeRenderer.tsx,
+ * plugins/HeadingLinksRenderer.tsx (with hooks/useClipboard.ts + hooks/useContainerReveal.ts /
+ * containerReveal.stylex.ts) and hooks/useStreamingText.ts (in elements/markdown-stream.ts).
+ * Parser, AST, URL policy, plugins and heading ids: lib/markdown (ported verbatim).
+ *
+ * One render function serves the server and the browser: markdownPipeline.ts (parse →
+ * transforms → heading ids) then markdownRender.ts (AST → HTML string, composed components'
+ * markup from markdownMarkup.ts). Theme-dependent leaves (icons, CheckboxInput, the copy
+ * IconButton, the heading-link Button, a LinkProvider component) are rendered once by the real
+ * components as kit atoms (markdownKit.ts, _MarkdownAtoms.astro).
+ *
+ * Output (as Astryx): root `<div role="document" class="astryx-markdown" data-density>` (a
+ * `<span>` for `display="inline"`); headings `<hN id class="astryx-markdown-heading" data-level>`
+ * with ids from `projectMarkdownHeadings` (what Outline / `parseOutlineFromMarkdown` link to);
+ * paragraphs `<div role="paragraph" class="astryx-markdown-paragraph">`; fenced code → CodeBlock
+ * (wrapped, collapsible, copy button) in `.astryx-markdown-codeblock`; lists → List / ListItem
+ * with depth markers (disc → circle → square, decimal → letters → roman) and per-item read-only
+ * task checkboxes, paragraph-only task lists → a read-only CheckboxList labelled "Task list";
+ * tables → Table (grid dividers, wrapping cells, per-column `ch` floors, outer edge) in
+ * `.astryx-markdown-table`; quotes → Blockquote; `---` → `<hr class="astryx-markdown-hr">`;
+ * images → `<img>` (block images in `.astryx-markdown-image`); inline code → Code; `[id]` /
+ * `【id】` with `sources` → Citation; `~~x~~` → `<del>`.
+ *
+ * Safety (as Astryx): raw HTML in the source is text, always escaped. Link destinations follow
+ * the shared navigation rule (lib/safeUrl via `sanitizeMarkdownLinkUrl`): a blocked one
+ * (`javascript:`, `vbscript:`, `data:text/html`) renders its text in a plain `<span>` — inert,
+ * never an `<a>`; image sources use the stricter `sanitizeMarkdownUrl` (every `data:` blocked →
+ * `[alt]`). External links open in a new tab with `noopener noreferrer`; internal links render
+ * through the LinkProvider component when one is set. Math renders only through
+ * `components.math` (which also enables `$…$` parsing); without it dollars stay text.
+ *
+ * Component overrides (Astryx `components`): `{code, inlineCode, math, citation, link, heading,
+ * paragraph, image, blockquote, hr}`. Each entry is an Astro component (props as Astryx's,
+ * children — the rendered inner markup — in its default slot; inlineCode gets the code text in
+ * the slot), a function `(props) => html` (`children` is the inner HTML, except inlineCode's
+ * text) returning an HTML string / `null` / `{component, props, children}`, or a tag name
+ * (`paragraph: 'p'`). Functions also work in the streaming element; Astro components are
+ * server-only. A custom renderer owns its element, ids (`heading` receives `id`) and styling.
+ *
+ * Plugins (`plugins`, from lib/markdown `createMarkdownPlugin` & first-party helpers): syntax and
+ * transforms as Astryx; an extension renderer's `render({node})` returns an HTML string, `null`
+ * (the readable fallback) or `{component, props, children}`. `inlinePlugins[].render(match, key)`
+ * returns the same. `createMarkdownHeadingLinks()` adds the trailing `#` copy button (revealed on
+ * hover / focus, always on touch; copies the absolute permalink, a check for 1.5s, announced).
+ *
+ * Streaming (`isStreaming`): the root becomes `<ax-markdown-stream>` (elements/markdown-stream.ts)
+ * — append text with `el.append(chunk)` or set `el.text`; it smooths the reveal like
+ * useStreamingText, parses incrementally, fades new text in and re-renders in place (morphing,
+ * so focus, scroll and finished fades survive). `el.isStreaming = false` (or `el.finish()`) shows
+ * the full text and renders exactly what a non-streaming Markdown renders. See the element's
+ * header for the full contract. A server render of a streaming document shows its current text.
+ *
+ * Events: `astryx-link-click` {href, event} (cancelable — `preventDefault()` stops navigation,
+ * Astryx `onLinkClick` returning false) from a link, when `hasLinkClickEvent` is set.
+ * Not available: `onLinkClick` (function; use the event), `xstyle`, `className` (`class`).
+ *
+ * @example
+ * <Markdown children={'# Hello\n\nThis is **bold** and _italic_ text.'} />
+ * <Markdown sources={{s1: {title: 'Astryx', url: 'https://example.com'}}} citationStyle="number">{text}</Markdown>
+ * <Markdown components={{heading: MyHeading}} plugins={[createMarkdownHeadingLinks()]} children={doc} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Atoms from './_MarkdownAtoms.astro';
+import Document from './_MarkdownDocument.astro';
+import type {MarkdownComponents, MarkdownInlinePlugin, MarkdownSource} from './markdownRender';
+import type {MarkdownPluginEntry} from '../../lib/markdown/plugins/protocol';
+import type {CodeLanguage} from '../../lib/codeblock';
+
+export type {MarkdownComponents, MarkdownInlinePlugin, MarkdownSource, MarkdownComponentNode, MarkdownRenderable, MarkdownSourceLines} from './markdownRender';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'children'> {
+  /** The Markdown string (or put it in the default slot: `<Markdown>{text}</Markdown>`). */
+  children?: string;
+  /** Block document, or `inline` for a span inside surrounding text. @default 'block' */
+  display?: 'block' | 'inline';
+  /** Spacing between blocks. @default 'default' */
+  density?: 'default' | 'compact';
+  /** The HTML level `#` maps to (clamped at h6). @default 1 */
+  headingLevelStart?: 1 | 2 | 3 | 4 | 5 | 6;
+  /** Streaming mode: `<ax-markdown-stream>` root, incremental parse, smoothed fade-in reveal. @default false */
+  isStreaming?: boolean;
+  /** Dispatch the cancelable `astryx-link-click` {href, event} from links (Astryx `onLinkClick`). @default false */
+  hasLinkClickEvent?: boolean;
+  /** Citation sources by id: `[id]` / `【id】` markers render as Citation chips. */
+  sources?: Record<string, MarkdownSource>;
+  /** Citation chips (title, icon) or numbered badges. @default 'label' */
+  citationStyle?: 'label' | 'number';
+  /** Max width of prose blocks (number = px); tables and code blocks take it as a floor. @default 680 */
+  contentWidth?: number | string;
+  /** Prose alignment when `contentWidth` is narrower than the container. @default 'start' */
+  contentAlign?: 'start' | 'center';
+  /** Per-node renderer overrides (see the header). `math` enables `$…$` / `$$…$$` parsing. */
+  components?: MarkdownComponents;
+  /** Ordered plugins from `createMarkdownPlugin()` and the first-party helpers (lib/markdown). */
+  plugins?: ReadonlyArray<MarkdownPluginEntry>;
+  /** Regex matches in text nodes → custom inline output (code, math untouched). */
+  inlinePlugins?: MarkdownInlinePlugin[];
+  /** `gfm`: autolink bare URLs, `www.`, `<scheme:url>`, emails. */
+  autolink?: 'gfm';
+  /** CodeBlock language values fences may name (lib/codeblock languages, `createCodeLanguage`). */
+  codeLanguages?: ReadonlyArray<CodeLanguage>;
+  /** Locale for the built-in strings. */
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {children, slot: _slot, ...props} = Astro.props as Props & {slot?: string};
+// A slot gives HTML-escaped text: decode Astro's five escapes back to the source.
+const decode = (html: string) =>
+  html.replace(/&(lt|gt|quot|#39|#x27|amp);/g, (_m, e: string) => ({lt: '<', gt: '>', quot: '"', '#39': "'", '#x27': "'", amp: '&'})[e] ?? _m);
+const source = typeof children === 'string' ? children : Astro.slots.has('default') ? decode(await Astro.slots.render('default')) : '';
+---
+<Atoms consumer={Document} props={{...props, source}} />

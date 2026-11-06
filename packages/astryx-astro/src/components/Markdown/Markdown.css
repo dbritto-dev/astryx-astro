@@ -1,0 +1,233 @@
+/*
+ * Port of @astryxdesign/core Markdown/Markdown.tsx (styles, markdownTableCellStyles,
+ * cellAlignStyles, streamingStyles), plugins/HeadingLinksRenderer.tsx (styles) and the
+ * container + revealLayoutPreserved blocks of hooks/containerReveal.stylex.ts it uses.
+ *
+ * Block spacing: StyleX picks one spacing style per block (type × density) and zeroes the
+ * first block's top / the last block's bottom margin within each block list. Here the block
+ * carries `data-ax-spacing` (its group), `data-ax-first` / `data-ax-last`, and its density as the
+ * theme attribute `data-density` (or `data-ax-density` on Markdown's private elements). Every
+ * rule is one class at :where() specificity, in StyleX application order (spacing → compact →
+ * first → last), so theme rules on the `astryx-markdown-*` targets win.
+ * Composed components keep their own styles; Astryx's xstyle overrides on them (list indent,
+ * table cells, code in cells) are child selectors under the Markdown block that owns them.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Root ─────────────────────────────────────────────────────────────── */
+  .astryx-markdown {
+    font-family: var(--font-family-body);
+    color: var(--color-text-primary);
+    line-height: var(--text-body-leading);
+    font-size: var(--text-body-size);
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+  ax-markdown-stream.astryx-markdown:not([data-ax-inline]) { display: block; }
+  .astryx-markdown:where([data-ax-inline]) {
+    display: inline;
+    width: auto;
+    max-width: none;
+    font-family: inherit;
+    color: inherit;
+    line-height: inherit;
+    font-size: inherit;
+  }
+
+  /* ── Headings ─────────────────────────────────────────────────────────── */
+  .astryx-markdown-heading,
+  .ax-markdown-heading-row {
+    font-family: var(--font-family-heading);
+    color: var(--color-text-primary);
+  }
+  .astryx-markdown-heading:where([data-level="1"]), .ax-markdown-heading-row:where([data-ax-level="1"]) { font-size: var(--text-heading-1-size); font-weight: var(--text-heading-1-weight); line-height: var(--text-heading-1-leading); }
+  .astryx-markdown-heading:where([data-level="2"]), .ax-markdown-heading-row:where([data-ax-level="2"]) { font-size: var(--text-heading-2-size); font-weight: var(--text-heading-2-weight); line-height: var(--text-heading-2-leading); }
+  .astryx-markdown-heading:where([data-level="3"]), .ax-markdown-heading-row:where([data-ax-level="3"]) { font-size: var(--text-heading-3-size); font-weight: var(--text-heading-3-weight); line-height: var(--text-heading-3-leading); }
+  .astryx-markdown-heading:where([data-level="4"]), .ax-markdown-heading-row:where([data-ax-level="4"]) { font-size: var(--text-heading-4-size); font-weight: var(--text-heading-4-weight); line-height: var(--text-heading-4-leading); }
+  .astryx-markdown-heading:where([data-level="5"]), .ax-markdown-heading-row:where([data-ax-level="5"]) { font-size: var(--text-heading-5-size); font-weight: var(--text-heading-5-weight); line-height: var(--text-heading-5-leading); }
+  .astryx-markdown-heading:where([data-level="6"]), .ax-markdown-heading-row:where([data-ax-level="6"]) { font-size: var(--text-heading-6-size); font-weight: var(--text-heading-6-weight); line-height: var(--text-heading-6-leading); }
+
+  /* ── Block spacing (getElementSpacing), default then compact ──────────── */
+  :is(.astryx-markdown-heading, .ax-markdown-heading-row):where([data-ax-spacing="heading-major"]) { margin-block-start: var(--spacing-6); margin-block-end: var(--spacing-3); }
+  :is(.astryx-markdown-heading, .ax-markdown-heading-row):where([data-ax-spacing="heading-minor"]) { margin-block-start: var(--spacing-4); margin-block-end: var(--spacing-2); }
+  :is(.astryx-markdown-paragraph, .ax-markdown-extension):where([data-ax-spacing]) { margin-block-start: var(--spacing-3); margin-block-end: var(--spacing-3); }
+  .astryx-markdown-codeblock { margin-block-start: var(--spacing-4); margin-block-end: var(--spacing-4); }
+  .astryx-blockquote.astryx-markdown-blockquote { margin-block-start: var(--spacing-4); margin-block-end: var(--spacing-4); }
+  .astryx-markdown-list { margin-block-start: var(--spacing-3); margin-block-end: var(--spacing-3); }
+  .astryx-markdown-table { margin-block-start: var(--spacing-4); margin-block-end: var(--spacing-4); }
+  .astryx-markdown-hr { margin-block-start: var(--spacing-6); margin-block-end: var(--spacing-6); }
+  .astryx-markdown-image { margin-block-start: var(--spacing-3); margin-block-end: var(--spacing-3); }
+
+  :is(.astryx-markdown-heading, .ax-markdown-heading-row):where([data-ax-spacing="heading-major"]):where([data-density="compact"], [data-ax-density="compact"]) { margin-block-start: var(--spacing-4); margin-block-end: var(--spacing-2); }
+  :is(.astryx-markdown-heading, .ax-markdown-heading-row):where([data-ax-spacing="heading-minor"]):where([data-density="compact"], [data-ax-density="compact"]) { margin-block-start: var(--spacing-3); margin-block-end: var(--spacing-1); }
+  :is(.astryx-markdown-paragraph, .ax-markdown-extension):where([data-ax-spacing]):where([data-density="compact"], [data-ax-density="compact"]) { margin-block-start: var(--spacing-1); margin-block-end: var(--spacing-1); }
+  .astryx-markdown-codeblock:where([data-density="compact"]) { margin-block-start: var(--spacing-2); margin-block-end: var(--spacing-2); }
+  .astryx-blockquote.astryx-markdown-blockquote:where([data-density="compact"]) { margin-block-start: var(--spacing-2); margin-block-end: var(--spacing-2); }
+  .astryx-markdown-list:where([data-density="compact"]) { margin-block-start: var(--spacing-1); margin-block-end: var(--spacing-1); }
+  .astryx-markdown-table:where([data-density="compact"]) { margin-block-start: var(--spacing-2); margin-block-end: var(--spacing-2); }
+  .astryx-markdown-hr:where([data-density="compact"]) { margin-block-start: var(--spacing-3); margin-block-end: var(--spacing-3); }
+  .astryx-markdown-image:where([data-density="compact"]) { margin-block-start: var(--spacing-2); margin-block-end: var(--spacing-2); }
+
+  /* noMarginBlockStart / noMarginBlockEnd */
+  :is(.astryx-markdown-heading, .ax-markdown-heading-row, .astryx-markdown-paragraph, .ax-markdown-extension, .astryx-markdown-codeblock, .astryx-markdown-list, .astryx-markdown-table, .astryx-markdown-hr, .astryx-markdown-image):where([data-ax-first]),
+  .astryx-blockquote.astryx-markdown-blockquote:where([data-ax-first]) { margin-block-start: 0; }
+  :is(.astryx-markdown-heading, .ax-markdown-heading-row, .astryx-markdown-paragraph, .ax-markdown-extension, .astryx-markdown-codeblock, .astryx-markdown-list, .astryx-markdown-table, .astryx-markdown-hr, .astryx-markdown-image):where([data-ax-last]),
+  .astryx-blockquote.astryx-markdown-blockquote:where([data-ax-last]) { margin-block-end: 0; }
+
+  /* ── Code block and table wrappers ────────────────────────────────────── */
+  .astryx-markdown-codeblock { max-width: 100%; }
+  .astryx-markdown-table {
+    /* Table's own Scroll region scrolls; this block only sizes and resets container padding. */
+    max-width: 100%;
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+  }
+
+  /* ── Lists (styles.blockIndent, styles.markerGutter on List / CheckboxList's Field) ── */
+  .astryx-markdown-list > .astryx-list,
+  .astryx-markdown-list > .astryx-field.astryx-checkbox-list {
+    margin-inline: calc(-1 * var(--spacing-2));
+    overflow-x: visible;
+  }
+  .astryx-markdown-list > ol.astryx-list {
+    margin-inline-start: calc(-1 * (var(--spacing-2) + var(--spacing-4)));
+    padding-inline-start: var(--spacing-4);
+  }
+
+  /* ── Table (markdownTableCellStyles over Table's wrap-mode cells) ─────── */
+  .astryx-markdown-table .astryx-table { border-width: var(--border-width); border-style: solid; border-color: var(--color-border); }
+  .astryx-markdown-table .astryx-table-cell[data-density] {
+    box-sizing: content-box;
+    max-width: none;
+    overflow: visible;
+    overflow-wrap: break-word;
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    word-break: normal;
+  }
+  .astryx-markdown-table .astryx-table-header-cell[data-density] {
+    box-sizing: content-box;
+    max-width: none;
+    overflow: visible;
+    overflow-wrap: break-word;
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    text-overflow: clip;
+    white-space: normal;
+    word-break: normal;
+  }
+  /* MarkdownTableCellCode: inline code in a cell keeps its token whole. */
+  .astryx-markdown-table .astryx-code { word-break: normal; }
+
+  /* ── Rules, images, inline marks ──────────────────────────────────────── */
+  .astryx-markdown-hr {
+    border-width: 0;
+    border-top-width: var(--border-width);
+    border-top-style: solid;
+    border-top-color: var(--color-border);
+  }
+  .ax-markdown-img { max-width: 100%; border-radius: var(--radius-element); }
+  .ax-markdown-strong { font-weight: var(--font-weight-semibold); }
+  .ax-markdown-del { color: var(--color-text-secondary); }
+  .ax-markdown-link { color: var(--color-text-accent); text-decoration: underline; }
+
+  /* ── Streaming fade-in (streamingStyles.fadeIn) ───────────────────────── */
+  .ax-markdown-fade {
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  @starting-style {
+    .ax-markdown-fade { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-markdown-fade { transition-duration: 0s; }
+  }
+
+  /* ── Heading permalinks (HeadingLinksRenderer) ────────────────────────── */
+  .ax-markdown-heading-row {
+    display: flex;
+    align-items: last baseline;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+    isolation: isolate;
+    /* useContainerReveal container: publishes the reveal state to the copy button. */
+    --_hover-delay: 0s;
+    --_reveal-opacity: 0;
+    --_fade-delay: 0s;
+  }
+  @media (hover: hover) {
+    .ax-markdown-heading-row:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      --_reveal-opacity: 1;
+      --_fade-delay: var(--_hover-delay, 0s);
+    }
+  }
+  .ax-markdown-heading-row:focus-within { --_reveal-opacity: 1; --_fade-delay: 0s; }
+  @media (any-pointer: coarse) {
+    .ax-markdown-heading-row { --_reveal-opacity: 1; --_fade-delay: 0s; }
+  }
+  .astryx-markdown-heading:where([data-ax-in-row]) {
+    flex: 0 1 auto;
+    min-width: 0;
+    margin-block: 0;
+  }
+  .ax-markdown-heading-control {
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+    z-index: 1;
+    inline-size: var(--size-element-sm);
+    margin-inline-start: var(--spacing-1-5);
+    color: var(--color-text-secondary);
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+  }
+  .ax-markdown-heading-probe { visibility: hidden; }
+  .ax-markdown-heading-control > .astryx-button.ax-markdown-heading-copy[data-size] {
+    position: absolute;
+    inset-block-start: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    inline-size: var(--size-element-sm);
+    block-size: var(--size-element-sm);
+    padding-block: 0;
+    padding-inline: 0;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    /* revealLayoutPreserved */
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transition-delay: var(--_fade-delay, 0s);
+    opacity: var(--_reveal-opacity, 1);
+  }
+  @media (any-pointer: coarse) {
+    .ax-markdown-heading-control { inline-size: 24px; }
+    .ax-markdown-heading-control > .astryx-button.ax-markdown-heading-copy[data-size] { inline-size: 24px; block-size: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-markdown-heading-control > .astryx-button.ax-markdown-heading-copy[data-size] { transition-duration: 0s; }
+  }
+  .ax-markdown-heading-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 1em;
+    block-size: 1em;
+  }
+  .ax-markdown-heading-copy .ax-markdown-heading-state[data-state="copied"],
+  .ax-markdown-heading-copy[data-copied] .ax-markdown-heading-state[data-state="idle"] { display: none; }
+  .ax-markdown-heading-copy[data-copied] .ax-markdown-heading-state[data-state="copied"] { display: contents; }
+}
