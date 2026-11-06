@@ -40,7 +40,7 @@
 import {outsideDismissalCount, registerLayer, shouldDismissOnCloseRequest} from './runtime/layerStack';
 import {focusForLastInput, returnFocusForLastInput} from './runtime/modality';
 import {isFocusLost, tabbables} from './runtime/dom';
-import {notifyTopLayerEntry, supplyModalOutlet} from './modal-outlet';
+import {notifyTopLayerEntry, supplyModalOutlet} from './runtime/modalOutlet';
 
 export type DialogPurpose = 'required' | 'form' | 'info';
 export type DialogOpenChangeReason = 'escape' | 'outside' | 'api' | 'toggle';

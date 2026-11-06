@@ -15,7 +15,8 @@
     "./components/*": "./src/components/*",
     "./styles/*": "./src/styles/*",
     "./astryx.css": "./src/styles/astryx.css",
-    "./themes/*.css": "./src/styles/themes/*.css"
+    "./themes/*.css": "./src/styles/themes/*.css",
+    "./elements/*": "./src/elements/*.ts"
   },
   "keywords": [
     "astro",

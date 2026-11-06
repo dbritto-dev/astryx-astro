@@ -254,3 +254,14 @@ const tip = tooltip ? attachTooltip({describedBy: rest['aria-describedby']}) : n
   (`components/Popover/attach.ts`) gives a native-invoker trigger + `<Popover for=…>` props.
 - An existing element can also be wired by id: `<Tooltip for="some-id" content="…" />`
   (attributes are added at runtime, so the description is not in the server HTML).
+
+## `modalOutlet.ts` — top-layer outlets for content that must paint above modals
+
+`supplyModalOutlet(dialog)` after `showModal()`, `withdrawModalOutlet(dialog)` on close,
+`getActiveModalOutlet()`, `subscribeModalOutlets(listener)`, `notifyTopLayerEntry()`.
+ToastViewport moves into the latest outlet so toasts paint above an open modal. Every modal
+surface (Dialog, AlertDialog, Drawer, BottomSheet, Lightbox, MobileNav, CommandPalette) must
+supply its `<dialog>` as an outlet while open.
+
+Client-only APIs (import from the element modules in the browser, not from the package index):
+`toast()`, `createToastQueue()`, `getToastContext()` (`src/elements/toast.ts`).

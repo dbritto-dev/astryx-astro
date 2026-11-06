@@ -105,7 +105,7 @@
 
   /* ── Page scroll lock behind modal surfaces (useScrollLock) ───────────── */
   :root:has(dialog[data-ax-scroll-lock]:modal),
-  :root:has([data-ax-scroll-lock][data-ax-open]) { overflow: hidden; scrollbar-gutter: stable; }
+  :root:has([data-ax-scroll-lock][data-ax-open]) { overflow: hidden; scrollbar-gutter: stable; overscroll-behavior-y: none; }
 
   /* ── Layer root boundary: overlays reset inherited container padding ──── */
   [data-astryx-layer-root] {

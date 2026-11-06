@@ -28,6 +28,8 @@ const lines = [
   "export {uid} from './lib/uid';",
   "export {routeFieldProps, statusIconPlan, textEntryTraitAttributes, joinAriaIDs, fieldId} from './components/Field/fieldProps';",
   "export {stamp, stampAttr, seal, inherits} from './lib/cascade';",
+  "export {attachDialog} from './components/Dialog/attach';",
+  "export {attachDrawer} from './components/Drawer/attach';",
   '',
 ];
 const seen = new Set();

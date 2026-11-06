@@ -33,7 +33,7 @@
 import {announce, renderedText} from './runtime/announce';
 import {focusForLastInput} from './runtime/modality';
 import {isFocusDetached} from './runtime/dom';
-import {getActiveModalOutlet, subscribeModalOutlets, type ModalOutletChange} from './modal-outlet';
+import {getActiveModalOutlet, subscribeModalOutlets, type ModalOutletChange} from './runtime/modalOutlet';
 
 export type ToastType = 'info' | 'error';
 export type ToastPosition = 'topEnd' | 'topStart' | 'bottomEnd' | 'bottomStart';
