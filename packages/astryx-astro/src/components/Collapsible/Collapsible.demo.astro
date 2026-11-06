@@ -1,0 +1,114 @@
+---
+import Collapsible from './Collapsible.astro';
+import CollapsibleGroup from './CollapsibleGroup.astro';
+import Card from '../Card/Card.astro';
+import VStack from '../Stack/VStack.astro';
+import Grid from '../Grid/Grid.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+import Text from '../Text/Text.astro';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const faq = [
+  {value: 'what', q: 'What is Astryx?', a: 'A design system for building internal tools, ported here to Astro components with plain layered CSS.'},
+  {value: 'start', q: 'How do I start?', a: 'Install the package, import astryx.css and a theme, then use the components in your pages.'},
+  {value: 'themes', q: 'Do the Astryx themes work?', a: 'Yes. The generated theme CSS targets the same classes and data attributes.'},
+];
+---
+<Grid columns={{minWidth: 300}} gap={6} align="start">
+  <div>
+    <p style={caption}>Standalone — open by default, closed (defaultIsOpen=false), disabled</p>
+    <VStack gap={4}>
+      <Collapsible trigger="Shipping details" id="cl-basic">
+        <Text>Orders ship within two business days. Tracking arrives by email once the parcel leaves the warehouse.</Text>
+      </Collapsible>
+      <Collapsible trigger="Return policy" defaultIsOpen={false} id="cl-closed">
+        <Text>Unused items can be returned within 30 days.</Text>
+        <p><a href="#cl-closed" id="cl-inner-link">Start a return</a></p>
+      </Collapsible>
+      <Collapsible trigger="Archived notes (disabled, open)" isDisabled id="cl-disabled-open">
+        <Text>Disabling an item does not collapse it.</Text>
+      </Collapsible>
+      <Collapsible trigger="Locked section (disabled, closed)" isDisabled isOpen={false} id="cl-disabled-closed">
+        <Text>Hidden content.</Text>
+      </Collapsible>
+    </VStack>
+  </div>
+
+  <div>
+    <p style={caption}>chevronPosition="start", a composed trigger slot, inside Cards</p>
+    <VStack gap={3}>
+      <Collapsible chevronPosition="start" trigger="Leading disclosure arrow" id="cl-start">
+        <Text>The arrow points into the row when closed and turns down when open.</Text>
+      </Collapsible>
+      <Card>
+        <Collapsible defaultIsOpen={false} id="cl-composed">
+          <Fragment slot="trigger">
+            <span style="display:flex;align-items:center;justify-content:space-between;gap:var(--spacing-2)">
+              <span style="display:inline-flex;align-items:center;gap:var(--spacing-2)"><Icon icon="wrench" size="sm" color="secondary" /> Advanced settings</span>
+              <Badge variant="info" label="3 changed" />
+            </span>
+          </Fragment>
+          <Text>Composed triggers reach the far edge, next to the chevron.</Text>
+        </Collapsible>
+      </Card>
+      <Card>
+        <Collapsible trigger="Nested sections" id="cl-outer">
+          <VStack gap={2}>
+            <Text>Collapsibles nest; keep it to two levels.</Text>
+            <Collapsible trigger="Inner section" defaultIsOpen={false} id="cl-inner">
+              <Text>Inner content.</Text>
+            </Collapsible>
+          </VStack>
+        </Collapsible>
+      </Card>
+    </VStack>
+  </div>
+
+  <div>
+    <p style={caption}>CollapsibleGroup type="single" hasDividers (FAQ, density balanced)</p>
+    <CollapsibleGroup type="single" hasDividers defaultValue="what" id="cg-single">
+      {faq.map((f) => (
+        <Collapsible trigger={f.q} value={f.value} id={`cg-single-${f.value}`}><Text>{f.a}</Text></Collapsible>
+      ))}
+    </CollapsibleGroup>
+  </div>
+
+  <div>
+    <p style={caption}>type="multiple", density compact and spacious, chevronPosition="start" from the group</p>
+    <VStack gap={5}>
+      <CollapsibleGroup type="multiple" hasDividers density="compact" defaultValue={['a', 'b']} id="cg-multiple">
+        <Collapsible trigger="Compact one" value="a"><Text>First panel.</Text></Collapsible>
+        <Collapsible trigger="Compact two" value="b"><Text>Second panel.</Text></Collapsible>
+        <Collapsible trigger="Compact three" value="c"><Text>Third panel.</Text></Collapsible>
+      </CollapsibleGroup>
+      <CollapsibleGroup type="multiple" hasDividers density="spacious" chevronPosition="start" defaultValue={['y']} id="cg-start">
+        <Collapsible trigger="Spacious, start chevron" value="x"><Text>Closed by default.</Text></Collapsible>
+        <Collapsible trigger="Open from defaultValue" value="y"><Text>The group's chevron position reaches every item.</Text></Collapsible>
+        <Collapsible trigger="Own position wins" value="z" chevronPosition="end"><Text>An item can still override it.</Text></Collapsible>
+      </CollapsibleGroup>
+    </VStack>
+  </div>
+
+  <div>
+    <p style={caption}>Group without dividers (no wrapper box) around Cards</p>
+    <CollapsibleGroup type="single" defaultValue="general" id="cg-cards">
+      <VStack gap={2}>
+        <Card><Collapsible trigger="General" value="general"><Text>General settings content.</Text></Collapsible></Card>
+        <Card><Collapsible trigger="Advanced" value="advanced"><Text>Advanced settings content.</Text></Collapsible></Card>
+      </VStack>
+    </CollapsibleGroup>
+  </div>
+
+  <div>
+    <p style={caption}>animatedLayout — the height glides (Reduce Motion: immediate)</p>
+    <CollapsibleGroup type="single" hasDividers defaultValue="one" id="cg-animated">
+      <Collapsible trigger="Animated one" value="one" animatedLayout>
+        <Text>The content reveals on the settle spring and the chevron turns with it.</Text>
+        <p><button type="button" id="cg-animated-focus">Focusable inside</button></p>
+      </Collapsible>
+      <Collapsible trigger="Animated two" value="two" animatedLayout>
+        <Text>Opening this closes the other item.</Text>
+      </Collapsible>
+    </CollapsibleGroup>
+  </div>
+</Grid>

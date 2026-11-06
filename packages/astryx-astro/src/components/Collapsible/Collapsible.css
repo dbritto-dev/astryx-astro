@@ -1,0 +1,176 @@
+/*
+ * Port of @astryxdesign/core Collapsible/Collapsible.tsx (styles, densityStyles) and
+ * CollapsibleGroup.tsx (wrapper). Rule groups follow the React stylex.props() order:
+ * root → divided; trigger → density → pressed overlay (shared .ax-overlay-pressed-bg) →
+ * disabled; label; chevron → position/open; content → density → hidden.
+ *
+ * Closed content is `hidden="until-found"` (content-visibility: hidden, see reset.css) rather
+ * than display: none, so it drops its padding to occupy no space, like Astryx's hidden box.
+ *
+ * `animatedLayout` ([data-ax-animate]): the content height glides between 0 and auto on
+ * Astryx's `springs.settle` (SwiftUI duration 0.5, bounce 0; settles in 735 ms at 0.001,
+ * sampled into linear() the way animatedLayout.ts `linearEasing` does), fading as it
+ * reveals; the chevron turns on the same timing (applyLayoutChangeTransition). Reduce Motion
+ * (media query or a theme's [data-astryx-reduced-motion]): nothing travels — an immediate
+ * change, or a 200 ms cross-fade (`curves.move`) under a coarse primary pointer.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Root ─────────────────────────────────────────────────────────────── */
+  .astryx-collapsible {
+    display: block;
+    width: 100%;
+    --_collapsible-settle: linear(0 0%, 0.058 4.167%, 0.18 8.333%, 0.321 12.5%, 0.455 16.667%, 0.573 20.833%, 0.671 25%, 0.75 29.167%, 0.812 33.333%, 0.86 37.5%, 0.897 41.667%, 0.924 45.833%, 0.944 50%, 0.96 54.167%, 0.971 58.333%, 0.979 62.5%, 0.985 66.667%, 0.989 70.833%, 0.992 75%, 0.994 79.167%, 0.996 83.333%, 0.997 87.5%, 0.998 91.667%, 0.999 95.833%, 1 100%);
+    --_collapsible-settle-duration: 735ms;
+  }
+
+  /* Group divider chrome: a hairline above every item except the first. */
+  .astryx-collapsible[data-divided] {
+    border-block-start-width: var(--border-width);
+    border-block-start-style: solid;
+    border-block-start-color: var(--color-border);
+  }
+  .astryx-collapsible[data-divided]:first-child { border-block-start-width: 0; }
+
+  /* ── Trigger ──────────────────────────────────────────────────────────── */
+  .astryx-collapsible-trigger {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    cursor: pointer;
+    font-family: var(--font-family-body);
+    font-size: var(--text-large-size);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    text-align: start;
+    padding-block: 0;
+  }
+  .astryx-collapsible-trigger:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  .astryx-collapsible-trigger[data-density="compact"] { padding-block: var(--spacing-1); }
+  .astryx-collapsible-trigger[data-density="balanced"] { padding-block: var(--spacing-2); }
+  .astryx-collapsible-trigger[data-density="spacious"] { padding-block: var(--spacing-3); }
+
+  .astryx-collapsible-trigger[data-disabled] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  /* Capsize the label and let it fill the row (a composed trigger can reach the far edge). */
+  .astryx-collapsible-trigger > .ax-collapsible-label {
+    text-box-edge: cap alphabetic;
+    text-box-trim: trim-both;
+    flex-grow: 1;
+  }
+
+  /* ── Chevron (the trigger's Icon; [data-size] outranks Icon's own size rules) ── */
+  .astryx-collapsible-trigger > .ax-collapsible-chevron[data-size] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--text-large-size);
+    height: var(--text-large-size);
+    font-size: var(--text-large-size);
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform: rotate(0deg);
+  }
+  .astryx-collapsible-trigger[data-open] > .ax-collapsible-chevron[data-size] { transform: rotate(180deg); }
+
+  /* Leading arrow: chevronRight, a quarter turn down when open, mirrored in RTL. */
+  .astryx-collapsible-trigger[data-chevron-position="start"] > .ax-collapsible-chevron[data-size] {
+    margin-inline-end: var(--spacing-2);
+    transform: rotate(0deg);
+  }
+  .astryx-collapsible-trigger[data-chevron-position="start"] > .ax-collapsible-chevron[data-size]:is([dir="rtl"] *) { transform: scaleX(-1) rotate(0deg); }
+  .astryx-collapsible-trigger[data-chevron-position="start"][data-open] > .ax-collapsible-chevron[data-size] { transform: rotate(90deg); }
+  .astryx-collapsible-trigger[data-chevron-position="start"][data-open] > .ax-collapsible-chevron[data-size]:is([dir="rtl"] *) { transform: scaleX(-1) rotate(90deg); }
+
+  /*
+   * A position that arrived from the group (cascade stamp) leaves the item's chevronDown
+   * glyph after the label: move it ahead and turn it to read as chevronRight (identical
+   * geometry in every shipped icon set).
+   */
+  .astryx-collapsible-trigger[data-chevron-position="start"] > .ax-collapsible-chevron[data-size]:last-child { order: -1; transform: rotate(-90deg); }
+  .astryx-collapsible-trigger[data-chevron-position="start"] > .ax-collapsible-chevron[data-size]:last-child:is([dir="rtl"] *) { transform: scaleX(-1) rotate(-90deg); }
+  .astryx-collapsible-trigger[data-chevron-position="start"][data-open] > .ax-collapsible-chevron[data-size]:last-child { transform: rotate(0deg); }
+  .astryx-collapsible-trigger[data-chevron-position="start"][data-open] > .ax-collapsible-chevron[data-size]:last-child:is([dir="rtl"] *) { transform: scaleX(-1) rotate(0deg); }
+
+  /* ── Content ──────────────────────────────────────────────────────────── */
+  .astryx-collapsible-content {
+    padding-block-start: var(--spacing-1);
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    font-weight: var(--text-body-weight);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-primary);
+  }
+
+  .astryx-collapsible-content[data-density="compact"] { padding-block-end: var(--spacing-1); }
+  .astryx-collapsible-content[data-density="balanced"] { padding-block-end: var(--spacing-2); }
+  .astryx-collapsible-content[data-density="spacious"] { padding-block-end: var(--spacing-3); }
+
+  /* Hidden (contentHidden): no box size while closed. */
+  .astryx-collapsible-content[hidden] { padding-block: 0; }
+
+  /* ── Group wrapper (hasDividers) ──────────────────────────────────────── */
+  .astryx-collapsible-group {
+    display: flex;
+    flex-direction: column;
+  }
+  /* Without dividers the group renders no box (Astryx renders no DOM). */
+  ax-collapsible-group:not(.astryx-collapsible-group) { display: contents; }
+
+  /* ── animatedLayout ───────────────────────────────────────────────────── */
+  @supports (interpolate-size: allow-keywords) {
+    .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content {
+      interpolate-size: allow-keywords;
+      transition-property: height, padding-block, opacity, content-visibility;
+      transition-duration: var(--_collapsible-settle-duration);
+      transition-timing-function: var(--_collapsible-settle);
+      transition-behavior: allow-discrete;
+    }
+    .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content[hidden] {
+      height: 0;
+      opacity: 0;
+    }
+    /* Clip only while moving or closed, so focus rings and shadows inside stay visible. */
+    .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content:is([hidden], [data-ax-transition]) { overflow: clip; }
+    .astryx-collapsible[data-ax-animate] > .astryx-collapsible-trigger > .ax-collapsible-chevron[data-size] {
+      transition-duration: var(--_collapsible-settle-duration);
+      transition-timing-function: var(--_collapsible-settle);
+    }
+  }
+
+  /* Reduce Motion: no travel. */
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content { transition-property: none; }
+    .astryx-collapsible[data-ax-animate] > .astryx-collapsible-trigger > .ax-collapsible-chevron[data-size] { transition-duration: 0s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content { transition-property: none; }
+  :where([data-astryx-reduced-motion]) .astryx-collapsible[data-ax-animate] > .astryx-collapsible-trigger > .ax-collapsible-chevron[data-size] { transition-duration: 0s; }
+
+  /* …except a cross-fade under a coarse primary pointer: opening fades in at full height,
+     closing fades out in place and then gives up its space. */
+  @media (pointer: coarse) {
+    @media (prefers-reduced-motion: reduce) {
+      .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content {
+        transition: opacity 200ms cubic-bezier(0.42, 0, 0.58, 1);
+      }
+      .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content[hidden] {
+        transition: opacity 200ms cubic-bezier(0.42, 0, 0.58, 1), height 0s 200ms, padding-block 0s 200ms, content-visibility 0s 200ms allow-discrete;
+      }
+    }
+    :where([data-astryx-reduced-motion]) .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content {
+      transition: opacity 200ms cubic-bezier(0.42, 0, 0.58, 1);
+    }
+    :where([data-astryx-reduced-motion]) .astryx-collapsible[data-ax-animate] > .astryx-collapsible-content[hidden] {
+      transition: opacity 200ms cubic-bezier(0.42, 0, 0.58, 1), height 0s 200ms, padding-block 0s 200ms, content-visibility 0s 200ms allow-discrete;
+    }
+  }
+}

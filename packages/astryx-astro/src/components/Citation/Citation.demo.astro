@@ -1,0 +1,42 @@
+---
+import Citation from './Citation.astro';
+import Icon from '../Icon/Icon.astro';
+const para = 'margin:0;max-width:62ch;font-size:var(--text-body-size);line-height:var(--text-body-leading);color:var(--color-text-primary)';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+// Inline SVG favicons (no external images).
+const favicon = (fill: string, letter: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="${fill}"/><text x="8" y="12" font-family="sans-serif" font-size="10" font-weight="700" fill="white" text-anchor="middle">${letter}</text></svg>`)}`;
+const sources = {
+  mdn: {title: 'MDN Web Docs', url: 'https://developer.mozilla.org/', src: favicon('#1b1b1b', 'M')},
+  w3c: {title: 'W3C WAI-ARIA Authoring Practices', url: 'https://www.w3.org/WAI/ARIA/apg/', src: favicon('#005a9c', 'W')},
+  astro: {title: 'Astro documentation', url: 'https://docs.astro.build/'},
+  notes: {title: 'Internal meeting notes'},
+  blocked: {title: 'Blocked destination', url: 'javascript:alert(1)'},
+  long: {title: 'A very long source title that truncates with an ellipsis at fifteen em', url: 'https://example.com/a/very/long/path'},
+};
+---
+<div>
+  <p style={caption}>variant="label" — favicon via source.src, no icon, icon slot, truncated title</p>
+  <p style={para}>
+    The disclosure pattern pairs a button with the region it controls
+    <Citation number={1} source={sources.w3c} id="ct-label-icon" />. Browsers expose <code>hidden="until-found"</code>{' '}to find-in-page <Citation number={2} source={sources.mdn} />, and
+    Astro renders components on the server <Citation number={3} source={sources.astro} id="ct-label-plain" />.
+    A slotted icon works too <Citation number={4} source={{title: 'External link', url: 'https://example.com'}}><Fragment slot="icon"><Icon icon="externalLink" size="xsm" /></Fragment></Citation>,
+    and long titles truncate <Citation number={5} source={sources.long} />.
+  </p>
+</div>
+<div>
+  <p style={caption}>variant="number" — compact superscript badges</p>
+  <p style={para}>
+    Anchor positioning places the layer next to its trigger<Citation number={1} variant="number" source={sources.mdn} id="ct-number" />
+    and the popover attribute promotes it to the top layer<Citation number={2} variant="number" source={sources.w3c} /><Citation number={3} variant="number" source={sources.astro} />.
+  </p>
+</div>
+<div>
+  <p style={caption}>Inert citations — no url, or a rejected url (rendered as a span, still named)</p>
+  <p style={para}>
+    From the notes <Citation number={6} source={sources.notes} id="ct-inert" /> and a rejected link
+    <Citation number={7} source={sources.blocked} id="ct-blocked" />; numbered: <Citation number={8} variant="number" source={sources.notes} />
+    <Citation number={9} variant="number" source={{url: 'https://example.com'}} />
+  </p>
+</div>

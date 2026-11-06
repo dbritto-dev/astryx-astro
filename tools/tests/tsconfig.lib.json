@@ -1,0 +1,25 @@
+{
+  "//": "Strict type check of the framework-free lib ports: apps/docs/node_modules/.bin/tsc -p tools/tests/tsconfig.lib.json",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "types": []
+  },
+  "include": [
+    "../../packages/astryx-astro/src/lib/date/**/*.ts",
+    "../../packages/astryx-astro/src/lib/codeblock/**/*.ts",
+    "../../packages/astryx-astro/src/lib/markdown/**/*.ts",
+    "../../packages/astryx-astro/src/lib/characters.ts",
+    "../../packages/astryx-astro/src/lib/accessibleName.ts",
+    "../../packages/astryx-astro/src/lib/groupItems.ts",
+    "../../packages/astryx-astro/src/lib/searchableItem.ts",
+    "../../packages/astryx-astro/src/lib/devWarning.ts"
+  ]
+}

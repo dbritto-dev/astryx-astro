@@ -1,0 +1,97 @@
+---
+/**
+ * CollapsibleGroup — coordinates Collapsible items: one open at a time (`single`) or any
+ * number (`multiple`). Port of @astryxdesign/core Collapsible/CollapsibleGroup.tsx and
+ * CollapsibleGroupContext.tsx; behaviour in src/elements/collapsible.ts
+ * (<ax-collapsible-group>).
+ *
+ * Items take part when they have a `value` (they may sit deeper, e.g. inside Cards in a
+ * VStack). The server writes the open set (`value` ?? `defaultValue`) onto them; the element
+ * owns it afterwards. Presentation reaches the direct items by cascade stamping
+ * (lib/cascade.ts): `collapsible-divided` (hasDividers), `collapsible-density`
+ * (density ?? 'balanced' with dividers), `collapsible-chevron-position` (only items without
+ * their own chevronPosition). The group always consumes those keys, so an outer group never
+ * restyles an inner group's items.
+ *
+ * DOM: with `hasDividers` the element is the `.astryx-collapsible-group` wrapper (flex column,
+ * `data-density`), anchoring the items' `:first-child` divider suppression. Without dividers
+ * Astryx renders no DOM; here a `display: contents` <ax-collapsible-group> remains (it holds
+ * the state) and `class` / `style` are ignored, as Astryx ignores them without a wrapper.
+ *
+ * Element API: `value` (string in single mode, string[] in multiple; settable), `type`.
+ * Events (bubbling, composed): `astryx-change` {value} after a user toggle or a find-in-page
+ * reveal — '' / [] when everything closed (Astryx onChange shape).
+ *
+ * @example
+ * <CollapsibleGroup type="single" hasDividers defaultValue="faq1">
+ *   <Collapsible trigger="What is Astryx?" value="faq1">A design system.</Collapsible>
+ *   <Collapsible trigger="How do I start?" value="faq2">Install the package.</Collapsible>
+ * </CollapsibleGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {stamp} from '../../lib/cascade';
+import {
+  CHEVRON_KEY,
+  DENSITY_KEY,
+  DIVIDED_KEY,
+  normalizeToArray,
+  stampGroupState,
+  type CollapsibleChevronPosition,
+  type CollapsibleGroupDensity,
+} from './collapsibleSsr';
+import './Collapsible.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** One open item at a time, or many. @default 'single' */
+  type?: 'single' | 'multiple';
+  /** Initially open item(s): a string in single mode, an array in multiple mode. */
+  defaultValue?: string | string[];
+  /** Server-rendered open item(s); wins over defaultValue (the element owns state afterwards). */
+  value?: string | string[];
+  /** Hairline dividers between items; renders the wrapper and defaults density to 'balanced'. @default false */
+  hasDividers?: boolean;
+  /** Trigger/content block padding of the items. @default 'balanced' with dividers, else none */
+  density?: CollapsibleGroupDensity;
+  /** Chevron position for items that do not set their own. @default 'end' */
+  chevronPosition?: CollapsibleChevronPosition;
+}
+
+const {
+  type = 'single',
+  defaultValue,
+  value,
+  hasDividers = false,
+  density,
+  chevronPosition,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const openValues = normalizeToArray(value !== undefined ? value : defaultValue);
+const resolvedDensity = density ?? (hasDividers ? 'balanced' : null);
+
+let html = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+html = await stampGroupState(html, openValues);
+html = await stamp(html, {
+  [DENSITY_KEY]: resolvedDensity == null ? null : (a) => { a['data-density'] = resolvedDensity; },
+  [DIVIDED_KEY]: hasDividers ? (a) => { a['data-divided'] = 'divided'; } : null,
+  [CHEVRON_KEY]: chevronPosition == null ? null : (a) => { a['data-chevron-position'] = chevronPosition; },
+});
+
+const group = themeProps('collapsible-group', {density: resolvedDensity ?? undefined});
+---
+{hasDividers ? (
+  <ax-collapsible-group
+    class={cx(group.themeClass, className)}
+    {...group.attrs}
+    style={style}
+    data-type={type}
+    data-value={JSON.stringify(openValues)}
+    {...rest}
+  ><Fragment set:html={html} /></ax-collapsible-group>
+) : (
+  <ax-collapsible-group data-type={type} data-value={JSON.stringify(openValues)} {...rest}><Fragment set:html={html} /></ax-collapsible-group>
+)}
+<script>import '../../elements/collapsible';</script>
