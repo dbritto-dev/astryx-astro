@@ -1,0 +1,45 @@
+---
+/**
+ * MediaTheme — an inverted-surface token context for content on media, scrims, dark cards
+ * or toasts. Port of @astryxdesign/core theme/MediaTheme.tsx (+ hooks/useAutoMediaMode.ts).
+ *
+ * Renders a `display: contents` `<div data-astryx-media="dark|light">`: the reset flips
+ * `color-scheme` there (every `light-dark()` token resolves to that side) and each theme's
+ * `[data-astryx-media]` rules supply its onDark / onLight overrides (text, icon and accent
+ * collapse to the on-color) plus any `onDark.components` / `onLight.components`. It adds no
+ * background: paint the surface on the parent. `mode="off"` keeps the same element without
+ * the attribute.
+ *
+ * `mode="auto"` renders `fallback` on the server, then a small behaviour
+ * (behaviors/mediaThemeAuto.ts, data-ax-media-auto) measures the painted surface of the
+ * parent: off when the ambient text already reads at 3:1, else the side whose on-color reads
+ * better. It re-measures when the theme, the color mode or the parent's class/style change,
+ * and keeps the fallback while the backdrop is a background-image (Astryx's useImageMode
+ * pixel sampling is not ported).
+ *
+ * @example
+ * <div style="background: var(--color-background-inverted)">
+ *   <MediaTheme mode="auto"><Text>Undo</Text></MediaTheme>
+ * </div>
+ */
+import './theme.css';
+
+export type MediaThemeMode = 'dark' | 'light' | 'auto' | 'off';
+
+export interface Props {
+  /** Surface luminance context of the children. */
+  mode: MediaThemeMode;
+  /** The side `auto` uses until (or whenever) the surface cannot be measured. @default 'dark' */
+  fallback?: 'dark' | 'light';
+}
+
+const {mode, fallback = 'dark'} = Astro.props;
+const resolved = mode === 'auto' ? fallback : mode;
+const isAuto = mode === 'auto';
+---
+<div
+  class="ax-media-theme"
+  data-astryx-media={resolved === 'off' ? undefined : resolved}
+  data-ax-media-auto={isAuto ? fallback : undefined}
+><slot /></div>
+{isAuto && <script>import '../../behaviors/mediaThemeAuto';</script>}

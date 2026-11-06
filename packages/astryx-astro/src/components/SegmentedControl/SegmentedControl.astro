@@ -1,0 +1,148 @@
+---
+/**
+ * SegmentedControl — a single choice among a few mutually exclusive options, all visible.
+ * Port of @astryxdesign/core SegmentedControl/SegmentedControl.tsx (+ SegmentedControlContext,
+ * the mouse/pen presentation of useSegmentedSelectionMotion.ts, hooks/useKeyboardHint.tsx,
+ * the useListFocus configuration and orderTabStop). Behaviour:
+ * src/elements/segmented-control.ts (<ax-segmented-control>, the radiogroup itself).
+ *
+ * - `role="radiogroup"` (named by `label`) of `<button role="radio">` segments; one Tab stop
+ *   on the selected segment (else the first not disabled on its own, else the first), arrows
+ *   (RTL-aware) / Home / End through runtime/roving.ts, selection follows focus within the
+ *   group (APG), a click selects. Disabled segments are skipped and announced
+ *   `aria-disabled`; a disabled group keeps its Tab stop and selects nothing.
+ * - SSR renders the selected segment from `value`; the element owns the value afterwards
+ *   (`el.value`, settable: a programmatic change slides but fires no event).
+ * - Event `astryx-change` `{value}` (bubbles, composed, cancelable) before a user selection is
+ *   applied — Astryx's `onChange(value)`; `preventDefault()` keeps the current value, the
+ *   controlled-component veto.
+ * - Selected indicator: the radiogroup's ::before "lens" slides from the old segment to the
+ *   new one on the segments' transition timing (tokens); none under reduced motion
+ *   (media query or `[data-astryx-reduced-motion]`), where the change cross-fades in place.
+ * - Size: explicit `size` > a size provider above (cascade key `size`, lib/cascade.ts) > 'md';
+ *   segments follow the control. Theme vars `--_segmented-control-radius/-padding`.
+ * - `disabledMessage` + `isDisabled`: a Tooltip on the group (hover / any focus inside,
+ *   attachment contract) that also describes every segment.
+ * - Keyboard hint: on the first keyboard focus a "← → to navigate" hint appears below the
+ *   focused segment (aria-hidden; dismissed by an arrow, blur or after 3s, once per control).
+ *
+ * Deferred (touch scope): UIKit's spring presentation under a coarse pointer, dragging the
+ * selected segment (carry + face hand-off + drop-to-commit), and the press feedback paint.
+ * Astryx has no `name`/form participation; neither does this port.
+ *
+ * @example
+ * <SegmentedControl label="View" value="grid">
+ *   <SegmentedControlItem value="grid" label="Grid" />
+ *   <SegmentedControlItem value="list" label="List" />
+ * </SegmentedControl>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits, stamp} from '../../lib/cascade';
+import {translator} from '../../lib/i18n';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {mergeIds} from '../Layer/layer';
+import Layer from '../Layer/Layer.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import './SegmentedControl.css';
+
+export type SegmentedControlSize = 'sm' | 'md' | 'lg';
+export type SegmentedControlLayout = 'hug' | 'fill';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** The selected segment's value (initial state; the element owns it afterwards). */
+  value: string;
+  /** Accessible name of the radio group (aria-label, never visible). */
+  label: string;
+  /** @default the nearest size provider, else 'md' */
+  size?: SegmentedControlSize;
+  /** `hug` sizes segments to content (capped at the container); `fill` stretches them equally. @default 'hug' */
+  layout?: SegmentedControlLayout;
+  /** Disables the whole control; the selected segment keeps the Tab stop. @default false */
+  isDisabled?: boolean;
+  /** Why the control is disabled: a tooltip on hover / focus, describing every segment. */
+  disabledMessage?: string;
+  /** Locale of the keyboard hint text. @default the active locale */
+  locale?: string;
+}
+
+const {
+  value, label, size: sizeProp, layout = 'hug', isDisabled = false, disabledMessage, locale,
+  class: className, 'aria-describedby': describedBy, ...rest
+} = Astro.props;
+
+const size: SegmentedControlSize = sizeProp ?? 'md';
+const t = translator(Astro, locale);
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+const tip = showsDisabledMessage ? attachTooltip({describedBy}) : null;
+const reasonId = tip?.id;
+
+// The group context, stamped onto the segments (cascade key `segmented-control`).
+type Attrs = Record<string, string>;
+// ultrahtml keeps attribute values as written (entity-encoded); compare decoded values.
+const decode = (v: string | undefined) =>
+  (v ?? '').replace(/&(?:#(\d+)|#x([\da-f]+)|(amp|quot|apos|lt|gt|#39));/gi, (_, dec, hex, name) =>
+    dec ? String.fromCodePoint(Number(dec)) : hex ? String.fromCodePoint(parseInt(hex, 16)) :
+    ({amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', '#39': "'"} as Record<string, string>)[name.toLowerCase()]);
+const slotHtml = await Astro.slots.render('default');
+const segments: {value: string; ownDisabled: boolean}[] = [];
+await stamp(slotHtml, 'segmented-control', (a) => {
+  segments.push({value: decode(a['data-value']), ownDisabled: 'data-astryx-segment-disabled' in a});
+});
+// orderTabStop: the selected segment, else the first not disabled on its own, else the first.
+const tabStop = segments.find((s) => s.value === value)?.value ?? segments.find((s) => !s.ownDisabled)?.value ?? segments[0]?.value;
+let tabStopTaken = false;
+const html = await stamp(slotHtml, {
+  'segmented-control': (a: Attrs) => {
+    const segmentValue = decode(a['data-value']);
+    const selected = segmentValue === value;
+    const disabled = 'data-astryx-segment-disabled' in a || isDisabled;
+    a['data-size'] = size;
+    a['aria-checked'] = String(selected);
+    const isStop = !tabStopTaken && segmentValue === tabStop;
+    if (isStop) tabStopTaken = true;
+    a.tabindex = isStop ? '0' : '-1';
+    if (selected) a['data-selected'] = 'selected';
+    else delete a['data-selected'];
+    if (disabled) {
+      a['aria-disabled'] = 'true';
+      a['data-disabled'] = 'disabled';
+    }
+    if (layout === 'fill') a['data-ax-fill'] = '';
+    if (reasonId) a['aria-describedby'] = mergeIds(a['aria-describedby'], reasonId) ?? reasonId;
+    const classes = (a.class ?? '').split(/\s+/).filter((c) => c && c !== 'ax-overlay-bg');
+    if (!selected && !disabled) classes.push('ax-overlay-bg');
+    a.class = classes.join(' ');
+  },
+  // An explicit control size wins over a provider above; otherwise the marker stays for it.
+  ...(sizeProp !== undefined ? {size: (a: Attrs) => { a['data-size'] = sizeProp; }} : {}),
+});
+
+const {themeClass, attrs} = themeProps('segmented-control', {size});
+---
+<ax-segmented-control
+  {...rest}
+  role="radiogroup"
+  aria-label={label}
+  aria-disabled={isDisabled ? 'true' : undefined}
+  aria-describedby={tip ? tip.trigger['aria-describedby'] : describedBy}
+  data-ax-tooltip={tip?.trigger['data-ax-tooltip']}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-ax-inherit={inherits({size: sizeProp === undefined})}
+  data-ax-layout={layout === 'fill' ? 'fill' : undefined}
+  data-astryx-roving="horizontal"
+  data-astryx-roving-items='[role="radio"]'
+  data-astryx-roving-tabindex="false"
+><Fragment set:html={html} />{!isDisabled && (
+  <Layer class="ax-keyboard-hint" placement="below" alignment="start" offset="var(--spacing-2)" data-ax-keyboard-hint="">
+    <span aria-hidden="true"><span class="ax-keyboard-hint-keys"><Kbd keys="left" /><Kbd keys="right" /></span><span class="ax-keyboard-hint-label">{t('@astryx.keyboardHint.toNavigate')}</span></span>
+  </Layer>
+)}</ax-segmented-control>
+{tip && <Tooltip {...tip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+<script>
+  import '../../elements/segmented-control';
+  import '../../elements/runtime/roving';
+  import '../../elements/runtime/disabledInteraction';
+</script>

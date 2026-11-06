@@ -1,0 +1,25 @@
+---
+/**
+ * Demo / test helper (not exported): the consumer side of the LinkProvider contract, as a
+ * Link-like component renders it (resolve `as` → provider → 'a'; check the destination;
+ * a blocked one renders an inert anchor and never reaches the custom component).
+ */
+import {linkDestination, resolveLinkComponent, type LinkComponentType} from './linkComponent';
+
+interface Props {
+  href?: string;
+  as?: LinkComponentType;
+  [attr: string]: unknown;
+}
+const {href, as, ...rest} = Astro.props as Props;
+const Tag = resolveLinkComponent(Astro, as) as any;
+const dest = linkDestination(href);
+const isNative = typeof Tag === 'string';
+---
+{dest === null ? (
+  <a {...rest} data-link-blocked=""><slot /></a>
+) : isNative ? (
+  <Tag {...rest} href={dest.href}><slot /></Tag>
+) : (
+  <Tag {...rest} href={dest.href} to={dest.to}><slot /></Tag>
+)}

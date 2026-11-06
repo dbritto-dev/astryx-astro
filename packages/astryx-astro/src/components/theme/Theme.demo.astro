@@ -1,0 +1,86 @@
+---
+import Theme from './Theme.astro';
+import Card from '../Card/Card.astro';
+import Text from '../Text/Text.astro';
+import Heading from '../Text/Heading.astro';
+import Icon from '../Icon/Icon.astro';
+import Badge from '../Badge/Badge.astro';
+import SegmentedControl from '../SegmentedControl/SegmentedControl.astro';
+import SegmentedControlItem from '../SegmentedControl/SegmentedControlItem.astro';
+import {registerIconTheme} from '../Icon/iconRegistry';
+import {lucideIcons} from '../Icon/themeIcons';
+
+// A custom theme for the demo: tokens in CSS (below) and its own server-side icon set.
+const oceanClose = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true" data-demo-icon="ocean-close"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+registerIconTheme('ocean', {icons: {...lucideIcons, close: oceanClose}});
+
+const panels = [
+  {theme: 'neutral', mode: 'light'},
+  {theme: 'butter', mode: 'light'},
+  {theme: 'matcha', mode: 'dark'},
+  {theme: 'ocean', mode: 'system'},
+] as const;
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<style is:global>
+  @layer astryx-theme {
+    @scope ([data-astryx-theme="ocean"]) to ([data-astryx-theme]) {
+      :scope {
+        --color-text-primary: light-dark(#06283d, #e6f6ff);
+        --color-text-secondary: light-dark(#356b8c, #9fc9e0);
+        --color-accent: light-dark(#0077b6, #48cae4);
+        --color-text-accent: light-dark(#005f8f, #7fdcf0);
+        --color-background-card: light-dark(#eef8ff, #0a1d2b);
+        --color-background-surface: light-dark(#ffffff, #0f2a3d);
+        --color-neutral: light-dark(#cfe8f6, #163b52);
+        --color-border: light-dark(#9fd0ea, #24526e);
+        --radius-container: 20px;
+        --radius-element: 999px;
+      }
+    }
+  }
+</style>
+<div style="display:grid;gap:var(--spacing-6)">
+  <section>
+    <p style={caption}>Four themes side by side; each panel's Icons come from its own theme (server-side)</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-3)">
+      {panels.map(({theme, mode}) => (
+        <Theme theme={theme} mode={mode}>
+          <Card id={`theme-card-${theme}`}>
+            <div style="display:grid;gap:var(--spacing-2)">
+              <Heading level={4}>{theme}</Heading>
+              <Text type="supporting">mode="{mode}"</Text>
+              <span style="display:flex;gap:var(--spacing-2);align-items:center;color:var(--color-text-accent)">
+                <Icon icon="close" label={`${theme} close icon`} id={`theme-icon-${theme}`} /> <Badge label="Accent" variant="info" />
+              </span>
+              <SegmentedControl label={`${theme} view`} value="a" size="sm">
+                <SegmentedControlItem value="a" label="One" />
+                <SegmentedControlItem value="b" label="Two" />
+              </SegmentedControl>
+            </div>
+          </Card>
+        </Theme>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Nesting: a dark gothic region inside butter, with ocean inside it — each scope ends where the next begins</p>
+    <Theme theme="butter" mode="light">
+      <Card id="theme-outer">
+        <Text>Butter (outer) <Icon icon="close" id="theme-icon-outer" /></Text>
+        <Theme theme="gothic" mode="dark">
+          <Card id="theme-middle" style="margin-top:var(--spacing-3)">
+            <Text>Gothic, dark (nested)</Text>
+            <Theme theme="ocean" mode="light">
+              <Card id="theme-inner" style="margin-top:var(--spacing-3)">
+                <Text>Ocean, light (nested twice) <Icon icon="close" id="theme-icon-inner" /></Text>
+              </Card>
+            </Theme>
+          </Card>
+        </Theme>
+        <Text>Back in butter after the nested regions <Icon icon="close" id="theme-icon-after" /></Text>
+      </Card>
+    </Theme>
+  </section>
+</div>

@@ -1,0 +1,51 @@
+---
+/**
+ * SnapPaging — a horizontal pager: the Astro-side counterpart of Astryx's paging hook
+ * (@astryxdesign/core hooks/usePager.ts `usePager` / `createPager`; listed as "SnapPaging
+ * (useSnapPaging), hook only, no DOM"). A hook has nothing to render, so this is the DOM the
+ * hook would be attached to — a scroll-snap viewport (`<ax-snap-paging>`) and its track — with
+ * the hook's API on the element (src/elements/snap-paging.ts): `index`, `pageCount`,
+ * `isSettling`, `goTo(i, {animated})`, `next()`, `prev()`, `pageOffset(i)`, `nearestPage(px)`.
+ *
+ * Each child of the default slot is a page. `pages="viewport"`: every page is the viewport's
+ * width (Astryx's default); `pages="children"`: each child keeps its own width and pages at its
+ * start edge, the last ones sharing a page when they fit.
+ *
+ * Events (bubbles, composed): `astryx-index-change` `{index, reason}` (onIndexChange),
+ * `astryx-settle` `{index, previous}` (onSettle), `astryx-pages-change` `{pageCount}`.
+ * Deferred: UIKit's paging physics (pan, rubber band, release rule), `loop`, mouse-drag
+ * paging — native scroll snapping pages touch, trackpad and keyboard scrolling.
+ *
+ * @example
+ * <SnapPaging id="gallery" gap={16} label="Photos">…pages…</SnapPaging>
+ * <button onclick="gallery.next()">Next</button>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx} from '../../lib/themeProps';
+import {cssSize} from '../../lib/style';
+import './SnapPaging.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** What a page is. @default 'viewport' */
+  pages?: 'viewport' | 'children';
+  /** Space between pages (number = px). @default 0 */
+  gap?: number | string;
+  /** Starting page. @default 0 */
+  defaultIndex?: number;
+  /** Accessible name; the viewport becomes a named, focusable region (keyboard scrolling). */
+  label?: string;
+}
+
+const {pages = 'viewport', gap, defaultIndex = 0, label, class: className, ...rest} = Astro.props;
+const gapValue = gap === undefined || gap === 0 ? undefined : cssSize(gap);
+---
+<ax-snap-paging
+  role={label ? 'region' : undefined}
+  aria-label={label}
+  tabindex={label ? '0' : undefined}
+  {...rest}
+  class={cx('ax-snap-paging', 'ax-focus-visible', className)}
+  data-pages={pages}
+  data-default-index={defaultIndex ? String(defaultIndex) : undefined}
+><div class="ax-snap-paging-track" style={gapValue ? `--_ax-snap-gap:${gapValue}` : undefined}><slot /></div></ax-snap-paging>
+<script>import '../../elements/snap-paging';</script>

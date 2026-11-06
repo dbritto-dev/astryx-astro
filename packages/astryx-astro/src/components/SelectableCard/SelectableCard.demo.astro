@@ -1,0 +1,77 @@
+---
+import SelectableCard from './SelectableCard.astro';
+import Grid from '../Grid/Grid.astro';
+import Badge from '../Badge/Badge.astro';
+const variants = ['default', 'transparent', 'muted', 'blue', 'cyan', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'] as const;
+const title = 'margin:0;font-size:var(--text-label-size);font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const body = 'margin:var(--spacing-1) 0 0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <section>
+    <p style={caption}>Multi-select (checkbox cards) — click a card, or Tab to it and press Space / Enter</p>
+    <Grid columns={{minWidth: 200}} gap={3}>
+      <SelectableCard label="Starter plan" id="sel-starter">
+        <p style={title}>Starter</p>
+        <p style={body}>For side projects. 1 seat.</p>
+      </SelectableCard>
+      <SelectableCard label="Pro plan" isSelected id="sel-pro">
+        <p style={title}>Pro <Badge label="Popular" variant="blue" /></p>
+        <p style={body}>For growing teams. 10 seats.</p>
+      </SelectableCard>
+      <SelectableCard label="Enterprise plan" isDisabled id="sel-enterprise">
+        <p style={title}>Enterprise</p>
+        <p style={body}>Contact sales to enable.</p>
+      </SelectableCard>
+      <SelectableCard label="Add-on with a link" id="sel-nested">
+        <p style={title}>Priority support</p>
+        <p style={body}><a href="#pricing" id="sel-nested-link">Compare plans</a> — the link does not toggle the card.</p>
+      </SelectableCard>
+    </Grid>
+    <output id="sel-log" style={caption}>last change: none</output>
+  </section>
+
+  <section>
+    <p style={caption}>Variants (selected) and elevation</p>
+    <Grid columns={{minWidth: 150}} gap={3}>
+      {variants.map((v) => (
+        <SelectableCard label={`${v} variant`} variant={v} isSelected>
+          <p style={title}>{v}</p>
+          <p style={body}>variant="{v}"</p>
+        </SelectableCard>
+      ))}
+      {(['low', 'med', 'high'] as const).map((e, i) => (
+        <SelectableCard label={`Elevation ${e}`} elevation={e} isSelected={i === 1}>
+          <p style={title}>elevation</p>
+          <p style={body}>{e}</p>
+        </SelectableCard>
+      ))}
+    </Grid>
+  </section>
+
+  <section>
+    <p style={caption}>Single choice (port extension: type="radio" + name) with sizes and padding</p>
+    <form id="sel-form" style="display:flex;gap:var(--spacing-3);flex-wrap:wrap;align-items:flex-start">
+      <SelectableCard type="radio" name="shipping" value="standard" label="Standard shipping" isSelected width={180} padding={3} id="sel-standard">
+        <p style={title}>Standard</p>
+        <p style={body}>5–7 days</p>
+      </SelectableCard>
+      <SelectableCard type="radio" name="shipping" value="express" label="Express shipping" width={180} padding={3} id="sel-express">
+        <p style={title}>Express</p>
+        <p style={body}>1–2 days</p>
+      </SelectableCard>
+      <SelectableCard type="radio" name="shipping" value="pickup" label="Store pickup" maxWidth={220} height={96} padding={6}>
+        <p style={title}>Pickup</p>
+        <p style={body}>Ready today</p>
+      </SelectableCard>
+    </form>
+  </section>
+</div>
+<script>
+  const log = document.getElementById('sel-log');
+  document.addEventListener('astryx-change', (e) => {
+    const card = e.target as HTMLElement;
+    if (!card.classList?.contains('astryx-selectable-card') || !log) return;
+    log.textContent = `last change: ${card.id || 'card'} → ${(e as CustomEvent<{isSelected: boolean}>).detail.isSelected}`;
+  });
+</script>

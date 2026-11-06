@@ -1,0 +1,56 @@
+---
+import InternationalizationProvider from './InternationalizationProvider.astro';
+import Translated from './_Translated.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import SegmentedControl from '../SegmentedControl/SegmentedControl.astro';
+import SegmentedControlItem from '../SegmentedControl/SegmentedControlItem.astro';
+import {localeDirection} from '../../lib/i18n';
+const row = 'display:flex;gap:var(--spacing-3);align-items:center;flex-wrap:wrap;padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element)';
+const tag = 'min-width:6rem;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-3)">
+  <div style={row} id="i18n-before">
+    <span style={tag}>page (en)</span>
+    <Translated message="@astryx.spinner.loading" /> · <Translated message="@astryx.keyboardHint.toNavigate" /> <Spinner size="sm" /> <Kbd keys="ctrl+enter" />
+  </div>
+
+  <InternationalizationProvider locale="fr-FR">
+    <div style={row} id="i18n-fr">
+      <span style={tag}>fr-FR</span>
+      <Translated message="@astryx.spinner.loading" /> · <Translated message="@astryx.keyboardHint.toNavigate" /> <Spinner size="sm" /> <Kbd keys="ctrl+enter" />
+      <SegmentedControl label="Vue" value="jour" size="sm">
+        <SegmentedControlItem value="jour" label="Jour" />
+        <SegmentedControlItem value="semaine" label="Semaine" />
+      </SegmentedControl>
+    </div>
+    <InternationalizationProvider locale="de-DE">
+      <div style={row} id="i18n-de">
+        <span style={tag}>de-DE (nested)</span>
+        <Translated message="@astryx.spinner.loading" /> <Spinner size="sm" />
+      </div>
+    </InternationalizationProvider>
+    <div style={row} id="i18n-fr-after">
+      <span style={tag}>fr-FR again</span>
+      <Translated message="@astryx.spinner.loading" />
+    </div>
+  </InternationalizationProvider>
+
+  <div style={row} id="i18n-sibling">
+    <span style={tag}>sibling (en)</span>
+    <Translated message="@astryx.spinner.loading" /> <Spinner size="sm" />
+  </div>
+
+  <div dir={localeDirection('ar-SA')}>
+    <InternationalizationProvider locale="ar-SA">
+      <div style={row} id="i18n-ar">
+        <span style={tag}>ar-SA, dir set by the page</span>
+        <Translated message="@astryx.spinner.loading" /> <Kbd keys="ctrl+enter" />
+        <SegmentedControl label="عرض" value="a" size="sm">
+          <SegmentedControlItem value="a" label="يوم" />
+          <SegmentedControlItem value="b" label="أسبوع" />
+        </SegmentedControl>
+      </div>
+    </InternationalizationProvider>
+  </div>
+</div>

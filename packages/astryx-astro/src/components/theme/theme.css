@@ -1,0 +1,23 @@
+/*
+ * Port of @astryxdesign/core theme/Theme.tsx (wrapperStyles) and theme/MediaTheme.tsx (styles).
+ * Both wrappers are `display: contents`: they set tokens, color-scheme and inherited text
+ * styles without a box. Theme CSS (`@scope ([data-astryx-theme="x"]) to ([data-astryx-theme])`)
+ * and the reset's `[data-astryx-media]` color-scheme flip key on their data attributes.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* Theme: base, then the color-scheme of the mode (system = light dark). */
+  .ax-theme {
+    display: contents;
+    color: var(--color-text-primary);
+    font-family: var(--font-family-body);
+  }
+  .ax-theme[data-theme="light"] { color-scheme: light; }
+  .ax-theme[data-theme="dark"] { color-scheme: dark; }
+  .ax-theme:not([data-theme]) { color-scheme: light dark; }
+
+  /* MediaTheme: root, then `active` while a media context is set. */
+  .ax-media-theme { display: contents; }
+  .ax-media-theme[data-astryx-media] { color: var(--color-text-primary); }
+}

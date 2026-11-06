@@ -1,0 +1,13 @@
+---
+/**
+ * Demo helper (not exported): a custom link component as an app would write one for
+ * LinkProvider — it receives `href`, `to`, `class`, `style`, the rest, and the default slot.
+ */
+interface Props {
+  href?: string;
+  to?: string;
+  [attr: string]: unknown;
+}
+const {href, to, ...rest} = Astro.props as Props;
+---
+<a {...rest} href={to ?? href} data-router-link="" data-astro-prefetch="hover"><slot /> <span aria-hidden="true">↗</span></a>
