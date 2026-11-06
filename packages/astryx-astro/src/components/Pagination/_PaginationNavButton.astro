@@ -1,0 +1,56 @@
+---
+/**
+ * Internal: one first / previous / next / last control of Pagination — Astryx's ghost,
+ * icon-only `<Button>` with a mirrored chevron and a tooltip repeating its label while it can
+ * navigate (`tooltip={isDisabled || !canNavigate ? undefined : label}`), so a disabled control
+ * is natively `disabled` and shows nothing.
+ *
+ * Links mode: a link Button (`href`) with Button's own tooltip while it can navigate, else a
+ * disabled `<button>`; nothing changes on the client.
+ * Buttons mode: the state moves on the client, so the tooltip layer is rendered up front
+ * (`isEnabled` following the state) and the button names it in `data-ax-nav-tip`;
+ * <ax-pagination> turns that into the `data-ax-tooltip` trigger attribute on connect and then
+ * toggles the button's `disabled` / `data-ax-disabled` and the layer's `isEnabled` together.
+ * The tooltip repeats the accessible name, so it describes nothing (Button's rule).
+ */
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import type {IconSize} from '../Icon/iconRegistry';
+
+export type PaginationNavKind = 'first' | 'previous' | 'next' | 'last';
+
+interface Props {
+  kind: PaginationNavKind;
+  label: string;
+  icon: 'chevronsLeft' | 'chevronLeft' | 'chevronRight' | 'chevronsRight';
+  size: 'sm' | 'md';
+  iconSize: IconSize;
+  /** Whether the control can navigate now (and the component is not disabled). */
+  isEnabled: boolean;
+  /** Links mode: the destination while enabled. */
+  href?: string;
+  isLinks: boolean;
+  /** Rendered but hidden (first/last while the page count is unknown). */
+  isHidden?: boolean;
+  class?: string;
+}
+
+const {kind, label, icon, size, iconSize, isEnabled, href, isLinks, isHidden = false, class: className} = Astro.props;
+const tip = isLinks ? null : attachTooltip();
+---
+<Button
+  label={label}
+  variant="ghost"
+  size={size}
+  isIconOnly
+  isDisabled={!isEnabled}
+  href={isLinks && isEnabled ? href : undefined}
+  tooltip={isLinks && isEnabled ? label : undefined}
+  data-ax-nav={kind}
+  data-ax-nav-tip={tip?.id}
+  hidden={isHidden || undefined}
+  class={className}
+><Icon slot="icon" icon={icon} size={iconSize} class="ax-mirror-rtl" /></Button>
+{tip && <Tooltip {...tip.layer} content={label} placement="above" isEnabled={isEnabled} />}

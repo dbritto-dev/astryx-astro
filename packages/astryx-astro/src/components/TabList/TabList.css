@@ -1,0 +1,377 @@
+/*
+ * Port of @astryxdesign/core TabList/TabList.tsx (styles, arrowSizeStyles), Tab.tsx (styles,
+ * sizeStyles, hoverSizeStyles, layoutStyles, iconSizeStyles), TabMenu.tsx (styles, sizeStyles,
+ * hoverSizeStyles), DropdownMenu/menuTouchAction.stylex.ts and the hint styles of
+ * hooks/useKeyboardHint.tsx. Rule groups follow the stylex.props() order:
+ *   root:   nav, fill, divider, fullBleed
+ *   strip:  strip, stripScroll, fullBleedStrip, fade
+ *   arrow:  arrow, arrowStart|End, size
+ *   tab:    base, size, selected, hug|fill
+ *   menu:   trigger, size, triggerSelected
+ *
+ * Size (SizeContext → the strip's `data-size`) reaches the stops as inherited custom
+ * properties, so a provider that restamps the root resizes everything below it:
+ *   --_ax-tab-height     element height (tab, hover pill, scroll buttons)
+ *   --_ax-tab-icon-size  the tab icon box (14 / 16 / 18px)
+ * The strip's private `--_tab-strip-bleed` and the theme-written `--_tab-indicator-bottom`
+ * keep Astryx's names. The tab's hover pill is its own `.ax-tab-hover` span (tabScope marker →
+ * the tab's own :hover / :active, enabled tabs only).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Root (nav) ──────────────────────────────────────────────────────── */
+  .astryx-tab-list {
+    display: flex;
+    align-items: stretch;
+    gap: var(--spacing-0-5);
+    max-width: 100%;
+    min-width: 0;
+    position: relative;
+  }
+  .astryx-tab-list[data-size="sm"] { --_ax-tab-height: var(--size-element-sm); --_ax-tab-icon-size: 14px; }
+  .astryx-tab-list[data-size="md"] { --_ax-tab-height: var(--size-element-md); --_ax-tab-icon-size: 16px; }
+  .astryx-tab-list[data-size="lg"] { --_ax-tab-height: var(--size-element-lg); --_ax-tab-icon-size: 18px; }
+  .astryx-tab-list[data-ax-layout="fill"] { width: 100%; }
+  .astryx-tab-list[data-ax-divider] {
+    border-bottom-width: var(--border-width);
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-border);
+    padding-block-end: var(--spacing-1);
+    --_tab-indicator-bottom: calc(-1 * (var(--spacing-1) + var(--border-width)));
+  }
+  .astryx-tab-list[data-ax-full-bleed] {
+    margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
+    margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
+    max-width: none;
+    width: calc(100% + var(--container-padding-inline-start, 0px) + var(--container-padding-inline-end, 0px));
+  }
+
+  /* ── Strip ───────────────────────────────────────────────────────────── */
+  .astryx-tab-strip {
+    display: flex;
+    align-items: stretch;
+    gap: inherit;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    align-self: flex-start;
+  }
+  /* The scroll container pads by what a tab paints outside its box (ring, indicator) and
+   * takes it straight back with a negative margin; the ring's share only while a ring shows. */
+  .astryx-tab-strip[data-ax-scroll] {
+    --_tab-strip-bleed: 0px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: calc(var(--_tab-strip-bleed) + var(--spacing-8));
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+    padding-block-start: var(--_tab-strip-bleed);
+    margin-block-start: calc(-1 * (var(--_tab-strip-bleed)));
+    padding-block-end: max(var(--_tab-strip-bleed), calc(-1 * var(--_tab-indicator-bottom, -1px)));
+    margin-block-end: calc(-1 * (max(var(--_tab-strip-bleed), calc(-1 * var(--_tab-indicator-bottom, -1px)))));
+    padding-inline: var(--_tab-strip-bleed);
+    margin-inline: calc(-1 * (var(--_tab-strip-bleed)));
+    mask-image: none;
+    transition-property: mask-image;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-tab-strip[data-ax-scroll]:has(:focus-visible) {
+    --_tab-strip-bleed: calc(var(--focus-outline-width) + var(--focus-outline-offset));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-tab-strip[data-ax-scroll] { scroll-behavior: auto; transition-duration: 0ms; }
+  }
+  /* Pad back in the part of the container's padding the edge stop's own spacing-3 does not supply. */
+  .astryx-tab-strip[data-ax-full-bleed] {
+    padding-inline-start: calc(var(--_tab-strip-bleed, 0px) + max(var(--container-padding-inline-start, 0px) - var(--spacing-3), 0px));
+    padding-inline-end: calc(var(--_tab-strip-bleed, 0px) + max(var(--container-padding-inline-end, 0px) - var(--spacing-3), 0px));
+  }
+  /* Edge fades: transparent at the strip's own edge (not the bleed edge), opaque past the fade. */
+  .astryx-tab-strip[data-ax-fade="start"] {
+    mask-image: linear-gradient(to right, transparent var(--_tab-strip-bleed), black calc(var(--_tab-strip-bleed) + var(--spacing-8)));
+  }
+  .astryx-tab-strip[data-ax-fade="start"]:dir(rtl) {
+    mask-image: linear-gradient(to left, transparent var(--_tab-strip-bleed), black calc(var(--_tab-strip-bleed) + var(--spacing-8)));
+  }
+  .astryx-tab-strip[data-ax-fade="end"] {
+    mask-image: linear-gradient(to left, transparent var(--_tab-strip-bleed), black calc(var(--_tab-strip-bleed) + var(--spacing-8)));
+  }
+  .astryx-tab-strip[data-ax-fade="end"]:dir(rtl) {
+    mask-image: linear-gradient(to right, transparent var(--_tab-strip-bleed), black calc(var(--_tab-strip-bleed) + var(--spacing-8)));
+  }
+  .astryx-tab-strip[data-ax-fade="both"] {
+    mask-image: linear-gradient(to right, transparent var(--_tab-strip-bleed), black calc(var(--_tab-strip-bleed) + var(--spacing-8)), black calc(100% - (var(--_tab-strip-bleed) + var(--spacing-8))), transparent calc(100% - var(--_tab-strip-bleed)));
+  }
+
+  /* ── Scroll buttons (pointer-only affordance) ────────────────────────── */
+  .astryx-tab-scroll-button {
+    position: absolute;
+    inset-block-start: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--radius-full);
+    background-color: var(--color-background-popover);
+    box-shadow: var(--shadow-low);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    width: var(--_ax-tab-height, var(--size-element-md));
+    height: var(--_ax-tab-height, var(--size-element-md));
+  }
+  @media (hover: hover) {
+    .astryx-tab-scroll-button { display: flex; }
+  }
+  .astryx-tab-scroll-button:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-text-primary); }
+  .astryx-tab-scroll-button:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-tab-scroll-button[data-ax-side="start"] { inset-inline-start: 0; }
+  .astryx-tab-scroll-button[data-ax-side="end"] { inset-inline-end: 0; }
+  /* Rendered only while that edge overflows (Astryx mounts it then). */
+  .astryx-tab-scroll-button[hidden] { display: none; }
+
+  /* ── Tab ─────────────────────────────────────────────────────────────── */
+  .astryx-tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-1);
+    padding-inline: var(--spacing-3);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--radius-element);
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition-property: color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    height: var(--_ax-tab-height, var(--size-element-md));
+    flex-shrink: 0;
+  }
+  .astryx-tab:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-tab[data-selected="selected"] {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold);
+  }
+  .astryx-tab[data-ax-fill] {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* Hover / pressed pill (tabScope: the tab's own states, enabled tabs only). */
+  .ax-tab-hover {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: 100%;
+    height: var(--_ax-tab-height, var(--size-element-md));
+    border-radius: var(--radius-element);
+    pointer-events: none;
+    background-color: transparent;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-tab:where(:not([aria-disabled="true"])):active > .ax-tab-hover { background-color: var(--color-overlay-pressed); }
+  @media (hover: hover) {
+    .astryx-tab:where(:not([aria-disabled="true"])):hover > .ax-tab-hover { background-color: var(--color-overlay-hover); }
+    .astryx-tab:where(:not([aria-disabled="true"])):active > .ax-tab-hover { background-color: var(--color-overlay-pressed); }
+    .astryx-tab-menu:hover > .ax-tab-hover { background-color: var(--color-overlay-hover); }
+  }
+
+  /* Selected indicator: one per tab, fading in (Astryx renders no sliding indicator). */
+  .astryx-tab-indicator {
+    position: absolute;
+    bottom: var(--_tab-indicator-bottom, -1px);
+    inset-inline-start: var(--spacing-3);
+    inset-inline-end: var(--spacing-3);
+    height: 2px;
+    border-radius: var(--radius-full);
+    pointer-events: none;
+    transition-property: opacity, background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: transparent;
+    opacity: 0;
+  }
+  .astryx-tab-indicator[data-selected="selected"] {
+    background-color: var(--color-accent);
+    opacity: 1;
+  }
+  .astryx-tab-menu > .astryx-tab-indicator[data-selected="selected"] { background-color: var(--color-icon-primary); }
+
+  .ax-tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--_ax-tab-icon-size, 16px);
+    height: var(--_ax-tab-icon-size, 16px);
+  }
+  /* icon / selectedIcon: both rendered, one shown. */
+  .astryx-tab[data-selected="selected"] > .ax-tab-icon[data-ax-icon="rest"],
+  .astryx-tab:not([data-selected="selected"]) > .ax-tab-icon[data-ax-icon="selected"] { display: none; }
+
+  .ax-tab-label,
+  .ax-tab-menu-label { display: inline-grid; }
+  .ax-tab-label-text,
+  .ax-tab-label-sizer,
+  .ax-tab-menu-label-text,
+  .ax-tab-menu-label-sizer { grid-row-start: 1; grid-column-start: 1; }
+  .ax-tab-label-sizer,
+  .ax-tab-menu-label-sizer {
+    visibility: hidden;
+    pointer-events: none;
+    font-weight: var(--font-weight-semibold);
+  }
+  .ax-tab-end {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* ── TabMenu trigger ─────────────────────────────────────────────────── */
+  .astryx-tab-menu {
+    position: relative;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-1);
+    padding-inline: var(--spacing-3);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--radius-element);
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    text-decoration: none;
+    transition-property: color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    height: var(--_ax-tab-height, var(--size-element-md));
+  }
+  .astryx-tab-menu:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-tab-menu[data-ax-selected] {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-semibold);
+  }
+  .ax-tab-menu-label {
+    position: relative;
+    align-items: center;
+    align-self: stretch;
+  }
+  .ax-tab-menu-chevron {
+    display: inline-flex;
+    width: var(--spacing-4);
+    height: var(--spacing-4);
+    flex-shrink: 0;
+  }
+  /* The rotating element is the Icon a theme targets. */
+  .ax-tab-menu-chevron > .astryx-icon {
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-tab-menu[aria-expanded="true"] > .ax-tab-menu-chevron > .astryx-icon { transform: rotate(180deg); }
+
+  /* ── TabMenu dropdown ────────────────────────────────────────────────── */
+  .astryx-tab-menu-dropdown {
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-1);
+    outline: none;
+    max-block-size: var(--_ax-max-block-size, none);
+    overflow-y: auto;
+    touch-action: pinch-zoom;
+  }
+  .astryx-tab-menu-dropdown[data-ax-overflow] {
+    touch-action: pan-y pinch-zoom;
+    overscroll-behavior: contain;
+  }
+  .ax-tab-menu-heading {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-3);
+  }
+  .astryx-tab-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-3);
+    border-radius: var(--radius-element);
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: transparent;
+  }
+  .astryx-tab-menu-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .astryx-tab-menu-item:hover:where(:not(:disabled, [aria-disabled="true"])) { background-color: var(--color-overlay-hover); }
+  }
+  .astryx-tab-menu-item[aria-checked="true"] { font-weight: var(--font-weight-medium); }
+  .ax-tab-menu-item-content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+  .astryx-tab-menu-item[aria-checked="false"] > .ax-tab-menu-check { display: none; }
+
+  /* ── Keyboard hint (useKeyboardHint; same rules as Toolbar / SegmentedControl) ── */
+  .ax-keyboard-hint {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: var(--color-background-popover);
+    border-radius: var(--radius-element);
+    box-shadow: var(--shadow-low);
+    padding-block-start: var(--spacing-1);
+    padding-block-end: var(--spacing-1);
+    padding-inline-start: var(--spacing-2);
+    padding-inline-end: var(--spacing-2);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    opacity: 0;
+    transition-property: opacity, display, overlay;
+    transition-duration: 150ms;
+    transition-behavior: allow-discrete;
+    pointer-events: none;
+  }
+  .ax-keyboard-hint:popover-open { opacity: 1; }
+  .ax-keyboard-hint-keys { display: inline-flex; align-items: center; gap: var(--spacing-1); }
+  .ax-keyboard-hint-label { margin-inline-start: var(--spacing-1); }
+}

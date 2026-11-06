@@ -1,0 +1,154 @@
+---
+/**
+ * Tab — one tab of a TabList: a `<button>`, or an anchor when `href` is set under the
+ * navigation pattern; `role="tab"` where the TabList speaks the tabs pattern. Port of
+ * @astryxdesign/core TabList/Tab.tsx and tab.markers.stylex.ts, with Link/useLinkComponent.ts,
+ * utils/safeUrl.ts, utils/disabledInteraction.ts and Layout/edgeCompensation.stylex.ts.
+ *
+ * Context (value, layout, pattern) comes from the enclosing TabList through the subtree locals
+ * key `astryxTabList` (tabListContext.ts); size comes from the strip's CSS custom properties.
+ *
+ * - Selected (`value` equals the TabList's): `data-selected="selected"`, semibold primary
+ *   text, the indicator (`.astryx-tab-indicator[data-selected]`, accent, 2px, on the tab's
+ *   bottom edge or the divider rail via `--_tab-indicator-bottom`) fades in; the label keeps
+ *   its width across the weight change (a hidden semibold sizer). `selectedIcon` replaces
+ *   `icon` while selected (both are rendered, CSS shows one, so a client change swaps them).
+ * - Navigation pattern: `aria-current="true"` on the selected tab (generic "current item",
+ *   not "page", as Astryx). Tabs pattern: `role="tab"`, `aria-selected`, `aria-controls` from
+ *   `panelId` (or a caller `aria-controls`); `href` is ignored there (dev warning).
+ * - `href` → the link component (`as` → LinkProvider → `<a>`), checked by safeHref; a blocked
+ *   destination renders an inert `<a>`. A disabled link tab renders a plain `<a>` without href.
+ * - Disabled is `aria-disabled="true"` (Astryx has no isDisabled prop): the tab keeps its stop
+ *   when selected, arrows skip it, clicks and Enter/Space are cancelled
+ *   (runtime/disabledInteraction.ts) and it never selects; no hover paint.
+ * - `isLabelHidden`: icon (and endContent) only, `label` becomes the aria-label.
+ * - Roving tabindex: SSR renders `tabindex="0"` on the selected tab and -1 elsewhere; the
+ *   runtime promotes the first enabled stop when nothing is selected.
+ *
+ * Slots: `icon`, `selectedIcon`, `endContent` (a Badge, a StatusDot …). The `icon` /
+ * `selectedIcon` props take an icon name, SVG string or Astro component (rendered with
+ * `<Icon size="sm">`); `endContent` also takes plain text.
+ * Theme hooks: `.astryx-tab[data-selected]`, `.astryx-tab-indicator[data-selected]`.
+ * Deferred (touch scope): the coarse-pointer press controller (`data-astryx-press`).
+ *
+ * @example
+ * <Tab value="inbox" label="Inbox" icon="menu"><Badge slot="endContent" label="3" /></Tab>
+ * <Tab value="docs" label="Docs" href="/docs" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {devWarn} from '../../lib/devWarning';
+import {linkDestination, resolveLinkComponent, type LinkComponentType} from '../LinkProvider/linkComponent';
+import {readTabListContext} from './tabListContext';
+import './TabList.css';
+
+type TabIcon = ExtendedIconName | AstroIconComponent;
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'value' | 'type'> {
+  /** Unique value for this tab, matched against the TabList's `value`. */
+  value: string;
+  /** Accessible label; the visible text unless `isLabelHidden`. */
+  label: string;
+  /** Show only the icon and endContent; `label` becomes the aria-label. @default false */
+  isLabelHidden?: boolean;
+  /** Navigate here (renders an anchor). Ignored in a `role="tablist"` TabList. */
+  href?: string | URL;
+  /** Link component for `href` (Astro component or tag); default LinkProvider, else `<a>`. */
+  as?: LinkComponentType;
+  /** Id of the panel this tab controls (`aria-controls`, tabs pattern only). */
+  panelId?: string;
+  /** Icon shown while not selected (or the `icon` slot). */
+  icon?: TabIcon;
+  /** Icon shown while selected; falls back to `icon` (or the `selectedIcon` slot). */
+  selectedIcon?: TabIcon;
+  /** Text after the label (or the `endContent` slot for a Badge / StatusDot). */
+  endContent?: string;
+  /** Link target / rel (only with `href`). */
+  target?: string;
+  rel?: string;
+}
+
+const {
+  value,
+  label,
+  isLabelHidden = false,
+  href,
+  as,
+  panelId,
+  icon,
+  selectedIcon,
+  endContent,
+  target,
+  rel,
+  class: className,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {slot?: string};
+
+const ctx = readTabListContext(Astro);
+if (!ctx) devWarn('Tab', 'Tab must be rendered inside a TabList.');
+const isSelected = ctx != null && ctx.value === value;
+const isFill = ctx?.layout === 'fill';
+const isTabsPattern = ctx?.pattern === 'tabs';
+const isLink = href != null && !isTabsPattern;
+const isTabRole = isTabsPattern && !isLink;
+const ariaDisabled = rest['aria-disabled'];
+const isDisabled = ariaDisabled === true || ariaDisabled === 'true';
+const controls = panelId ?? (rest['aria-controls'] as string | undefined);
+
+if (isTabRole && href != null) {
+  devWarn('Tab', 'href is ignored in a role="tablist" TabList — a tab swaps a panel in place rather than navigating. Drop the href, or drop the role for the navigation pattern.');
+}
+if (isTabRole && controls == null) {
+  devWarn('Tab', 'a tab in a role="tablist" TabList controls nothing: pass panelId with the id of the panel it opens, so assistive technology can associate the two.');
+}
+if (!isTabsPattern && panelId != null) {
+  devWarn('Tab', 'panelId does nothing outside a role="tablist" TabList — the navigation pattern has no panel to associate. Give the TabList role="tablist", or drop the panelId.');
+}
+
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const iconHtml = await slot('icon');
+const selectedIconHtml = await slot('selectedIcon');
+const endHtml = await slot('endContent');
+const hasIcon = iconHtml !== '' || (icon != null && icon !== '');
+const hasSelectedIcon = selectedIconHtml !== '' || (selectedIcon != null && selectedIcon !== '');
+const hasEnd = endHtml !== '' || (endContent != null && endContent !== '');
+const hasVisibleLabel = !isLabelHidden && label !== '';
+
+const {themeClass, attrs: themeAttrs} = themeProps('tab', {selected: isSelected ? 'selected' : null});
+const indicator = themeProps('tab-indicator', {selected: isSelected ? 'selected' : null});
+
+const shared: Record<string, unknown> = {
+  ...rest,
+  'aria-label': isLabelHidden ? label : rest['aria-label'],
+  'data-astryx-edge-comp': '',
+  'data-tab-value': value,
+  ...(isTabRole
+    ? {role: 'tab', 'aria-selected': isSelected ? 'true' : 'false', 'aria-controls': controls}
+    : {'aria-current': isSelected ? 'true' : undefined, 'aria-controls': rest['aria-controls']}),
+  tabindex: isSelected ? 0 : -1,
+  class: cx(themeClass, 'ax-focus-visible', className as string | undefined),
+  ...themeAttrs,
+  'data-ax-fill': isFill ? '' : undefined,
+  'data-ax-selected-icon': hasSelectedIcon ? '' : undefined,
+};
+
+// A disabled link tab never reaches a router component: a plain anchor without href.
+const dest = isLink && !isDisabled ? linkDestination(href) : null;
+const LinkTag = dest != null ? resolveLinkComponent(Astro, as) : 'a';
+const Tag = isLink ? LinkTag : 'button';
+const tagAttrs: Record<string, unknown> = isLink
+  ? {...shared, href: dest?.href, target: dest ? target : undefined, rel: dest ? rel : undefined}
+  : {...shared, type: 'button'};
+---
+<Tag {...tagAttrs}><span aria-hidden="true" class="ax-tab-hover"></span>{hasIcon && (
+  <span class="ax-tab-icon" data-ax-icon={hasSelectedIcon ? 'rest' : undefined}>{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon} size="sm" />}</span>
+)}{hasSelectedIcon && (
+  <span class="ax-tab-icon" data-ax-icon="selected">{selectedIconHtml !== '' ? <Fragment set:html={selectedIconHtml} /> : <Icon icon={selectedIcon} size="sm" />}</span>
+)}{hasVisibleLabel && (
+  <span class="ax-tab-label"><span class="ax-tab-label-text">{label}</span><span aria-hidden="true" class="ax-tab-label-sizer">{label}</span></span>
+)}{hasEnd && (
+  <span class="ax-tab-end">{endHtml !== '' ? <Fragment set:html={endHtml} /> : endContent}</span>
+)}<span class={indicator.themeClass} {...indicator.attrs}></span></Tag>

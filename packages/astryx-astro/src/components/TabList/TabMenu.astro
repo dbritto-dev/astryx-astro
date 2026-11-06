@@ -1,0 +1,142 @@
+---
+/**
+ * TabMenu — a tab-strip stop that opens a dropdown of more tab options; its trigger shows the
+ * selected option's label (and the selected indicator) when the TabList's value is one of
+ * them. Port of @astryxdesign/core TabList/TabMenu.tsx (usePopover with `role: 'none'`,
+ * useListFocus over menuitemradio rows, the menu-button focus-on-open,
+ * DropdownMenu/menuTouchAction.stylex.ts), on the menu runtime (elements/runtime/menu.ts).
+ *
+ * Markup: the trigger `<button class="astryx-tab-menu" data-tab-menu aria-haspopup="menu"
+ * aria-expanded aria-controls popovertarget>` (a native invoker: opening needs no JS) and, as
+ * its next sibling, the `<ax-menu popover="auto" data-ax-menu-kind="dropdown">` layer holding
+ * the popover surface and the `role="menu"` list (`.astryx-tab-menu-dropdown`, named by
+ * `label`, `data-ax-radio-group`) with a presentational heading and one
+ * `role="menuitemradio"` row (`.astryx-tab-menu-item`) per option, `aria-checked` on the
+ * selected one, which also shows a check.
+ *
+ * Behaviour (Astryx parity): click / Enter / Space toggle the menu and focus its first row;
+ * ↑/↓ wrap, Home/End, typeahead, Enter/Space or a click picks (the TabList fires its
+ * `astryx-change` `{value}`, cancelable) and closes; Tab or Escape closes; focus returns to the
+ * trigger. On the closed trigger ↑/↓ stay with the strip's roving focus (Astryx's trigger has
+ * no arrow handling), so in the navigation pattern they move to the neighbouring tab. The
+ * trigger is a roving stop: tabindex 0 while one of its options is selected, else -1.
+ *
+ * Host attributes (`id`, `aria-*`, `data-*`) reach the trigger, never the popup or its rows;
+ * the trigger keeps its role, tab stop and disclosure attributes.
+ * Theme hooks: `.astryx-tab-menu`, `.astryx-tab-menu-dropdown`, `.astryx-tab-menu-item`,
+ * `.astryx-tab-indicator[data-selected]`.
+ * Deferred (touch scope): press-drag-release (useMenuPress) — `touch-action` is still set.
+ *
+ * @example
+ * <TabMenu label="More" options={[{value: 'settings', label: 'Settings', icon: 'wrench'}]} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {uid} from '../../lib/uid';
+import {devWarn} from '../../lib/devWarning';
+import {placementAttrs} from '../Layer/layer';
+import {readTabListContext} from './tabListContext';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './TabList.css';
+
+export interface TabMenuOption {
+  value: string;
+  label: string;
+  /** Icon before the label: a name, SVG string or Astro component. */
+  icon?: ExtendedIconName | AstroIconComponent;
+}
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'role' | 'tabindex' | 'aria-haspopup' | 'aria-expanded' | 'aria-controls' | 'type'> {
+  /** Trigger text while no option is selected, and the dropdown's heading and name. */
+  label: string;
+  /** The options rendered in the dropdown. */
+  options: TabMenuOption[];
+}
+
+const {
+  label,
+  options,
+  id: idProp,
+  class: className,
+  slot: _slot,
+  // The trigger owns these.
+  role: _role,
+  tabindex: _tabindex,
+  'aria-haspopup': _haspopup,
+  'aria-expanded': _expanded,
+  'aria-controls': _controls,
+  ...rest
+} = Astro.props as Props & {slot?: string; role?: string; tabindex?: number | string; 'aria-haspopup'?: string; 'aria-expanded'?: string; 'aria-controls'?: string};
+
+const ctx = readTabListContext(Astro);
+if (!ctx) devWarn('TabMenu', 'TabMenu must be rendered inside a TabList.');
+const layerId = uid(Astro, 'ax-tab-menu');
+const triggerId = (idProp as string | undefined) ?? `${layerId}-trigger`;
+const menuId = `${layerId}-menu`;
+const selectedOption = options.find((o) => ctx != null && o.value === ctx.value);
+const triggerLabel = selectedOption?.label ?? label;
+const hasSelectedOption = selectedOption != null;
+
+const trigger = themeProps('tab-menu');
+const indicator = themeProps('tab-indicator', {selected: 'selected'});
+const dropdown = themeProps('tab-menu-dropdown');
+const item = themeProps('tab-menu-item');
+const surface = themeProps('popover');
+---
+<button
+  {...rest}
+  id={triggerId}
+  type="button"
+  aria-haspopup="menu"
+  aria-expanded="false"
+  aria-controls={menuId}
+  popovertarget={layerId}
+  data-tab-menu=""
+  data-ax-menu-label={label}
+  data-ax-selected={hasSelectedOption ? '' : undefined}
+  tabindex={hasSelectedOption ? 0 : -1}
+  class={cx(trigger.themeClass, 'ax-focus-visible', className as string | undefined)}
+  {...trigger.attrs}
+><span aria-hidden="true" class="ax-tab-hover"></span><span class="ax-tab-menu-label"><span class="ax-tab-menu-label-text">{triggerLabel}</span><span aria-hidden="true" class="ax-tab-menu-label-sizer">{triggerLabel}</span></span><span aria-hidden="true" class="ax-tab-menu-chevron"><Icon icon="chevronDown" size="sm" color="inherit" /></span>{hasSelectedOption && <span class={indicator.themeClass} {...indicator.attrs}></span>}</button>
+<ax-menu
+  id={layerId}
+  popover="auto"
+  data-ax-menu-kind="dropdown"
+  data-ax-anchor={triggerId}
+  class="ax-layer ax-layer-motion ax-tab-menu-layer"
+  data-astryx-layer-root=""
+  {...placementAttrs({placement: 'below', alignment: 'start'})}
+>
+  <div class={cx(surface.themeClass, 'ax-focus-visible')} {...surface.attrs}>
+    <div
+      id={menuId}
+      role="menu"
+      tabindex="-1"
+      aria-label={label}
+      class={dropdown.themeClass}
+      {...dropdown.attrs}
+      data-ax-radio-group=""
+      data-ax-tab-menu-list=""
+    >
+      <span role="presentation" class="ax-tab-menu-heading">{label}</span>
+      {options.map((option) => {
+        const checked = ctx != null && ctx.value === option.value;
+        return (
+          <div
+            role="menuitemradio"
+            tabindex="-1"
+            aria-checked={checked ? 'true' : 'false'}
+            data-value={option.value}
+            data-ax-label={option.label}
+            class={cx(item.themeClass, 'ax-focus-visible')}
+            {...item.attrs}
+          ><span class="ax-tab-menu-item-content">{option.icon != null && option.icon !== '' && <Icon icon={option.icon} size="sm" color="secondary" />}{option.label}</span><Icon icon="check" size="sm" color="accent" class="ax-tab-menu-check" /></div>
+        );
+      })}
+    </div>
+  </div>
+</ax-menu>
+<script>import '../../elements/runtime/menu';</script>
