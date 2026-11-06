@@ -1,0 +1,236 @@
+---
+/**
+ * DropdownMenu — an action menu hanging off a trigger button. Port of @astryxdesign/core
+ * DropdownMenu/DropdownMenu.tsx (the popover presentation: usePopover, useListFocus,
+ * useTypeahead, useMenuOverflow, menuRegionStops, menuWidth, renderDropdownItems,
+ * DropdownMenuContext), DropdownMenu/menuTouchAction.stylex.ts and the menu half of
+ * Popover/usePopover.tsx. Behaviour: src/elements/runtime/menu.ts (`<ax-menu>`, see its header
+ * for the markup contract other menus reuse).
+ *
+ * Markup: the trigger (the design system's Button, or the first `<button>` / `[role=button]` of
+ * the `trigger` slot — Astryx `renderTrigger`) is a native invoker (`popovertarget`) with
+ * `aria-haspopup="menu"`, `aria-expanded` and `aria-controls`; the menu is a `popover="auto"`
+ * layer rendered as its next sibling — light dismiss, Escape and click toggling need no JS —
+ * holding the popover surface (`.astryx-popover`) and the `role="menu"` element
+ * (`.astryx-dropdown-menu[data-presentation="popover"]`), named by the Button's label or, for a
+ * custom trigger, `aria-labelledby` the trigger. Rows: `items` (data) or the default slot
+ * (DropdownMenuItem, CheckboxItem, RadioGroup + RadioItem, Group, Divider, SubMenu).
+ *
+ * Size: the menu size is `button.size` (default md), stamped through every row and flyout
+ * (cascade key `dropdown-menu-size`; DropdownMenuContext `menuSize`). Placement below / start
+ * by default with a spacing-1 offset; logical start/end mirror in RTL. Width: at least the
+ * trigger's, or `menuWidth`, capped to the viewport; height: 300px or `menuMaxHeight`, capped
+ * to the viewport — a menu that overflows scrolls and takes a Tab stop.
+ *
+ * `header` / `footer` slots: content beside the menu (never among its rows); the popover is
+ * then a modal dialog named like the menu (`aria-haspopup="dialog"`), Tab / Shift+Tab walk the
+ * header, the menu (one stop) and the footer and wrap.
+ *
+ * Keyboard / pointer / focus / dismissal: see runtime/menu.ts (APG menu button: Enter, Space,
+ * ↓ open on the first row, ↑ on the last; a pointer open focuses the menu; ↑/↓ wrap, Home/End,
+ * PageUp/PageDown, typeahead, Enter/Space activate, Tab closes, Escape closes one level, focus
+ * returns to the trigger). The trigger's tooltip is off while the menu is open.
+ *
+ * Events: `astryx-open-change` `{isOpen, reason}` on the `<ax-menu>` (Astryx `onOpenChange`;
+ * flyouts' bubble through it — check `event.target`); rows dispatch `astryx-select` `{event}`
+ * (Astryx `onClick`), checkbox rows / radio groups `astryx-change` `{value}`. `isMenuOpen`
+ * renders the menu open without moving focus; the element owns the state afterwards
+ * (`show()` / `hide()` / `toggle()`, `data-ax-open`). Astryx `onClick` is the trigger's native
+ * `click`.
+ *
+ * Deferred (AGENTS.md touch scope): press-drag-release (useMenuPress: a mouse opening on press
+ * and the row under the release acting, a held finger), the entrance input hold, and the
+ * `bottom-sheet` / `adaptive` presentation (BottomSheet is not ported: both render the anchored
+ * popover, `data-presentation="popover"`).
+ *
+ * @example
+ * <DropdownMenu button={{label: 'Actions'}} items={[{label: 'Edit'}, {type: 'divider'}, {label: 'Delete', variant: 'destructive'}]} />
+ * <DropdownMenu button={{label: 'View'}}><DropdownMenuCheckboxItem label="Show grid" value={true} /></DropdownMenu>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button, {type Props as ButtonProps} from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import MenuStamp from './_MenuStamp.astro';
+import Items from './_DropdownMenuItems.astro';
+import type {LayerAlignment, LayerPlacement} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {clearance, mergeIds, placementAttrs, stampTrigger} from '../Layer/layer';
+import {resolveMenuWidth, type DropdownMenuOption} from './menuShared';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './DropdownMenu.css';
+
+export type {DropdownMenuOption, DropdownMenuItemData, DropdownMenuDividerData, DropdownMenuSection, DropdownMenuEndContent} from './menuShared';
+export type DropdownMenuPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+/** The trigger Button's props (Astryx DropdownMenuButtonProps: Button props except onClick). */
+export type DropdownMenuButtonProps = Omit<ButtonProps, 'type' | 'href' | 'as' | 'target' | 'rel'>;
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** The trigger Button's props. @default {label: translated "Menu"} */
+  button?: DropdownMenuButtonProps;
+  /** Data-driven rows; the default slot holds compound rows instead. */
+  items?: DropdownMenuOption[];
+  /** Only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  presentation?: DropdownMenuPresentation;
+  /** Render open (no focus move); the element owns the state afterwards. */
+  isMenuOpen?: boolean;
+  /** Minimum width (number = px; intrinsic keywords set the preferred width), capped to the viewport. Default: the trigger's width. */
+  menuWidth?: number | string;
+  /** Maximum height in px, lifting the 300px cap (the viewport still bounds it). */
+  menuMaxHeight?: number;
+  /** @default 'below' */
+  placement?: LayerPlacement;
+  /** @default 'start' */
+  alignment?: LayerAlignment;
+  /** Chevron on a labelled trigger. @default true */
+  hasChevron?: boolean;
+  /** On the trigger (Astryx: the Button's data-testid). */
+  'data-testid'?: string;
+  locale?: string;
+}
+
+/** @internal MoreMenu: rows follow the trigger's inherited size (useSize). */
+interface InternalProps {
+  __sizeFromTrigger?: boolean;
+}
+
+const {
+  button: buttonProp,
+  items,
+  presentation: _presentation = 'popover',
+  isMenuOpen = false,
+  menuWidth,
+  menuMaxHeight,
+  placement = 'below',
+  alignment = 'start',
+  hasChevron = true,
+  'data-testid': testId,
+  locale,
+  id: idProp,
+  class: className,
+  style,
+  __sizeFromTrigger = false,
+  ...rest
+} = Astro.props as Props & InternalProps;
+
+const t = translator(Astro, locale);
+const button: DropdownMenuButtonProps = buttonProp ?? {label: t('@astryx.dropdownMenu.label')};
+const menuSize = button.size ?? 'md';
+const layerId = uid(Astro, 'ax-dropdown-menu');
+const menuId = (idProp as string | undefined) ?? `${layerId}-menu`;
+let triggerId = `${layerId}-trigger`;
+const hasRegions = Astro.slots.has('header') || Astro.slots.has('footer');
+const headerHtml = Astro.slots.has('header') ? (await Astro.slots.render('header')).trim() : '';
+const footerHtml = Astro.slots.has('footer') ? (await Astro.slots.render('footer')).trim() : '';
+const regions = hasRegions && (headerHtml !== '' || footerHtml !== '');
+
+// renderTrigger → the `trigger` slot: its first button / [role=button] gets the wiring.
+let customTriggerHtml: string | null = null;
+if (Astro.slots.has('trigger')) {
+  const stamped = await stampTrigger(
+    await Astro.slots.render('trigger'),
+    (attrs, tag) => {
+      if (attrs.id) triggerId = attrs.id;
+      return {
+        id: attrs.id ? undefined : triggerId,
+        ...(tag === 'button' ? {popovertarget: layerId} : {}),
+        'aria-haspopup': regions ? 'dialog' : 'menu',
+        'aria-expanded': isMenuOpen ? 'true' : 'false',
+        'aria-controls': mergeIds(attrs['aria-controls'], regions ? layerId : menuId),
+      };
+    },
+    (tag, attrs) => tag === 'button' || attrs.role === 'button',
+  );
+  if (stamped.found) customTriggerHtml = stamped.html;
+}
+const isCustomTrigger = customTriggerHtml != null;
+const callerLabel = (rest as Record<string, unknown>)['aria-label'] as string | undefined;
+const menuLabel = isCustomTrigger ? callerLabel : button.label;
+const isIconOnly = button.isIconOnly === true;
+const showChevron = hasChevron && !isIconOnly && button.endContent == null;
+const hasIconSlot = Astro.slots.has('icon');
+
+const width = resolveMenuWidth(menuWidth);
+const maxHeight = menuMaxHeight != null ? `--_ax-menu-max-height:${menuMaxHeight}px` : undefined;
+const {themeClass, attrs: menuAttrs} = themeProps('dropdown-menu', {presentation: 'popover'});
+const surface = themeProps('popover');
+
+// The trigger Button. Its slots are passed only when used: Astro registers a named slot
+// whatever the expression around it evaluates to, and Button prefers a slot to its prop.
+const buttonAttrs: Record<string, unknown> = {
+  ...button,
+  id: triggerId,
+  class: cx('ax-dropdown-menu-trigger', button.class as string | undefined),
+  popovertarget: layerId,
+  'aria-haspopup': regions ? 'dialog' : 'menu',
+  'aria-expanded': isMenuOpen ? 'true' : 'false',
+  'aria-controls': regions ? layerId : menuId,
+  'data-testid': testId,
+  locale,
+};
+
+const menuElementAttrs: Record<string, unknown> = {
+  ...rest,
+  id: menuId,
+  role: 'menu',
+  // A pointer open focuses the menu itself; with regions it is one Tab stop between them.
+  tabindex: regions ? 0 : -1,
+  'aria-label': isCustomTrigger ? callerLabel : button.label,
+  'aria-labelledby': isCustomTrigger && callerLabel == null ? triggerId : (rest as Record<string, unknown>)['aria-labelledby'],
+  ...menuAttrs,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(maxHeight, style as StyleValue),
+  'data-ax-menu-root': '',
+  'data-ax-overflow-tabbable': regions ? undefined : '',
+  'data-ax-in-frame': regions ? '' : undefined,
+  'data-ax-max-height': menuMaxHeight != null ? '' : undefined,
+};
+---
+{isCustomTrigger
+  ? <Fragment set:html={customTriggerHtml} />
+  : hasIconSlot
+    ? (showChevron
+      ? <Button {...buttonAttrs as ButtonProps}><slot name="icon" slot="icon" /><Icon slot="endContent" icon="chevronDown" size="sm" color="inherit" /></Button>
+      : <Button {...buttonAttrs as ButtonProps}><slot name="icon" slot="icon" /></Button>)
+    : (showChevron
+      ? <Button {...buttonAttrs as ButtonProps}><Icon slot="endContent" icon="chevronDown" size="sm" color="inherit" /></Button>
+      : <Button {...buttonAttrs as ButtonProps} />)}
+<ax-menu
+  id={layerId}
+  popover="auto"
+  data-ax-menu-kind="dropdown"
+  data-ax-anchor={triggerId}
+  class="ax-layer ax-layer-motion ax-dropdown-menu-layer"
+  data-astryx-layer-root=""
+  {...placementAttrs({placement, alignment})}
+  data-ax-open={isMenuOpen ? 'true' : undefined}
+  data-ax-width={width?.mode}
+  data-ax-max-height={menuMaxHeight != null ? '' : undefined}
+  data-ax-size-from-trigger={__sizeFromTrigger ? '' : undefined}
+  data-ax-menu-size={menuSize}
+  style={mergeStyles(clearance('var(--spacing-1)'), width ? `--_ax-menu-width:${width.value}` : undefined, maxHeight)}
+>
+  <div
+    class={cx(surface.themeClass, 'ax-focus-visible')}
+    {...surface.attrs}
+    role={regions ? 'dialog' : undefined}
+    aria-modal={regions ? 'true' : undefined}
+    aria-label={regions ? (menuLabel ?? (isCustomTrigger ? undefined : t('@astryx.dropdownMenu.label'))) : undefined}
+    aria-labelledby={regions && menuLabel == null && isCustomTrigger ? triggerId : undefined}
+    tabindex={regions ? -1 : undefined}
+  >
+    {regions ? (
+      <div class="ax-dropdown-menu-regions" data-ax-max-height={menuMaxHeight != null ? '' : undefined} style={maxHeight}>
+        {headerHtml !== '' && <div class="ax-dropdown-menu-region" data-ax-menu-region="header"><Fragment set:html={headerHtml} /></div>}
+        <div {...menuElementAttrs}><MenuStamp size={menuSize}>{items ? <Items items={items} locale={locale} /> : <slot />}</MenuStamp></div>
+        {footerHtml !== '' && <div class="ax-dropdown-menu-region" data-ax-menu-region="footer"><Fragment set:html={footerHtml} /></div>}
+      </div>
+    ) : (
+      <div {...menuElementAttrs}><MenuStamp size={menuSize}>{items ? <Items items={items} locale={locale} /> : <slot />}</MenuStamp></div>
+    )}
+  </div>
+</ax-menu>
+<script>import '../../elements/runtime/menu';</script>

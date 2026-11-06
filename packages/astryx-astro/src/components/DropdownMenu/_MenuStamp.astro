@@ -1,0 +1,27 @@
+---
+/**
+ * Internal: renders a menu root's rows (compound children or data items) with the menu's
+ * size stamped through them (DropdownMenuContext `menuSize`, see menuShared.ts) and every
+ * other cascade ended (the menu is a layer). `template` (ContextMenu) wraps the menu element
+ * in the `<template data-ax-menu-content>` the runtime mounts at the first open; scripts the
+ * rows rendered are lifted out of it so they still run.
+ */
+import {splitScripts, stampMenuContent, type DropdownMenuSize} from './menuShared';
+
+interface Props {
+  size: DropdownMenuSize;
+  template?: boolean;
+  /** Attributes of the role="menu" element (template mode). */
+  menu?: Record<string, unknown>;
+}
+
+const {size, template = false, menu = {}} = Astro.props;
+const html = await stampMenuContent(Astro.slots.has('default') ? await Astro.slots.render('default') : '', size);
+const {markup, scripts} = template ? splitScripts(html) : {markup: html, scripts: ''};
+---
+{template ? (
+  <Fragment>
+    <template data-ax-menu-content><div {...menu}><Fragment set:html={markup} /></div></template>
+    <Fragment set:html={scripts} />
+  </Fragment>
+) : <Fragment set:html={markup} />}

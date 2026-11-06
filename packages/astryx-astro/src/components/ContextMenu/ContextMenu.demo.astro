@@ -1,0 +1,66 @@
+---
+import ContextMenu from './ContextMenu.astro';
+import ContextMenuItem from './ContextMenuItem.astro';
+import ContextMenuCheckboxItem from './ContextMenuCheckboxItem.astro';
+import ContextMenuRadioGroup from './ContextMenuRadioGroup.astro';
+import ContextMenuRadioItem from './ContextMenuRadioItem.astro';
+import ContextMenuGroup from './ContextMenuGroup.astro';
+import ContextMenuDivider from './ContextMenuDivider.astro';
+import ContextMenuSubMenu from './ContextMenuSubMenu.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import type {DropdownMenuOption} from '../DropdownMenu/menuShared';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const area = 'display:grid;place-items:center;min-height:140px;padding:var(--spacing-4);border:var(--border-width) dashed var(--color-border-emphasized);border-radius:var(--radius-container);background:var(--color-background-muted);color:var(--color-text-secondary);font-size:var(--font-size-sm)';
+const items: DropdownMenuOption[] = [
+  {label: 'Cut', id: 'cut', endContent: {keys: 'mod+x'}},
+  {label: 'Copy', id: 'copy', icon: 'copy', endContent: {keys: 'mod+c'}},
+  {label: 'Paste', id: 'paste', endContent: {keys: 'mod+v'}, isDisabled: true},
+  {type: 'divider'},
+  {label: 'Share', icon: 'externalLink', items: [{label: 'Email', id: 'email'}, {label: 'Messages', id: 'messages'}]},
+  {label: 'Delete', variant: 'destructive', id: 'delete'},
+];
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Right-click the area (or focus it and press Shift+F10 / the Menu key)</h3>
+    <ContextMenu items={items} id="cm-basic-area" data-testid="cm-basic">
+      <div tabindex="0" style={area} id="cm-basic-target">Right-click anywhere in this canvas</div>
+    </ContextMenu>
+  </section>
+
+  <section>
+    <h3 style={cap}>Compound rows: checkbox, radio, group, sub-menu (size sm, wider menu)</h3>
+    <ContextMenu size="sm" menuWidth={220} label="Layer actions" id="cm-compound-area">
+      <div tabindex="0" style={area}>Right-click for layer options</div>
+      <Fragment slot="menuContent">
+        <ContextMenuGroup title="Layer">
+          <ContextMenuItem label="Rename" id="cm-rename"><Kbd slot="endContent" keys="mod+r" /></ContextMenuItem>
+          <ContextMenuItem label="Duplicate" id="cm-duplicate" />
+        </ContextMenuGroup>
+        <ContextMenuDivider />
+        <ContextMenuCheckboxItem label="Visible" value={true} id="cm-visible" />
+        <ContextMenuCheckboxItem label="Locked" id="cm-locked" />
+        <ContextMenuDivider />
+        <ContextMenuRadioGroup label="Blend mode" value="normal" id="cm-blend">
+          <ContextMenuRadioItem value="normal" label="Normal" id="cm-normal" />
+          <ContextMenuRadioItem value="multiply" label="Multiply" id="cm-multiply" />
+        </ContextMenuRadioGroup>
+        <ContextMenuSubMenu label="Arrange" id="cm-arrange">
+          <ContextMenuItem label="Bring to front" id="cm-front" />
+          <ContextMenuItem label="Send to back" id="cm-back" />
+        </ContextMenuSubMenu>
+      </Fragment>
+    </ContextMenu>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inline trigger inside prose, and a disabled area (the native menu shows)</h3>
+    <p style="margin:0;max-width:60ch">
+      Right-click{' '}<ContextMenu triggerAs="span" items={[{label: 'Copy reference', id: 'ref'}, {label: 'Open in new tab', id: 'tab'}]} triggerStyle="color:var(--color-text-accent);text-decoration:underline" id="cm-inline-area">this reference</ContextMenu>{' '}to act on it, while the text keeps flowing around it.
+    </p>
+    <ContextMenu items={items} isDisabled id="cm-disabled-area">
+      <div style={`${area};min-height:60px;margin-top:var(--spacing-3)`}>Disabled: the browser's context menu</div>
+    </ContextMenu>
+  </section>
+</div>

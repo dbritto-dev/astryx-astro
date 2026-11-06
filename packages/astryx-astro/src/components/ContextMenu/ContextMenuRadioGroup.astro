@@ -1,0 +1,10 @@
+---
+/**
+ * ContextMenuRadioGroup — DropdownMenuRadioGroup under its ContextMenu name (Astryx
+ * ContextMenu/index.ts re-export): `role="group"`, `astryx-change` `{value}`.
+ */
+import DropdownMenuRadioGroup, {type Props as DropdownMenuRadioGroupProps} from '../DropdownMenu/DropdownMenuRadioGroup.astro';
+
+export type Props = DropdownMenuRadioGroupProps;
+---
+<DropdownMenuRadioGroup {...Astro.props}><slot /></DropdownMenuRadioGroup>

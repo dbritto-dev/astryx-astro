@@ -1,0 +1,142 @@
+---
+/**
+ * ContextMenu — a menu that opens at the pointer on right-click (and Shift+F10 / the Menu key,
+ * and a touch long press) over its trigger area. Port of @astryxdesign/core
+ * ContextMenu/ContextMenu.tsx (cursor popover presentation; useLayer context mode with a 1px
+ * cursor anchor, useLayerDismissal, useListFocus with focusFollowsLastInput, useTypeahead,
+ * useMenuOverflow, useLongPress, renderDropdownItems + DropdownMenuContext). Behaviour:
+ * src/elements/runtime/menu.ts (`<ax-menu data-ax-menu-kind="context">`).
+ *
+ * Markup: the trigger area (`triggerAs`: a block `div`, or an inline `span` so prose can own a
+ * context menu) wraps the default slot plus a 1px `aria-hidden` cursor anchor; the menu is a
+ * `popover="manual"` layer after it, anchored to that point (placement below / start: it
+ * scrolls with the content and flips at the viewport edges), min 160px or `menuWidth`, at most
+ * 300px tall (scrolling). Its `role="menu"` element (`.astryx-context-menu`, named by `label`,
+ * default translated "Context menu") waits in a `<template>` until the first open (Astryx
+ * lazyMount: a table with a menu per cell adds no popover content until one opens).
+ *
+ * Rows: `items` (data, same shape as DropdownMenu's: nested `items` open flyouts) or the
+ * `menuContent` slot (ContextMenuItem, CheckboxItem, RadioGroup + RadioItem, Group, Divider,
+ * SubMenu — the DropdownMenu rows); `size` sizes them (cascade key `dropdown-menu-size`).
+ *
+ * Opening: a right-click opens at the pointer (`preventDefault`: no native menu); a keyboard
+ * contextmenu (Shift+F10 / Menu key, reported at 0,0) opens at the area's bottom-start; a
+ * 500ms touch hold that moves under 10px opens at the finger. Focus lands on the first row,
+ * with a ring only after keyboard input. `isDisabled` leaves the native context menu.
+ * Closing: a press that starts and ends outside the menu (contract #17), Escape (one level at
+ * a time), Tab, a row that acts; focus returns to the element focused before it opened.
+ * Opening one context menu closes another.
+ *
+ * `class` / `style` reach the menu element (Astryx className / style); every other attribute
+ * reaches the trigger area (Astryx: host props), `triggerClass` / `triggerStyle` style it
+ * (Astryx triggerXstyle). Events: `astryx-open-change` `{isOpen, reason}` on the `<ax-menu>`;
+ * rows: `astryx-select`, `astryx-change` (see DropdownMenuItem). API: `openAt(x, y)`,
+ * `show()` / `hide()` on the `<ax-menu>`.
+ *
+ * Deferred: the `bottom-sheet` / `adaptive` presentation (BottomSheet not ported; both render
+ * the cursor popover) and the touch press-drag-release model (useMenuPress).
+ *
+ * @example
+ * <ContextMenu items={[{label: 'Cut'}, {label: 'Copy'}, {type: 'divider'}, {label: 'Paste'}]}>
+ *   <div class="canvas">Right-click here</div>
+ * </ContextMenu>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import MenuStamp from '../DropdownMenu/_MenuStamp.astro';
+import Items from '../DropdownMenu/_DropdownMenuItems.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {placementAttrs} from '../Layer/layer';
+import type {DropdownMenuOption} from '../DropdownMenu/menuShared';
+import '../Layer/Layer.css';
+import '../DropdownMenu/DropdownMenu.css';
+import './ContextMenu.css';
+
+export type {
+  DropdownMenuOption as ContextMenuOption,
+  DropdownMenuItemData as ContextMenuItemData,
+  DropdownMenuDividerData as ContextMenuDividerData,
+  DropdownMenuSection as ContextMenuSection,
+} from '../DropdownMenu/menuShared';
+export type ContextMenuPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Data-driven rows; the `menuContent` slot holds compound rows instead. */
+  items?: DropdownMenuOption[];
+  /** Minimum menu width (number = px). @default '160px' */
+  menuWidth?: number | string;
+  /** Row size. @default 'md' */
+  size?: 'sm' | 'md' | 'lg';
+  /** Accessible name of the menu. @default translated "Context menu" */
+  label?: string;
+  /** Leave the browser's own context menu. @default false */
+  isDisabled?: boolean;
+  /** Only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  presentation?: ContextMenuPresentation;
+  /** The trigger area element: 'div' (block) or 'span' (inline, inside prose). @default 'div' */
+  triggerAs?: 'div' | 'span';
+  /** Class for the trigger area (Astryx triggerXstyle). */
+  triggerClass?: string;
+  /** Inline style for the trigger area (fill the parent, e.g. a table cell). */
+  triggerStyle?: StyleValue;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {
+  items,
+  menuWidth,
+  size = 'md',
+  label: labelProp,
+  isDisabled = false,
+  presentation: _presentation = 'popover',
+  triggerAs = 'div',
+  triggerClass,
+  triggerStyle,
+  'data-testid': testId,
+  locale,
+  class: className,
+  style,
+  id: idProp,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.contextMenu.label');
+const layerId = uid(Astro, 'ax-context-menu');
+const areaId = (idProp as string | undefined) ?? `${layerId}-area`;
+const anchorId = `${layerId}-anchor`;
+const menuId = `${layerId}-menu`;
+const Trigger = triggerAs === 'span' ? 'span' : 'div';
+const width = menuWidth == null || menuWidth === '' ? undefined : cssSize(menuWidth);
+const {themeClass, attrs} = themeProps('context-menu');
+const menu = {
+  id: menuId,
+  role: 'menu',
+  tabindex: -1,
+  'aria-label': label,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+  ...attrs,
+};
+---
+<Trigger {...rest} id={areaId} class={cx('ax-context-menu-trigger', triggerClass)} style={mergeStyles(triggerStyle)} data-testid={testId}>
+  <slot />
+  <span id={anchorId} class="ax-context-menu-anchor" aria-hidden="true" style="left:0px;top:0px"></span>
+</Trigger>
+<script>import '../../elements/runtime/menu';</script>
+<ax-menu
+  id={layerId}
+  popover="manual"
+  data-ax-menu-kind="context"
+  data-ax-context-target={areaId}
+  data-ax-anchor={anchorId}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  class="ax-layer ax-layer-motion ax-context-menu-layer"
+  data-astryx-layer-root=""
+  {...placementAttrs({placement: 'below', alignment: 'start'})}
+  data-ax-width={width ? '' : undefined}
+  style={width ? `--_ax-menu-width:${width}` : undefined}
+><MenuStamp size={size} template menu={menu}>{items ? <Items items={items} locale={locale} /> : <slot name="menuContent" />}</MenuStamp></ax-menu>

@@ -1,0 +1,244 @@
+/*
+ * Port of @astryxdesign/core DropdownMenu/DropdownMenu.tsx (styles: triggerOpen,
+ * triggerPressable, dropdown, scrollable, regionsFrame, menuInFrame, region, popoverViewport,
+ * popoverMatchTrigger, popoverCustomWidth, popoverCustomIntrinsicWidth; dynamicStyles),
+ * DropdownMenu/menuTouchAction.stylex.ts, DropdownMenuItem.tsx (menuItemStyles, itemSizeStyles),
+ * DropdownMenuCheckboxItem.tsx / DropdownMenuRadioItem.tsx (styles.root, disabled, marker),
+ * DropdownMenuRadioGroup.tsx (group), DropdownMenuGroup.tsx / renderDropdownItems.tsx (heading),
+ * DropdownMenuDivider.tsx (divider), DropdownMenuSubMenu.tsx (triggerStyles, triggerSizeStyles,
+ * flyoutStyles), privateAttributes/menuPressLit.stylex.ts (the --_menu-row-*-paint fallbacks).
+ * Viewport caps read Layer.css's one definition (--_ax-max-inline-size / --_ax-max-block-size).
+ *
+ * Rows are Items: rules use `.astryx-item.astryx-dropdown-menu-item[data-ax-menu-row]` so they
+ * replace Item's own padding / radius / paint (StyleX: the row's xstyle merges after Item's).
+ * Rule groups follow the order of the React stylex.props() calls.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-menu-width { syntax: "*"; inherits: false; }
+@property --_ax-menu-max-height { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── Trigger (the design system's Button) ─────────────────────────────── */
+  /* triggerPressable: a held press drives the menu, not the browser's callout / selection. */
+  .ax-dropdown-menu-trigger {
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
+  /* triggerOpen: the pressed overlay while the menu is open. */
+  .astryx-button.ax-dropdown-menu-trigger[aria-expanded="true"] {
+    background-image: linear-gradient(var(--color-overlay-pressed), var(--color-overlay-pressed));
+  }
+
+  /* ── Layer box (popoverViewport, popoverMatchTrigger / custom width) ──── */
+  .ax-dropdown-menu-layer {
+    box-sizing: border-box;
+    max-block-size: min(300px, var(--_ax-max-block-size));
+  }
+  .ax-dropdown-menu-layer[data-ax-max-height] {
+    max-block-size: min(var(--_ax-menu-max-height), var(--_ax-max-block-size));
+  }
+  /* Without a width the menu is at least as wide as its trigger, clamped by the viewport cap
+     (a CSS minimum beats a maximum). The rect fallback writes --_ax-anchor-width. */
+  .ax-dropdown-menu-layer:not([data-ax-width]) {
+    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
+    min-width: min(anchor-size(width), var(--_ax-max-inline-size));
+  }
+  .ax-dropdown-menu-layer[data-astryx-rect]:not([data-ax-width]) {
+    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
+  }
+  .ax-dropdown-menu-layer[data-ax-width="min"] { min-width: var(--_ax-menu-width); }
+  .ax-dropdown-menu-layer[data-ax-width="inline"] { inline-size: var(--_ax-menu-width); }
+
+  /* Sub-menu flyout layer: flyoutStyles.popoverViewport + popover (min 160px) / custom width.
+     The inline cap stays on the menu surface: on the anchored layer it would keep Chromium
+     from choosing flip-inline. */
+  .ax-dropdown-menu-flyout {
+    box-sizing: border-box;
+    max-block-size: min(300px, var(--_ax-max-block-size));
+  }
+  .ax-dropdown-menu-flyout:not([data-ax-width]) { min-width: min(160px, var(--_ax-max-inline-size)); }
+  .ax-dropdown-menu-flyout[data-ax-width="min"] { min-width: var(--_ax-menu-width); }
+  .ax-dropdown-menu-flyout[data-ax-width="inline"] { inline-size: var(--_ax-menu-width); }
+
+  /* ── Menu (styles.dropdown / flyoutStyles.menu) ───────────────────────── */
+  .astryx-dropdown-menu {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+    -webkit-touch-callout: none;
+    user-select: none;
+    max-inline-size: var(--_ax-max-inline-size);
+    max-height: min(300px, var(--_ax-max-block-size));
+    --_dropdown-menu-radius: var(--radius-container);
+    --_dropdown-menu-padding: var(--spacing-1);
+    padding: var(--spacing-1);
+    border-radius: var(--_dropdown-menu-radius);
+    opacity: 1;
+    transition-property: opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  /* The root menu is focused by a pointer open: an internal focus target, not a control. */
+  .astryx-dropdown-menu[data-ax-menu-root] { outline: none; }
+  /* A flyout paints its own surface (the root sits in the popover surface). */
+  .astryx-dropdown-menu[data-ax-menu-flyout] {
+    background-color: var(--color-background-popover);
+    box-shadow: var(--shadow-low);
+  }
+  .astryx-dropdown-menu[data-ax-max-height] {
+    max-height: min(var(--_ax-menu-max-height), var(--_ax-max-block-size));
+  }
+  /* menuTouchActionStyles: fits → pinch-zoom; scrolls → pan-y pinch-zoom (+ scrollable). */
+  .astryx-dropdown-menu { touch-action: pinch-zoom; }
+  .astryx-dropdown-menu[data-ax-overflow] {
+    touch-action: pan-y pinch-zoom;
+    overscroll-behavior: contain;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* ── Header / footer (regionsFrame, region, menuInFrame) ──────────────── */
+  .ax-dropdown-menu-regions {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    max-height: min(300px, var(--_ax-max-block-size));
+  }
+  .ax-dropdown-menu-regions[data-ax-max-height] {
+    max-height: min(var(--_ax-menu-max-height), var(--_ax-max-block-size));
+  }
+  .ax-dropdown-menu-region {
+    flex-shrink: 0;
+    padding: var(--spacing-1);
+  }
+  .astryx-dropdown-menu[data-ax-in-frame] {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-block-size: 0;
+  }
+  /* Between a header and a footer the menu is a Tab stop: keyboard focus on it shows. */
+  .astryx-dropdown-menu[data-ax-in-frame]:focus-visible {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: var(--focus-outline-offset);
+  }
+
+  /* ── Rows (menuItemStyles.root / triggerStyles.root / checkbox + radio root) ── */
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row] {
+    box-sizing: border-box;
+    width: 100%;
+    border-radius: max(0px, calc(var(--_dropdown-menu-radius, var(--spacing-2)) - var(--_dropdown-menu-padding, var(--spacing-1))));
+    color: var(--color-text-primary);
+    background-color: transparent;
+    cursor: pointer;
+    outline-offset: calc(-1 * var(--focus-outline-width));
+    transition-property: background-color;
+    transition-duration: var(--duration-fast-min);
+    transition-timing-function: var(--ease-standard);
+  }
+  /* Action and sub-menu rows set their own box; checkbox / radio rows keep Item's balanced one. */
+  .astryx-item.astryx-dropdown-menu-item:is([data-ax-menu-row="item"], [data-ax-menu-row="submenu"]) {
+    padding-block: var(--spacing-2);
+    padding-inline: var(--spacing-2);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    border-width: 0;
+    border-style: none;
+    text-align: start;
+  }
+  /* The ring is drawn inside the row by its own width (forced colors drop the overlay). */
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row]:focus-visible {
+    outline-offset: calc(-1 * var(--focus-outline-width));
+  }
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* One focus-driven highlight: hover moves focus, so rows paint :focus, never :hover. */
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row]:is(:hover, :active) { background-color: transparent; }
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row]:focus {
+    background-color: var(--_menu-row-focus-paint, var(--color-overlay-hover));
+  }
+  /* The pressed look only where hover exists (an action row's own :active). */
+  @media (hover: hover) {
+    .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row="item"]:where(:not(:disabled, [aria-disabled="true"])):active {
+      background-color: var(--_menu-row-active-paint, var(--color-overlay-pressed));
+    }
+  }
+
+  /* itemSizeStyles / triggerSizeStyles */
+  .astryx-item.astryx-dropdown-menu-item:is([data-ax-menu-row="item"], [data-ax-menu-row="submenu"])[data-size="sm"] {
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-2);
+  }
+  .astryx-item.astryx-dropdown-menu-item:is([data-ax-menu-row="item"], [data-ax-menu-row="submenu"])[data-size="md"] {
+    padding-block: var(--spacing-1-5);
+  }
+
+  /* triggerStyles.open: the open branch reads as the current path while focus is in the flyout. */
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row="submenu"][aria-expanded="true"] {
+    background-color: var(--color-overlay-hover);
+  }
+
+  /* destructive: text, description and icon in the error color; the paint stays neutral. */
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row][data-variant="destructive"] {
+    color: var(--color-text-error);
+    --_item-label-color: var(--color-text-error);
+    --_item-description-color: var(--color-text-error);
+  }
+
+  /* disabled */
+  .astryx-item.astryx-dropdown-menu-item[data-ax-menu-row][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  /* Sub-menu caret (triggerStyles.caret) */
+  .ax-dropdown-menu-caret {
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── Checkbox / radio marker (styles.marker): decorative, moves to the end on touch ── */
+  .astryx-dropdown-menu-item > [data-ax-marker] {
+    pointer-events: none;
+    order: 0;
+    margin-inline-start: 0;
+  }
+  @media (pointer: coarse) {
+    .astryx-dropdown-menu-item > [data-ax-marker] {
+      order: 1;
+      margin-inline-start: auto;
+    }
+  }
+  /* Both states are rendered (the element owns the state after load); the row's aria-checked
+     shows the one that applies. */
+  .astryx-dropdown-menu-item[aria-checked="true"] > [data-ax-marker="unchecked"],
+  .astryx-dropdown-menu-item:not([aria-checked="true"]) > [data-ax-marker="checked"] {
+    display: none;
+  }
+
+  /* ── Radio group (styles.group: the menu's inter-row rhythm inside the group) ── */
+  .ax-dropdown-menu-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+  }
+
+  /* ── Section heading (DropdownMenuGroup / data `section`) ─────────────── */
+  .astryx-dropdown-menu-section-heading {
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-2);
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    user-select: none;
+  }
+
+  /* ── Divider ───────────────────────────────────────────────────────────── */
+  .astryx-divider.astryx-dropdown-menu-divider {
+    margin-block: var(--spacing-1);
+  }
+}

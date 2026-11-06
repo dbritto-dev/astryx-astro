@@ -1,0 +1,8 @@
+---
+/**
+ * The anchor a link row renders as when no LinkProvider component is set: Item makes its root
+ * the link only for a component `as` (Astryx: the row IS the application's anchor).
+ */
+const props = Astro.props as Record<string, unknown>;
+---
+<a {...props}><slot /></a>

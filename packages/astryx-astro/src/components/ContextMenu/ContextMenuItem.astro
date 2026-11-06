@@ -1,0 +1,16 @@
+---
+/**
+ * ContextMenuItem — a ContextMenu row. Port of @astryxdesign/core ContextMenu/index.ts, which
+ * re-exports DropdownMenuItem under this name: same props, slots, theme hook
+ * (`.astryx-dropdown-menu-item[data-size][data-variant]`) and events (`astryx-select`).
+ */
+import DropdownMenuItem, {type Props as DropdownMenuItemProps} from '../DropdownMenu/DropdownMenuItem.astro';
+
+export type Props = DropdownMenuItemProps;
+---
+<DropdownMenuItem {...Astro.props}>
+  {Astro.slots.has('icon') && <slot name="icon" slot="icon" />}
+  {Astro.slots.has('label') && <slot name="label" slot="label" />}
+  {Astro.slots.has('description') && <slot name="description" slot="description" />}
+  {Astro.slots.has('endContent') && <slot name="endContent" slot="endContent" />}
+</DropdownMenuItem>

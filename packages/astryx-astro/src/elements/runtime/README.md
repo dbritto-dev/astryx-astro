@@ -22,6 +22,7 @@ listener.** Register with these modules instead.
 | `typeahead.ts` | utils/typeaheadMatch.ts, hooks/useTypeahead.ts |
 | `disabledInteraction.ts` | utils/disabledInteraction.ts (AST-085) |
 | `dom.ts` | utils/ime.ts, hooks/focusableSelector.ts, utils/isFocusDetached.ts |
+| `menu.ts` | DropdownMenu/menuItemRoles.ts, menuItemHover.ts, menuRegionStops.ts, useMenuOverflow.ts, hooks/useMenuHover.ts, hooks/useLongPress.ts; the menu paths of DropdownMenu.tsx, DropdownMenuSubMenu.tsx, ContextMenu.tsx |
 
 ---
 
@@ -321,3 +322,89 @@ supply its `<dialog>` as an outlet while open.
 
 Client-only APIs (import from the element modules in the browser, not from the package index):
 `toast()`, `createToastQueue()`, `getToastContext()` (`src/elements/toast.ts`).
+
+## menu.ts — `<ax-menu>`, menu levels, hover intent
+
+Everything a `role="menu"` surface needs: the `<ax-menu>` layer (a `LayerElement`: dropdown
+root, sub-menu flyout or context menu), one keyboard/pointer controller per menu level, the
+useMenuHover port and the header/footer Tab cycle. DropdownMenu, MoreMenu and ContextMenu render
+it; TabList's TabMenu, Breadcrumb menus and NavMenu should render `<DropdownMenu>` (its
+`trigger` slot = Astryx `renderTrigger`) or this markup; TopNav / SideNav reuse
+`createMenuHover`; Selector-like lists can reuse `createMenuLevel` (with their own role
+selectors) or just `createTypeahead` + roving. One import wires everything:
+`<script>import '../../elements/runtime/menu';</script>`.
+
+**Markup contract** (server-rendered; ids from `uid()`):
+
+```html
+<button id="T" popovertarget="L" aria-haspopup="menu" aria-expanded="false" aria-controls="M">Actions</button>
+<ax-menu id="L" popover="auto" data-ax-menu-kind="dropdown" data-ax-anchor="T" data-astryx-layer-root
+         class="ax-layer ax-layer-motion" data-placement="below" data-align="start">
+  <div id="M" role="menu" tabindex="-1" aria-label="Actions" data-ax-overflow-tabbable>
+    <div role="menuitem" tabindex="-1">Edit</div>                       <!-- closes on select -->
+    <div role="menuitem" tabindex="-1" data-ax-close-on-select="false">Copy link</div>
+    <div role="menuitem" aria-disabled="true">Archive</div>             <!-- no tabindex -->
+    <div role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-ax-close-on-select="false">Grid</div>
+    <div role="group" aria-label="Sort by" data-ax-radio-group>
+      <div role="menuitemradio" aria-checked="true" data-value="new" tabindex="-1">Newest</div>
+    </div>
+    <div role="menuitem" id="R" tabindex="-1" aria-haspopup="menu" aria-expanded="false" data-ax-submenu="F">Move to</div>
+    <ax-menu id="F" popover="manual" data-ax-menu-kind="submenu" data-ax-anchor="R"
+             class="ax-layer ax-layer-motion" data-placement="end" data-align="start">
+      <div id="F-menu" role="menu" tabindex="-1" aria-labelledby="R" data-ax-overflow-tabbable>…rows…</div>
+    </ax-menu>
+  </div>
+</ax-menu>
+```
+
+- `data-ax-menu-kind`: `dropdown` (`popover="auto"`, native light dismiss, trigger by
+  `data-ax-anchor` or the `popovertarget` invoker; a `[role=button]` trigger without the
+  invoker gets a click listener), `submenu` (`popover="manual"` inside its parent's
+  `role="menu"`, right after its row), `context` (`popover="manual"`, `data-ax-context-target`
+  = the trigger area, `data-ax-anchor` = a 1px absolutely positioned cursor anchor inside it;
+  the menu may wait in `<template data-ax-menu-content>` until the first open).
+- Each layer's own menu is its first `[role="menu"]` whose closest `ax-menu` is the layer;
+  rows are `menuitem` / `menuitemcheckbox` / `menuitemradio` scoped to that menu (nested
+  levels are excluded). `aria-disabled="true"` rows are skipped by arrows, typeahead and hover.
+- Optional: `data-ax-menu-region="header|footer"` beside the menu (the popover is then a
+  `role="dialog" aria-modal` surface and Tab walks header → menu → footer), `data-ax-busy-label`
+  on a row (announced when its level shows), `data-ax-size-from-trigger` on a dropdown (rows
+  and `[data-ax-marker]` indicators follow the trigger's `data-size` at open),
+  `data-ax-disabled` on a context menu (native menu), `data-ax-open="true"` (open on connect, no
+  focus move).
+
+**Behaviour** — open: the invoker click (zero JS), Enter / Space / ↓ on the closed trigger
+(first row), ↑ (last row); a pointer open focuses the menu element, a script `show()` the first
+row. Keys per level: ↑/↓ wrap, Home/End, PageUp/PageDown, typeahead, Enter/Space activate (a
+synthesized click with the key's modifiers; repeats ignored), Tab closes the whole menu
+(regions: the dialog cycle), → (← RTL) / Enter / Space open a row's flyout on its first row,
+← (→ RTL) closes a flyout. Escape and outside presses use `layerStack.ts`: the deepest open
+flyout first; dropdown roots are light-dismissed natively, context menus need a press that
+starts and ends outside (`requestDismiss` ignores the release of the opening right-click), flyouts
+take no outside presses and close with their root. Hover: the row under a mouse takes focus
+(one highlight, `:focus` paint); a flyout opens 150ms after hover, a hover-opened one closes
+200ms after leave (safe triangle), a click within 500ms of a hover open pins it. Selection:
+checkbox flips `aria-checked` (stays open unless `data-ax-close-on-select="true"`), radio moves
+`aria-checked` in its group (closes unless the group says `"false"`), any other row closes
+unless it says `"false"`; a modified click on a link row is the browser's. Focus returns to
+the trigger / the row / the element focused before (context). Context menus open at the
+pointer, at the keyboard contextmenu position (0,0 → the area's bottom-start; a Shift+F10 /
+Menu key that produces no contextmenu event opens there too), or after a 500ms touch hold
+(10px slop); opening one closes any other.
+
+**Events** (bubbling, composed): `astryx-open-change` `{isOpen, reason}` on each `<ax-menu>`
+(a flyout's bubbles through its root); `astryx-select` `{event}` on a row that acted;
+`astryx-change` `{value: boolean}` on a checkbox row and `{value: string}` on a radio group
+(both cancelable: `preventDefault()` keeps the state).
+
+| Export | |
+|---|---|
+| `MenuElement` (`<ax-menu>`) | `kind`, `menu`, `trigger`, `parentMenu`, `root`, `level`; `show/hide/open/close/toggle` (LayerElement), `focusMenu()`, `focusFirst()`, `focusLast()`, `openAt(clientX, clientY)` (context), `openSubmenu({focusFirst})` / `closeSubmenu({focusTrigger})` (flyout) |
+| `createMenuLevel(menuEl, {focusFollowsLastInput?, onCloseKey?, onTab?, onRowKey?, onRowClick?, onRowAuxClick?})` | one level's keys (roving + typeahead + activation), hover focus and row clicks, listeners on that element only → `{menu, roving, getItems, focusFirst, focusLast, focusItem, focusMenu, ownsEvent, rowOf, handleKeyDown, reset, destroy}` |
+| `createMenuHover({show, hide, isOpen, isEnabled, showDelay = 150, hideDelay = 200, clickGuardMs = 500, flyout?, focusMenu?, trigger?})` | useMenuHover → `{triggerEnter, triggerLeave(e), contentEnter, contentLeave(e), click(e), confirmHoverOpen, notifyClosed, clear}`; wire the trigger's and the flyout's `mouseenter` / `mouseleave`; call `notifyClosed()` on every close |
+| `moveRegionsTab(event, menu, header, footer, isFromFlyout?)`, `tabbablesIn(region)` | the header / menu / footer Tab cycle |
+| `MENU_ITEM_ROLES`, `MENU_ITEM_SELECTOR` (enabled rows), `MENU_ROW_SELECTOR`, `MENU_BOUNDARY_SELECTOR` | |
+| `isModifiedClick(e)`, `activateMenuItem(row, keyEvent)`, `isDisabledRow(row)`, `focusMenuItemOnHover(pointerEvent, row?)`, `isPointInSafeTriangle(point, origin, rect)`, `flyoutFor(row)` | |
+
+Deferred (touch extras): press-drag-release (useMenuPress: open on press, the row under the
+release acts, edge autoscroll), the entrance input hold, drill-in sub-menus, bottom sheets.

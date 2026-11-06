@@ -1,0 +1,15 @@
+---
+/**
+ * ContextMenuSubMenu — DropdownMenuSubMenu under its ContextMenu name (Astryx
+ * ContextMenu/index.ts re-export): a row with a nested flyout.
+ */
+import DropdownMenuSubMenu, {type Props as DropdownMenuSubMenuProps} from '../DropdownMenu/DropdownMenuSubMenu.astro';
+
+export type Props = DropdownMenuSubMenuProps;
+---
+<DropdownMenuSubMenu {...Astro.props}>
+  {Astro.slots.has('icon') && <slot name="icon" slot="icon" />}
+  {Astro.slots.has('label') && <slot name="label" slot="label" />}
+  {Astro.slots.has('description') && <slot name="description" slot="description" />}
+  <slot />
+</DropdownMenuSubMenu>

@@ -1,0 +1,156 @@
+---
+/**
+ * DropdownMenuSubMenu — a row that reveals a nested menu of its own rows in a flyout beside
+ * it. Port of @astryxdesign/core DropdownMenu/DropdownMenuSubMenu.tsx (triggerStyles,
+ * triggerSizeStyles, flyoutStyles; useMenuHover, useListFocus + useTypeahead per level,
+ * useBusyAnnouncement), behaviour in src/elements/runtime/menu.ts (`<ax-menu
+ * data-ax-menu-kind="submenu">`). Data mode renders it for an item with nested `items`.
+ *
+ * The row adopts DropdownMenuItem semantics (`role="menuitem"`, label / icon / description /
+ * isDisabled, host attributes and `id` on the row) plus `aria-haspopup="menu"`,
+ * `aria-expanded`, and `aria-controls` while open. The flyout is a `popover="manual"` layer
+ * rendered inline after the row (placement end / alignment start, spacing-1 offset, viewport
+ * flip — RTL mirrors), min 160px wide or `menuWidth`, capped at 300px / the viewport, with its
+ * own surface (`.astryx-dropdown-menu[data-presentation="popover"]`). It closes with the root
+ * menu and opening it closes a sibling flyout.
+ *
+ * Keys: → (← in RTL), Enter and Space open and focus the first row; ← (→ in RTL) and Escape
+ * close this level only and focus the row. Pointer: hover opens after 150ms and leaving closes
+ * a hover-opened flyout after 200ms (safe triangle toward it); a click toggles, and the click
+ * within 500ms of a hover open pins it. `hasSpinner` swaps the caret for a Spinner and
+ * announces "Loading" once the row's level shows. A disabled row never opens.
+ *
+ * Theme hooks: the row `.astryx-dropdown-menu-item[data-size]`, the caret
+ * `.astryx-dropdown-menu-indicator-icon`, the flyout `.astryx-dropdown-menu[data-presentation]`.
+ * Events: `astryx-open-change` `{isOpen, reason}` on the flyout `<ax-menu>` (it bubbles
+ * through the root menu — check `event.target`).
+ *
+ * Deferred: `presentation="drill-in"` / `"adaptive"` on a phone (the touch drill-in view,
+ * AGENTS.md scope) render the flyout; `header` / `footer` (the sub-menu dialog frame rendered
+ * beside the root menu) are not rendered yet.
+ *
+ * @example
+ * <DropdownMenuSubMenu label="Move to" icon="upload">
+ *   <DropdownMenuItem label="Folder A" />
+ *   <DropdownMenuItem label="Folder B" />
+ * </DropdownMenuSubMenu>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item from '../Item/Item.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {clearance, placementAttrs} from '../Layer/layer';
+import {MENU_FLYOUT_KEY, MENU_SIZE_KEY, resolveMenuWidth, type MenuIcon} from './menuShared';
+import '../Layer/Layer.css';
+import './DropdownMenu.css';
+
+export type DropdownMenuSubMenuPresentation = 'flyout' | 'drill-in' | 'adaptive';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'tabindex'> {
+  /** Primary label text of the row (or the `label` slot). */
+  label?: string;
+  /** Icon before the label (or the `icon` slot). */
+  icon?: MenuIcon;
+  /** Secondary text below the label (or the `description` slot). */
+  description?: string;
+  /** A disabled sub-menu renders its row but never opens. @default false */
+  isDisabled?: boolean;
+  /** A Spinner in place of the caret (a lazy sub-menu loading). @default false */
+  hasSpinner?: boolean;
+  /** Minimum flyout width (number = px; intrinsic keywords set the preferred width), capped to the viewport. Default min 160px. */
+  menuWidth?: number | string;
+  /** 'flyout' (the only one implemented; drill-in is deferred). @default 'adaptive' */
+  presentation?: DropdownMenuSubMenuPresentation;
+  /** Test id for the flyout's own role="menu" element (the row takes data-testid). */
+  menuDataTestId?: string;
+  /** Row id (the flyout stays labelled by it). @default generated */
+  id?: string;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {
+  label,
+  icon,
+  description,
+  isDisabled = false,
+  hasSpinner = false,
+  menuWidth,
+  presentation: _presentation = 'adaptive',
+  menuDataTestId,
+  id: idProp,
+  locale,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const iconHtml = await slot('icon');
+const labelHtml = await slot('label');
+const descriptionHtml = await slot('description');
+const content = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+
+const rowId = idProp ?? uid(Astro, 'ax-submenu-row');
+const layerId = uid(Astro, 'ax-submenu');
+const menuId = `${layerId}-menu`;
+const width = resolveMenuWidth(menuWidth);
+const {themeClass, attrs} = themeProps('dropdown-menu-item', {size: 'md'});
+const caret = themeProps('dropdown-menu-indicator-icon');
+const menu = themeProps('dropdown-menu', {presentation: 'popover'});
+---
+<Item
+  {...rest}
+  id={rowId}
+  role="menuitem"
+  tabindex={isDisabled ? undefined : -1}
+  aria-haspopup="menu"
+  aria-expanded="false"
+  label={label}
+  description={description}
+  isDisabled={isDisabled}
+  class={cx(themeClass, 'ax-focus-visible', className as string | undefined)}
+  {...attrs}
+  data-ax-inherit={MENU_SIZE_KEY}
+  data-ax-menu-row="submenu"
+  data-ax-submenu={layerId}
+  data-ax-busy-label={hasSpinner ? t('@astryx.spinner.loading') : undefined}
+>
+  {iconHtml !== '' ? <Fragment slot="startContent" set:html={iconHtml} /> : icon != null && icon !== '' && <Icon slot="startContent" icon={icon} size="sm" color="secondary" />}
+  {labelHtml !== '' && <Fragment slot="label" set:html={labelHtml} />}
+  {descriptionHtml !== '' && <Fragment slot="description" set:html={descriptionHtml} />}
+  <Fragment slot="endContent">
+    <span class="ax-dropdown-menu-caret">
+      {hasSpinner
+        ? <Spinner size="sm" aria-hidden="true" />
+        : <Icon icon="chevronRight" size="sm" color="secondary" class={cx('ax-mirror-rtl', caret.themeClass)} {...caret.attrs} />}
+    </span>
+  </Fragment>
+</Item>
+<ax-menu
+  id={layerId}
+  popover="manual"
+  data-ax-menu-kind="submenu"
+  data-ax-anchor={rowId}
+  class="ax-layer ax-layer-motion ax-dropdown-menu-flyout"
+  {...placementAttrs({placement: 'end', alignment: 'start'})}
+  data-ax-inherit={MENU_FLYOUT_KEY}
+  data-ax-width={width?.mode}
+  style={mergeStyles(clearance('var(--spacing-1)'), width ? `--_ax-menu-width:${width.value}` : undefined)}
+>
+  <div
+    id={menuId}
+    role="menu"
+    tabindex="-1"
+    aria-labelledby={rowId}
+    class={menu.themeClass}
+    {...menu.attrs}
+    data-ax-menu-flyout=""
+    data-ax-overflow-tabbable=""
+    data-testid={menuDataTestId}
+  ><Fragment set:html={content} /></div>
+</ax-menu>

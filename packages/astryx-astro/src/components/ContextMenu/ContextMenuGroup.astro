@@ -1,0 +1,13 @@
+---
+/**
+ * ContextMenuGroup — DropdownMenuGroup under its ContextMenu name (Astryx ContextMenu/index.ts
+ * re-export): a titled `role="group"` of rows.
+ */
+import DropdownMenuGroup, {type Props as DropdownMenuGroupProps} from '../DropdownMenu/DropdownMenuGroup.astro';
+
+export type Props = DropdownMenuGroupProps;
+---
+<DropdownMenuGroup {...Astro.props}>
+  {Astro.slots.has('title') && <slot name="title" slot="title" />}
+  <slot />
+</DropdownMenuGroup>

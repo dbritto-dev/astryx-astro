@@ -1,0 +1,10 @@
+---
+/**
+ * ContextMenuDivider — DropdownMenuDivider under its ContextMenu name (Astryx
+ * ContextMenu/index.ts re-export).
+ */
+import DropdownMenuDivider, {type Props as DropdownMenuDividerProps} from '../DropdownMenu/DropdownMenuDivider.astro';
+
+export type Props = DropdownMenuDividerProps;
+---
+<DropdownMenuDivider {...Astro.props} />

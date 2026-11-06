@@ -1,0 +1,86 @@
+---
+/**
+ * DropdownMenuRadioItem — one option of a DropdownMenuRadioGroup (`role="menuitemradio"` +
+ * `aria-checked`). Port of @astryxdesign/core DropdownMenu/DropdownMenuRadioItem.tsx
+ * (styles.root, disabled, marker).
+ *
+ * The group stamps the checked state (cascade key `dropdown-menu-radio-group`: its `value`
+ * against this row's `value`, rendered as `data-value`). The round visual is the shared
+ * `radio` Indicator carrying the menu's own target `.astryx-dropdown-menu-radio[data-size]
+ * [data-checked][data-disabled]`; both states are rendered and the row's `aria-checked` shows
+ * one. Theme hook on the row: `.astryx-dropdown-menu-item[data-size]`.
+ *
+ * Selecting fires `astryx-change` `{value}` on the group (cancelable), then `astryx-select`
+ * `{event}` on the row; the menu closes unless the group says `hasCloseOnSelect={false}`.
+ *
+ * @example
+ * <DropdownMenuRadioGroup label="Sort by" value="newest">
+ *   <DropdownMenuRadioItem value="newest" label="Newest" />
+ *   <DropdownMenuRadioItem value="oldest" label="Oldest" icon="clock" />
+ * </DropdownMenuRadioGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item from '../Item/Item.astro';
+import Icon from '../Icon/Icon.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import Indicator from '../Indicator/Indicator.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {MENU_CONTROL_SIZE_KEY, MENU_RADIO_GROUP_KEY, MENU_SIZE_KEY, type DropdownMenuEndContent, type MenuIcon} from './menuShared';
+import './DropdownMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'tabindex' | 'aria-checked'> {
+  /** The value this option stands for in its group (required). */
+  value: string;
+  /** Primary label text (or the `label` slot). */
+  label?: string;
+  /** Secondary text below the label (or the `description` slot). */
+  description?: string;
+  /** Icon before the label (or the `icon` slot). */
+  icon?: MenuIcon;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Trailing content: text or `{keys}` for a `<Kbd>` shortcut (or the `endContent` slot). */
+  endContent?: DropdownMenuEndContent;
+  'data-testid'?: string;
+}
+
+const {value, label, description, icon, isDisabled = false, endContent, class: className, ...rest} = Astro.props;
+
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const iconHtml = await slot('icon');
+const labelHtml = await slot('label');
+const descriptionHtml = await slot('description');
+const endHtml = await slot('endContent');
+const {themeClass, attrs} = themeProps('dropdown-menu-item', {size: 'md'});
+const radio = (checked: boolean) => themeProps('dropdown-menu-radio', {size: 'md', checked: checked ? 'checked' : null, disabled: isDisabled ? 'disabled' : null});
+const on = radio(true);
+const off = radio(false);
+---
+<Item
+  {...rest}
+  role="menuitemradio"
+  aria-checked="false"
+  data-value={value}
+  tabindex={isDisabled ? undefined : -1}
+  label={label}
+  description={description}
+  isDisabled={isDisabled}
+  class={cx(themeClass, 'ax-focus-visible', className as string | undefined)}
+  {...attrs}
+  data-ax-inherit={inherits({[MENU_SIZE_KEY]: true, [MENU_RADIO_GROUP_KEY]: true})}
+  data-ax-menu-row="radio"
+>
+  <Fragment slot="marker">
+    <Indicator name="radio" state="checked" size="md" isDisabled={isDisabled} class={on.themeClass} {...on.attrs} data-ax-marker="checked" data-ax-inherit={MENU_CONTROL_SIZE_KEY} />
+    <Indicator name="radio" state="unchecked" size="md" isDisabled={isDisabled} class={off.themeClass} {...off.attrs} data-ax-marker="unchecked" data-ax-inherit={MENU_CONTROL_SIZE_KEY} />
+  </Fragment>
+  {iconHtml !== '' ? <Fragment slot="startContent" set:html={iconHtml} /> : icon != null && icon !== '' && <Icon slot="startContent" icon={icon} size="sm" color="secondary" />}
+  {labelHtml !== '' && <Fragment slot="label" set:html={labelHtml} />}
+  {descriptionHtml !== '' && <Fragment slot="description" set:html={descriptionHtml} />}
+  {endHtml !== ''
+    ? <Fragment slot="endContent" set:html={endHtml} />
+    : typeof endContent === 'string' && endContent !== ''
+      ? <Fragment slot="endContent">{endContent}</Fragment>
+      : endContent != null && typeof endContent === 'object' && <Fragment slot="endContent"><Kbd keys={endContent.keys} /></Fragment>}
+</Item>
