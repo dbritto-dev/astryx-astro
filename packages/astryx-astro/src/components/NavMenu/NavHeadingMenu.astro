@@ -1,0 +1,61 @@
+---
+/**
+ * NavHeadingMenu — the menu of a nav heading popover (TopNavHeading / SideNavHeading `menu`
+ * slot): `role="menu"` with arrow-key navigation and a size that flows to its items.
+ * Port of @astryxdesign/core NavMenu/NavHeadingMenu.tsx and NavMenu/NavMenuContext.tsx.
+ * Theme target: `.astryx-nav-heading-menu[data-size]`.
+ *
+ * Keyboard (useListFocus over the enabled `[role="menuitem"]` rows, runtime roving): ↑/↓ wrap,
+ * Home/End, first-character typeahead, Enter/Space activate a row (a click: a link row
+ * navigates). Escape belongs to the popover around it (the heading closes and refocuses its
+ * trigger). Rows are not tab stops (`tabindex="-1"`).
+ *
+ * Size: `sm` | `md` | `lg` sets the minimum width (160 / 200 / 240px; `minWidth` overrides) and
+ * is stamped onto every NavHeadingMenuItem (cascade key `nav-heading-menu-size`,
+ * NavHeadingMenuContext). Selecting a row closes the heading's popover when the heading says
+ * so (NavHeadingCloseContext: TopNavHeading and a collapsed SideNavHeading close, an expanded
+ * SideNavHeading stays open) — the popover element does it, see elements/nav-menu.ts.
+ *
+ * Deferred (touch extra): press-drag-release (useMenuPress) and the overflow touch-action switch.
+ *
+ * @example
+ * <SideNavHeading heading="Products">
+ *   <NavHeadingMenu slot="menu" size="lg">
+ *     <NavHeadingMenuItem label="Dashboard" href="/dashboard" />
+ *     <NavHeadingMenuItem label="Analytics" href="/analytics" />
+ *   </NavHeadingMenu>
+ * </SideNavHeading>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {stamp} from '../../lib/cascade';
+import {NAV_HEADING_MENU_ITEMS, NAV_HEADING_MENU_SIZE_KEY, type NavHeadingMenuSize} from './navMenuShared';
+import './NavMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** Controls min-width and item padding. @default 'md' */
+  size?: NavHeadingMenuSize;
+  /** Minimum width override (number = px); wins over the size default. */
+  minWidth?: number | string;
+  'data-testid'?: string;
+}
+
+const {size = 'md', minWidth, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const {themeClass, attrs} = themeProps('nav-heading-menu', {size});
+const raw = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+const html = await stamp(raw, NAV_HEADING_MENU_SIZE_KEY, (a) => { a['data-size'] = size; });
+---
+<div
+  {...rest}
+  class={cx(themeClass, className)}
+  {...attrs}
+  role="menu"
+  style={mergeStyles(minWidth != null ? {'min-width': cssSize(minWidth)} : undefined, style as StyleValue)}
+  data-astryx-roving="vertical"
+  data-astryx-roving-items={NAV_HEADING_MENU_ITEMS}
+  data-astryx-roving-tabindex="false"
+  data-astryx-roving-typeahead=""
+  data-ax-nav-menu-keys=""
+><Fragment set:html={html} /></div>
+<script>import '../../elements/nav-menu';</script>

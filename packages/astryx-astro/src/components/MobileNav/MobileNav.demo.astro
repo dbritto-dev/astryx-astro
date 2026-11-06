@@ -1,0 +1,63 @@
+---
+import MobileNav from './MobileNav.astro';
+import MobileNavToggle from './MobileNavToggle.astro';
+import {attachMobileNav} from './attach';
+import Button from '../Button/Button.astro';
+import SideNavSection from '../SideNav/SideNavSection.astro';
+import SideNavItem from '../SideNav/SideNavItem.astro';
+import SideNavHeading from '../SideNav/SideNavHeading.astro';
+import NavIcon from '../NavIcon/NavIcon.astro';
+import Breadcrumbs from '../Breadcrumbs/Breadcrumbs.astro';
+import BreadcrumbItem from '../Breadcrumbs/BreadcrumbItem.astro';
+import {chartIcon, folderIcon, homeIcon, homeIconSolid, inboxIcon, logoMark} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const nav = attachMobileNav({id: 'mobile-nav-demo', triggerId: 'mobile-nav-demo-trigger'});
+const start = attachMobileNav({id: 'mobile-nav-start', triggerId: 'mobile-nav-start-trigger'});
+const rtl = attachMobileNav({id: 'mobile-nav-rtl', triggerId: 'mobile-nav-rtl-trigger'});
+---
+<div>
+  <p style={label}>
+    A standalone drawer (side="auto": it opens from the half of the screen the button sits in) — selecting a row
+    closes it (rows dispatch <code>astryx-navigate</code>); Escape, the close button or a press beside the drawer close it too.
+    Inside AppShell the drawer and its toggle come for free below the breakpoint.
+  </p>
+  <div style={row}>
+    <Button {...nav.trigger} label="Open navigation" icon="menu" isIconOnly variant="secondary" />
+    <Button {...start.trigger} label="From the start edge" variant="secondary" />
+    <div dir="rtl" style="display:contents"><Button {...rtl.trigger} label="RTL: start edge" variant="secondary" /></div>
+    <MobileNavToggle />
+  </div>
+  <p style={label}>MobileNavToggle renders nothing outside an AppShell (above: nothing after the RTL button).</p>
+</div>
+
+<MobileNav {...nav.layer} header="Navigation" data-testid="mobile-nav-demo">
+  <SideNavSection title="Main">
+    <SideNavItem label="Home" icon={homeIcon} selectedIcon={homeIconSolid} href="#home" isSelected id="mobile-nav-home" />
+    <SideNavItem label="Inbox" icon={inboxIcon} href="#inbox" id="mobile-nav-inbox" />
+    <SideNavItem label="Projects" icon={folderIcon} id="mobile-nav-projects">
+      <SideNavItem label="Apollo" href="#apollo" />
+      <SideNavItem label="Gemini" href="#gemini" />
+    </SideNavItem>
+  </SideNavSection>
+  <SideNavSection title="Insights">
+    <SideNavItem label="Reports" icon={chartIcon} href="#reports" />
+  </SideNavSection>
+  <div style="margin-top:var(--spacing-3)">
+    <Breadcrumbs variant="supporting"><BreadcrumbItem href="#home" id="mobile-nav-crumb">Home</BreadcrumbItem><BreadcrumbItem>Inbox</BreadcrumbItem></Breadcrumbs>
+  </div>
+</MobileNav>
+
+<MobileNav {...start.layer} side="start" width={280}>
+  <SideNavHeading slot="header" heading="Acme" subheading="Workspace"><NavIcon slot="icon" icon={logoMark} /></SideNavHeading>
+  <SideNavItem label="Dashboard" icon={homeIcon} href="#dashboard" isSelected />
+  <SideNavItem label="Reports" icon={chartIcon} href="#reports" />
+</MobileNav>
+
+<div dir="rtl">
+  <MobileNav {...rtl.layer} side="start" header="التنقل">
+    <SideNavItem label="الرئيسية" icon={homeIcon} href="#home" isSelected />
+    <SideNavItem label="التقارير" icon={chartIcon} href="#reports" />
+  </MobileNav>
+</div>

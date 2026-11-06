@@ -1,0 +1,73 @@
+/*
+ * Port of @astryxdesign/core NavItem/navItemStyles.stylex.ts — the one nav row appearance
+ * shared by SideNavItem, TopNavItem / TopNavMenu / TopNavMegaMenu(Item) in the mobile drawer,
+ * and any custom nav row that wants to match (Astryx has no NavItem component: styles only).
+ *
+ *   <a class="ax-nav-item ax-overlay-bg ax-focus-visible" data-ax-nav-size="md"
+ *      [data-selected="selected"] [aria-disabled="true" | data-disabled="disabled"]>
+ *
+ * Rule groups follow the stylex.props() order every caller uses: item,
+ * interactionOverlayStyles.backgroundColor (the shared `ax-overlay-bg` class), size,
+ * selected, disabled. The focus ring is not here: callers add `ax-focus-visible` on the
+ * element that takes focus (in a split row, the link and the toggle, not the row).
+ * Selection reads the theme attribute every nav row already renders (`data-selected`).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* item */
+  .ax-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    height: var(--size-element-md);
+    padding-inline: var(--spacing-2);
+    padding-block: 0;
+    border-radius: var(--radius-element);
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: var(--color-text-primary);
+    text-decoration: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--text-label-size);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--text-label-leading);
+    text-align: start;
+    box-sizing: border-box;
+  }
+  .ax-nav-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* sm / md / lg */
+  .ax-nav-item[data-ax-nav-size="sm"] { height: var(--size-element-sm); padding-inline: var(--spacing-1); }
+  .ax-nav-item[data-ax-nav-size="md"] { height: var(--size-element-md); padding-inline: var(--spacing-2); }
+  .ax-nav-item[data-ax-nav-size="lg"] { height: var(--size-element-lg); padding-inline: var(--spacing-2); }
+
+  /* selected: deemphasized fill, medium weight; the fill holds under hover and press. */
+  .ax-nav-item[data-selected="selected"] {
+    background-color: var(--color-neutral);
+    font-weight: var(--font-weight-medium);
+  }
+  .ax-nav-item[data-selected="selected"]:active { background-color: var(--color-neutral); }
+  @media (hover: hover) {
+    .ax-nav-item[data-selected="selected"]:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-neutral); }
+    .ax-nav-item[data-selected="selected"]:where(:not(:disabled, [aria-disabled="true"])):hover:active { background-color: var(--color-neutral); }
+  }
+  /* Forced colors flatten --color-neutral away: Highlight / HighlightText mark the page. */
+  @media (forced-colors: active) {
+    .ax-nav-item[data-selected="selected"],
+    .ax-nav-item[data-selected="selected"]:active { background-color: Highlight; color: HighlightText; }
+    @media (hover: hover) {
+      .ax-nav-item[data-selected="selected"]:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: Highlight; }
+    }
+  }
+
+  /* disabled: muted, no interaction. */
+  .ax-nav-item:is([data-disabled="disabled"], [data-ax-nav-disabled]) {
+    color: var(--color-text-disabled);
+    cursor: default;
+    pointer-events: none;
+  }
+}

@@ -1,0 +1,139 @@
+/*
+ * Port of @astryxdesign/core MobileNav/MobileNav.tsx (styles.dialog, open, backdrop,
+ * backdropOpen, drawer, drawerStart(Open), drawerEnd(Open), header, headerNoTitle, headerText,
+ * content, dynamicStyles.width). The content boundary (layerTextReset, layerStructureReset,
+ * overlayPaddingReset) is `ax-overlay-root` (Dialog/overlay.css).
+ *
+ * Astryx keeps the dialog rendered through the slide-out with a held `display` and closes the
+ * native dialog inside that hold. Here the runtime (elements/mobile-nav.ts) keeps the dialog
+ * open through the slide-out (`data-ax-closing` targets the off-screen transform) and closes it
+ * in the task the panel's transform ends, as Drawer does.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* styles.dialog: the transparent full-viewport container. */
+  .astryx-mobile-nav {
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    max-width: none;
+    max-height: none;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    background-color: transparent;
+    /* clip, not hidden: no scroll container, so the @starting-style slide-in paints. */
+    overflow: clip;
+    overscroll-behavior: contain;
+    /* Stop pans passing through (pull-to-refresh), leave pinch-zoom to the browser. */
+    touch-action: pinch-zoom;
+    outline: none;
+    display: none;
+    transition-property: display;
+    transition-duration: var(--duration-medium);
+    transition-behavior: allow-discrete;
+  }
+  .astryx-mobile-nav[open] { display: flex; }
+
+  /* backdrop / backdropOpen */
+  .astryx-mobile-nav::backdrop {
+    background-color: var(--color-overlay);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-mobile-nav::backdrop { transition-duration: 0.01s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-mobile-nav::backdrop { transition-duration: 0.01s; }
+  .astryx-mobile-nav[open]:not([data-ax-closing])::backdrop { opacity: 1; }
+  @starting-style {
+    .astryx-mobile-nav[open]::backdrop { opacity: 0; }
+  }
+
+  /* drawer */
+  .ax-mobile-nav-drawer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--color-background-surface);
+    box-sizing: border-box;
+    overflow: hidden;
+    transition-property: transform;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+    outline: none;
+    /* dynamicStyles.width: never more than 85% of the viewport. */
+    width: var(--_ax-mobile-nav-width, 320px);
+    max-width: 85vw;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-mobile-nav-drawer { transition-duration: 0.01s; }
+  }
+  :where([data-astryx-reduced-motion]) .ax-mobile-nav-drawer { transition-duration: 0.01s; }
+
+  /* drawerStart / drawerEnd: logical edge, the off-screen transform mirrors in RTL. */
+  .astryx-mobile-nav[data-side="start"] > .ax-mobile-nav-drawer {
+    inset-inline-start: 0;
+    border-inline-end-width: var(--border-width);
+    border-inline-end-style: solid;
+    border-inline-end-color: var(--color-border);
+    transform: translateX(-100%);
+  }
+  .astryx-mobile-nav[data-side="start"]:dir(rtl) > .ax-mobile-nav-drawer { transform: translateX(100%); }
+  .astryx-mobile-nav[data-side="end"] > .ax-mobile-nav-drawer {
+    inset-inline-end: 0;
+    border-inline-start-width: var(--border-width);
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--color-border);
+    transform: translateX(100%);
+  }
+  .astryx-mobile-nav[data-side="end"]:dir(rtl) > .ax-mobile-nav-drawer { transform: translateX(-100%); }
+
+  /* drawerStartOpen / drawerEndOpen: at rest while open, sliding in from the edge. */
+  .astryx-mobile-nav[open]:not([data-ax-closing]) > .ax-mobile-nav-drawer { transform: translateX(0); }
+  @starting-style {
+    .astryx-mobile-nav[data-side="start"][open] > .ax-mobile-nav-drawer { transform: translateX(-100%); }
+    .astryx-mobile-nav[data-side="start"][open]:dir(rtl) > .ax-mobile-nav-drawer { transform: translateX(100%); }
+    .astryx-mobile-nav[data-side="end"][open] > .ax-mobile-nav-drawer { transform: translateX(100%); }
+    .astryx-mobile-nav[data-side="end"][open]:dir(rtl) > .ax-mobile-nav-drawer { transform: translateX(-100%); }
+  }
+  /* A drawer open on page load opens where it rests. */
+  .astryx-mobile-nav[data-ax-settled] > .ax-mobile-nav-drawer,
+  .astryx-mobile-nav[data-ax-settled]::backdrop { transition-duration: 0.01s; }
+
+  /* header: at least one bar high, taller for content that needs it. */
+  .ax-mobile-nav-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: var(--spacing-12);
+    padding-inline: var(--spacing-2);
+    flex-shrink: 0;
+    border-block-end-width: var(--border-width);
+    border-block-end-style: solid;
+    border-block-end-color: var(--color-border);
+  }
+  .ax-mobile-nav-header[data-ax-no-title] { justify-content: flex-end; }
+  .ax-mobile-nav-title { margin-inline-start: var(--spacing-1); }
+
+  /* content: the scrolling list. */
+  .ax-mobile-nav-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-y pinch-zoom;
+    padding-inline: var(--spacing-2);
+    padding-block: var(--spacing-2);
+  }
+
+  /* MobileNavToggle: rendered only inside AppShell, shown only while the shell is mobile. */
+  .astryx-button.ax-mobile-nav-toggle:not(.astryx-app-shell[data-astryx-shell-mobile="true"] *) { display: none; }
+}

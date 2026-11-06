@@ -1,0 +1,122 @@
+---
+import SideNav from './SideNav.astro';
+import SideNavHeading from './SideNavHeading.astro';
+import SideNavItem from './SideNavItem.astro';
+import SideNavSection from './SideNavSection.astro';
+import SideNavCollapseButton from './SideNavCollapseButton.astro';
+import NavIcon from '../NavIcon/NavIcon.astro';
+import NavHeadingMenu from '../NavMenu/NavHeadingMenu.astro';
+import NavHeadingMenuItem from '../NavMenu/NavHeadingMenuItem.astro';
+import AppShell from '../AppShell/AppShell.astro';
+import Badge from '../Badge/Badge.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import MoreMenu from '../MoreMenu/MoreMenu.astro';
+import {bellIcon, chartIcon, folderIcon, gearIcon, helpIcon, homeIcon, homeIconSolid, inboxIcon, logoMark, plusIcon, usersIcon} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const frame = 'height:480px;display:flex;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-body)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-6);align-items:flex-start';
+---
+<div>
+  <p style={label}>
+    Collapsible and resizable: the footer button (or the chevron in the header's frame) collapses it to an icon rail —
+    hover or focus a rail icon for its label, a parent opens its children in a flyout; drag the edge, or focus it and use
+    ←/→, to resize. Tab walks the rows; a parent row with no link of its own toggles its group.
+  </p>
+  <div style={row}>
+    <div style={frame}>
+      <SideNav collapsible resizable={{defaultWidth: 260, minWidth: 200, maxWidth: 360}} id="side-nav-main">
+        <SideNavHeading slot="header" heading="Acme" subheading="Production" id="side-nav-heading">
+          <NavIcon slot="icon" icon={logoMark} />
+          <NavHeadingMenu slot="menu">
+            <NavHeadingMenuItem label="Production" description="Current workspace" />
+            <NavHeadingMenuItem label="Staging" />
+          </NavHeadingMenu>
+        </SideNavHeading>
+        <Fragment slot="topContent"><Button label="Create" icon={plusIcon} variant="primary" width="100%" /></Fragment>
+        <SideNavSection title="Main" subtitle="Everyday">
+          <SideNavItem label="Home" icon={homeIcon} selectedIcon={homeIconSolid} href="#home" isSelected id="side-nav-home" />
+          <SideNavItem label="Inbox" icon={inboxIcon} href="#inbox" id="side-nav-inbox"><Badge slot="endContent" label="3" /></SideNavItem>
+          <SideNavItem label="Projects" icon={folderIcon} id="side-nav-projects">
+            <SideNavItem label="Apollo" href="#apollo" id="side-nav-apollo" />
+            <SideNavItem label="Gemini" href="#gemini">
+              <SideNavItem label="Launch plan" href="#gemini-launch" />
+            </SideNavItem>
+          </SideNavItem>
+          <SideNavItem label="Reports" icon={chartIcon} href="#reports" collapsible={{defaultIsCollapsed: true}} id="side-nav-reports">
+            <SideNavItem label="Weekly" href="#weekly" />
+            <SideNavItem label="Quarterly" href="#quarterly" />
+          </SideNavItem>
+        </SideNavSection>
+        <SideNavSection title="Team">
+          <SideNavItem label="People" icon={usersIcon} href="#people" id="side-nav-people">
+            <Fragment slot="actions"><MoreMenu label="People actions" items={[{label: 'Invite'}, {label: 'Export'}]} variant="ghost" /></Fragment>
+          </SideNavItem>
+          <SideNavItem label="Billing (no icon)" href="#billing" id="side-nav-noicon" />
+          <SideNavItem label="Audit log" icon={gearIcon} isDisabled id="side-nav-disabled" />
+        </SideNavSection>
+        <Fragment slot="footerIcons">
+          <IconButton label="Help" icon={helpIcon} variant="ghost" />
+          <IconButton label="Notifications" icon={bellIcon} variant="ghost" />
+        </Fragment>
+      </SideNav>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:var(--spacing-2)">
+      <p style={label}>An outside toggle (SideNavCollapseButton `controls`):</p>
+      <SideNavCollapseButton controls="side-nav-main" id="side-nav-outside-toggle" />
+    </div>
+    <div style={frame}>
+      <SideNav collapsible={{defaultIsCollapsed: true}} id="side-nav-rail">
+        <SideNavHeading slot="header" heading="Acme" headingHref="#home"><NavIcon slot="icon" icon={logoMark} /></SideNavHeading>
+        <SideNavItem label="Home" icon={homeIcon} href="#home" isSelected size="lg" />
+        <SideNavItem label="Projects" icon={folderIcon} id="side-nav-rail-projects">
+          <SideNavItem label="Apollo" href="#apollo" id="side-nav-rail-apollo" />
+          <SideNavItem label="Gemini" href="#gemini" />
+        </SideNavItem>
+        <SideNavItem label="Reports" icon={chartIcon} href="#reports" id="side-nav-rail-reports" />
+      </SideNav>
+    </div>
+  </div>
+</div>
+<div>
+  <p style={label}>Sizes sm / md / lg, a hidden section header, <code>{'collapsible={false}'}</code> children (always shown), RTL</p>
+  <div style={row}>
+    <div style={frame}>
+      <SideNav>
+        <SideNavSection title="Small" isHeaderHidden>
+          <SideNavItem label="Small row" icon={homeIcon} href="#s" size="sm" />
+          <SideNavItem label="Medium row" icon={inboxIcon} href="#m" />
+          <SideNavItem label="Large row" icon={chartIcon} href="#l" size="lg" />
+        </SideNavSection>
+        <SideNavSection title="Settings">
+          <SideNavItem label="Workspace" icon={gearIcon} collapsible={false}>
+            <SideNavItem label="General" href="#general" />
+            <SideNavItem label="Security" href="#security" />
+          </SideNavItem>
+        </SideNavSection>
+      </SideNav>
+    </div>
+    <div dir="rtl" style={frame}>
+      <SideNav collapsible id="side-nav-rtl">
+        <SideNavHeading slot="header" heading="أكمي"><NavIcon slot="icon" icon={logoMark} /></SideNavHeading>
+        <SideNavItem label="الرئيسية" icon={homeIcon} href="#h" isSelected />
+        <SideNavItem label="المشاريع" icon={folderIcon}><SideNavItem label="أبولو" href="#a" /></SideNavItem>
+      </SideNav>
+    </div>
+  </div>
+</div>
+<div>
+  <p style={label}>Inside an AppShell with no TopNav, below the breakpoint the nav becomes the phone top bar (heading + footer icons + the drawer toggle) — narrow the window under 768px to see it.</p>
+  <div style="height:320px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden">
+    <AppShell style="height:100%" variant="section" id="side-nav-shell">
+      <SideNav slot="sideNav">
+        <SideNavHeading slot="header" heading="Acme"><NavIcon slot="icon" icon={logoMark} /></SideNavHeading>
+        <SideNavItem label="Home" icon={homeIcon} href="#home" isSelected />
+        <SideNavItem label="Inbox" icon={inboxIcon} href="#inbox" />
+        <Fragment slot="footerIcons"><IconButton label="Help" icon={helpIcon} variant="ghost" /></Fragment>
+      </SideNav>
+      <div style="padding:var(--spacing-4)">Main content</div>
+    </AppShell>
+  </div>
+</div>

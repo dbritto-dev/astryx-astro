@@ -1,0 +1,219 @@
+---
+/**
+ * SideNav — the application's sidebar navigation: a sticky `header` + `topContent` zone, the
+ * scrolling items (default slot: SideNavSection / SideNavItem), a sticky `footer` and
+ * `footerIcons` row. Optionally collapsible to an icon rail and resizable.
+ * Port of @astryxdesign/core SideNav/SideNav.tsx (+ SideNavCollapseContext,
+ * SideNavFocusTargetsContext, SideNavRenderContext). Behaviour: src/elements/side-nav.ts
+ * (`<ax-side-nav>`). Theme targets: `.astryx-side-nav` (`[data-mode="topbar"]` in the AppShell
+ * phone bar) and the items' targets.
+ *
+ * `<nav aria-label>` (translated 'Side navigation'), 260px wide, collapsed 48px.
+ *
+ * `collapsible` (`true` or `{defaultIsCollapsed, isCollapsed, hasButton, buttonLabel}`):
+ * the footer row gets a SideNavCollapseButton (unless `hasButton: false`; place your own inside,
+ * or outside with `controls`). Collapsed, the rail keeps the top-level items that have an icon
+ * (their labels become tooltips on the end side, a parent's children open in a flyout beside the
+ * rail), the heading's icon, the footer icons; section titles become visually hidden. The state
+ * lives on the element: `collapse()`, `expand()`, `toggle()`, `isCollapsed`, reflected as
+ * `data-ax-collapsed` on the nav, and `astryx-collapse-change` {isCollapsed} (cancelable;
+ * Astryx `onCollapsedChange`). Focus on a part the rail drops moves to the same row's rail
+ * control, else the collapse toggle, else the nearest kept row (AR3).
+ *
+ * `resizable` (`true` or `{defaultWidth = 260, minWidth = 180, maxWidth = 480, autoSaveId,
+ * defaultIsCollapsed, isCollapsed}`): an overlay ResizeHandle at the inline-end edge (hidden while
+ * collapsed) that resizes the nav (keyboard and pointer, persisted under `autoSaveId`). Collapse
+ * keys on `resizable` win over `collapsible`'s (a dev warning names the conflict). With an
+ * `autoSaveId` the collapse state persists too (`astryx-side-nav:<id>`).
+ *
+ * Inside AppShell the nav also renders as the phone top bar (heading + footer icons) or inside the
+ * mobile drawer (heading as the drawer header; collapse does not apply there).
+ *
+ * Deferred: the rail's FLIP motion (railMotion.ts / animatedLayout: the content column glides
+ * with the rail) — the width changes at once; `useResizable()` region outputs (pass the config).
+ *
+ * @example
+ * <SideNav collapsible>
+ *   <SideNavHeading slot="header" heading="My App" headingHref="/"><NavIcon slot="icon" icon="wrench" /></SideNavHeading>
+ *   <SideNavSection title="Main">
+ *     <SideNavItem label="Dashboard" icon={homeIcon} href="/dashboard" isSelected />
+ *   </SideNavSection>
+ * </SideNav>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import MobileNav from '../MobileNav/MobileNav.astro';
+import ResizeHandle from '../Resizable/ResizeHandle.astro';
+import SideNavCollapseButton from './SideNavCollapseButton.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {stamp} from '../../lib/cascade';
+import {devWarn} from '../../lib/devWarning';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {buttonSizeStampers} from '../Button/buttonCascade';
+import {sideNavMode} from '../AppShell/appShellContext';
+import {FOOTER_ICON_SIZE, NOT_COLLAPSIBLE, SIDE_NAV_DEPTH_LOCAL, SIDE_NAV_LOCAL, SIDE_NAV_STORAGE_PREFIX, type SideNavContextValue} from './sideNavContext';
+import '../NavItem/NavItem.css';
+import './SideNav.css';
+
+export interface SideNavCollapsibleConfig {
+  /** Start collapsed. */
+  defaultIsCollapsed?: boolean;
+  /** Initial collapsed state (the element owns it afterwards; cancel `astryx-collapse-change` to hold it). */
+  isCollapsed?: boolean;
+  /** Render the built-in collapse button in the footer row. @default true */
+  hasButton?: boolean;
+  /** Label of the built-in collapse button (default: translated Collapse / Expand sidebar). */
+  buttonLabel?: string;
+}
+
+export interface SideNavResizableConfig {
+  /** @default 260 */
+  defaultWidth?: number;
+  /** @default 180 */
+  minWidth?: number;
+  /** @default 480 */
+  maxWidth?: number;
+  /** Persist width (and collapse state) in localStorage under this key. */
+  autoSaveId?: string;
+  defaultIsCollapsed?: boolean;
+  isCollapsed?: boolean;
+}
+
+export interface Props extends HTMLAttributes<'nav'> {
+  /** Collapse to an icon rail. @default false */
+  collapsible?: boolean | SideNavCollapsibleConfig;
+  /** A drag handle at the inline-end edge. @default false */
+  resizable?: boolean | SideNavResizableConfig;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {collapsible = false, resizable = false, locale, id: idProp, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const t = translator(Astro, locale);
+const mode = sideNavMode(Astro);
+const navId = (idProp as string | undefined) ?? uid(Astro, 'ax-side-nav');
+
+// resolveCollapseConfig: `resizable` is the superset, its collapse keys win.
+const fromCollapsible: SideNavCollapsibleConfig = typeof collapsible === 'object' && collapsible ? collapsible : {};
+const fromResizable: SideNavResizableConfig = typeof resizable === 'object' && resizable ? resizable : {};
+const resizableCarriesCollapse = fromResizable.defaultIsCollapsed !== undefined || fromResizable.isCollapsed !== undefined;
+const isCollapsible = !!collapsible || resizableCarriesCollapse;
+const initialCollapsed = resizableCarriesCollapse
+  ? (fromResizable.isCollapsed ?? fromResizable.defaultIsCollapsed ?? false)
+  : (fromCollapsible.isCollapsed ?? fromCollapsible.defaultIsCollapsed ?? false);
+const collapsibleKeys = ['defaultIsCollapsed', 'isCollapsed'].filter((k) => (fromCollapsible as Record<string, unknown>)[k] !== undefined);
+const resizableKeys = ['defaultIsCollapsed', 'isCollapsed'].filter((k) => (fromResizable as Record<string, unknown>)[k] !== undefined);
+if (collapsibleKeys.length && resizableKeys.length) {
+  devWarn('SideNav', `${collapsibleKeys.map((k) => `collapsible.${k}`).join(', ')} and ${resizableKeys.map((k) => `resizable.${k}`).join(', ')} address the same collapse state. resizable wins; the collapsible ${collapsibleKeys.length === 1 ? 'value is' : 'values are'} ignored.`);
+}
+const isCollapsed = isCollapsible && initialCollapsed && mode === 'default';
+const hasCollapseButton = (fromCollapsible.hasButton ?? true) && isCollapsible;
+const isResizable = !!resizable;
+const resizeConfig = {
+  defaultSize: fromResizable.defaultWidth ?? 260,
+  minSize: fromResizable.minWidth ?? 180,
+  maxSize: fromResizable.maxWidth ?? 480,
+  autoSaveId: fromResizable.autoSaveId,
+  collapsible: false,
+};
+
+const ctx: SideNavContextValue = mode === 'default' ? {isCollapsible, isCollapsed} : NOT_COLLAPSIBLE;
+const render = async (name: string) =>
+  Astro.slots.has(name)
+    ? (await renderWithLocals(Astro, {[SIDE_NAV_LOCAL]: ctx, [SIDE_NAV_DEPTH_LOCAL]: 0}, () => Astro.slots.render(name))).trim()
+    : '';
+const headerHtml = await render('header');
+const topHtml = await render('topContent');
+const childrenHtml = await render('default');
+const footerHtml = await render('footer');
+const footerIconsRaw = await render('footerIcons');
+const footerIconsHtml = footerIconsRaw ? await stamp(footerIconsRaw, buttonSizeStampers(FOOTER_ICON_SIZE)) : '';
+const hasTop = headerHtml !== '' || topHtml !== '';
+const hasBottom = footerHtml !== '' || footerIconsHtml !== '';
+const hasDrawerFooter = hasBottom;
+const showCollapseButton = mode === 'default' && hasCollapseButton;
+const {themeClass, attrs} = themeProps('side-nav', {mode: mode === 'topbar' ? 'topbar' : null});
+const navWidth = isResizable ? `${resizeConfig.defaultSize}px` : undefined;
+---
+{mode === 'topbar' ? (
+  <div class={cx(themeClass, 'ax-side-nav-topbar', className as string | undefined)} {...attrs} data-testid={rest['data-testid']}>
+    <Fragment set:html={headerHtml} />
+    <div class="ax-side-nav-topbar-icons"><Fragment set:html={footerIconsHtml} /></div>
+  </div>
+) : mode === 'drawer' ? (
+  headerHtml !== '' ? (
+    <MobileNav locale={locale} data-testid={rest['data-testid']}>
+      <Fragment slot="header" set:html={headerHtml} />
+      <Fragment set:html={topHtml} />
+      <Fragment set:html={childrenHtml} />
+      {hasDrawerFooter && <div class="ax-side-nav-drawer-footer"><Fragment set:html={footerHtml} />{footerIconsHtml !== '' && <div class="ax-side-nav-drawer-footer-icons"><Fragment set:html={footerIconsHtml} /></div>}</div>}
+    </MobileNav>
+  ) : (
+    <MobileNav locale={locale} data-testid={rest['data-testid']}>
+      <Fragment set:html={topHtml} />
+      <Fragment set:html={childrenHtml} />
+      {hasDrawerFooter && <div class="ax-side-nav-drawer-footer"><Fragment set:html={footerHtml} />{footerIconsHtml !== '' && <div class="ax-side-nav-drawer-footer-icons"><Fragment set:html={footerIconsHtml} /></div>}</div>}
+    </MobileNav>
+  )
+) : mode === 'drawer-content' ? (
+  <Fragment>
+    <Fragment set:html={topHtml} />
+    <Fragment set:html={childrenHtml} />
+    {hasDrawerFooter && <div class="ax-side-nav-drawer-footer"><Fragment set:html={footerHtml} />{footerIconsHtml !== '' && <div class="ax-side-nav-drawer-footer-icons"><Fragment set:html={footerIconsHtml} /></div>}</div>}
+  </Fragment>
+) : (
+  <ax-side-nav
+    class="ax-side-nav-host"
+    data-ax-nav={navId}
+    data-ax-collapsible={isCollapsible ? '' : undefined}
+    data-ax-save-id={isCollapsible && fromResizable.autoSaveId ? `${SIDE_NAV_STORAGE_PREFIX}${fromResizable.autoSaveId}` : undefined}
+  >
+    {isResizable ? (
+      <div class="ax-side-nav-resizable">
+        <nav
+          {...rest}
+          id={navId}
+          role="navigation"
+          aria-label={t('@astryx.sideNav.label')}
+          class={cx(themeClass, className as string | undefined)}
+          {...attrs}
+          data-ax-collapsed={isCollapsible ? String(isCollapsed) : undefined}
+          style={mergeStyles(navWidth ? {width: navWidth} : undefined, style as StyleValue)}
+        >
+          {hasTop && <div class="ax-side-nav-top">{headerHtml !== '' && <Fragment set:html={headerHtml} />}{topHtml !== '' && <div class="ax-side-nav-top-content"><Fragment set:html={topHtml} /></div>}</div>}
+          <div class="ax-side-nav-scroll" data-ax-has-top={hasTop ? '' : undefined} data-ax-has-bottom={hasBottom ? '' : undefined}><Fragment set:html={childrenHtml} /></div>
+          {(hasBottom || showCollapseButton) && (
+            <div class="ax-side-nav-bottom">
+              <Fragment set:html={footerHtml} />
+              <div class="ax-side-nav-footer-row">{showCollapseButton && <SideNavCollapseButton size={FOOTER_ICON_SIZE} label={fromCollapsible.buttonLabel} locale={locale} __state={{isCollapsible, isCollapsed}} />}<Fragment set:html={footerIconsHtml} /></div>
+            </div>
+          )}
+        </nav>
+        <ResizeHandle direction="horizontal" position="overlay" pillPlacement="end" isAlwaysVisible={false} resizable={resizeConfig} controls={navId} label={t('@astryx.sideNav.resizeSidebar')} class="ax-side-nav-resize-handle" data-testid="astryx-sidenav-resize-handle" locale={locale} />
+      </div>
+    ) : (
+      <nav
+        {...rest}
+        id={navId}
+        role="navigation"
+        aria-label={t('@astryx.sideNav.label')}
+        class={cx(themeClass, className as string | undefined)}
+        {...attrs}
+        data-ax-collapsed={isCollapsible ? String(isCollapsed) : undefined}
+        style={mergeStyles(style as StyleValue)}
+      >
+        {hasTop && <div class="ax-side-nav-top">{headerHtml !== '' && <Fragment set:html={headerHtml} />}{topHtml !== '' && <div class="ax-side-nav-top-content"><Fragment set:html={topHtml} /></div>}</div>}
+        <div class="ax-side-nav-scroll" data-ax-has-top={hasTop ? '' : undefined} data-ax-has-bottom={hasBottom ? '' : undefined}><Fragment set:html={childrenHtml} /></div>
+        {(hasBottom || showCollapseButton) && (
+          <div class="ax-side-nav-bottom">
+            <Fragment set:html={footerHtml} />
+            <div class="ax-side-nav-footer-row">{showCollapseButton && <SideNavCollapseButton size={FOOTER_ICON_SIZE} label={fromCollapsible.buttonLabel} locale={locale} __state={{isCollapsible, isCollapsed}} />}<Fragment set:html={footerIconsHtml} /></div>
+          </div>
+        )}
+      </nav>
+    )}
+  </ax-side-nav>
+)}
+{mode === 'default' && <script>import '../../elements/side-nav';</script>}

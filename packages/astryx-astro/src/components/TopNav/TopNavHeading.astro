@@ -1,0 +1,156 @@
+---
+/**
+ * TopNavHeading — the product / suite / account heading for TopNav's `heading` slot: logo,
+ * superheading, heading, subheading, trailing content and an optional menu popover.
+ * Port of @astryxdesign/core TopNav/TopNavHeading.tsx (usePopover role none + useMenuHover with
+ * no delay, NavHeadingCloseContext). Theme target: `.astryx-top-nav-heading`.
+ *
+ * Interaction boundaries follow the props:
+ *  - logo only (no `heading`, no menu): the logo, a link when `headingHref` (named by `logoLabel`);
+ *  - `headingHref` only, no menu: the whole heading is one link;
+ *  - links without a menu: each of logo / super / heading / sub links independently;
+ *  - a menu without links: the whole heading is the trigger (hover opens it at once, a click
+ *    anywhere on it toggles), the chevron `<button>` carries the name ("{heading}, Open menu");
+ *  - a menu with links: the links stay independent, the chevron and the rest open the menu.
+ * The menu (`menu` slot, usually a NavHeadingMenu) shows in a popover laid over the heading
+ * (a copy of the heading at its top closes it), `role="menu"` named by the heading; a row that
+ * acts closes it, Escape closes it and refocuses the chevron, a press outside dismisses it.
+ *
+ * Slots: `logo` (NavIcon, an image …), `headerEndContent`, `menu`. Every href goes through
+ * LinkProvider (`as`) and the safe-URL check. Deferred (touch): press-drag-release in the menu.
+ *
+ * @example
+ * <TopNavHeading heading="My App" headingHref="/"><NavIcon slot="logo" icon="wrench" /></TopNavHeading>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Link from '../Link/Link.astro';
+import NavLink from '../NavItem/_NavLink.astro';
+import NavMenuLayer from '../NavMenu/_NavMenuLayer.astro';
+import type {LinkComponentType} from '../LinkProvider/linkComponent';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import '../NavMenu/NavMenu.css';
+import '../NavMenu/NavHeading.css';
+import './TopNav.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Accessible name of a linked logo with no text beside it. @default `heading` */
+  logoLabel?: string;
+  /** Product / app name. */
+  heading?: string;
+  headingHref?: string | URL;
+  /** Text above the heading (suite). */
+  superheading?: string;
+  superheadingHref?: string | URL;
+  /** Text below the heading (account). */
+  subheading?: string;
+  subheadingHref?: string | URL;
+  /** Link component (overrides LinkProvider). */
+  as?: LinkComponentType;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  logoLabel, heading, headingHref, superheading, superheadingHref, subheading, subheadingHref, as, locale,
+  class: className, id: idProp, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: unknown};
+const t = translator(Astro, locale);
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const logoHtml = await slot('logo');
+const endHtml = await slot('headerEndContent');
+const menuHtml = await slot('menu');
+const hasMenu = menuHtml !== '';
+const hasLogo = logoHtml !== '';
+const hasAnyHref = headingHref != null || superheadingHref != null || subheadingHref != null;
+const isWholeTrigger = hasMenu && !hasAnyHref;
+const isWholeLink = headingHref != null && !hasMenu && superheadingHref == null && subheadingHref == null;
+const {themeClass, attrs} = themeProps('top-nav-heading');
+const rootClass = cx(themeClass, 'ax-nav-heading', className as string | undefined);
+const layerId = hasMenu ? uid(Astro, 'ax-top-nav-heading-menu') : '';
+const rootId = (idProp as string | undefined) ?? (hasMenu ? `${layerId}-heading` : undefined);
+const chevronId = `${layerId}-trigger`;
+const openLabel = t('@astryx.topNav.heading.openMenu', {heading: heading ?? '', hasHeading: heading ? 'true' : 'false'});
+const menuLabel = heading ?? t('@astryx.topNav.heading.dialogLabel');
+const mode = !heading && !hasMenu ? 'logo' : isWholeLink ? 'link' : isWholeTrigger ? 'trigger' : hasMenu ? 'mixed' : hasAnyHref ? 'links' : 'static';
+---
+{mode === 'logo' ? (
+  headingHref != null
+    ? <NavLink {...rest} id={rootId} href={headingHref} as={as} aria-label={logoLabel} class={cx(rootClass, 'ax-heading-whole-link')} {...attrs}>{hasLogo && <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>}</NavLink>
+    : <div {...rest} id={rootId} class={rootClass} {...attrs}>{hasLogo && <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>}</div>
+) : mode === 'link' ? (
+  <NavLink {...rest} id={rootId} href={headingHref} as={as} class={cx(rootClass, 'ax-heading-whole-link ax-focus-visible')} {...attrs}>
+    {hasLogo && <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>}
+    <span class="ax-heading-text">
+      {superheading && <span class="ax-heading-super">{superheading}</span>}
+      <span class="ax-heading-row"><span class="ax-heading-title">{heading}</span></span>
+      {subheading && <span class="ax-heading-sub">{subheading}</span>}
+    </span>
+    {endHtml !== '' && <span class="ax-heading-end"><Fragment set:html={endHtml} /></span>}
+  </NavLink>
+) : mode === 'trigger' || mode === 'mixed' ? (
+  <Fragment>
+    <div {...rest} id={rootId} class={cx(rootClass, mode === 'trigger' && 'ax-heading-menu-trigger')} {...attrs}>
+      {hasLogo && (mode === 'mixed' && headingHref != null
+        ? <NavLink href={headingHref} as={as} aria-label={logoLabel ?? heading} class="ax-heading-logo ax-focus-visible"><Fragment set:html={logoHtml} /></NavLink>
+        : <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>)}
+      <span class="ax-heading-text">
+        {superheading && (mode === 'mixed' && superheadingHref != null
+          ? <Link href={superheadingHref} color="secondary" size="xsm">{superheading}</Link>
+          : <span class="ax-heading-super">{superheading}</span>)}
+        <span class="ax-heading-row">
+          {mode === 'mixed' && headingHref != null
+            ? <NavLink href={headingHref} as={as} class="ax-heading-title ax-heading-title-link ax-focus-visible">{heading}</NavLink>
+            : <span class="ax-heading-title">{heading}</span>}
+          <button type="button" id={chevronId} class="ax-heading-chevron ax-heading-chevron-button ax-focus-visible" aria-label={openLabel} popovertarget={layerId} aria-haspopup="true" aria-expanded="false" aria-controls={layerId}>
+            <Icon icon="chevronDown" size="sm" color="inherit" class="ax-heading-chevron-glyph" />
+          </button>
+        </span>
+        {subheading && (mode === 'mixed' && subheadingHref != null
+          ? <Link href={subheadingHref} color="secondary" size="xsm">{subheading}</Link>
+          : <span class="ax-heading-sub">{subheading}</span>)}
+      </span>
+      {endHtml !== '' && <span class="ax-heading-end"><Fragment set:html={endHtml} /></span>}
+    </div>
+    <NavMenuLayer id={layerId} triggerId={chevronId} anchorId={rootId} hoverAreaId={rootId} placement="below" alignment="start" showDelay={0} closeOnSelect layerClass="ax-heading-menu-layer">
+      <div class="ax-heading-popover-content">
+        <button type="button" class="ax-heading-popover-heading ax-focus-visible" data-ax-nav-menu-close="">
+          {hasLogo && <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>}
+          <span class="ax-heading-text">
+            {superheading && <span class="ax-heading-super">{superheading}</span>}
+            <span class="ax-heading-row">
+              <span class="ax-heading-title">{heading}</span>
+              <Icon icon="chevronDown" size="sm" color="secondary" class="ax-heading-chevron ax-heading-chevron-glyph ax-heading-chevron-flipped" />
+            </span>
+            {subheading && <span class="ax-heading-sub">{subheading}</span>}
+          </span>
+        </button>
+        <div role="menu" aria-label={menuLabel} class="ax-heading-menu"><Fragment set:html={menuHtml} /></div>
+      </div>
+    </NavMenuLayer>
+  </Fragment>
+) : mode === 'links' ? (
+  <div {...rest} id={rootId} class={rootClass} {...attrs}>
+    {hasLogo && (headingHref != null
+      ? <NavLink href={headingHref} as={as} aria-label={logoLabel ?? heading} class="ax-heading-logo ax-focus-visible"><Fragment set:html={logoHtml} /></NavLink>
+      : <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>)}
+    <span class="ax-heading-text">
+      {superheading && (superheadingHref != null ? <Link href={superheadingHref} color="secondary" size="xsm">{superheading}</Link> : <span class="ax-heading-super">{superheading}</span>)}
+      {headingHref != null ? <Link href={headingHref} color="primary" weight="semibold">{heading}</Link> : <span class="ax-heading-title">{heading}</span>}
+      {subheading && (subheadingHref != null ? <Link href={subheadingHref} color="secondary" size="xsm">{subheading}</Link> : <span class="ax-heading-sub">{subheading}</span>)}
+    </span>
+    {endHtml !== '' && <span class="ax-heading-end"><Fragment set:html={endHtml} /></span>}
+  </div>
+) : (
+  <div {...rest} id={rootId} class={rootClass} {...attrs}>
+    {hasLogo && <span class="ax-heading-logo"><Fragment set:html={logoHtml} /></span>}
+    <span class="ax-heading-text">
+      {superheading && <span class="ax-heading-super">{superheading}</span>}
+      <span class="ax-heading-row"><span class="ax-heading-title">{heading}</span></span>
+      {subheading && <span class="ax-heading-sub">{subheading}</span>}
+    </span>
+    {endHtml !== '' && <span class="ax-heading-end"><Fragment set:html={endHtml} /></span>}
+  </div>
+)}

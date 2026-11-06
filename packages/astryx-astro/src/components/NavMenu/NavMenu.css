@@ -1,0 +1,64 @@
+/*
+ * Port of @astryxdesign/core NavMenu/NavHeadingMenu.tsx (styles.root, sizeStyles) and
+ * NavMenu/NavHeadingMenuItem.tsx (styles.root, content, disabled, sizeStyles). Rule order
+ * follows stylex.props(): root, size, disabled.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* NavHeadingMenu */
+  .astryx-nav-heading-menu {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-0-5);
+  }
+  .astryx-nav-heading-menu[data-size="sm"] { min-width: 160px; }
+  .astryx-nav-heading-menu[data-size="md"] { min-width: 200px; }
+  .astryx-nav-heading-menu[data-size="lg"] { min-width: 240px; }
+
+  /* NavHeadingMenuItem */
+  .astryx-nav-heading-menu-item {
+    box-sizing: border-box;
+    /* A held pointer slides across the items; it selects no item text. */
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    border-radius: var(--radius-element);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    cursor: pointer;
+    text-align: start;
+    outline: none;
+    text-decoration: none;
+  }
+  .astryx-nav-heading-menu-item:focus { background-color: var(--color-overlay-hover); }
+  @media (hover: hover) {
+    .astryx-nav-heading-menu-item:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-overlay-hover); }
+  }
+  .astryx-nav-heading-menu-item:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-nav-heading-menu-item-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+  .astryx-nav-heading-menu-item[data-size="sm"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); }
+  .astryx-nav-heading-menu-item[data-size="md"] { padding-block: var(--spacing-2); padding-inline: var(--spacing-2); }
+  .astryx-nav-heading-menu-item[data-size="lg"] { padding-block: var(--spacing-3); padding-inline: var(--spacing-3); }
+  .astryx-nav-heading-menu-item[aria-disabled="true"] { opacity: 0.5; cursor: default; }
+
+  /* Nav popovers (elements/nav-menu.ts): usePopover `hasSurface: false` keeps the
+   * `astryx-popover` class but paints nothing — the content brings its own surface. */
+  .astryx-popover[data-ax-no-surface] {
+    background-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+}

@@ -1,0 +1,26 @@
+---
+/**
+ * Internal: the anchor every nav row renders for an `href` (SideNavItem, TopNavItem, TopNavMenu
+ * and TopNavMegaMenu rows, the nav headings, BreadcrumbItem). Ports the `LinkComponent` half of
+ * @astryxdesign/core Link/useLinkComponent.ts as the nav components use it:
+ * `as` → LinkProvider (`Astro.locals.astryxLinkComponent`) → `<a>`, with both destinations
+ * checked first (navigation safety, contract #16). A blocked destination renders a plain `<a>`
+ * without `href` — inert, not disabled — and never reaches a custom component.
+ */
+import {linkDestination, resolveLinkComponent, type LinkComponentType} from '../LinkProvider/linkComponent';
+
+interface Props {
+  href?: string | URL | null;
+  as?: LinkComponentType;
+  [attr: string]: unknown;
+}
+
+const {href, as, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const dest = linkDestination(href ?? undefined);
+const Tag = dest === null || dest.href == null ? 'a' : resolveLinkComponent(Astro, as);
+---
+{dest === null || dest.href == null
+  ? <a {...rest}><slot /></a>
+  : Tag === 'a'
+    ? <a {...rest} href={dest.href}><slot /></a>
+    : <Tag {...rest} href={dest.href} to={dest.to}><slot /></Tag>}

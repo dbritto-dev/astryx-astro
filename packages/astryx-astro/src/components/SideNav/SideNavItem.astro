@@ -1,0 +1,314 @@
+---
+/**
+ * SideNavItem — a SideNav row: icon (and `selectedIcon`), label, passive `endContent`, row
+ * `actions`, nested items. Port of @astryxdesign/core SideNav/SideNavItem.tsx (NavItemElement,
+ * the split-action row, the nested group, the collapsed rail with its tooltip / flyout) on
+ * NavItem/navItemStyles. Theme target:
+ * `.astryx-side-nav-item[data-size][data-selected="selected"][data-disabled="disabled"]`.
+ *
+ * Element: `href` → a link (LinkProvider / `as`, safe-URL checked); otherwise a `<button>`
+ * (Astryx onClick: listen for `click`; `interactiveRole="button"` marks a parent whose label acts
+ * on its own). `isSelected` → `aria-current="page"`. `isDisabled` → a `<button aria-disabled>`
+ * that keeps its tab stop but never acts (AST-085). `endContent` (slot) is passive content inside
+ * the control; interactive row controls go in the `actions` slot — siblings of the control at the
+ * trailing edge (they get the `sm` control size), before nested items in focus order.
+ *
+ * Nesting: children (the default slot) render in a `role="group"` below the row, indented one
+ * `--spacing-6` step per level. With children the item is collapsible unless
+ * `collapsible={false}` (`{defaultIsCollapsed}` / `{isCollapsed}` set the initial state): a row
+ * with no destination of its own is the toggle (`aria-expanded` / `aria-controls`, a chevron); a
+ * row with `href` or `interactiveRole` keeps its action and gets an independent chevron button
+ * ("Expand / Collapse {label}"). Toggling dispatches `astryx-collapse-change` {isCollapsed}
+ * (cancelable) on the item.
+ *
+ * Collapsed rail (a collapsible SideNav): top-level items with an icon stay as icon-only
+ * controls named by `aria-label` (a non-blank one you pass wins over `label`) with the label in a
+ * tooltip on the end side; a parent opens a flyout beside the rail (a dialog listing its children,
+ * hover-opened, closed by any click inside); items without an icon, nested items and `actions`
+ * leave the rail. In the AppShell drawer a row that navigates closes the drawer
+ * (`data-ax-navigate`). Deferred (touch extra): the press controller.
+ *
+ * @example
+ * <SideNavItem label="Inbox" icon={inboxIcon} href="/inbox" isSelected><Badge slot="endContent" label="3" /></SideNavItem>
+ * <SideNavItem label="Settings" icon={gearIcon}>
+ *   <SideNavItem label="General" href="/settings/general" />
+ * </SideNavItem>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import NavLink from '../NavItem/_NavLink.astro';
+import NavMenuLayer from '../NavMenu/_NavMenuLayer.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {LinkComponentType} from '../LinkProvider/linkComponent';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {stamp} from '../../lib/cascade';
+import {mergeIds} from '../Layer/layer';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {buttonSizeStampers} from '../Button/buttonCascade';
+import {isInMobileDrawer} from '../AppShell/appShellContext';
+import {NOT_COLLAPSIBLE, ROW_CONTROL_SIZE, SIDE_NAV_DEPTH_LOCAL, SIDE_NAV_LOCAL, sideNavContext, sideNavDepth} from './sideNavContext';
+import '../NavItem/NavItem.css';
+import './SideNav.css';
+
+type IconValue = ExtendedIconName | AstroIconComponent;
+
+export interface Props extends HTMLAttributes<'a'> {
+  label: string;
+  /** Destination: the control is a link. */
+  href?: string | URL;
+  /** Link component (overrides LinkProvider). */
+  as?: LinkComponentType;
+  /** 'button': the row acts on its own (Astryx onClick) — a parent then gets an independent toggle. */
+  interactiveRole?: 'button';
+  /** Icon (outline): a name, SVG string or Astro component (or the `icon` slot). */
+  icon?: IconValue;
+  /** Icon while selected (filled), or the `selectedIcon` slot. */
+  selectedIcon?: IconValue;
+  /** @default false */
+  isSelected?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Nested items collapse: `false` keeps them always shown. @default collapsible (expanded) */
+  collapsible?: boolean | {defaultIsCollapsed?: boolean; isCollapsed?: boolean};
+  /** @default 'md' */
+  size?: 'sm' | 'md' | 'lg';
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  label, href, as, interactiveRole, icon, selectedIcon, isSelected = false, isDisabled = false, collapsible, size = 'md', locale,
+  class: className, style, 'data-testid': testId, id: idProp, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: unknown};
+const t = translator(Astro, locale);
+const nav = sideNavContext(Astro);
+const depth = sideNavDepth(Astro);
+const inDrawer = isInMobileDrawer(Astro);
+const id = uid(Astro, 'ax-side-nav-item');
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+
+const iconSlot = await slotHtml('icon');
+const selectedIconSlot = await slotHtml('selectedIcon');
+const endHtml = await slotHtml('endContent');
+const actionsRaw = await slotHtml('actions');
+const actionsHtml = actionsRaw ? await stamp(actionsRaw, buttonSizeStampers(ROW_CONTROL_SIZE)) : '';
+const childrenHtml = Astro.slots.has('default')
+  ? (await renderWithLocals(Astro, {[SIDE_NAV_DEPTH_LOCAL]: depth + 1}, () => Astro.slots.render('default'))).trim()
+  : '';
+const hasChildren = childrenHtml !== '';
+const hasIcon = iconSlot !== '' || (icon != null && icon !== '');
+const config = typeof collapsible === 'object' && collapsible ? collapsible : {};
+const isItemCollapsible = hasChildren && collapsible !== false;
+const isItemCollapsed = isItemCollapsible && (config.isCollapsed ?? config.defaultIsCollapsed ?? false);
+const hasPrimaryAction = href != null || interactiveRole === 'button';
+const hasIndependentToggle = isItemCollapsible && hasPrimaryAction;
+const hasActions = actionsHtml !== '';
+const hasRowWrapper = hasIndependentToggle || hasActions;
+
+// The rail (a collapsible SideNav): top-level rows with an icon stay.
+const isKeptInRail = hasIcon && depth === 0;
+const railMode = !nav.isCollapsible ? undefined : !isKeptInRail ? 'hide' : hasChildren || hasRowWrapper ? 'split' : 'leaf';
+const navCollapsed = nav.isCollapsible && nav.isCollapsed;
+const ownLabel = typeof rest['aria-label'] === 'string' && rest['aria-label'].trim() !== '' ? rest['aria-label'] : undefined;
+const collapsedLabel = ownLabel ?? label;
+
+const useSelectedIcon = isSelected && (selectedIconSlot !== '' || selectedIcon != null);
+const iconColor = isSelected ? 'inherit' : isDisabled ? 'disabled' : 'secondary';
+const {themeClass, attrs} = themeProps('side-nav-item', {size, selected: isSelected ? 'selected' : null, disabled: isDisabled ? 'disabled' : null});
+const rowClass = cx(themeClass, 'ax-nav-item ax-overlay-bg');
+const groupId = `${id}-children`;
+const depthStyle = depth > 0 ? `--_ax-nav-depth:${depth}` : undefined;
+const style0 = [depthStyle, typeof style === 'string' ? style : undefined].filter(Boolean).join(';') || undefined;
+
+// Tooltip for a rail leaf (the control is described; a disabled control's row listens).
+const railTip = railMode === 'leaf' || (railMode === 'split' && !hasChildren) ? uid(Astro, 'ax-side-nav-tip') : undefined;
+const railTipOnRow = railMode === 'leaf' && railTip != null && isDisabled;
+const describedBy = rest['aria-describedby'] as string | undefined;
+// The flyout of a rail parent.
+const flyoutId = railMode === 'split' && hasChildren ? uid(Astro, 'ax-side-nav-flyout') : undefined;
+const flyoutHtml = flyoutId
+  ? (await renderWithLocals(Astro, {[SIDE_NAV_LOCAL]: NOT_COLLAPSIBLE, [SIDE_NAV_DEPTH_LOCAL]: 0}, () => Astro.slots.render('default'))).trim()
+  : '';
+
+// Shared attributes of the control the row renders (link or button).
+const controlBase = (extra: Record<string, unknown>) => ({
+  ...rest,
+  id: idProp as string | undefined,
+  'aria-current': isSelected ? 'page' : undefined,
+  'data-testid': testId,
+  ...extra,
+});
+const disabledAttrs = isDisabled ? {'aria-disabled': 'true', 'data-ax-disabled-interaction': ''} : {};
+// The whole row is the group toggle (no destination of its own).
+const rowIsToggle = isItemCollapsible && !hasIndependentToggle;
+const toggleAttrs = rowIsToggle
+  ? {'aria-expanded': String(!isItemCollapsed), 'aria-controls': groupId, 'data-ax-nav-disclosure': ''}
+  : {};
+const navigateAttrs = inDrawer && !rowIsToggle ? {'data-ax-navigate': ''} : {};
+// Rail leaf: the same control, named and described only while collapsed.
+const leafRailAttrs = railMode === 'leaf' && !ownLabel
+  ? {'data-ax-rail-label': collapsedLabel, 'aria-label': navCollapsed ? collapsedLabel : undefined}
+  : {};
+const leafTipAttrs = railMode === 'leaf' && railTip
+  ? {
+      'data-ax-tooltip': railTipOnRow ? undefined : railTip,
+      'data-ax-rail-describedby': railTip,
+      'aria-describedby': navCollapsed ? mergeIds(describedBy, railTip) : describedBy,
+    }
+  : {};
+const isLink = href != null && !isDisabled;
+const expandLabel = t('@astryx.sideNavItem.expand', {label});
+const collapseLabel = t('@astryx.sideNavItem.collapse', {label});
+---
+<div
+  class={cx('ax-side-nav-item-root', className as string | undefined)}
+  data-ax-rail={railMode}
+  data-ax-nav-disclosure-host={isItemCollapsible ? '' : undefined}
+  data-ax-tooltip={railTipOnRow ? railTip : undefined}
+>
+  {railMode === 'split' ? (
+    <Fragment>
+      <div class="ax-side-nav-expanded-part">
+        {hasRowWrapper ? (
+          <div class={cx(rowClass, hasActions && 'ax-focus-within-first-child', 'ax-side-nav-row')} {...attrs} data-ax-nav-size={size}>
+            {isLink
+              ? <NavLink {...controlBase({...toggleAttrs, ...navigateAttrs})} href={href} as={as} class={cx('ax-side-nav-split-action', hasActions ? 'ax-focus-suppressed' : 'ax-focus-visible')} style={style0}>
+                  {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+                  <span class="ax-side-nav-item-label">{label}</span>
+                  {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+                  {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+                </NavLink>
+              : <button type="button" {...controlBase({...toggleAttrs, ...navigateAttrs, ...disabledAttrs})} class={cx('ax-side-nav-split-action', hasActions ? 'ax-focus-suppressed' : 'ax-focus-visible')} style={style0}>
+                  {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+                  <span class="ax-side-nav-item-label">{label}</span>
+                  {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+                  {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+                </button>}
+            {hasIndependentToggle && (
+              <button type="button" class="ax-side-nav-expand-toggle ax-overlay-bg ax-focus-visible" aria-label={isItemCollapsed ? expandLabel : collapseLabel} data-ax-label-expand={expandLabel} data-ax-label-collapse={collapseLabel} aria-expanded={String(!isItemCollapsed)} aria-controls={groupId} data-ax-nav-disclosure="">
+                <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />
+              </button>
+            )}
+            {hasActions && <span class="ax-side-nav-item-actions"><Fragment set:html={actionsHtml} /></span>}
+          </div>
+        ) : isLink ? (
+          <NavLink {...controlBase({...toggleAttrs, ...navigateAttrs})} href={href} as={as} class={cx(rowClass, 'ax-focus-visible')} {...attrs} data-ax-nav-size={size} style={style0}>
+            {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+            <span class="ax-side-nav-item-label">{label}</span>
+            {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+            {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+          </NavLink>
+        ) : (
+          <button type="button" {...controlBase({...toggleAttrs, ...navigateAttrs, ...disabledAttrs})} class={cx(rowClass, 'ax-focus-visible')} {...attrs} data-ax-nav-size={size} style={style0}>
+            {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+            <span class="ax-side-nav-item-label">{label}</span>
+            {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+            {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+          </button>
+        )}
+        {hasChildren && (
+          <div id={groupId} role="group" aria-labelledby={`${id}-label`} class="ax-side-nav-group" aria-hidden={isItemCollapsed ? 'true' : undefined} inert={isItemCollapsed || undefined} data-ax-collapsed={isItemCollapsed ? '' : undefined}>
+            <div class="ax-side-nav-group-inner"><span id={`${id}-label`} hidden>{label}</span><Fragment set:html={childrenHtml} /></div>
+          </div>
+        )}
+      </div>
+      <div class="ax-side-nav-rail-part">
+        {flyoutId ? (
+          <Fragment>
+            <button
+              type="button"
+              id={`${flyoutId}-trigger`}
+              class={cx(rowClass, 'ax-focus-visible ax-side-nav-rail-control')}
+              {...attrs}
+              data-ax-nav-size={size}
+              aria-label={collapsedLabel}
+              popovertarget={flyoutId}
+              aria-haspopup="dialog"
+              aria-expanded="false"
+              aria-controls={flyoutId}
+              data-ax-rail-control=""
+            >
+              {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+            </button>
+            <NavMenuLayer
+              id={flyoutId}
+              triggerId={`${flyoutId}-trigger`}
+              placement="end"
+              alignment="start"
+              offset="var(--spacing-1)"
+              clickGuardMs={0}
+              ownsFocus={false}
+              role="dialog"
+              label={t('@astryx.sideNavItem.submenuLabel', {label})}
+              closeOnClick
+              surfaceClass="ax-side-nav-flyout"
+            >
+              <div class="ax-side-nav-flyout-header">{label}</div>
+              <Fragment set:html={flyoutHtml} />
+            </NavMenuLayer>
+          </Fragment>
+        ) : isLink ? (
+          <NavLink href={href} as={as} class={cx(rowClass, 'ax-focus-visible ax-side-nav-rail-control')} {...attrs} data-ax-nav-size={size} aria-current={isSelected ? 'page' : undefined} aria-label={collapsedLabel} data-ax-tooltip={railTip} aria-describedby={mergeIds(describedBy, railTip)} data-ax-rail-control="">
+            {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+          </NavLink>
+        ) : (
+          <button type="button" class={cx(rowClass, 'ax-focus-visible ax-side-nav-rail-control')} {...attrs} data-ax-nav-size={size} aria-current={isSelected ? 'page' : undefined} aria-label={collapsedLabel} data-ax-tooltip={railTip} aria-describedby={mergeIds(describedBy, railTip)} {...disabledAttrs} data-ax-rail-control="">
+            {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+          </button>
+        )}
+        {railTip && !flyoutId && <Tooltip id={railTip} content={label} placement="end" focusTrigger="always" />}
+      </div>
+    </Fragment>
+  ) : (
+    <Fragment>
+      {hasRowWrapper ? (
+        <div class={cx(rowClass, hasActions && 'ax-focus-within-first-child', 'ax-side-nav-row')} {...attrs} data-ax-nav-size={size}>
+          {isLink
+            ? <NavLink {...controlBase({...toggleAttrs, ...navigateAttrs})} href={href} as={as} class={cx('ax-side-nav-split-action', hasActions ? 'ax-focus-suppressed' : 'ax-focus-visible')} style={style0}>
+                {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+                <span class="ax-side-nav-item-label">{label}</span>
+                {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+                {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+              </NavLink>
+            : <button type="button" {...controlBase({...toggleAttrs, ...navigateAttrs, ...disabledAttrs})} class={cx('ax-side-nav-split-action', hasActions ? 'ax-focus-suppressed' : 'ax-focus-visible')} style={style0}>
+                {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+                <span class="ax-side-nav-item-label">{label}</span>
+                {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+                {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+              </button>}
+          {hasIndependentToggle && (
+            <button type="button" class="ax-side-nav-expand-toggle ax-overlay-bg ax-focus-visible" aria-label={isItemCollapsed ? expandLabel : collapseLabel} data-ax-label-expand={expandLabel} data-ax-label-collapse={collapseLabel} aria-expanded={String(!isItemCollapsed)} aria-controls={groupId} data-ax-nav-disclosure="">
+              <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />
+            </button>
+          )}
+          {hasActions && <span class="ax-side-nav-item-actions"><Fragment set:html={actionsHtml} /></span>}
+        </div>
+      ) : isLink ? (
+        <NavLink {...controlBase({...toggleAttrs, ...navigateAttrs, ...leafRailAttrs, ...leafTipAttrs})} href={href} as={as} class={cx(rowClass, 'ax-focus-visible')} {...attrs} data-ax-nav-size={size} style={style0}>
+          {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+          <span class="ax-side-nav-item-label">{label}</span>
+          {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+          {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+        </NavLink>
+      ) : (
+        <button type="button" {...controlBase({...toggleAttrs, ...navigateAttrs, ...disabledAttrs, ...leafRailAttrs, ...leafTipAttrs})} class={cx(rowClass, 'ax-focus-visible')} {...attrs} data-ax-nav-size={size} style={style0}>
+          {hasIcon && (useSelectedIcon ? (selectedIconSlot !== '' ? <Fragment set:html={selectedIconSlot} /> : <Icon icon={selectedIcon!} size="sm" color={iconColor} />) : (iconSlot !== '' ? <Fragment set:html={iconSlot} /> : <Icon icon={icon!} size="sm" color={iconColor} />))}
+          <span class="ax-side-nav-item-label">{label}</span>
+          {endHtml !== '' && <span class="ax-side-nav-item-end"><Fragment set:html={endHtml} /></span>}
+          {rowIsToggle && <Icon icon="chevronDown" size="lg" color="inherit" class="ax-side-nav-expand-chevron" />}
+        </button>
+      )}
+      {railMode === 'leaf' && railTip && <Tooltip id={railTip} content={label} placement="end" focusTrigger="always" isEnabled={navCollapsed} />}
+      {hasChildren && (
+        <div id={groupId} role="group" aria-labelledby={`${id}-label`} class="ax-side-nav-group" aria-hidden={isItemCollapsed ? 'true' : undefined} inert={isItemCollapsed || undefined} data-ax-collapsed={isItemCollapsed ? '' : undefined}>
+          <div class="ax-side-nav-group-inner"><span id={`${id}-label`} hidden>{label}</span><Fragment set:html={childrenHtml} /></div>
+        </div>
+      )}
+    </Fragment>
+  )}
+</div>
+{isItemCollapsible && <script>import '../../behaviors/navDisclosure';</script>}
+{isDisabled && <script>import '../../elements/runtime/disabledInteraction';</script>}

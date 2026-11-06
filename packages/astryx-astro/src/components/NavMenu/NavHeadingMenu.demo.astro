@@ -1,0 +1,48 @@
+---
+import NavHeadingMenu from './NavHeadingMenu.astro';
+import NavHeadingMenuItem from './NavHeadingMenuItem.astro';
+import NavIcon from '../NavIcon/NavIcon.astro';
+import TopNavHeading from '../TopNav/TopNavHeading.astro';
+import {chartIcon, folderIcon, logoMark, usersIcon} from '../NavItem/_demoIcons';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-6);align-items:flex-start';
+const box = 'border:1px solid var(--color-border);border-radius:var(--radius-container);padding:var(--spacing-1);background:var(--color-background-popover)';
+---
+<div>
+  <p style={label}>Sizes sm / md / lg (min-width 160 / 200 / 240px): ↑/↓ move between rows, Home/End, type a letter to jump, Enter or Space activates</p>
+  <div style={row}>
+    <div style={box}>
+      <NavHeadingMenu size="sm" aria-label="Small menu" id="nav-menu-sm">
+        <NavHeadingMenuItem label="Overview" href="#overview" />
+        <NavHeadingMenuItem label="Reports" href="#reports" />
+        <NavHeadingMenuItem label="Archive" isDisabled />
+      </NavHeadingMenu>
+    </div>
+    <div style={box}>
+      <NavHeadingMenu aria-label="Products" id="nav-menu-md">
+        <NavHeadingMenuItem label="Analytics" description="Dashboards and funnels" icon={chartIcon} href="#analytics" id="nav-menu-first" />
+        <NavHeadingMenuItem label="Projects" description="Boards and roadmaps" icon={folderIcon} href="#projects" />
+        <NavHeadingMenuItem label="People" description="Directory and teams" icon={usersIcon} id="nav-menu-action" />
+        <NavHeadingMenuItem label="Billing (disabled link)" href="#billing" isDisabled id="nav-menu-disabled-link" />
+      </NavHeadingMenu>
+    </div>
+    <div style={box}>
+      <NavHeadingMenu size="lg" minWidth={280} aria-label="Large menu">
+        <NavHeadingMenuItem label="Switch workspace" description="Acme Inc. · 12 members" />
+        <NavHeadingMenuItem label="Create workspace" />
+      </NavHeadingMenu>
+    </div>
+  </div>
+</div>
+<div>
+  <p style={label}>As a heading menu: the whole heading opens it (hover or click), a row closes it</p>
+  <TopNavHeading heading="Acme Cloud" superheading="Acme Suite" id="nav-menu-heading">
+    <NavIcon slot="logo" icon={logoMark} />
+    <NavHeadingMenu slot="menu">
+      <NavHeadingMenuItem label="Acme Cloud" description="Current product" href="#cloud" />
+      <NavHeadingMenuItem label="Acme Analytics" href="#analytics" />
+      <NavHeadingMenuItem label="Acme Billing" href="#billing" />
+    </NavHeadingMenu>
+  </TopNavHeading>
+</div>

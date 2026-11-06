@@ -1,0 +1,43 @@
+---
+/**
+ * TopNavMegaMenuFeaturedCard — the standard card for a TopNavMegaMenu's `featured` slot: optional
+ * image, title, description and a call-to-action link. Port of @astryxdesign/core
+ * TopNav/TopNavMegaMenuFeaturedCard.tsx. Theme target: `.astryx-top-nav-mega-menu-featured-card`.
+ *
+ * Without `imageAlt` the image is decorative (`alt=""`, `role="presentation"`, `aria-hidden`).
+ * The CTA goes through LinkProvider and the safe-URL check; its arrow mirrors in RTL. The default
+ * slot renders below the body.
+ *
+ * @example
+ * <TopNavMegaMenuFeaturedCard slot="featured" title="What's new in v4" description="AI analytics."
+ *   linkLabel="Read the announcement" linkHref="/blog/v4" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import NavLink from '../NavItem/_NavLink.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import './TopNav.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  title: string;
+  description?: string;
+  /** Image URL shown above the body. */
+  image?: string;
+  /** Alt text; omit for a decorative image. */
+  imageAlt?: string;
+  linkLabel?: string;
+  linkHref?: string | URL;
+  'data-testid'?: string;
+}
+
+const {title, description, image, imageAlt, linkLabel, linkHref, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const {themeClass, attrs} = themeProps('top-nav-mega-menu-featured-card');
+---
+<div {...rest} class={cx(themeClass, className)} {...attrs}>
+  {image && <img src={image} alt={imageAlt ?? ''} role={imageAlt ? undefined : 'presentation'} aria-hidden={imageAlt ? undefined : 'true'} class="ax-featured-image" />}
+  <div class="ax-featured-body">
+    <span class="ax-featured-title">{title}</span>
+    {description && <span class="ax-featured-description">{description}</span>}
+    {linkLabel && linkHref && <NavLink href={linkHref} class="ax-featured-link ax-focus-visible">{linkLabel} <span class="ax-featured-arrow ax-mirror-rtl">→</span></NavLink>}
+    <slot />
+  </div>
+</div>

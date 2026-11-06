@@ -1,0 +1,231 @@
+---
+/**
+ * AppShell — the page frame of an application: `banner` + `topNav` header, `sideNav` rail, and
+ * the main content, with a mobile drawer below a breakpoint. Port of @astryxdesign/core
+ * AppShell/AppShell.tsx (+ AppShellMobileContext, observeMainOverflow, useCloseMobileDrawerOnActivate)
+ * on Layout (LayoutHeader / LayoutPanel / LayoutContent). Behaviour: src/elements/app-shell.ts
+ * (`<ax-app-shell>`). Theme targets: `.astryx-app-shell[data-variant]`,
+ * `.astryx-app-shell-header[data-variant]`, `.astryx-app-shell-sidenav[data-variant]`.
+ *
+ * Slots: `topNav` (TopNav), `sideNav` (SideNav), `banner` (system announcements above the top
+ * nav), the default slot (main content, `role="main"`, LayoutContent with `contentPadding`),
+ * `mobileNav` (your own MobileNav: you own everything), `mobileNavContent` (custom drawer content).
+ *
+ * `variant` (wash | surface | section | elevated) sets how the nav areas contrast with the content
+ * (elevated: wash nav areas around a rounded surface content area). `height` fill: the shell fills
+ * the viewport and main scrolls (a keyboard stop only while it overflows); auto: it grows with its
+ * content and the header / rail stick (`--_app-shell-header-height`). A skip link ("Skip to
+ * content") is the first tab stop and focuses main. The root is a layout root
+ * (`.ax-layout-root-reset`): nothing an ancestor Layout / Card publishes reaches inside.
+ *
+ * Mobile (`mobileNav` config: `{breakpoint = 'md', hasToggle = true, isOpen, defaultIsMobile}`, or
+ * `false` to disable): below the breakpoint (`(width < 768px)` for md; `none` never) the shell
+ * writes `data-astryx-shell-mobile="true"` on its root — set before first paint by an inline
+ * script, then kept by the element (event `astryx-mobile-change` {isMobile}). CSS then hides the
+ * rail, turns the TopNav into the mobile bar (heading, end content, the MobileNavToggle) — or, with
+ * no TopNav, shows a phone bar with the SideNav heading + footer icons and the toggle — and the
+ * toggle opens the drawer: the TopNav items (drawer mode), a divider and the SideNav items.
+ * Nothing re-renders and main is never moved: the nav slots render once per presentation and
+ * `main` keeps its element across breakpoints. Drawer rows close it on activation
+ * (`astryx-navigate`, see MobileNav); leaving the breakpoint closes it.
+ *
+ * Deferred: the content column's FLIP glide with the rail (useAnimatedLayout), `onOpenChange`
+ * (listen for `astryx-open-change` on the drawer), the scroll-key delegation of an overflowing main.
+ *
+ * @example
+ * <AppShell>
+ *   <TopNav slot="topNav"><TopNavHeading slot="heading" heading="Acme" /></TopNav>
+ *   <SideNav slot="sideNav"><SideNavItem label="Home" href="/" isSelected /></SideNav>
+ *   <h1>Dashboard</h1>
+ * </AppShell>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Layout from '../Layout/Layout.astro';
+import LayoutHeader from '../Layout/LayoutHeader.astro';
+import LayoutPanel from '../Layout/LayoutPanel.astro';
+import LayoutContent from '../Layout/LayoutContent.astro';
+import MobileNavToggle from '../MobileNav/MobileNavToggle.astro';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {
+  APP_SHELL_LOCAL, DEFAULT_WIDTH_BREAKPOINTS, SHELL_DRAWER_LOCAL, SIDE_NAV_MODE_LOCAL, TOP_NAV_MOBILE_CONTENT_LOCAL, TOP_NAV_MODE_LOCAL,
+  type AppShellBreakpoint, type AppShellContextValue,
+} from './appShellContext';
+import '../Layout/Layout.css';
+import './AppShell.css';
+
+export type AppShellVariant = 'wash' | 'surface' | 'section' | 'elevated';
+
+/** Astryx MobileNavConfig minus `onOpenChange` (an event) and `content` (the `mobileNavContent` slot). */
+export interface MobileNavConfig {
+  /** Render the hamburger toggle automatically; false: place a MobileNavToggle yourself. @default true */
+  hasToggle?: boolean;
+  /** Initial open state of the drawer. */
+  isOpen?: boolean;
+  /** Width point below which the shell is mobile; `none` disables it. @default 'md' */
+  breakpoint?: AppShellBreakpoint;
+  /** SSR hint: render the mobile layout first (it is corrected before first paint). @default false */
+  defaultIsMobile?: boolean;
+}
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** How the nav areas contrast with the content. @default 'elevated' */
+  variant?: AppShellVariant;
+  /** Main content padding (spacing step). @default 0 */
+  contentPadding?: SpacingStep;
+  /** fill: viewport-high, main scrolls; auto: grows, the page scrolls. @default 'fill' */
+  height?: 'fill' | 'auto';
+  /** Mobile behaviour: a config, or false to disable mobile navigation. */
+  mobileNav?: false | MobileNavConfig;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  variant = 'elevated', contentPadding, height = 'fill', mobileNav, locale, id: idProp,
+  class: className, slot: _slot, ...rest
+} = Astro.props as Props & {slot?: unknown};
+const t = translator(Astro, locale);
+const baseId = (idProp as string | undefined) ?? uid(Astro, 'astryx-app-shell');
+const mainId = `${baseId}-main`;
+const mobileNavId = `${baseId}-mobile-nav`;
+
+const mobileNavDisabled = mobileNav === false;
+const config: MobileNavConfig = mobileNav && typeof mobileNav === 'object' ? mobileNav : {};
+const breakpoint: AppShellBreakpoint = config.breakpoint ?? 'md';
+const breakpointPx = breakpoint === 'none' ? null : DEFAULT_WIDTH_BREAKPOINTS[breakpoint];
+const isMobileInitial = breakpoint !== 'none' && config.defaultIsMobile === true;
+const hasToggle = config.hasToggle !== false;
+const hasCustomMobileNav = Astro.slots.has('mobileNav');
+const hasConfigContent = Astro.slots.has('mobileNavContent');
+const hasTopNav = Astro.slots.has('topNav');
+const hasSideNav = Astro.slots.has('sideNav');
+const hasBanner = Astro.slots.has('banner');
+const hasNavContent = hasTopNav || hasSideNav;
+const mobileNavEnabled = !mobileNavDisabled && hasNavContent && !hasCustomMobileNav;
+const isFill = height === 'fill';
+const isAuto = height === 'auto';
+const isElevated = variant === 'elevated';
+const navHasDividers = variant === 'section';
+
+const shell: AppShellContextValue = {mobileNavId, isMobileNavEnabled: mobileNavEnabled, hasAutoToggle: hasToggle, isMobile: isMobileInitial};
+const withShell = (values: Record<string, unknown>, name: string) =>
+  renderWithLocals(Astro, {[APP_SHELL_LOCAL]: shell, ...values}, () => Astro.slots.render(name)).then((h) => h.trim());
+
+// The nav slots, once per presentation (React renders them under SideNav/TopNavRenderContext).
+const mobileBarEligible = !mobileNavDisabled && !hasCustomMobileNav;
+const topNavHtml = hasTopNav
+  ? await withShell({
+      [TOP_NAV_MODE_LOCAL]: mobileBarEligible ? 'mobile-bar' : 'default',
+      [TOP_NAV_MOBILE_CONTENT_LOCAL]: hasSideNav && hasToggle ? true : undefined,
+    }, 'topNav')
+  : '';
+const sideNavHtml = hasSideNav ? await withShell({[SIDE_NAV_MODE_LOCAL]: 'default'}, 'sideNav') : '';
+const showAutoTopBar = !mobileNavDisabled && hasToggle && !hasTopNav && hasSideNav;
+const sideNavTopbarHtml = showAutoTopBar ? await withShell({[SIDE_NAV_MODE_LOCAL]: 'topbar'}, 'sideNav') : '';
+const rendersDrawer = !mobileNavDisabled && !hasCustomMobileNav && !hasConfigContent && hasNavContent;
+const drawerContentHtml = rendersDrawer && hasTopNav && hasSideNav
+  ? await withShell({[SIDE_NAV_MODE_LOCAL]: 'drawer-content'}, 'sideNav')
+  : '';
+const drawerHtml = !rendersDrawer
+  ? ''
+  : hasTopNav
+    ? await withShell({[TOP_NAV_MODE_LOCAL]: 'drawer', [TOP_NAV_MOBILE_CONTENT_LOCAL]: drawerContentHtml || undefined, [SHELL_DRAWER_LOCAL]: true}, 'topNav')
+    : await withShell({[SIDE_NAV_MODE_LOCAL]: 'drawer', [SHELL_DRAWER_LOCAL]: true}, 'sideNav');
+const customDrawerHtml = hasCustomMobileNav
+  ? await withShell({[SHELL_DRAWER_LOCAL]: true}, 'mobileNav')
+  : hasConfigContent && mobileNavEnabled
+    ? await withShell({[SHELL_DRAWER_LOCAL]: true}, 'mobileNavContent')
+    : '';
+const bannerHtml = hasBanner ? await withShell({}, 'banner') : '';
+const mainHtml = Astro.slots.has('default') ? await withShell({}, 'default') : '';
+
+const navArea = variant === 'wash' || variant === 'elevated' ? 'wash' : variant === 'surface' ? 'surface' : undefined;
+const headerArea = navArea ?? (isAuto && variant === 'section' ? 'surface' : undefined);
+const contentArea = variant === 'wash'
+  ? 'wash'
+  : isElevated && hasTopNav && hasSideNav
+    ? 'elevated-split'
+    : variant === 'surface' || isElevated ? 'surface' : undefined;
+const elevatesWithCorner = isElevated && hasTopNav && hasSideNav;
+const hasHeader = hasTopNav || hasBanner;
+
+const root = themeProps('app-shell', {variant});
+const header = themeProps('app-shell-header', {variant});
+const sidenav = themeProps('app-shell-sidenav', {variant});
+const initialOpen = config.isOpen === true;
+---
+<ax-app-shell class="ax-app-shell-host" data-ax-drawer={mobileNavEnabled || hasCustomMobileNav || hasConfigContent ? mobileNavId : undefined} data-ax-open-drawer={initialOpen ? '' : undefined}>
+  <div
+    {...rest}
+    id={idProp as string | undefined}
+    class={cx(root.themeClass, 'ax-layout-root-reset', className as string | undefined)}
+    {...root.attrs}
+    data-ax-height={height}
+    data-ax-breakpoint-px={breakpointPx ?? undefined}
+    data-astryx-shell-mobile={String(isMobileInitial)}
+  >
+    {breakpointPx != null && (
+      <script is:inline>(function(s){var r=s&&s.parentElement,b=r&&+r.getAttribute('data-ax-breakpoint-px');if(b>0&&window.matchMedia){r.setAttribute('data-astryx-shell-mobile',String(window.matchMedia('(width < '+b+'px)').matches));}})(document.currentScript)</script>
+    )}
+    <a href={`#${mainId}`} class="ax-app-shell-skip ax-focus-visible" data-testid="skip-to-content" data-ax-skip-link="">{t('@astryx.appShell.skipToContent')}</a>
+    <Layout height={height} padding={0}>
+      {(hasHeader || showAutoTopBar) && (
+        <Fragment slot="header">
+          {hasHeader && (
+            <div role="banner" class={header.themeClass} {...header.attrs} data-ax-area={headerArea} data-ax-sticky={isAuto ? '' : undefined} data-ax-app-shell-header="">
+              <LayoutHeader padding={0} hasDivider={navHasDividers && hasTopNav}>
+                {hasBanner && <div class="ax-app-shell-banner" data-ax-area={navArea}><Fragment set:html={bannerHtml} /></div>}
+                {hasTopNav && <Fragment set:html={topNavHtml} />}
+              </LayoutHeader>
+            </div>
+          )}
+          {showAutoTopBar && (
+            <div role={hasHeader ? undefined : 'banner'} class={cx(header.themeClass, 'ax-app-shell-phone-bar')} {...header.attrs} data-ax-area={headerArea} data-ax-sticky={isAuto ? '' : undefined} data-ax-below-header={hasHeader ? '' : undefined}>
+              <LayoutHeader padding={0} hasDivider={navHasDividers}>
+                <div class="ax-app-shell-topbar" role="navigation" aria-label={t('@astryx.appShell.mobileNavigation')}>
+                  <Fragment set:html={sideNavTopbarHtml} />
+                  <MobileNavToggle locale={locale} {...{__shell: shell}} />
+                </div>
+              </LayoutHeader>
+            </div>
+          )}
+        </Fragment>
+      )}
+      {hasSideNav && (
+        isAuto ? (
+          <Fragment slot="start">
+            <div class="ax-app-shell-sidenav-sticky">
+              <LayoutPanel padding={0} hasDivider={navHasDividers} isScrollable={false} class={cx(sidenav.themeClass, 'ax-app-shell-panel-auto')} {...sidenav.attrs} data-ax-area={navArea ?? 'surface'}>
+                <Fragment set:html={sideNavHtml} />
+              </LayoutPanel>
+            </div>
+          </Fragment>
+        ) : (
+          <LayoutPanel slot="start" padding={0} hasDivider={navHasDividers} isScrollable={isFill} class={sidenav.themeClass} {...sidenav.attrs} data-ax-area={navArea}>
+            <Fragment set:html={sideNavHtml} />
+          </LayoutPanel>
+        )
+      )}
+      <Fragment slot="content"><div class="ax-app-shell-content" data-ax-elevated={elevatesWithCorner ? '' : undefined}>
+        {elevatesWithCorner && <div class="ax-app-shell-elevated-backdrop" aria-hidden="true"></div>}
+        <LayoutContent
+          padding={contentPadding ?? 0}
+          role="main"
+          id={mainId}
+          tabindex={-1}
+          isScrollable={isFill}
+          class="ax-app-shell-main"
+          data-ax-content-area={contentArea}
+          data-ax-elevated-corner={elevatesWithCorner ? '' : undefined}
+        ><Fragment set:html={mainHtml} /></LayoutContent>
+      </div></Fragment>
+    </Layout>
+    {customDrawerHtml !== '' && <Fragment set:html={customDrawerHtml} />}
+    {drawerHtml !== '' && <Fragment set:html={drawerHtml} />}
+  </div>
+</ax-app-shell>
+<script>import '../../elements/app-shell';</script>

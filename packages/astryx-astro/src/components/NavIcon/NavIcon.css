@@ -1,0 +1,16 @@
+/* Port of @astryxdesign/core NavIcon/NavIcon.tsx (styles.base). */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--color-accent);
+    color: var(--color-on-accent);
+    flex-shrink: 0;
+    width: var(--size-element-md);
+    height: var(--size-element-md);
+  }
+}

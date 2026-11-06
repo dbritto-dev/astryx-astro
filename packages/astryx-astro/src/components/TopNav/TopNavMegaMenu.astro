@@ -1,0 +1,130 @@
+---
+/**
+ * TopNavMegaMenu — a TopNav item that opens a full-width panel of links (TopNavMegaMenuItem in
+ * the `items` slot, a two-column grid) with an optional `featured` area beside them.
+ * Port of @astryxdesign/core TopNav/TopNavMegaMenu.tsx (DefaultMegaMenu, DrawerMegaMenu) on
+ * usePopover (hasSurface false) + useMenuHover. Behaviour: elements/nav-menu.ts.
+ * Theme target: `.astryx-top-nav-mega-menu` (the trigger; `[data-mode="drawer"]` in the drawer).
+ *
+ * The trigger is the panel's native invoker; hover opens after `delay` (150ms) and a hover open
+ * closes `hideDelay` (250ms) after the pointer leaves; a click opens and pins (a click right
+ * after a hover open confirms it). The panel is anchored below the whole TopNav bar, aligned to
+ * the item's slot, clamped to the space below the nav (it scrolls inside), and is a
+ * `role="group"` named by `label` — a browsing grid of links, not an ARIA menu. Keyboard and
+ * assistive-tech opens move focus to its first link; ↑/↓ move between its links, Escape closes
+ * and refocuses the trigger. Events: `astryx-open-change` {isOpen, reason} on the `<ax-nav-menu>`
+ * (Astryx `onOpenChange`).
+ *
+ * Mobile: hidden in the AppShell mobile bar; in the drawer an inline collapsible section (the
+ * items render as nav rows, the featured content below them).
+ *
+ * @example
+ * <TopNavMegaMenu label="Products">
+ *   <Fragment slot="items"><TopNavMegaMenuItem title="Analytics" href="/analytics" /></Fragment>
+ *   <TopNavMegaMenuFeaturedCard slot="featured" title="What's new" />
+ * </TopNavMegaMenu>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Grid from '../Grid/Grid.astro';
+import NavMenuLayer from '../NavMenu/_NavMenuLayer.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {uid} from '../../lib/uid';
+import {topNavMode} from '../AppShell/appShellContext';
+import {slugify, topNavId, topNavSlot} from './topNavContext';
+import '../NavItem/NavItem.css';
+import './TopNav.css';
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'type'> {
+  /** The trigger's visible label (also names the panel). */
+  label: string;
+  /** Hover delay before opening (ms). @default 150 */
+  delay?: number;
+  /** Delay before a hover-opened panel closes after the pointer leaves (ms). @default 250 */
+  hideDelay?: number;
+  'data-testid'?: string;
+}
+
+/** The panel is a grid of links, not role="menuitem" rows. */
+const PANEL_ITEM_SELECTOR = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+const {label, delay = 150, hideDelay = 250, class: className, id: idProp, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const mode = topNavMode(Astro);
+const slot = topNavSlot(Astro);
+const navId = topNavId(Astro);
+const layerId = uid(Astro, `ax-mega-menu-${slugify(label)}`);
+const triggerId = (idProp as string | undefined) ?? `${layerId}-trigger`;
+const itemsHtml = Astro.slots.has('items') ? (await Astro.slots.render('items')).trim() : '';
+const featuredHtml = Astro.slots.has('featured') ? (await Astro.slots.render('featured')).trim() : '';
+const isDrawer = mode === 'drawer';
+const {themeClass, attrs} = themeProps('top-nav-mega-menu', {mode: isDrawer ? 'drawer' : null});
+---
+{isDrawer ? (
+  <div class="ax-top-nav-drawer-section">
+    <button
+      {...rest}
+      type="button"
+      id={triggerId}
+      class={cx(themeClass, 'ax-nav-item ax-overlay-bg ax-focus-visible ax-top-nav-drawer-header', className as string | undefined)}
+      {...attrs}
+      data-ax-nav-size="md"
+      aria-expanded="false"
+      aria-controls={`${layerId}-items`}
+      data-ax-nav-disclosure=""
+    >
+      {label}
+      <Icon icon="chevronDown" size="sm" color="inherit" class="ax-top-nav-chevron" />
+    </button>
+    <div id={`${layerId}-items`} class="ax-top-nav-drawer-collapse" aria-hidden="true" inert data-ax-collapsed="">
+      <div class="ax-top-nav-drawer-collapse-inner">
+        <Fragment set:html={itemsHtml} />
+        {featuredHtml !== '' && <div class="ax-top-nav-drawer-featured"><Fragment set:html={featuredHtml} /></div>}
+      </div>
+    </div>
+  </div>
+) : (
+  <Fragment>
+    <button
+      {...rest}
+      type="button"
+      id={triggerId}
+      class={cx(themeClass, 'ax-focus-visible ax-top-nav-trigger', className as string | undefined)}
+      {...attrs}
+      popovertarget={layerId}
+      aria-haspopup="true"
+      aria-expanded="false"
+      aria-controls={layerId}
+    >
+      {label}
+      <Icon icon="chevronDown" size="sm" color="inherit" class="ax-top-nav-chevron" />
+    </button>
+    <NavMenuLayer
+      id={layerId}
+      triggerId={triggerId}
+      anchorId={navId}
+      placement="below"
+      alignment={slot}
+      showDelay={delay}
+      hideDelay={hideDelay}
+      focusItems={PANEL_ITEM_SELECTOR}
+      hasSurface={false}
+      hasMotion={false}
+      layerClass="ax-mega-menu-layer"
+    >
+      <div
+        role="group"
+        aria-label={label}
+        class="ax-mega-menu-panel"
+        data-astryx-roving="vertical"
+        data-astryx-roving-items={PANEL_ITEM_SELECTOR}
+        data-astryx-roving-tabindex="false"
+      >
+        <div class="ax-mega-menu-content">
+          {itemsHtml !== '' && <Grid columns={2} gap={2} class="ax-mega-menu-items"><Fragment set:html={itemsHtml} /></Grid>}
+          {featuredHtml !== '' && <div class="ax-mega-menu-featured"><Fragment set:html={featuredHtml} /></div>}
+        </div>
+      </div>
+    </NavMenuLayer>
+  </Fragment>
+)}
+<script>import '../../behaviors/navDisclosure';</script>

@@ -1,0 +1,156 @@
+/*
+ * The heading styles TopNavHeading and SideNavHeading share (identical in
+ * @astryxdesign/core TopNav/TopNavHeading.tsx and SideNav/SideNavHeading.tsx: root, interactive,
+ * menuTrigger, logo/icon, textContainer, superheading, heading, subheading, headingRow,
+ * headingLink, chevron, chevronGlyph, headerEndContent, popoverContent, popoverHeading,
+ * popoverChevron, popoverOverlap). The root's theme class (`astryx-top-nav-heading` /
+ * `astryx-side-nav-heading`) carries `ax-nav-heading`.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-nav-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-height: var(--spacing-8);
+    min-width: 0;
+    padding-inline-start: var(--spacing-2);
+    padding-inline-end: var(--spacing-2);
+    padding-block: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+    color: var(--color-text-primary);
+    cursor: default;
+  }
+  .ax-nav-heading:has(.astryx-nav-icon) { padding-inline-start: 0; }
+
+  /* menuTrigger: a whole-heading link or trigger (no hover fill: the popover is the feedback). */
+  .ax-nav-heading:is(.ax-heading-menu-trigger, .ax-heading-whole-link) {
+    cursor: pointer;
+    border-radius: var(--radius-element);
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: var(--font-weight-normal);
+    text-align: start;
+  }
+
+  .ax-heading-logo {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: inherit;
+  }
+  .ax-heading-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .ax-heading-super,
+  .ax-heading-sub {
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-heading-title {
+    font-size: var(--text-large-size);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--text-large-leading);
+    color: var(--color-text-primary);
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ax-heading-title-link { color: inherit; }
+  .ax-heading-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+  }
+
+  /* chevron: a 28px box; the glyph stays on the inherited 1em. */
+  .ax-heading-chevron {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--spacing-7);
+    min-height: var(--spacing-7);
+    color: var(--color-icon-secondary);
+  }
+  .astryx-icon.ax-heading-chevron-glyph { width: 1em; height: 1em; font-size: inherit; }
+  /* interactive (the chevron trigger): button reset + the hover fill. */
+  .ax-heading-chevron-button {
+    cursor: pointer;
+    border-radius: var(--radius-element);
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: var(--font-weight-normal);
+    text-align: start;
+  }
+  @media (hover: hover) {
+    .ax-heading-chevron-button:where(:not(:disabled, [aria-disabled="true"])):hover { background-color: var(--color-overlay-hover); }
+  }
+  .ax-heading-end {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    margin-inline-start: auto;
+  }
+
+  /* The popover: laid over the heading so the copy at its top sits where the heading is. */
+  .ax-heading-popover-content {
+    padding: var(--spacing-1);
+    overflow: hidden;
+  }
+  .ax-heading-popover-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    width: 100%;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    text-align: start;
+    min-height: var(--spacing-8);
+    padding-inline-start: var(--spacing-2);
+    padding-inline-end: var(--spacing-2);
+    padding-block: 0;
+    margin-block-start: var(--spacing-1);
+    margin-block-end: var(--spacing-2);
+    margin-inline: var(--spacing-1);
+    box-sizing: border-box;
+    cursor: pointer;
+  }
+  .ax-heading-popover-heading:has(.astryx-nav-icon) { padding-inline-start: 0; }
+  .ax-heading-chevron-flipped { transform: rotate(180deg); }
+  .ax-heading-menu-layer[data-placement] {
+    min-width: calc(var(--_ax-anchor-width, 0px) + 16px);
+    min-width: calc(anchor-size(width) + 16px);
+    margin-block-start: calc(-1 * anchor-size(height) - 8px);
+    margin-inline-start: -8px;
+  }
+  /* The collapsed rail's heading menu opens below the icon (styles.popover). */
+  .ax-heading-flyout-layer[data-placement] {
+    min-width: var(--_ax-anchor-width, 0px);
+    min-width: anchor-size(width);
+    margin-block-start: var(--spacing-1);
+    margin-inline-start: 0;
+  }
+}

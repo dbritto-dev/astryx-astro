@@ -1,0 +1,66 @@
+---
+/**
+ * TopNavMegaMenuItem — one link (or action) in a TopNavMegaMenu panel: a large icon tile, title
+ * and description. Port of @astryxdesign/core TopNav/TopNavMegaMenuItem.tsx.
+ * Theme target: `.astryx-top-nav-mega-menu-item` (`[data-mode="drawer"]` in the drawer).
+ *
+ * `href` renders the item as the anchor (LinkProvider, `as`, safe-URL check); without it a
+ * `<div>` in the panel (a `<button>` in the drawer) — listen for `click` (Astryx `onClick`).
+ * In the AppShell drawer it is a nav row (indented, smaller tile) that closes the drawer.
+ *
+ * @example
+ * <TopNavMegaMenuItem title="Analytics" description="Track behavior" icon="wrench" href="/analytics" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import NavLink from '../NavItem/_NavLink.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {LinkComponentType} from '../LinkProvider/linkComponent';
+import {cx, themeProps} from '../../lib/themeProps';
+import {topNavMode} from '../AppShell/appShellContext';
+import '../NavItem/NavItem.css';
+import './TopNav.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  title: string;
+  description?: string;
+  /** Icon: a name, SVG string or Astro component (or the `icon` slot). */
+  icon?: ExtendedIconName | AstroIconComponent;
+  href?: string | URL;
+  /** Link component (overrides LinkProvider). */
+  as?: LinkComponentType;
+  'data-testid'?: string;
+}
+
+const {title, description, icon, href, as, class: className, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown};
+const isDrawer = topNavMode(Astro) === 'drawer';
+const iconHtml = Astro.slots.has('icon') ? (await Astro.slots.render('icon')).trim() : '';
+const hasIcon = iconHtml !== '' || (icon != null && icon !== '');
+const {themeClass, attrs} = themeProps('top-nav-mega-menu-item', {mode: isDrawer ? 'drawer' : null});
+const common = {
+  ...rest,
+  class: cx(themeClass, isDrawer ? 'ax-nav-item ax-mega-item-drawer' : 'ax-mega-item', 'ax-overlay-bg ax-focus-visible', className as string | undefined),
+  ...attrs,
+  'data-ax-nav-size': isDrawer ? 'md' : undefined,
+  'data-ax-navigate': isDrawer ? '' : undefined,
+};
+const iconBox = isDrawer ? 'ax-mega-item-drawer-icon' : 'ax-mega-item-icon';
+---
+{href != null ? (
+  <NavLink {...common} href={href} as={as}>
+    {hasIcon && <div class={iconBox}>{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon!} size={isDrawer ? 'sm' : 'md'} color="inherit" />}</div>}
+    {isDrawer
+      ? <div class="ax-mega-item-drawer-content">{title}{description && <span class="ax-mega-item-drawer-description">{description}</span>}</div>
+      : <div class="ax-mega-item-content"><span class="ax-mega-item-title">{title}</span>{description && <span class="ax-mega-item-description">{description}</span>}</div>}
+  </NavLink>
+) : isDrawer ? (
+  <button type="button" {...common}>
+    {hasIcon && <div class={iconBox}>{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon!} size="sm" color="inherit" />}</div>}
+    <div class="ax-mega-item-drawer-content">{title}{description && <span class="ax-mega-item-drawer-description">{description}</span>}</div>
+  </button>
+) : (
+  <div {...common}>
+    {hasIcon && <div class={iconBox}>{iconHtml !== '' ? <Fragment set:html={iconHtml} /> : <Icon icon={icon!} size="md" color="inherit" />}</div>}
+    <div class="ax-mega-item-content"><span class="ax-mega-item-title">{title}</span>{description && <span class="ax-mega-item-description">{description}</span>}</div>
+  </div>
+)}

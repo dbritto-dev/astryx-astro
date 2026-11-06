@@ -1,0 +1,54 @@
+---
+/**
+ * MobileNavToggle — the hamburger button that opens the AppShell's mobile drawer. Place it
+ * anywhere inside an AppShell (TopNav, content, a custom toolbar): it shows only while the shell
+ * is below its breakpoint, and renders nothing outside an AppShell or when the shell has no
+ * drawer to open. Port of @astryxdesign/core MobileNav/MobileNavToggle.tsx.
+ *
+ * A ghost icon-only Button (`menu` icon, or your markup in the default slot) that is the
+ * drawer's native invoker (`commandfor` + `command="show-modal"`, zero JS) with
+ * `aria-controls` = the drawer id and `aria-expanded` kept in sync by the drawer. Host
+ * attributes reach the button; `aria-expanded` / `aria-controls` stay component-owned.
+ *
+ * @example
+ * <AppShell mobileNav={{hasToggle: false}}>…<MobileNavToggle slot="topNav" />…</AppShell>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {appShellContext, type AppShellContextValue} from '../AppShell/appShellContext';
+import './MobileNav.css';
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'aria-expanded' | 'aria-controls' | 'type'> {
+  /** Accessible label. @default translated 'Open navigation' */
+  label?: string;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {label: labelProp, 'data-testid': testId, locale, class: className, __shell, slot: _slot, ...rest} = Astro.props as Props & {slot?: unknown; __shell?: AppShellContextValue};
+const t = translator(Astro, locale);
+const shell = __shell ?? appShellContext(Astro);
+const label = labelProp ?? t('@astryx.mobileNav.toggle.open');
+const iconHtml = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
+const buttonProps = {
+  ...rest,
+  variant: 'ghost' as const,
+  label,
+  isIconOnly: true,
+  class: cx('ax-mobile-nav-toggle', className as string | undefined),
+  'data-testid': testId ?? 'mobile-nav-toggle',
+  commandfor: shell?.mobileNavId,
+  command: 'show-modal',
+  'aria-haspopup': 'dialog',
+  'aria-expanded': 'false',
+  'aria-controls': shell?.mobileNavId,
+  locale,
+};
+---
+{shell && shell.isMobileNavEnabled && (
+  iconHtml !== ''
+    ? <Button {...buttonProps}><Fragment slot="icon" set:html={iconHtml} /></Button>
+    : <Button {...buttonProps} icon="menu" />
+)}

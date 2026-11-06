@@ -1,0 +1,119 @@
+---
+/**
+ * MobileNav — the full-height slide-out drawer for navigation on narrow screens: SideNav's mobile
+ * counterpart (takes the same children: SideNavSection, SideNavItem, or any markup).
+ * Port of @astryxdesign/core MobileNav/MobileNav.tsx on the Dialog machinery
+ * (Layer/useLayerDismissal.ts, hooks/useFocusTrap.ts, hooks/useScrollLock.ts,
+ * Layer/modalOutlet.ts). Behaviour: src/elements/mobile-nav.ts (`<ax-mobile-nav>`).
+ * Theme target: `.astryx-mobile-nav[data-side]` (the `<dialog>`).
+ *
+ * The `<dialog>` is a transparent full-viewport modal (`showModal()`: top layer, `::backdrop`
+ * scrim, page inert and scroll locked, Tab contained); the drawer panel inside slides from the
+ * `side` edge (`start` / `end`, logical, mirrored in RTL; `auto` picks the half of the viewport
+ * the opener sits in, `end` before that). It is `width` px, never wider than 85vw, so a strip of
+ * the page stays beside it. The header holds `header` (a string renders a level-2 Heading and
+ * names the dialog; markup goes in the `header` slot) and the close button.
+ *
+ * Opening: inside AppShell the drawer is the shell's (its id comes from the shell, the auto
+ * MobileNavToggle opens it). Standalone, open it with `attachMobileNav()` (./attach.ts: a
+ * `commandfor` invoker, zero JS) or `show()` / `hide()` / `toggle()` on the host; `isOpen` is the
+ * initial state. Escape, a press on the scrim (starting and ending there), the close button and
+ * any navigation inside close it — rows carry `data-ax-navigate` (SideNavItem, TopNavItem,
+ * BreadcrumbItem …): their activation dispatches `astryx-navigate` {href, event} (bubbling), and
+ * the drawer closes on any `astryx-navigate` that reaches it. (Deviation: Astryx closes on a row
+ * only in the AppShell drawer; a standalone drawer's caller closes it in its own onClick — here
+ * every MobileNav marks its rows, since there is no onClick to do it with.) Focus moves to the panel and
+ * returns to the opener after the slide-out. Events: `astryx-open-change` {isOpen, reason}.
+ *
+ * Deferred (touch extra): the coarse-pointer entrance input hold (holdEntranceInput).
+ *
+ * @example
+ * ---
+ * const nav = attachMobileNav({id: 'site-nav'});
+ * ---
+ * <Button {...nav.trigger} label="Menu" icon="menu" isIconOnly variant="ghost" />
+ * <MobileNav {...nav.layer} header="Navigation">
+ *   <SideNavItem label="Home" href="/" isSelected />
+ * </MobileNav>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Heading from '../Text/Heading.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {prepareLayerContent} from '../Dialog/content';
+import {appShellContext, isShellDrawer, IN_MOBILE_NAV_LOCAL, SHELL_DRAWER_LOCAL} from '../AppShell/appShellContext';
+import '../Dialog/overlay.css';
+import './MobileNav.css';
+
+export interface Props extends Omit<HTMLAttributes<'dialog'>, 'open' | 'title'> {
+  /** Initial open state (the host element owns it afterwards). Inside AppShell the shell's toggle opens it. @default false */
+  isOpen?: boolean;
+  /** Header text (a level-2 heading that also names the drawer); markup goes in the `header` slot. */
+  header?: string;
+  /** Drawer width in px, capped at 85vw. @default 320 */
+  width?: number;
+  /** Edge the drawer slides from; `auto` follows the opener's half of the viewport. @default 'auto' */
+  side?: 'start' | 'end' | 'auto';
+  /** Accessible name. @default `header` when a string, else translated 'Navigation' */
+  label?: string;
+  /** The `<dialog>` id (invokers target it). @default the AppShell drawer id, else generated */
+  id?: string;
+  locale?: string;
+  'data-testid'?: string;
+}
+
+const {
+  isOpen = false, header, width = 320, side = 'auto', label: labelProp, id: idProp, locale,
+  class: className, style, open: _open, slot: _slot, ...rest
+} = Astro.props as Props & {open?: unknown; slot?: unknown};
+
+const t = translator(Astro, locale);
+const shell = appShellContext(Astro);
+const id = idProp ?? (shell && isShellDrawer(Astro) ? shell.mobileNavId : uid(Astro, 'ax-mobile-nav'));
+const resolvedSide = side === 'auto' ? 'end' : side;
+const {themeClass, attrs} = themeProps('mobile-nav', {side: resolvedSide});
+const headerHtml = Astro.slots.has('header') ? (await Astro.slots.render('header')).trim() : '';
+const label = labelProp ?? (typeof header === 'string' && header !== '' ? header : t('@astryx.mobileNav.navigation'));
+const hasHeader = headerHtml !== '' || (header != null && header !== '');
+const raw = Astro.slots.has('default')
+  ? await renderWithLocals(Astro, {[SHELL_DRAWER_LOCAL]: false, [IN_MOBILE_NAV_LOCAL]: true}, () => Astro.slots.render('default'))
+  : '';
+const {html: content} = await prepareLayerContent(raw, {id, closeCommand: 'close'});
+---
+<ax-mobile-nav class="ax-overlay-host" data-ax-purpose="info" data-ax-side={side} data-ax-open={isOpen ? 'true' : undefined}>
+  <dialog
+    {...rest}
+    id={id}
+    class={cx(themeClass, 'ax-overlay-root', className)}
+    {...attrs}
+    aria-label={label}
+    aria-modal="true"
+    closedby="any"
+    data-astryx-layer-root=""
+    data-ax-scroll-lock=""
+    style={mergeStyles(style as StyleValue)}
+  >
+    <div class="ax-mobile-nav-drawer" tabindex="-1" style={`--_ax-mobile-nav-width:${width}px`}>
+      <div class="ax-mobile-nav-header" data-ax-no-title={hasHeader ? undefined : ''}>
+        {headerHtml !== ''
+          ? <Fragment set:html={headerHtml} />
+          : header != null && header !== '' && <Heading level={2} class="ax-mobile-nav-title">{header}</Heading>}
+        <Button
+          variant="ghost"
+          label={t('@astryx.mobileNav.closeNavigation')}
+          icon="close"
+          isIconOnly
+          {...{commandfor: id, command: 'close'}}
+          data-ax-dialog-close=""
+          locale={locale}
+        />
+      </div>
+      <div class="ax-mobile-nav-content"><Fragment set:html={content} /></div>
+    </div>
+  </dialog>
+</ax-mobile-nav>
+<script>import '../../elements/mobile-nav';</script>
