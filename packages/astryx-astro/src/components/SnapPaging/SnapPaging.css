@@ -1,0 +1,36 @@
+/*
+ * SnapPaging — the scroll-snap viewport and track behind <ax-snap-paging>
+ * (src/elements/snap-paging.ts). Astryx's pager is a hook with no styles of its own; these
+ * rules give native scroll snapping the paging scroll view's shape: one snap per page,
+ * pages at their start edge, no scroll chaining past the ends.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-snap-gap { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  .ax-snap-paging {
+    display: block;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .ax-snap-paging::-webkit-scrollbar { display: none; }
+
+  .ax-snap-paging-track {
+    display: flex;
+    gap: var(--_ax-snap-gap, 0px);
+  }
+  .ax-snap-paging-track > * {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  /* Viewport pages: every page is the viewport's width. */
+  .ax-snap-paging[data-pages="viewport"] > .ax-snap-paging-track > * {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+}

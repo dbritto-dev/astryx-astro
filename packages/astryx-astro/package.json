@@ -29,8 +29,9 @@
     "manifest": "node scripts/build-manifest.mjs",
     "index": "node scripts/build-index.mjs",
     "conformance": "node scripts/conformance.mjs",
-    "generate": "node scripts/build-tokens.mjs && node scripts/build-manifest.mjs && node scripts/build-index.mjs",
-    "check:generated": "node scripts/build-tokens.mjs --check && node scripts/build-manifest.mjs --check && node scripts/build-index.mjs --check"
+    "generate": "node scripts/build-tokens.mjs && node scripts/build-syntax.mjs && node scripts/build-manifest.mjs && node scripts/build-index.mjs",
+    "check:generated": "node scripts/build-tokens.mjs --check && node scripts/build-syntax.mjs --check && node scripts/build-manifest.mjs --check && node scripts/build-index.mjs --check",
+    "syntax": "node scripts/build-syntax.mjs"
   },
   "peerDependencies": {
     "astro": ">=5"

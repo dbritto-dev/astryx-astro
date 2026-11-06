@@ -1,0 +1,16 @@
+---
+/**
+ * Demo / test helper (not exported): renders one Astryx catalog string with the locale the
+ * component sees (`translator(Astro)`), plus that locale and direction.
+ */
+import {translator, resolveLocale} from '../../lib/i18n';
+
+interface Props {
+  message: string;
+  values?: Record<string, unknown>;
+}
+const {message, values, ...rest} = Astro.props as Props & Record<string, unknown>;
+const t = translator(Astro);
+const locals = (Astro.locals ?? {}) as Record<string, unknown>;
+---
+<span {...rest} data-locale={resolveLocale(Astro)} data-direction={(locals.astryxDirection as string | undefined) ?? 'ltr'}>{t(message, values)}</span>

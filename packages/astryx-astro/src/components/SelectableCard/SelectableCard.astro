@@ -1,0 +1,93 @@
+---
+/**
+ * SelectableCard — a card the user toggles on and off. Port of @astryxdesign/core
+ * SelectableCard/SelectableCard.tsx (+ selectableCardInput.ts, hooks/useClickableContainer.ts).
+ *
+ * A Card (all surface styling) with a visually hidden native `<input type="checkbox">` as its
+ * first child: the input carries the role, the accessible name (`aria-label={label}`), the
+ * checked state and the keyboard (Tab, Space natively). Selection paints with
+ * `:has(> input:checked)` — an inset accent ring through Card's `--_card-ring` plus the
+ * border, per variant — so the visual state needs no JavaScript.
+ *
+ * A small behaviour (behaviors/selectableCard.ts, data-ax-selectable-card) adds what the
+ * platform lacks: a click anywhere on the card toggles it (not on nested interactive
+ * controls, not when the click ends a text selection), Enter toggles like Space, and
+ * `data-selected` follows the input for theme rules.
+ *
+ * Events: native `change` from the input, and `astryx-change` `{isSelected}` (bubbles,
+ * composed) on the card — Astryx's `onChange(isSelected)`.
+ * Disabled: dimmed, the input stays focusable with `aria-disabled="true"`; clicks and
+ * Enter/Space are cancelled by runtime/disabledInteraction.ts, so it never toggles.
+ *
+ * Port extensions (Astryx keeps these in an internal group context): `type="radio"` makes
+ * the card one choice of a native radio set (it selects, never deselects), `name` / `value`
+ * submit it with a form. A disabled card leaves its form (`form=""`).
+ * Deferred (touch scope): the coarse-pointer press controller paint.
+ *
+ * @example
+ * <SelectableCard label="Pro plan" isSelected name="plan" value="pro">…</SelectableCard>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {Elevation, SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import Card, {type CardVariant} from '../Card/Card.astro';
+import './SelectableCard.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Accessible name of the card (the input's aria-label). */
+  label: string;
+  /** Initial selection; the input owns it afterwards. @default false */
+  isSelected?: boolean;
+  /** Disables the card; it stays focusable (aria-disabled) and discoverable. @default false */
+  isDisabled?: boolean;
+  /** Internal padding (spacing step). @default the theme's card padding */
+  padding?: SpacingStep;
+  /** Background variant. @default 'default' */
+  variant?: CardVariant;
+  /** Resting elevation; the selection ring composes on top. @default 'none' */
+  elevation?: Elevation;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  /** Port extension: `radio` makes the card a single-choice option (group by `name`). @default 'checkbox' */
+  type?: 'checkbox' | 'radio';
+  /** Port extension: form field name of the input. */
+  name?: string;
+  /** Port extension: submitted value of the input. */
+  value?: string;
+}
+
+const {
+  label, isSelected = false, isDisabled = false, padding, variant = 'default', elevation = 'none',
+  width, height, maxWidth, type = 'checkbox', name, value, class: className, ...rest
+} = Astro.props;
+
+const {themeClass, attrs} = themeProps('selectable-card', {variant, selected: isSelected ? 'true' : 'false'});
+---
+<Card
+  width={width}
+  height={height}
+  maxWidth={maxWidth}
+  padding={padding}
+  variant={variant}
+  elevation={elevation}
+  class={cx(themeClass, 'ax-focus-within', className)}
+  {...attrs}
+  data-pressable-container="true"
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-selectable-card=""
+  {...rest}
+><input
+  class="ax-selectable-card-input"
+  type={type}
+  name={name}
+  value={value}
+  form={isDisabled ? '' : undefined}
+  checked={isSelected}
+  aria-label={label}
+  aria-disabled={isDisabled ? 'true' : undefined}
+/><slot /></Card>
+<script>
+  import '../../behaviors/selectableCard';
+  import '../../elements/runtime/disabledInteraction';
+</script>

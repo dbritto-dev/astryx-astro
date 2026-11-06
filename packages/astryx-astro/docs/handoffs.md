@@ -128,3 +128,36 @@ A disabled control that shows a tooltip uses `aria-disabled`, not `disabled`.
 - `lib/characters.ts`, `lib/accessibleName.ts`, `lib/groupItems.ts`, `lib/devWarning.ts`,
   `lib/searchableItem.ts`.
 - Lib tests run as plain node scripts; `tools/tests/lib-loader.mjs` resolves extensionless TS imports.
+
+## Subtree-scoped `Astro.locals` (`lib/subtreeLocals.ts`) — Theme, i18n, LinkProvider
+
+Request-wide contexts are plain `Astro.locals` keys. A provider renders its slot with
+`renderWithLocals(Astro, {key: value}, () => Astro.slots.render('default'))`: everything
+inside reads the provider's value, siblings keep the request value (AsyncLocalStorage; Astro
+renders sibling expressions concurrently, so set-and-restore around an await leaks — verified).
+Middleware may still assign the keys (`ctx.locals.astryxTheme = 'neutral'`).
+
+| Key | Provider | Consumers |
+|---|---|---|
+| `astryxTheme`, `astryxThemeMode` | `<Theme>` (theme/) | Icon, `resolveComponentIcon` |
+| `astryxLocale`, `astryxDirection`, `astryxCalendar`, `astryxMessages`, `astryxOverrides` | `<InternationalizationProvider>` (i18n/) | `translator(Astro)` (locale, then overrides → messages → shipped → English) |
+| `astryxLinkComponent` | `<LinkProvider>` (LinkProvider/) | Link, Button `href`, Token … — `resolveLinkComponent(Astro, as)` + `linkDestination(href, to)` in `LinkProvider/linkComponent.ts` |
+
+Root theme: spread `themeRootAttributes(name, mode)` (theme/themeRoot.ts) on `<html>` and set
+`astryxTheme` in middleware; a `<Theme>` with neither above it syncs `<html>` with an inline script.
+
+## SegmentedControl
+
+- Cascade key `segmented-control` (items opt in; the control stamps value/size/disabled/reason).
+  Items also keep `size` when the control's own size is not explicit, so a size provider above
+  the control (ButtonGroup/Toolbar, cascade key `size`) sizes the root and its segments.
+- Keyboard hint (useKeyboardHint): `<Layer class="ax-keyboard-hint" placement="below"
+  alignment="start" offset="var(--spacing-2)" data-ax-keyboard-hint>` inside the composite,
+  shown by the element on keyboard focus entry (`elements/segmented-control.ts`) — reusable for
+  TabList / Toolbar once lifted into the runtime.
+
+## Syntax tokens
+
+`src/styles/syntax.css` (generated: `node scripts/build-syntax.mjs`) holds the `:root`
+`--color-syntax-*` defaults and the 12 presets as `[data-astryx-syntax-theme="<name>"]`.
+CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` switches them.

@@ -1,0 +1,76 @@
+---
+/**
+ * SegmentedControlItem — one segment: a `<button role="radio">` inside a SegmentedControl.
+ * Port of @astryxdesign/core SegmentedControl/SegmentedControlItem.tsx (+ the private
+ * segmentDisabled / segmentTitle attributes).
+ *
+ * The group context (value, size, layout, group disabled, disabled reason) arrives by
+ * stamping: the item renders standalone defaults and opts into the cascade keys
+ * `segmented-control` (and `size`, which a SizeContext-style provider above the control may
+ * fill when the control's own size is not explicit — see SegmentedControl.astro). The
+ * parent writes `aria-checked`, `tabindex` (the selected segment holds the Tab stop, even
+ * disabled), `data-selected`, `data-size`, `aria-disabled` / `data-disabled`, the group's
+ * disabled reason in `aria-describedby`, and the shared hover/pressed overlay class on the
+ * segments a press can change. <ax-segmented-control> keeps them in sync afterwards.
+ *
+ * Theme hooks: `.astryx-segmented-control-item[data-size][data-selected="selected"]
+ * [data-disabled="disabled"]`.
+ *
+ * Port extension: `tooltip` shows a Tooltip for the segment (useful for icon-only segments)
+ * through the tooltip attachment contract; Astryx segments have none.
+ * Deferred (touch scope): usePressFeedback's coarse-pointer press paint.
+ *
+ * @example
+ * <SegmentedControlItem value="grid" label="Grid"><Icon slot="icon" icon="menu" /></SegmentedControlItem>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import './SegmentedControl.css';
+
+export interface Props extends Omit<HTMLAttributes<'button'>, 'value'> {
+  /** Unique value for this segment, matched against the control's `value`. */
+  value: string;
+  /** Accessible label; the visible text unless `isLabelHidden`. */
+  label: string;
+  /** Show only the icon; `label` becomes the `aria-label`. @default false */
+  isLabelHidden?: boolean;
+  /** Icon markup (SVG string) shown before the label. Or use the `icon` slot. */
+  icon?: string;
+  /** Disables this segment; a disabled selected segment keeps the Tab stop. @default false */
+  isDisabled?: boolean;
+  /** Port extension: tooltip text for this segment. */
+  tooltip?: string;
+}
+
+const {
+  value, label, isLabelHidden = false, icon, isDisabled = false, tooltip,
+  class: className, 'aria-describedby': describedBy, ...rest
+} = Astro.props;
+
+const hasIcon = Astro.slots.has('icon') || (icon != null && icon !== '');
+const iconHtml = Astro.slots.has('icon') ? await Astro.slots.render('icon') : icon;
+const tip = tooltip ? attachTooltip({describedBy}) : null;
+// Standalone defaults (outside a control): unselected, md. The control stamps the rest.
+const {themeClass, attrs} = themeProps('segmented-control-item', {size: 'md', disabled: isDisabled ? 'disabled' : null});
+---
+<button
+  {...rest}
+  type="button"
+  role="radio"
+  aria-checked="false"
+  aria-disabled={isDisabled ? 'true' : undefined}
+  aria-label={isLabelHidden ? label : undefined}
+  aria-describedby={tip ? tip.trigger['aria-describedby'] : describedBy}
+  data-ax-tooltip={tip?.trigger['data-ax-tooltip']}
+  data-value={value}
+  data-astryx-segment-disabled={isDisabled ? '' : undefined}
+  data-ax-icon-only={isLabelHidden ? '' : undefined}
+  tabindex="-1"
+  class={cx(themeClass, 'ax-focus-visible', !isDisabled && 'ax-overlay-bg', className)}
+  {...attrs}
+  data-ax-inherit={inherits({'segmented-control': true, size: true})}
+>{hasIcon && <span class="ax-segmented-control-icon"><Fragment set:html={iconHtml} /></span>}{!isLabelHidden && <span class="ax-segmented-control-label" data-astryx-segment-title="">{label}</span>}</button>
+{tip && <Tooltip {...tip.layer} content={tooltip} />}

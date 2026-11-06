@@ -1,0 +1,86 @@
+---
+import SegmentedControl from './SegmentedControl.astro';
+import SegmentedControlItem from './SegmentedControlItem.astro';
+import Icon from '../Icon/Icon.astro';
+import Card from '../Card/Card.astro';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <section>
+    <p style={caption}>Sizes (sm, md, lg) — click, or Tab in and use ← → Home End</p>
+    <div style="display:grid;gap:var(--spacing-3);justify-items:start">
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <SegmentedControl label={`View (${size})`} value="week" size={size} id={`sc-${size}`}>
+          <SegmentedControlItem value="day" label="Day" />
+          <SegmentedControlItem value="week" label="Week" />
+          <SegmentedControlItem value="month" label="Month" />
+          <SegmentedControlItem value="year" label="Year" />
+        </SegmentedControl>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Icons, icon-only segments with tooltips, a disabled segment</p>
+    <div style="display:flex;gap:var(--spacing-4);flex-wrap:wrap;align-items:center">
+      <SegmentedControl label="Layout" value="grid" id="sc-icons">
+        <SegmentedControlItem value="list" label="List"><Icon slot="icon" icon="menu" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="grid" label="Grid"><Icon slot="icon" icon="viewColumns" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="calendar" label="Calendar" isDisabled><Icon slot="icon" icon="calendar" size="sm" /></SegmentedControlItem>
+      </SegmentedControl>
+      <SegmentedControl label="Text alignment" value="search" id="sc-icon-only">
+        <SegmentedControlItem value="search" label="Search" isLabelHidden tooltip="Search"><Icon slot="icon" icon="search" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="filter" label="Filter" isLabelHidden tooltip="Filter"><Icon slot="icon" icon="funnel" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="sort" label="Sort" isLabelHidden tooltip="Sort"><Icon slot="icon" icon="arrowsUpDown" size="sm" /></SegmentedControlItem>
+      </SegmentedControl>
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>layout="fill" stretches segments; the event log shows astryx-change</p>
+    <div style="max-width:420px;display:grid;gap:var(--spacing-2)">
+      <SegmentedControl label="Plan" value="monthly" layout="fill" id="sc-fill">
+        <SegmentedControlItem value="monthly" label="Monthly" />
+        <SegmentedControlItem value="yearly" label="Yearly" />
+      </SegmentedControl>
+      <output id="sc-log" style={caption}>value: monthly</output>
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Disabled control with a reason (hover or focus it)</p>
+    <SegmentedControl label="Visibility" value="team" isDisabled disabledMessage="Only owners can change visibility" id="sc-disabled">
+      <SegmentedControlItem value="private" label="Private" />
+      <SegmentedControlItem value="team" label="Team" />
+      <SegmentedControlItem value="public" label="Public" />
+    </SegmentedControl>
+  </section>
+
+  <section>
+    <p style={caption}>In a narrow card the control caps at the card and labels truncate</p>
+    <Card maxWidth={260}>
+      <SegmentedControl label="Workspace view" value="overview" id="sc-narrow">
+        <SegmentedControlItem value="overview" label="Overview" />
+        <SegmentedControlItem value="activity" label="Activity" />
+        <SegmentedControlItem value="members" label="Members" />
+        <SegmentedControlItem value="billing" label="Billing" />
+      </SegmentedControl>
+    </Card>
+  </section>
+
+  <section dir="rtl">
+    <p style={caption}>RTL: arrows follow the reading direction</p>
+    <SegmentedControl label="תצוגה" value="a" id="sc-rtl">
+      <SegmentedControlItem value="a" label="אחד" />
+      <SegmentedControlItem value="b" label="שתיים" />
+      <SegmentedControlItem value="c" label="שלוש" />
+    </SegmentedControl>
+  </section>
+</div>
+<script>
+  const control = document.getElementById('sc-fill');
+  const log = document.getElementById('sc-log');
+  control?.addEventListener('astryx-change', (e) => {
+    if (log) log.textContent = `value: ${(e as CustomEvent<{value: string}>).detail.value}`;
+  });
+</script>

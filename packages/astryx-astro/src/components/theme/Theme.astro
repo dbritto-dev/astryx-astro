@@ -1,0 +1,63 @@
+---
+/**
+ * Theme — applies an Astryx theme to a subtree. Port of @astryxdesign/core theme/Theme.tsx.
+ *
+ * Renders Astryx's wrapper: a `display: contents` `<div data-astryx-theme="<name>">` with
+ * `data-theme="light|dark"` unless the mode is `system`, the matching `color-scheme`, and the
+ * theme's body text color and font. Theme CSS is plain, prebuilt CSS scoped with
+ * `@scope ([data-astryx-theme="<name>"]) to ([data-astryx-theme])`, so a nested Theme starts a
+ * new scope and the outer theme stops at it. Import each theme's CSS once (e.g. in the
+ * layout: `import 'astryx-astro/themes/butter.css'`); there is no runtime injection.
+ *
+ * Server side, the subtree sees `Astro.locals.astryxTheme = <name>` (and `astryxThemeMode`),
+ * so Icons and component-icon slots inside resolve that theme's icon set. It is scoped with
+ * `lib/subtreeLocals.ts` (AsyncLocalStorage), not set-and-restore: siblings Astro renders
+ * concurrently keep the page theme. The slot is buffered (no streaming inside a Theme).
+ *
+ * Root vs nested (Astryx ThemeNestingContext): a Theme with no Theme above it and no request
+ * theme (`Astro.locals.astryxTheme`, normally set in middleware) is the root. The root also
+ * syncs `data-astryx-theme` / `data-theme` onto `<html>` with a tiny inline script, as
+ * Astryx's useRootThemeSync does. For a correct first paint, set them on `<html>` at SSR
+ * yourself (`themeRootAttributes()` in ./themeRoot.ts) and the request theme in middleware;
+ * every `<Theme>` is then nested and writes nothing outside its wrapper.
+ *
+ * Not ported: runtime theme objects (`defineTheme()` style injection) — themes are built CSS
+ * (`astryx theme build`); a theme that reduces motion for everyone (no public theme does).
+ *
+ * @example
+ * <Theme theme="matcha" mode="dark"><Card>…</Card></Theme>
+ */
+import {renderWithLocals, requestLocal} from '../../lib/subtreeLocals';
+import {themeName, type ThemeInput, type ThemeMode} from './themeRoot';
+import './theme.css';
+
+export interface Props {
+  /** Theme name (`'neutral'`, `'butter'` …) or a built theme object with a `name`. */
+  theme: ThemeInput;
+  /** Color mode; `system` follows the OS preference. @default 'system' */
+  mode?: ThemeMode;
+  /**
+   * Port extension: force (`true`) or skip (`false`) the `<html>` sync of a root Theme.
+   * @default no Theme above it and no `Astro.locals.astryxTheme`
+   */
+  isRoot?: boolean;
+}
+
+const {theme, mode = 'system', isRoot} = Astro.props;
+const name = themeName(theme);
+const locals = (Astro.locals ?? {}) as Record<string, unknown>;
+const syncsRoot = isRoot ?? (locals.astryxThemeNested !== true && requestLocal(Astro, 'astryxTheme') == null);
+const html = await renderWithLocals(
+  Astro,
+  {astryxTheme: name, astryxThemeMode: mode, astryxThemeNested: true},
+  () => Astro.slots.render('default'),
+);
+---
+<div class="ax-theme" data-astryx-theme={name} data-theme={mode === 'system' ? undefined : mode}>{syncsRoot && (
+  <script is:inline define:vars={{name, mode}}>
+    const root = document.documentElement;
+    root.setAttribute('data-astryx-theme', name);
+    if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
+    else root.removeAttribute('data-theme');
+  </script>
+)}<Fragment set:html={html} /></div>

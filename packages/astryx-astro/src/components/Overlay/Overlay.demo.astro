@@ -1,0 +1,85 @@
+---
+import Overlay from './Overlay.astro';
+import SnapPaging from '../SnapPaging/SnapPaging.astro';
+import Grid from '../Grid/Grid.astro';
+import Badge from '../Badge/Badge.astro';
+import Icon from '../Icon/Icon.astro';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const media = (hue: number) =>
+  `aspect-ratio:16/10;border-radius:var(--radius-container);background:radial-gradient(circle at 30% 30%, hsl(${hue} 80% 70%), transparent 55%),linear-gradient(135deg, hsl(${hue} 60% 35%), hsl(${(hue + 60) % 360} 70% 20%))`;
+const title = 'margin:0;font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const meta = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const btn = 'font:inherit;padding:var(--spacing-1) var(--spacing-3);border-radius:var(--radius-element);border:1px solid var(--color-border);background:transparent;color:var(--color-text-primary);cursor:pointer';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <section>
+    <p style={caption}>showOn: always (dark scrim, fill) · hover (bottom strip) · focus (Tab into the card) · hover-or-focus (top strip, light scrim)</p>
+    <Grid columns={{minWidth: 220}} gap={3} align="start">
+      <Overlay id="ov-always">
+        <div style={media(210)} role="img" aria-label="Lake at dusk"></div>
+        <Fragment slot="content"><p style={title}>Lake at dusk</p><p style={meta}>align="end"</p></Fragment>
+      </Overlay>
+      <Overlay showOn="hover" position="bottom" id="ov-hover">
+        <a href="#ov-hover" style="display:block;border-radius:var(--radius-container)" class="ax-focus-visible" id="ov-hover-media"><div style={media(20)} role="img" aria-label="Desert road"></div></a>
+        <Fragment slot="content"><p style={title}>Desert road</p><button type="button" style={btn} class="ax-focus-visible" id="ov-hover-action">Quick view</button></Fragment>
+      </Overlay>
+      <Overlay showOn="focus" align="center" id="ov-focus">
+        <a href="#ov-focus" style="display:block;border-radius:var(--radius-container)" class="ax-focus-visible" id="ov-focus-link"><div style={media(140)} role="img" aria-label="Forest"></div></a>
+        <Fragment slot="content"><Badge label="Focused" variant="green" /></Fragment>
+      </Overlay>
+      <Overlay showOn="hover-or-focus" position="top" scrim="light" align="start" id="ov-light">
+        <div style={media(280)} role="img" aria-label="Aurora"></div>
+        <Fragment slot="content"><p style={title}>Aurora</p><p style={meta}>scrim="light"</p></Fragment>
+      </Overlay>
+    </Grid>
+  </section>
+
+  <section>
+    <p style={caption}>No scrim, alignment, and controlled visibility (isOpen + the element API)</p>
+    <Grid columns={{minWidth: 220}} gap={3} align="start">
+      <Overlay scrim={false} align="start" content="scrim={false}">
+        <div style={media(330)} role="img" aria-label="Coral"></div>
+      </Overlay>
+      <Overlay align="center" position="bottom" content="position=bottom · align=center">
+        <div style={media(60)} role="img" aria-label="Fields"></div>
+      </Overlay>
+      <div style="display:grid;gap:var(--spacing-2)">
+        <Overlay isOpen={false} id="ov-controlled">
+          <div style={media(180)} role="img" aria-label="Glacier"></div>
+          <Fragment slot="content"><p style={title}><Icon icon="info" size="sm" /> Controlled</p><p style={meta}>isOpen toggled by the button</p></Fragment>
+        </Overlay>
+        <button type="button" style={btn} class="ax-focus-visible" id="ov-toggle" aria-controls="ov-controlled">Toggle overlay</button>
+      </div>
+    </Grid>
+  </section>
+
+  <section>
+    <p style={caption}>Paged gallery: SnapPaging (scroll snap + the pager API) with Overlay captions</p>
+    <div style="display:grid;gap:var(--spacing-2);max-width:520px">
+      <SnapPaging id="ov-pager" gap={12} label="Gallery">
+        {[200, 0, 120, 260, 40].map((hue, i) => (
+          <Overlay position="bottom" content={`Photo ${i + 1} of 5`}>
+            <div style={media(hue)} role="img" aria-label={`Photo ${i + 1}`}></div>
+          </Overlay>
+        ))}
+      </SnapPaging>
+      <div style="display:flex;gap:var(--spacing-2);align-items:center">
+        <button type="button" style={btn} class="ax-focus-visible" id="ov-prev">Previous</button>
+        <button type="button" style={btn} class="ax-focus-visible" id="ov-next">Next</button>
+        <output id="ov-page" style={caption}>1 / 5</output>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+  import type {SnapPagingElement} from '../../elements/snap-paging';
+  const overlay = document.getElementById('ov-controlled') as (HTMLElement & {toggle?: () => void}) | null;
+  document.getElementById('ov-toggle')?.addEventListener('click', () => overlay?.toggle?.());
+  const pager = document.getElementById('ov-pager') as SnapPagingElement | null;
+  const out = document.getElementById('ov-page');
+  document.getElementById('ov-prev')?.addEventListener('click', () => pager?.prev());
+  document.getElementById('ov-next')?.addEventListener('click', () => pager?.next());
+  pager?.addEventListener('astryx-index-change', (e) => {
+    if (out && pager) out.textContent = `${(e as CustomEvent<{index: number}>).detail.index + 1} / ${pager.pageCount}`;
+  });
+</script>

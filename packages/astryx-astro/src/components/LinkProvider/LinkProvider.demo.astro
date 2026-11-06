@@ -1,0 +1,37 @@
+---
+import LinkProvider from './LinkProvider.astro';
+import DemoLink from './_DemoLink.astro';
+import RouterLink from './_RouterLink.astro';
+const row = 'display:flex;gap:var(--spacing-4);align-items:center;flex-wrap:wrap;padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element)';
+const tag = 'min-width:12rem;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const link = 'color:var(--color-text-accent)';
+---
+<div style="display:grid;gap:var(--spacing-3)">
+  <p style="margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)">
+    Link-rendering components resolve their element as <code>as</code> → LinkProvider (or middleware's{' '}
+    <code>Astro.locals.astryxLinkComponent</code>) → <code>&lt;a&gt;</code>. Links below use a demo consumer until Link lands.
+  </p>
+  <div style={row} id="link-native">
+    <span style={tag}>No provider: native &lt;a&gt;</span>
+    <DemoLink href="/docs" style={link}>Documentation</DemoLink>
+  </div>
+  <LinkProvider component={RouterLink}>
+    <div style={row} id="link-custom">
+      <span style={tag}>LinkProvider component=RouterLink</span>
+      <DemoLink href="/docs" style={link}>Documentation</DemoLink>
+      <DemoLink href="/pricing" style={link}>Pricing</DemoLink>
+      <DemoLink href="javascript:alert(1)" style={link}>Blocked destination (inert)</DemoLink>
+      <DemoLink href="/plain" as="a" style={link}>as="a" overrides</DemoLink>
+    </div>
+    <LinkProvider component="a">
+      <div style={row} id="link-reset">
+        <span style={tag}>Nested LinkProvider component="a"</span>
+        <DemoLink href="/docs" style={link}>Documentation</DemoLink>
+      </div>
+    </LinkProvider>
+  </LinkProvider>
+  <div style={row} id="link-after">
+    <span style={tag}>After the provider: native again</span>
+    <DemoLink href="/docs" style={link}>Documentation</DemoLink>
+  </div>
+</div>

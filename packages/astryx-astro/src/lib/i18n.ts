@@ -44,19 +44,43 @@ const cache = new Map<string, IntlMessageFormat>();
 
 export type Translate = (key: string, values?: Record<string, unknown>) => string;
 
-/** `const t = translator(Astro); t('@astryx.pagination.nextBy', {step: 2})` */
+type LocaleMap = Record<string, Record<string, string>>;
+
+/** Exact tag, then parent tags ('es-MX' → 'es'), as Astryx resolves catalogs. */
+function lookup(map: LocaleMap | undefined, locale: string, key: string): string | undefined {
+  if (!map) return undefined;
+  for (let tag = locale; tag; tag = tag.includes('-') ? tag.slice(0, tag.lastIndexOf('-')) : '') {
+    const hit = map[tag]?.[key];
+    if (hit !== undefined) return hit;
+  }
+  return undefined;
+}
+
+/**
+ * `const t = translator(Astro); t('@astryx.pagination.nextBy', {step: 2})`
+ *
+ * Resolution per key (Astryx order): `Astro.locals.astryxOverrides` → `astryxMessages`
+ * (both `{[locale]: {key: message}}`, set by InternationalizationProvider or middleware) →
+ * shipped catalog → English → the key.
+ */
 export function translator(astro?: AstroLike, explicitLocale?: string): Translate {
   const locale = resolveLocale(astro, explicitLocale);
   const catalogLocale = resolveCatalogLocale(locale);
   const catalog = byLocale.get(catalogLocale) ?? english;
+  const overrides = astro?.locals?.astryxOverrides as LocaleMap | undefined;
+  const messages = astro?.locals?.astryxMessages as LocaleMap | undefined;
   return (key, values) => {
-    const message = catalog[key] ?? english[key];
+    const custom = lookup(overrides, locale, key) ?? lookup(messages, locale, key);
+    const message = custom ?? catalog[key] ?? english[key];
     if (message === undefined) return key;
-    const cacheKey = `${catalogLocale}\u0000${key}`;
-    let fmt = cache.get(cacheKey);
-    if (!fmt) {
-      fmt = new IntlMessageFormat(message, catalog[key] ? locale : 'en');
-      cache.set(cacheKey, fmt);
+    const messageLocale = custom !== undefined || catalog[key] ? locale : 'en';
+    let fmt: IntlMessageFormat | undefined;
+    if (custom === undefined) {
+      const cacheKey = `${catalogLocale}\u0000${key}`;
+      fmt = cache.get(cacheKey);
+      if (!fmt) cache.set(cacheKey, (fmt = new IntlMessageFormat(message, messageLocale)));
+    } else {
+      fmt = new IntlMessageFormat(message, messageLocale);
     }
     return String(fmt.format(values));
   };

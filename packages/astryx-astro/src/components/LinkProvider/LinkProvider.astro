@@ -1,0 +1,44 @@
+---
+/**
+ * LinkProvider — replaces the element every Astryx link renders (Link, Button `href`, Token,
+ * Item …) in its subtree. Port of @astryxdesign/core Link/LinkProvider.tsx (LinkContext).
+ *
+ * Astro links are plain `<a>` (prefetch, `<ClientRouter />` view transitions and middleware
+ * all work on them), so most apps need no provider. Use it to route every Astryx link through
+ * your own Astro component — e.g. one that adds `data-astro-prefetch`, `data-astro-reload`,
+ * analytics attributes, or an i18n-aware `href` rewrite.
+ *
+ * Contract (shared with the Link / Button / Token ports): the subtree sees
+ * `Astro.locals.astryxLinkComponent = component`; a component's own `as` prop wins over it,
+ * and without either the link is a native `<a>` (`resolveLinkComponent()` in
+ * ./linkComponent.ts implements that order). The custom component receives the accepted
+ * `href`, `to` (= `href` unless given), `class`, `style`, every other attribute, and the
+ * link content as its default slot; it must render one anchor-like element with them. A
+ * blocked destination (lib/safeUrl.ts) never reaches it: the consumer renders an inert `<a>`
+ * without `href` instead. Scoped with lib/subtreeLocals.ts (AsyncLocalStorage), so siblings
+ * rendered concurrently keep the request value. For a request-wide component, set it in
+ * middleware instead:
+ *
+ *   // src/middleware.ts
+ *   import RouterLink from './components/RouterLink.astro';
+ *   export const onRequest = (ctx, next) => { ctx.locals.astryxLinkComponent = RouterLink; return next(); };
+ *
+ * The slot is buffered (no streaming inside the provider). Renders no DOM.
+ *
+ * @example
+ * <LinkProvider component={RouterLink}><Link href="/docs">Docs</Link></LinkProvider>
+ */
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import type {LinkComponentType} from './linkComponent';
+
+export type {LinkComponentType} from './linkComponent';
+
+export interface Props {
+  /** The Astro component (or tag name, e.g. `'a'`) every link in the subtree renders. */
+  component: LinkComponentType;
+}
+
+const {component} = Astro.props;
+const html = await renderWithLocals(Astro, {astryxLinkComponent: component}, () => Astro.slots.render('default'));
+---
+<Fragment set:html={html} />

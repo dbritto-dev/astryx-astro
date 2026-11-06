@@ -1,0 +1,39 @@
+---
+import MediaTheme from './MediaTheme.astro';
+import Text from '../Text/Text.astro';
+import Icon from '../Icon/Icon.astro';
+import Badge from '../Badge/Badge.astro';
+import Spinner from '../Spinner/Spinner.astro';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const surface = (bg: string) => `display:grid;gap:var(--spacing-2);padding:var(--spacing-4);border-radius:var(--radius-container);background:${bg}`;
+const surfaces = [
+  {label: 'mode="dark" on the inverted surface', bg: 'var(--color-background-inverted)', mode: 'dark', id: 'mt-dark'},
+  {label: 'mode="light" on a pale surface', bg: '#f4f1ea', mode: 'light', id: 'mt-light'},
+  {label: 'mode="auto" on a deep blue', bg: '#123a6b', mode: 'auto', id: 'mt-auto-dark'},
+  {label: 'mode="auto" on a pale yellow', bg: '#fff3b0', mode: 'auto', id: 'mt-auto-light'},
+  {label: 'mode="auto" on the card surface (off)', bg: 'var(--color-background-card)', mode: 'auto', id: 'mt-auto-off'},
+  {label: 'mode="off" keeps the ambient theme', bg: 'var(--color-background-muted)', mode: 'off', id: 'mt-off'},
+] as const;
+---
+<div style="display:grid;gap:var(--spacing-3)">
+  <p style={caption}>Text, icons and accents take the surface's side; the parent paints the background</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-3)">
+    {surfaces.map(({label, bg, mode, id}) => (
+      <div style={surface(bg)} id={id}>
+        <MediaTheme mode={mode}>
+          <Text weight="semibold" display="block">{label}</Text>
+          <Text type="supporting" display="block">Secondary text adapts to the surface.</Text>
+          <span style="display:flex;gap:var(--spacing-2);align-items:center">
+            <Icon icon="info" color="primary" /> <Badge label="Live" variant="info" /> <Spinner size="sm" />
+          </span>
+        </MediaTheme>
+      </div>
+    ))}
+    <div style={`${surface('linear-gradient(135deg,#1d2b64,#f8cdda)')}`} id="mt-auto-image">
+      <MediaTheme mode="auto" fallback="dark">
+        <Text weight="semibold" display="block">mode="auto" over a gradient</Text>
+        <Text type="supporting" display="block">A background-image is not measurable: the fallback (dark) stays.</Text>
+      </MediaTheme>
+    </div>
+  </div>
+</div>

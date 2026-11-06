@@ -1,0 +1,87 @@
+/*
+ * Port of @astryxdesign/core Overlay/Overlay.tsx, Overlay/OverlayScrim.tsx and
+ * Overlay/overlay.markers.stylex.ts. Scrim rule groups follow the stylex.props() order:
+ * base, position, align, scrim, visibility (base, bottom, top).
+ *
+ * The scrim's state is attributes: `data-ax-show-on="always|hover|focus"` for the CSS-driven
+ * modes ("hover-or-focus" renders as "hover"), or `data-ax-open="true|false"` when it is
+ * controlled (the `isOpen` prop, the element API, or the touch tap toggle). Astryx's
+ * `stylex.when.ancestor(…, overlayScope)` is the descendant combinator from `.astryx-overlay`;
+ * the ancestor sits in `:where()` so reveal rules keep the specificity of their defaults.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* overlayContainerStyles.root */
+  .astryx-overlay {
+    position: relative;
+    overflow: clip;
+  }
+
+  /* base */
+  .astryx-overlay-scrim {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2);
+    padding: var(--spacing-3);
+    pointer-events: none;
+    transition-property: opacity, visibility, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-overlay-scrim { transition-duration: 0s; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-overlay-scrim { transition-duration: 0s; }
+
+  /* position */
+  .astryx-overlay-scrim[data-position="fill"] { inset: 0; }
+  .astryx-overlay-scrim[data-position="bottom"] { inset-inline: 0; bottom: 0; }
+  .astryx-overlay-scrim[data-position="top"] { inset-inline: 0; top: 0; }
+
+  /* align */
+  .astryx-overlay-scrim[data-ax-align="start"] { align-items: flex-start; justify-content: flex-start; }
+  .astryx-overlay-scrim[data-ax-align="center"] { align-items: center; justify-content: center; }
+  .astryx-overlay-scrim[data-ax-align="end"] { align-items: flex-end; justify-content: flex-start; }
+
+  /* scrim */
+  .astryx-overlay-scrim[data-ax-scrim="dark"] { background-color: var(--color-overlay); }
+  .astryx-overlay-scrim[data-ax-scrim="light"] { background-color: color-mix(in srgb, white 60%, transparent); }
+
+  /* visible: always, or controlled open (strips slide in on mount) */
+  .astryx-overlay-scrim:is([data-ax-show-on="always"], [data-ax-open="true"]) {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  @starting-style {
+    .astryx-overlay-scrim:is([data-ax-show-on="always"], [data-ax-open="true"]) { opacity: 0; }
+    .astryx-overlay-scrim:is([data-ax-show-on="always"], [data-ax-open="true"])[data-position="bottom"] { opacity: 0; transform: translateY(100%); }
+    .astryx-overlay-scrim:is([data-ax-show-on="always"], [data-ax-open="true"])[data-position="top"] { opacity: 0; transform: translateY(-100%); }
+  }
+
+  /* hidden: controlled closed — strips slide out, fill fades */
+  .astryx-overlay-scrim[data-ax-open="false"] { opacity: 0; visibility: hidden; }
+  .astryx-overlay-scrim[data-ax-open="false"][data-position="bottom"] { transform: translateY(100%); }
+  .astryx-overlay-scrim[data-ax-open="false"][data-position="top"] { transform: translateY(-100%); }
+
+  /* hoverReveal: ancestor hover (hover-capable pointers) or focus-within */
+  .astryx-overlay-scrim[data-ax-show-on="hover"] { opacity: 0; visibility: hidden; pointer-events: none; }
+  .astryx-overlay-scrim[data-ax-show-on="hover"][data-position="bottom"] { transform: translateY(100%); }
+  .astryx-overlay-scrim[data-ax-show-on="hover"][data-position="top"] { transform: translateY(-100%); }
+  @media (hover: hover) {
+    :where(.astryx-overlay:hover) .astryx-overlay-scrim[data-ax-show-on="hover"] { opacity: 1; visibility: visible; pointer-events: auto; }
+    :where(.astryx-overlay:hover) .astryx-overlay-scrim[data-ax-show-on="hover"]:is([data-position="bottom"], [data-position="top"]) { transform: translateY(0); }
+  }
+  :where(.astryx-overlay:focus-within) .astryx-overlay-scrim[data-ax-show-on="hover"] { opacity: 1; visibility: visible; pointer-events: auto; }
+  :where(.astryx-overlay:focus-within) .astryx-overlay-scrim[data-ax-show-on="hover"]:is([data-position="bottom"], [data-position="top"]) { transform: translateY(0); }
+
+  /* focusReveal: ancestor focus-within only */
+  .astryx-overlay-scrim[data-ax-show-on="focus"] { opacity: 0; visibility: hidden; pointer-events: none; }
+  .astryx-overlay-scrim[data-ax-show-on="focus"][data-position="bottom"] { transform: translateY(100%); }
+  .astryx-overlay-scrim[data-ax-show-on="focus"][data-position="top"] { transform: translateY(-100%); }
+  :where(.astryx-overlay:focus-within) .astryx-overlay-scrim[data-ax-show-on="focus"] { opacity: 1; visibility: visible; pointer-events: auto; }
+  :where(.astryx-overlay:focus-within) .astryx-overlay-scrim[data-ax-show-on="focus"]:is([data-position="bottom"], [data-position="top"]) { transform: translateY(0); }
+}

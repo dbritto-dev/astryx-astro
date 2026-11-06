@@ -1,0 +1,80 @@
+---
+/**
+ * Overlay — content on top of media (an image, a video, a card) over a scrim, with automatic
+ * inverted theming. Port of @astryxdesign/core Overlay/Overlay.tsx, OverlayScrim.tsx,
+ * useOverlay.tsx and overlay.markers.stylex.ts.
+ *
+ * The default slot is the base content; `content` (text) or the `content` slot is what sits
+ * on top, in an in-flow absolutely positioned scrim (`.astryx-overlay-scrim[data-position]`,
+ * not a top layer). A `dark` / `light` scrim wraps its content in MediaTheme, so text and
+ * controls take the inverted tokens (`data-astryx-media`).
+ *
+ * Visibility:
+ *  - `showOn="always"` (default) — shown; strips slide in on mount (@starting-style).
+ *  - `"hover"` / `"hover-or-focus"` — CSS: shown while the overlay is hovered (hover-capable
+ *    pointers only) or anything inside has focus; `"focus"` — focus-within only.
+ *  - `isOpen` — controlled: shown / hidden (+ `inert`) from the prop, then by the element API.
+ * A small behaviour (behaviors/overlay.ts, data-ax-overlay) adds what CSS cannot: the
+ * wrapper copies its first child's border radius (the scrim clips to rounded media), the
+ * root element gets `isOpen` / `open()` / `close()` / `toggle()`, and on a device without
+ * hover a tap toggles a hover-mode scrim (Astryx's touch toggle: taps on nested interactive
+ * elements or text selections never toggle).
+ *
+ * Not ported: the `useOverlay` hook (wrap the container in Overlay instead).
+ *
+ * @example
+ * <Overlay showOn="hover" position="bottom" content="Quick view">
+ *   <AspectRatio ratio={16 / 9}><img src="/hero.jpg" alt="" /></AspectRatio>
+ * </Overlay>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import MediaTheme from '../theme/MediaTheme.astro';
+import './Overlay.css';
+
+export type OverlayScrimMode = 'dark' | 'light' | false;
+export type OverlayPosition = 'fill' | 'bottom' | 'top';
+export type OverlayAlign = 'start' | 'center' | 'end';
+export type OverlayShowOn = 'hover' | 'always' | 'focus' | 'hover-or-focus';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Text rendered in the scrim. Or use the `content` slot for markup. */
+  content?: string;
+  /** What reveals the scrim. @default 'always' */
+  showOn?: OverlayShowOn;
+  /** Controlled visibility; wins over `showOn` and the touch toggle. */
+  isOpen?: boolean;
+  /** Scrim background and inverted theming; `false` for none. @default 'dark' */
+  scrim?: OverlayScrimMode;
+  /** Scrim placement: the whole surface or a strip. @default 'fill' */
+  position?: OverlayPosition;
+  /** Content alignment inside the scrim. @default 'end' */
+  align?: OverlayAlign;
+}
+
+const {
+  content, showOn = 'always', isOpen, scrim = 'dark', position = 'fill', align = 'end',
+  class: className, ...rest
+} = Astro.props;
+
+const isControlled = isOpen !== undefined;
+const mode = showOn === 'hover-or-focus' ? 'hover' : showOn;
+const scrimTheme = scrim === 'dark' || scrim === 'light' ? scrim : null;
+const {themeClass} = themeProps('overlay');
+const {themeClass: scrimClass, attrs: scrimAttrs} = themeProps('overlay-scrim', {position});
+---
+<div {...rest} class={cx(themeClass, className)} data-ax-overlay="">
+  <slot />
+  <div
+    class={scrimClass}
+    {...scrimAttrs}
+    data-ax-align={align}
+    data-ax-scrim={scrimTheme ?? undefined}
+    data-ax-show-on={isControlled ? undefined : mode}
+    data-ax-open={isControlled ? String(isOpen) : undefined}
+    inert={isControlled && !isOpen ? true : undefined}
+  >{scrimTheme ? (
+    <MediaTheme mode={scrimTheme}>{Astro.slots.has('content') ? <slot name="content" /> : content}</MediaTheme>
+  ) : Astro.slots.has('content') ? <slot name="content" /> : content}</div>
+</div>
+<script>import '../../behaviors/overlay';</script>

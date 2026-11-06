@@ -1,0 +1,105 @@
+/*
+ * Port of @astryxdesign/core SelectableCard/SelectableCard.tsx. Card (Card.css) paints the
+ * surface; these rules add, in the xstyle order Astryx passes to Card: interactive,
+ * selected (per variant), overlay (::after hover / mouse press), disabled, plus srOnly for the
+ * native input.
+ *
+ * Selection styling keys on the native input (`:has(> input:checked)`), so it is right with no
+ * JavaScript; the behaviour mirrors it into `data-selected` for theme rules. Rules carry both
+ * card classes so they outrank Card's own `[data-variant]` border at any stylesheet order.
+ * Deferred (touch scope): the press controller's paint (`data-astryx-press`, pressedAlpha).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* interactive */
+  .astryx-card.astryx-selectable-card {
+    --selectable-card-ring-color: var(--color-accent);
+    position: relative;
+    cursor: pointer;
+    transition-property: box-shadow, border-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .astryx-card.astryx-selectable-card { transition-duration: 0s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-card.astryx-selectable-card {
+      transition-property: opacity;
+      transition-duration: min(var(--duration-exit), 200ms);
+      transition-timing-function: var(--ease-exit);
+    }
+  }
+
+  /* selected: an inset ring through Card's --_card-ring slot (composes with elevation) plus
+   * the card's own border. A theme-added variant rings in --selectable-card-ring-color. */
+  .astryx-card.astryx-selectable-card:has(> .ax-selectable-card-input:checked) {
+    --_card-ring: inset 0 0 0 2px var(--selectable-card-ring-color);
+  }
+  .astryx-card.astryx-selectable-card:is([data-variant="default"], [data-variant="transparent"], [data-variant="muted"]):has(> .ax-selectable-card-input:checked) {
+    border-color: var(--color-accent);
+    --_card-ring: inset 0 0 0 2px var(--color-accent);
+  }
+  .astryx-card.astryx-selectable-card[data-variant="blue"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-blue); --_card-ring: inset 0 0 0 2px var(--color-border-blue); }
+  .astryx-card.astryx-selectable-card[data-variant="cyan"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-cyan); --_card-ring: inset 0 0 0 2px var(--color-border-cyan); }
+  .astryx-card.astryx-selectable-card[data-variant="gray"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-gray); --_card-ring: inset 0 0 0 2px var(--color-border-gray); }
+  .astryx-card.astryx-selectable-card[data-variant="green"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-green); --_card-ring: inset 0 0 0 2px var(--color-border-green); }
+  .astryx-card.astryx-selectable-card[data-variant="orange"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-orange); --_card-ring: inset 0 0 0 2px var(--color-border-orange); }
+  .astryx-card.astryx-selectable-card[data-variant="pink"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-pink); --_card-ring: inset 0 0 0 2px var(--color-border-pink); }
+  .astryx-card.astryx-selectable-card[data-variant="purple"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-purple); --_card-ring: inset 0 0 0 2px var(--color-border-purple); }
+  .astryx-card.astryx-selectable-card[data-variant="red"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-red); --_card-ring: inset 0 0 0 2px var(--color-border-red); }
+  .astryx-card.astryx-selectable-card[data-variant="teal"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-teal); --_card-ring: inset 0 0 0 2px var(--color-border-teal); }
+  .astryx-card.astryx-selectable-card[data-variant="yellow"]:has(> .ax-selectable-card-input:checked) { border-color: var(--color-border-yellow); --_card-ring: inset 0 0 0 2px var(--color-border-yellow); }
+
+  /* overlay: hover and mouse press as the ::after colour (enabled cards only) */
+  .astryx-card.astryx-selectable-card:not([data-ax-disabled]) { --_press-overlay: transparent; }
+  .astryx-card.astryx-selectable-card:not([data-ax-disabled]):active { --_press-overlay: var(--color-overlay-pressed); }
+  @media (pointer: coarse) {
+    .astryx-card.astryx-selectable-card:not([data-ax-disabled]):active { --_press-overlay: transparent; }
+  }
+  @media (hover: hover) {
+    .astryx-card.astryx-selectable-card:not([data-ax-disabled]):hover { --_press-overlay: var(--color-overlay-hover); }
+    .astryx-card.astryx-selectable-card:not([data-ax-disabled]):active { --_press-overlay: var(--color-overlay-pressed); }
+  }
+  .astryx-card.astryx-selectable-card:not([data-ax-disabled])::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    background-color: var(--_press-overlay);
+  }
+  @media (prefers-reduced-motion: reduce) and (not (pointer: coarse)) {
+    .astryx-card.astryx-selectable-card:not([data-ax-disabled])::after { transition-duration: 0s; }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-card.astryx-selectable-card:not([data-ax-disabled])::after {
+      transition-property: opacity;
+      transition-duration: min(var(--duration-exit), 200ms);
+      transition-timing-function: var(--ease-exit);
+    }
+  }
+
+  /* disabled: dimmed, still focusable through its input (aria-disabled) */
+  .astryx-card.astryx-selectable-card[data-ax-disabled] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  /* srOnly: the native checkbox / radio that carries role, name, state and keyboard */
+  .ax-selectable-card-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

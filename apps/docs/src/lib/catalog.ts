@@ -33,8 +33,11 @@ const propsBlock = (src: string) => src.match(/export (?:interface Props[^{]*\{[
 
 /** `interface Props { … }` of every public component in a directory, main component first. */
 export function apiSources(dir: string, main: string): {name: string; source: string}[] {
+  // Most ports live in the Astryx directory name; a few (e.g. LinkProvider) use their own.
+  const dirs = new Set([dir, main]);
   return Object.entries(sources)
-    .filter(([path]) => path.split('/').at(-2) === dir && !path.endsWith('.demo.astro') && !nameFrom(path).startsWith('_'))
+    .filter(([path]) => dirs.has(path.split('/').at(-2)!) && !path.endsWith('.demo.astro') && !nameFrom(path).startsWith('_'))
+    .filter(([path]) => path.split('/').at(-2) === dir || nameFrom(path) === main)
     .map(([path, src]) => ({name: nameFrom(path), source: propsBlock(src)}))
     .filter((a): a is {name: string; source: string} => a.source !== null)
     .sort((a, b) => (a.name === main ? -1 : b.name === main ? 1 : a.name.localeCompare(b.name)));

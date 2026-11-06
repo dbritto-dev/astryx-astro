@@ -21,6 +21,11 @@ const lines = [
   "export {attachTooltip, attachHoverCard} from './components/Tooltip/attach';",
   "export {attachPopover} from './components/Popover/attach';",
   "export {registerIndicatorTheme, getIndicator, defaultIndicators, resetIndicators} from './components/Indicator/indicatorRegistry';",
+  "export {defineSyntaxTheme, syntaxThemeToCSS} from './components/theme/syntaxTheme';",
+  "export {themeRootAttributes} from './components/theme/themeRoot';",
+  "export {resolveLinkComponent, linkDestination} from './components/LinkProvider/linkComponent';",
+  "export {renderWithLocals, requestLocal} from './lib/subtreeLocals';",
+  "export {uid} from './lib/uid';",
   '',
 ];
 const seen = new Set();

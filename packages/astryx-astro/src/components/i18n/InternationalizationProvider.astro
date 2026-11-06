@@ -1,0 +1,89 @@
+---
+/**
+ * InternationalizationProvider — sets the locale (and catalogs, overrides, direction and
+ * calendar) of its subtree. Port of @astryxdesign/core i18n/InternationalizationProvider.tsx.
+ *
+ * Renders no DOM, like Astryx. Every component inside sees, on `Astro.locals`:
+ *   astryxLocale     the BCP 47 tag — `translator(Astro)` (lib/i18n.ts) reads it
+ *   astryxDirection  `dir` ?? the locale's direction (Intl.Locale#getTextInfo)
+ *   astryxCalendar   `calendar` ?? 'gregory' (a locale never selects the calendar)
+ *   astryxMessages   extra catalogs `{[locale]: {key: message}}`
+ *   astryxOverrides  sparse per-locale overrides `{[locale]: {key: message}}`
+ * scoped with lib/subtreeLocals.ts (AsyncLocalStorage): siblings that Astro renders
+ * concurrently keep the outer locale, and nested providers win for their own subtree. Set
+ * the request-wide defaults in middleware (`context.locals.astryxLocale = 'fr-FR'`) when the
+ * whole page shares one locale. The slot is buffered (no streaming inside the provider).
+ *
+ * Direction: like Astryx, the provider never writes `dir`. Components mirror from the DOM
+ * (logical CSS, `:dir()`, runtime direction reads), so set `dir` yourself on `<html>` or a
+ * wrapping element, e.g. `dir={localeDirection(locale)}` (lib/i18n.ts).
+ *
+ * Note: lib/i18n.ts `translator()` resolves `astryxLocale` against the shipped catalogs;
+ * `messages` / `overrides` are published for it but take effect once it reads
+ * `astryxOverrides` / `astryxMessages` (overrides → catalogs → shipped → English).
+ *
+ * @example
+ * <InternationalizationProvider locale="fr-FR"><Spinner /></InternationalizationProvider>
+ * <div dir="rtl"><InternationalizationProvider locale="ar-SA">…</InternationalizationProvider></div>
+ */
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import {localeDirection} from '../../lib/i18n';
+
+export type CalendarSystem =
+  | 'gregory' | 'iso8601' | 'buddhist' | 'roc' | 'japanese' | 'persian' | 'indian' | 'hebrew'
+  | 'chinese' | 'dangi' | 'coptic' | 'ethiopic' | 'ethioaa' | 'islamic-civil' | 'islamic-tbla'
+  | 'islamic-umalqura';
+
+/** A catalog entry: a message string or Astryx's rich `{defaultMessage}` shape. */
+export type CatalogEntry = string | {defaultMessage: string; description?: string};
+
+export interface Props {
+  /** BCP 47 tag (`'en'`, `'pt-BR'`, `'zh-Hans'`); regional tags fall back to their language, then English. */
+  locale: string;
+  /** Additional catalogs by locale (the shipped catalogs are always available). */
+  messages?: Record<string, Record<string, CatalogEntry>>;
+  /** Sparse per-locale overrides of Astryx keys, e.g. `{fr: {'@astryx.pagination.next': 'Suivant'}}`. */
+  overrides?: Record<string, Record<string, string>>;
+  /** Direction published to server components; does NOT set the DOM `dir`. @default from `locale` */
+  dir?: 'ltr' | 'rtl';
+  /** Calendar system of the subtree. @default 'gregory' */
+  calendar?: CalendarSystem;
+}
+
+const {locale, messages, overrides, dir, calendar} = Astro.props;
+
+/** Astryx getLocaleDirection: CLDR via Intl.Locale, else the known RTL scripts. */
+function getLocaleDirection(tag: string): 'ltr' | 'rtl' {
+  try {
+    const loc = new Intl.Locale(tag) as Intl.Locale & {getTextInfo?: () => {direction?: string}; textInfo?: {direction?: string}};
+    const info = typeof loc.getTextInfo === 'function' ? loc.getTextInfo() : loc.textInfo;
+    if (info?.direction) return info.direction === 'rtl' ? 'rtl' : 'ltr';
+  } catch {
+    return 'ltr';
+  }
+  return localeDirection(tag);
+}
+
+const normalize = (catalogs: Props['messages']) =>
+  catalogs &&
+  Object.fromEntries(
+    Object.entries(catalogs).map(([tag, catalog]) => [
+      tag,
+      Object.fromEntries(Object.entries(catalog).map(([key, entry]) => [key, typeof entry === 'string' ? entry : entry.defaultMessage])),
+    ]),
+  );
+
+const html = await renderWithLocals(
+  Astro,
+  {
+    astryxLocale: locale,
+    astryxDirection: dir ?? getLocaleDirection(locale),
+    astryxCalendar: calendar ?? 'gregory',
+    // An inner provider replaces the outer context, as in Astryx (`messages ?? {}`).
+    astryxMessages: normalize(messages) ?? {},
+    astryxOverrides: overrides ?? {},
+  },
+  () => Astro.slots.render('default'),
+);
+---
+<Fragment set:html={html} />

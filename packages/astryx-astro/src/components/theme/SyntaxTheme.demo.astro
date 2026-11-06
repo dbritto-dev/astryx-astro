@@ -1,0 +1,46 @@
+---
+import SyntaxTheme from './SyntaxTheme.astro';
+import {defineSyntaxTheme} from './syntaxTheme';
+
+// CodeBlock is not ported yet: a hand-tokenized sample painted with the same tokens.
+type Tok = [kind: string, text: string];
+const line1: Tok[] = [['keyword', 'const'], ['', ' '], ['variable', 'status'], ['', ' '], ['operator', '='], ['', ' '], ['variable', 'response'], ['punctuation', '.'], ['property', 'ok'], ['', ' '], ['operator', '?'], ['', ' '], ['string', "'success'"], ['', ' '], ['operator', ':'], ['', ' '], ['string', "'error'"], ['punctuation', ';']];
+const line2: Tok[] = [['comment', '// retry three times, then give up']];
+const line3: Tok[] = [['keyword', 'function'], ['', ' '], ['function', 'retry'], ['punctuation', '('], ['variable', 'count'], ['punctuation', ':'], ['', ' '], ['type', 'number'], ['', ' '], ['operator', '='], ['', ' '], ['number', '3'], ['punctuation', ')'], ['', ' '], ['punctuation', '{'], ['', ' '], ['keyword', 'return'], ['', ' '], ['constant', 'null'], ['punctuation', ';'], ['', ' '], ['punctuation', '}']];
+const line4: Tok[] = [['punctuation', '<'], ['tag', 'Button'], ['', ' '], ['attribute', 'label'], ['operator', '='], ['string', '"Save"'], ['', ' '], ['punctuation', '/>']];
+const lines = [line1, line2, line3, line4];
+const pre = 'margin:0;padding:var(--spacing-3);border-radius:var(--radius-element);background:var(--color-syntax-background);color:var(--color-syntax-variable);font-family:var(--font-family-code);font-size:var(--font-size-sm);line-height:1.6;overflow:auto';
+const caption = 'margin:0 0 var(--spacing-1);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+
+const brand = defineSyntaxTheme({
+  name: 'brand',
+  tokens: {
+    keyword: ['#7b2cbf', '#c77dff'], string: ['#2a9d8f', '#76c893'], comment: ['#6c757d', '#adb5bd'],
+    number: ['#e76f51', '#f4a261'], function: ['#0077b6', '#48cae4'], type: ['#9d4edd', '#e0aaff'],
+    variable: ['#212529', '#f8f9fa'], operator: ['#d62828', '#ff6b6b'], constant: ['#e76f51', '#f4a261'],
+    tag: ['#d62828', '#ff8fa3'], attribute: ['#2a9d8f', '#76c893'], property: ['#0077b6', '#90e0ef'],
+    punctuation: ['#495057', '#ced4da'], background: ['#f8f0ff', '#1a1025'],
+  },
+});
+const presets = ['github-light', 'dracula', 'nord', 'solarized-light'] as const;
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:var(--spacing-4)">
+  <div>
+    <p style={caption}>Theme default (no SyntaxTheme)</p>
+    <pre style={pre} id="syntax-default">{lines.map((l) => <div>{l.map(([k, t]) => (k ? <span style={`color:var(--color-syntax-${k})`}>{t}</span> : t))}</div>)}</pre>
+  </div>
+  {presets.map((name) => (
+    <div>
+      <p style={caption}>theme="{name}"</p>
+      <SyntaxTheme theme={name}>
+        <pre style={pre} id={`syntax-${name}`}>{lines.map((l) => <div>{l.map(([k, t]) => (k ? <span style={`color:var(--color-syntax-${k})`}>{t}</span> : t))}</div>)}</pre>
+      </SyntaxTheme>
+    </div>
+  ))}
+  <div>
+    <p style={caption}>defineSyntaxTheme() with [light, dark] tuples</p>
+    <SyntaxTheme theme={brand}>
+      <pre style={pre} id="syntax-brand">{lines.map((l) => <div>{l.map(([k, t]) => (k ? <span style={`color:var(--color-syntax-${k})`}>{t}</span> : t))}</div>)}</pre>
+    </SyntaxTheme>
+  </div>
+</div>

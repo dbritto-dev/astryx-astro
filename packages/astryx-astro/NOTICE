@@ -29,3 +29,9 @@ SOFTWARE.
 Theme icon artwork comes from Lucide (https://lucide.dev) via `lucide-static`, licensed
 under the ISC License, Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022
 as part of Feather (MIT); all other copyright (c) for Lucide are held by Lucide Contributors.
+
+Syntax-highlighting preset palettes (src/styles/syntax.css) carry color values taken by Astryx
+from MIT-licensed editor themes: One Dark Pro (Binaryify), Dracula (Zeno Rocha), Monokai
+(Wimer Hazenberg), Nord (Arctic Ice Studio / Sven Greb), Tokyo Night and Tokyo Night Light
+(enkia), Catppuccin Mocha and Latte (Catppuccin contributors), GitHub Light and Dark (GitHub
+Primer team), Solarized Light (Ethan Schoonover) and One Light (GitHub / Atom team).
