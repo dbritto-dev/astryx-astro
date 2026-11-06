@@ -37,6 +37,20 @@ check('listbox is aria-multiselectable, labelled by the trigger', (await attr(`$
 check('hidden input per value', (await names('columns')) === 'Name,Email');
 check('count summary', (await text(`${T} .ax-multi-selector-text`)) === '2 selected');
 check('select-all starts indeterminate with a partial name', (await attr(`${L} [data-ax-select-all-row]`, 'aria-label')) === 'Select all, partially selected' && (await attr(`${L} [data-ax-select-all-row]`, 'aria-selected')) === 'false');
+// Astryx's row checkbox: an inert wrapper holding a CheckboxInput (theme targets apply).
+const box = (sel) => page.evaluate((s) => {
+  const row = document.querySelector(s);
+  const root = row?.querySelector('[data-ax-mark-slot] .astryx-checkbox-input');
+  const input = root?.querySelector('input[type="checkbox"]');
+  return root && {inert: root.parentElement.inert, size: root.getAttribute('data-size'), label: !!root.querySelector('.astryx-checkbox-label'), checked: input.checked, indeterminate: input.indeterminate, id: input.id};
+}, sel);
+const nameBox = await box(`${L} [data-value="Name"]`);
+const roleBox = await box(`${L} [data-value="Role"]`);
+const allBox = await box(`${L} [data-ax-select-all-row]`);
+check('rows render an inert CheckboxInput (md for a md MultiSelector, label hidden)', nameBox?.inert && nameBox.size === 'md' && nameBox.label, JSON.stringify(nameBox));
+check('server state: selected rows checked, select-all indeterminate', nameBox?.checked && roleBox && !roleBox.checked && allBox?.indeterminate, JSON.stringify({nameBox, roleBox, allBox}));
+const ids = await page.evaluate(() => [...document.querySelectorAll('.astryx-multi-selector-option input[type="checkbox"]')].map((i) => i.id));
+check('row checkbox ids are unique', ids.length > 0 && new Set(ids).size === ids.length);
 
 console.log('Open, ordering, toggling');
 await page.click(T);
@@ -50,6 +64,7 @@ await sleep(40);
 check('click toggles and keeps the list open', await isOpen(page, L));
 check('astryx-change {values}', JSON.stringify(await lastChange()) === JSON.stringify({values: ['Name', 'Email', 'Role']}));
 check('aria-selected on the toggled option', (await attr(`${L} [data-value="Role"]`, 'aria-selected')) === 'true');
+check("the toggled row's CheckboxInput is checked", (await box(`${L} [data-value="Role"]`))?.checked === true);
 check('hidden inputs follow', (await names('columns')) === 'Name,Email,Role');
 check('order frozen while open', (await order(L)).startsWith('Name,Email,Role'));
 await sleep(80);
@@ -70,6 +85,7 @@ await page.keyboard.press('Enter');
 await sleep(40);
 check('select all selects every enabled option', (await names('columns')).split(',').length === 6);
 check('select all row is checked (no partial name)', (await attr(`${L} [data-ax-select-all-row]`, 'aria-selected')) === 'true' && (await attr(`${L} [data-ax-select-all-row]`, 'aria-label')) == null);
+check("select-all's CheckboxInput is checked, no longer indeterminate", await box(`${L} [data-ax-select-all-row]`).then((b) => b?.checked === true && !b.indeterminate));
 await sleep(80);
 check('"All selected" announced', (await live()).includes('All selected'));
 await page.keyboard.press('Enter');

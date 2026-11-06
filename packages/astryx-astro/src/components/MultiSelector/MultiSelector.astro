@@ -42,8 +42,8 @@
  * Not available / deferred: `onChange`/`changeAction` (use the event), `handleRef` (the
  * element API), `renderTrigger` (a caller-rendered opener), option `action` grid rows
  * (spec:AST-058), the touch press controller. `presentation` "bottom-sheet" | "adaptive"
- * restyles the same layer as Selector's does (SelectorBottomSheet, see Selector.astro). Stand-in: the decorative checkbox is the `checkbox` Indicator
- * (CheckboxInput is not ported yet; Astryx renders an inert CheckboxInput there).
+ * restyles the same layer as Selector's does (SelectorBottomSheet, see Selector.astro). Each row's
+ * decorative checkbox is an inert CheckboxInput, as in Astryx (CheckboxInput theme targets apply).
  *
  * @example
  * <MultiSelector label="Columns" options={['Name', 'Email', 'Role']} value={['Name']} hasSelectAll htmlName="columns" />
@@ -55,7 +55,6 @@ import Tooltip from '../Tooltip/Tooltip.astro';
 import Divider from '../Divider/Divider.astro';
 import Heading from '../Text/Heading.astro';
 import Badge from '../Badge/Badge.astro';
-import Indicator from '../Indicator/Indicator.astro';
 import InputClearButton from '../Field/InputClearButton.astro';
 import PanelSearchInput from '../Selector/_PanelSearchInput.astro';
 import OptionRow from './_MultiSelectorOptionRow.astro';
@@ -144,7 +143,7 @@ export interface Props extends FieldComposedProps {
   renderOption?: (option: SelectorOptionData & {label: string}) => unknown;
   /** Edge of the row that carries the checkbox. @default 'start' */
   indicatorPosition?: 'start' | 'end';
-  /** Only 'popover' is implemented. @default 'popover' */
+  /** The listbox surface: an anchored popover, a bottom sheet, or a sheet on compact touch screens (`adaptive`). @default 'popover' */
   presentation?: MultiSelectorPresentation;
   /** Open on load (showcases). @default false */
   isDefaultOpen?: boolean;
@@ -225,7 +224,6 @@ const enabled = selectable.filter((o) => !o.disabled);
 const allSelected = enabled.length > 0 && enabled.every((o) => valueSet.has(o.value));
 const someSelected = enabled.some((o) => valueSet.has(o.value));
 const selectAllState = allSelected ? 'checked' : someSelected ? 'indeterminate' : 'unchecked';
-const checkboxSize = size === 'lg' ? 'md' : size;
 
 const labelsText = (labels: string[]) => {
   const shown = labels.slice(0, 3);
@@ -255,7 +253,6 @@ const {themeClass, attrs: themeAttrs} = themeProps('multi-selector', {
   readonly: isEffectivelyReadOnly ? 'readonly' : null,
 });
 const boxClass = cx(themeClass, variant === 'input' ? 'ax-input' : 'ax-overlay-image ax-focus-within', 'ax-multi-selector-box', r.control.class);
-const MARKS = ['checked', 'unchecked', 'indeterminate'] as const;
 const messages = {
   selectedCount: pluralTemplates(t, locale, '@astryx.multiSelector.selectedCount', 'count'),
   selectionCount: messageTemplate(t, locale, '@astryx.multiSelector.selectionCount', {}, ['count', 'total']),
@@ -341,12 +338,6 @@ const messages = {
       <Fragment>
         <template data-ax-placeholder-template><span class="ax-multi-selector-text">{placeholder}</span></template>
         <template data-ax-badge-template><Badge label="" variant="neutral" /></template>
-        {MARKS.map((state) => (
-          <Fragment>
-            <template data-ax-mark={state}><Indicator name="checkbox" state={state} size={checkboxSize} /></template>
-            <template data-ax-mark={`${state}-disabled`}><Indicator name="checkbox" state={state} size={checkboxSize} isDisabled /></template>
-          </Fragment>
-        ))}
         {canCreate && (
           <template data-ax-option-template>
             <OptionRow option={{value: '', label: ''}} id="" isSelected={false} size={size} indicatorPosition={indicatorPosition} />

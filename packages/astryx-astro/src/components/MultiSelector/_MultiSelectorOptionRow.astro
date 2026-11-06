@@ -2,11 +2,15 @@
 /**
  * One MultiSelector option row (MultiSelector.tsx renderItem): `role="option"` with the
  * `multi-selector-option` theme target (size, select-all, selected, disabled), a decorative
- * inert checkbox at either edge and the label (or `renderOption`'s content). The select-all
- * row's partial state is spoken through its name (`aria-label`), since aria-selected has no
- * "mixed".
+ * checkbox at either edge and the label (or `renderOption`'s content). The select-all row's
+ * partial state is spoken through its name (`aria-label`), since aria-selected has no "mixed".
+ *
+ * The checkbox is Astryx's: an inert `<div>` holding a CheckboxInput (`label=""`,
+ * `isLabelHidden`, sm for sm rows, else md), so `.astryx-checkbox-input[data-size]` and the
+ * CheckboxInput theme targets apply here too. `<ax-multi-selector>` sets its `value` in place
+ * as the selection changes (`data-ax-mark-state` mirrors it).
  */
-import Indicator from '../Indicator/Indicator.astro';
+import CheckboxInput from '../CheckboxInput/CheckboxInput.astro';
 import type {SelectorOptionData} from '../Selector/options';
 
 export interface Props {
@@ -31,6 +35,7 @@ const isDisabled = !!option.disabled;
 const state = markState ?? (isSelected ? 'checked' : 'unchecked');
 const checkboxSize = size === 'lg' ? 'md' : size;
 const mark = `${state}${isDisabled ? '-disabled' : ''}`;
+const checkboxValue = state === 'indeterminate' ? 'indeterminate' : state === 'checked';
 ---
 <div
   role="option"
@@ -52,7 +57,7 @@ const mark = `${state}${isDisabled ? '-disabled' : ''}`;
   data-disabled={isDisabled ? 'disabled' : undefined}
   hidden={hidden || undefined}
 >
-  {indicatorPosition === 'start' && <span class="ax-multi-selector-check" inert data-ax-mark-slot><Indicator name="checkbox" state={state} size={checkboxSize} isDisabled={isDisabled} /></span>}
+  {indicatorPosition === 'start' && <div class="ax-multi-selector-check" inert data-ax-mark-slot><CheckboxInput label="" isLabelHidden value={checkboxValue} isDisabled={isDisabled} size={checkboxSize} /></div>}
   {content != null && !isSelectAll ? content : <span class="ax-multi-selector-label">{option.label}</span>}
-  {indicatorPosition === 'end' && <span class="ax-multi-selector-check ax-multi-selector-check-end" inert data-ax-mark-slot><Indicator name="checkbox" state={state} size={checkboxSize} isDisabled={isDisabled} /></span>}
+  {indicatorPosition === 'end' && <div class="ax-multi-selector-check ax-multi-selector-check-end" inert data-ax-mark-slot><CheckboxInput label="" isLabelHidden value={checkboxValue} isDisabled={isDisabled} size={checkboxSize} /></div>}
 </div>
