@@ -1,0 +1,24 @@
+---
+import Skeleton, {type SkeletonRadius} from './Skeleton.astro';
+const radii: SkeletonRadius[] = ['none', 0, 1, 2, 3, 4, 'rounded'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <div style="display:flex;gap:var(--spacing-3);align-items:center;max-width:420px" aria-busy="true" aria-label="Loading profile">
+    <Skeleton width={48} height={48} radius="rounded" />
+    <div style="display:grid;gap:var(--spacing-2);flex:1">
+      <Skeleton height={16} width="70%" radius={1} index={0} />
+      <Skeleton height={12} width="90%" radius={1} index={1} />
+      <Skeleton height={12} width="55%" radius={1} index={2} />
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4)">
+    {radii.map((radius, i) => (
+      <span style="display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1)">
+        <Skeleton width={72} height={48} radius={radius} index={i} />
+        <code style={caption}>radius={String(radius)}</code>
+      </span>
+    ))}
+  </div>
+  <div style="height:96px;max-width:420px"><Skeleton /></div>
+</div>

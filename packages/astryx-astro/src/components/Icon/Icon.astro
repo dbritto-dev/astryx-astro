@@ -1,0 +1,135 @@
+---
+/**
+ * Icon — a semantic icon name resolved from the active theme / registry / built-in
+ * defaults, or artwork passed directly. Port of @astryxdesign/core Icon (Icon.tsx,
+ * IconSize.stylex.ts, IconDefaultSizeContext.ts, globalIconRegistry.tsx, defaultIcons.tsx;
+ * see iconRegistry.ts for resolution and the server-side theme convention).
+ *
+ * Owner default size (Astryx IconDefaultSizeContext) = cascade key `icon-size`
+ * (lib/cascade.ts): Icon always renders its effective `data-size` (explicit, else 'md'),
+ * and only when `size` is not explicit also `data-ax-inherit="icon-size"`. An owner that
+ * supplies a slot default stamps it after rendering the slot, e.g. Button (sm for sm/md,
+ * md for lg):
+ *   const icon = await stampAttr(await Astro.slots.render('icon'), 'icon-size', size === 'lg' ? 'md' : 'sm', 'data-size');
+ * An explicit `size` carries no marker and is never changed. Layer roots `seal()`.
+ *
+ * Render modes (as Astryx):
+ *  - name (`'close'`, `'numberInput:stepperDown'`): `<span class="astryx-icon">` wrapping
+ *    1em artwork; an unknown name renders nothing.
+ *  - artwork (SVG string, Astro component such as an `*.svg` import, or a slotted <svg>):
+ *    the <svg> itself is the root and receives the hooks; `variant` is ignored.
+ * Decorative (`aria-hidden="true"`) unless `label` is non-empty → `role="img"` +
+ * `aria-label`. Explicit aria-hidden / role / aria-label attributes win.
+ * RTL: Astryx mirrors directional icons at the call site (rtlStyles.mirror); pass
+ * `class="ax-mirror-rtl"` exactly there.
+ *
+ * @example
+ * <Icon icon="close" size="md" color="primary" />
+ * <Icon icon="success" label="Completed" color="success" />
+ * <Icon icon={Logo} size="lg" />            (import Logo from './logo.svg')
+ * <Icon><svg viewBox="0 0 24 24">…</svg></Icon>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {
+  isAstroIconComponent,
+  resolveIcon,
+  type AstroIconComponent,
+  type ExtendedIconName,
+  type IconColor,
+  type IconSize,
+  type IconVariant,
+  type NamespacedIconName,
+  type IconName,
+} from './iconRegistry';
+import {decorateSvg} from './iconMarkup';
+import './Icon.css';
+
+export type {IconColor, IconSize, IconName, NamespacedIconName, IconVariant} from './iconRegistry';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'color'> {
+  /**
+   * A semantic name (`'close'`, `'chevronDown'` … 29 built-ins), a namespaced key
+   * (`'richtext:bold'`), SVG markup (a string starting with `<svg`), or an Astro component
+   * that renders an <svg> (e.g. `import Logo from './logo.svg'`). Omit it to pass the
+   * <svg> as the default slot.
+   */
+  icon?: IconName | NamespacedIconName | ExtendedIconName | AstroIconComponent;
+  /** @default 'inherit' */
+  color?: IconColor;
+  /** xsm/sm/md/lg = 0.75/1/1.25/1.5rem. Explicit wins; else an owner's stamp; else 'md'. */
+  size?: IconSize;
+  /** Alternate artwork the active theme lists in `iconVariants`; never written to the DOM. */
+  variant?: IconVariant;
+  /** Accessible name for a meaningful standalone icon; empty = decorative. */
+  label?: string;
+  /**
+   * Theme whose icon set resolves a name (port extension). Defaults to
+   * `Astro.locals.astryxTheme`; `null` forces the built-in defaults.
+   */
+  theme?: string | null;
+}
+
+const {
+  icon,
+  color = 'inherit',
+  size: sizeProp,
+  variant,
+  label,
+  theme,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const size: IconSize = sizeProp ?? 'md';
+const isLabelled = label != null && label !== '';
+// Derived a11y first, so explicit aria-hidden / role / aria-label in `rest` still win.
+const a11y = isLabelled ? {role: 'img', 'aria-label': label, 'aria-hidden': undefined} : {'aria-hidden': 'true'};
+const {themeClass, attrs: themeAttrs} = themeProps('icon', {size, color});
+const rootAttrs: Record<string, unknown> = {
+  ...a11y,
+  ...rest,
+  ...themeAttrs,
+  'data-ax-inherit': inherits({'icon-size': sizeProp === undefined}),
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+};
+
+type Mode =
+  | {kind: 'none'}
+  | {kind: 'glyph'; markup: string}
+  | {kind: 'glyph-component'; Glyph: AstroIconComponent}
+  | {kind: 'svg'; markup: string}
+  | {kind: 'component'; Component: AstroIconComponent};
+
+const isMarkup = (value: unknown): value is string => typeof value === 'string' && value.trimStart().startsWith('<');
+
+let mode: Mode = {kind: 'none'};
+if (typeof icon === 'string' && !isMarkup(icon)) {
+  const glyph = resolveIcon(icon, Astro, {size, variant}, theme);
+  if (typeof glyph === 'string') mode = {kind: 'glyph', markup: glyph};
+  else if (isAstroIconComponent(glyph)) mode = {kind: 'glyph-component', Glyph: glyph};
+} else if (isMarkup(icon)) {
+  mode = {kind: 'svg', markup: icon};
+} else if (isAstroIconComponent(icon)) {
+  mode = {kind: 'component', Component: icon};
+} else if (Astro.slots.has('default')) {
+  mode = {kind: 'svg', markup: await Astro.slots.render('default')};
+}
+
+// Artwork markup: the root <svg> receives the hooks. Anything else is wrapped like a glyph.
+let decorated: string | null = null;
+if (mode.kind === 'svg') {
+  decorated = decorateSvg(mode.markup, rootAttrs as Record<string, string | null | undefined>);
+  if (decorated == null) mode = {kind: 'glyph', markup: mode.markup};
+}
+const Component = mode.kind === 'component' ? mode.Component : null;
+const Glyph = mode.kind === 'glyph-component' ? mode.Glyph : null;
+---
+{mode.kind === 'glyph' && <span {...rootAttrs}><Fragment set:html={mode.markup} /></span>}
+{Glyph && <span {...rootAttrs}><Glyph width="1em" height="1em" aria-hidden="true" /></span>}
+{decorated != null && <Fragment set:html={decorated} />}
+{Component && <Component {...rootAttrs} />}

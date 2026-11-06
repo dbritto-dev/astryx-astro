@@ -1,0 +1,24 @@
+/*
+ * Port of @astryxdesign/core VisuallyHidden/VisuallyHidden.tsx (styles.visuallyHidden).
+ * Canonical clip block: `clip: rect(…)` for the widest AT/browser support, pinned to the
+ * start corner so a positioned ancestor cannot reveal it, inert to pointer and selection.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .ax-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-style: none;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    pointer-events: none;
+    user-select: none;
+  }
+}

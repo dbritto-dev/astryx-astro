@@ -1,0 +1,61 @@
+---
+/**
+ * StatusDot — a fixed 8px colored dot for status (online/offline, severity). Port of
+ * @astryxdesign/core StatusDot (StatusDot.tsx).
+ *
+ * A non-focusable `<span role="img" aria-label={label}>`. Colour alone is not accessible
+ * (WCAG 1.4.1): pair it with visible text or pass a distinct `icon` per status, drawn in
+ * the variant's ink (`currentColor`). `isPulsing` respects prefers-reduced-motion.
+ *
+ * Deferred: `tooltip` renders through Astryx's Tooltip, which is not ported yet; until it
+ * is, the text is exposed as a native `title` (hover hint + accessible description, the
+ * role Tooltip's aria-describedby plays).
+ *
+ * @example
+ * <StatusDot variant="success" label="Online" />
+ * <StatusDot variant="success" label="Live" isPulsing />
+ * <StatusDot variant="success" label="Verified" icon="check" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './StatusDot.css';
+
+export type StatusDotVariant = 'success' | 'warning' | 'error' | 'accent' | 'neutral' | (string & {});
+
+export interface Props extends HTMLAttributes<'span'> {
+  variant: StatusDotVariant;
+  /** Accessible name (the dot's aria-label); required. */
+  label: string;
+  /** Pulse to show activity (off under prefers-reduced-motion). @default false */
+  isPulsing?: boolean;
+  /** Hint explaining the status (native title until Tooltip is ported). */
+  tooltip?: string;
+  /**
+   * Icon drawn inside the 8px dot in the variant's ink: a semantic name / SVG string /
+   * Astro component (rendered through <Icon> with its box set to the 8px field), or
+   * markup in the `icon` slot.
+   */
+  icon?: ExtendedIconName | AstroIconComponent;
+}
+
+const {variant, label, isPulsing = false, tooltip, icon, class: className, style, ...rest} = Astro.props;
+const showsSlotIcon = Astro.slots.has('icon');
+const showsIcon = showsSlotIcon || (icon != null && icon !== '');
+const {themeClass, attrs: themeAttrs} = themeProps('status-dot', {variant});
+const attrs: Record<string, unknown> = {
+  role: 'img',
+  'aria-label': label,
+  ...themeAttrs,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+  'data-pulsing': isPulsing ? '' : undefined,
+  title: tooltip || undefined,
+  ...rest,
+};
+---
+<span {...attrs}>{showsIcon && (
+  <span aria-hidden="true" class="ax-status-dot-icon">{showsSlotIcon ? <slot name="icon" /> : <Icon icon={icon} style="width:8px;height:8px;font-size:8px" />}</span>
+)}</span>

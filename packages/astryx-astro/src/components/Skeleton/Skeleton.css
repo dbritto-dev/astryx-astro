@@ -1,0 +1,69 @@
+/* Port of @astryxdesign/core Skeleton/Skeleton.tsx (skeletonFade, styles.root, styles.animate, radiusStyles). */
+@layer reset, astryx-base, astryx-theme;
+
+/* Per-instance stagger delay, set inline (DELAY_TIME + STAGGER_TIME × index). */
+@property --_ax-skeleton-delay { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /*
+   * 0.25 → 0.925 in ten equal holds joined by 0.01% ramps (played back with `alternate`),
+   * linear rather than steps() so every engine runs it on the compositor.
+   */
+  @keyframes ax-skeleton-fade {
+    0% { opacity: 0.25; }
+    9.99% { opacity: 0.25; }
+    10% { opacity: 0.325; }
+    19.99% { opacity: 0.325; }
+    20% { opacity: 0.4; }
+    29.99% { opacity: 0.4; }
+    30% { opacity: 0.475; }
+    39.99% { opacity: 0.475; }
+    40% { opacity: 0.55; }
+    49.99% { opacity: 0.55; }
+    50% { opacity: 0.625; }
+    59.99% { opacity: 0.625; }
+    60% { opacity: 0.7; }
+    69.99% { opacity: 0.7; }
+    70% { opacity: 0.775; }
+    79.99% { opacity: 0.775; }
+    80% { opacity: 0.85; }
+    89.99% { opacity: 0.85; }
+    90% { opacity: 0.925; }
+    100% { opacity: 0.925; }
+  }
+
+  /* root */
+  .astryx-skeleton {
+    background-color: var(--color-skeleton);
+    opacity: 0.25;
+  }
+  @media (prefers-contrast: more) {
+    .astryx-skeleton { background-color: color-mix(in srgb, var(--color-skeleton), var(--color-text-primary) 30%); }
+  }
+  /* forced colors strip painted backgrounds: GrayText survives; full opacity keeps it perceivable */
+  @media (forced-colors: active) {
+    .astryx-skeleton { background-color: GrayText; opacity: 1; }
+  }
+
+  /* animate */
+  .astryx-skeleton {
+    animation-direction: alternate;
+    animation-duration: var(--_astryx-pre-tempo-duration-medium-max, var(--duration-medium-max));
+    animation-iteration-count: infinite;
+    animation-name: ax-skeleton-fade;
+    animation-timing-function: linear;
+    animation-delay: var(--_ax-skeleton-delay, 1000ms);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-skeleton { animation-name: none; }
+  }
+
+  /* radius */
+  .astryx-skeleton[data-radius="none"] { border-radius: 0; }
+  .astryx-skeleton[data-radius="0"] { border-radius: var(--radius-none); }
+  .astryx-skeleton[data-radius="1"] { border-radius: var(--radius-inner); }
+  .astryx-skeleton[data-radius="2"] { border-radius: var(--radius-element); }
+  .astryx-skeleton[data-radius="3"] { border-radius: var(--radius-container); }
+  .astryx-skeleton[data-radius="4"] { border-radius: var(--radius-container); }
+  .astryx-skeleton[data-radius="rounded"] { border-radius: var(--radius-full); }
+}

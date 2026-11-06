@@ -1,0 +1,94 @@
+---
+import Icon from './Icon.astro';
+import IconSizeOwner from './_IconSizeOwner.astro';
+import Sparkle from './demo-sparkle.svg';
+import {iconNames, registerIcons, resolveIconThemeName, type IconColor, type IconSize} from './iconRegistry';
+
+// A library-owned namespaced key (process-wide; unique to this demo).
+registerIcons({'demo:sparkle': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle></svg>'});
+
+const sizes: IconSize[] = ['xsm', 'sm', 'md', 'lg'];
+const colors: IconColor[] = [
+  'inherit', 'primary', 'secondary', 'tertiary', 'disabled', 'accent', 'info', 'success', 'error', 'warning',
+  'blue', 'red', 'green', 'gray', 'cyan', 'teal', 'yellow', 'orange', 'pink', 'purple',
+];
+const requestTheme = resolveIconThemeName(Astro);
+const rawSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.35-7-10a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 5.65-7 10-7 10z"></path></svg>';
+---
+<section class="icon-demo">
+  <h3>Semantic names <small>request theme: {requestTheme ?? 'none (built-in defaults)'}</small></h3>
+  <ul class="icon-grid">
+    {iconNames.map((name) => (
+      <li><Icon icon={name} size="lg" /><code>{name}</code></li>
+    ))}
+    <li><Icon icon="numberInput:stepperDown" size="lg" /><code>numberInput:stepperDown</code></li>
+    <li><Icon icon="demo:sparkle" size="lg" color="accent" /><code>demo:sparkle (registered)</code></li>
+  </ul>
+
+  <h3>Theme icon set, resolved server-side <small>(theme="butter" inside data-astryx-theme="butter")</small></h3>
+  <div data-astryx-theme="butter" class="theme-scope">
+    <ul class="icon-grid">
+      {iconNames.map((name) => (
+        <li><Icon icon={name} size="lg" theme="butter" /><code>{name}</code></li>
+      ))}
+    </ul>
+  </div>
+
+  <h3>Sizes</h3>
+  <div class="row">
+    {sizes.map((size) => <span class="cell"><Icon icon="search" size={size} /><code>{size}</code></span>)}
+    {sizes.map((size) => <span class="cell"><Icon icon="search" size={size} theme="neutral" /><code>{size} · neutral</code></span>)}
+  </div>
+
+  <h3>Colors</h3>
+  <div class="row">
+    {colors.map((color) => <span class="cell"><Icon icon="info" color={color} size="lg" /><code>{color}</code></span>)}
+  </div>
+
+  <h3>Accessible name</h3>
+  <div class="row">
+    <span class="cell"><Icon icon="success" color="success" label="Completed" size="lg" /><code>label="Completed" → role=img</code></span>
+    <span class="cell"><Icon icon="warning" color="warning" label="" size="lg" /><code>label="" → decorative</code></span>
+  </div>
+
+  <h3>Artwork passed directly</h3>
+  <div class="row">
+    <span class="cell"><Icon icon={Sparkle} size="lg" color="purple" /><code>*.svg component</code></span>
+    <span class="cell"><Icon icon={rawSvg} size="lg" color="red" label="Favorite" /><code>SVG string</code></span>
+    <span class="cell"><Icon size="lg" color="teal"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"></rect></svg></Icon><code>slot</code></span>
+  </div>
+
+  <h3>Owner default size <small>(cascade key icon-size)</small></h3>
+  <div class="row" data-test="icon-cascade">
+    <IconSizeOwner size="sm">
+      <span class="cell" data-case="owner-sm-default"><Icon icon="check" /><code>owner sm, default</code></span>
+      <span class="cell" data-case="owner-sm-explicit"><Icon icon="check" size="lg" /><code>owner sm, size="lg"</code></span>
+    </IconSizeOwner>
+    <IconSizeOwner size="lg">
+      <span class="cell" data-case="owner-lg-default"><Icon icon={Sparkle} /><code>owner lg, component</code></span>
+    </IconSizeOwner>
+    <IconSizeOwner size={null}>
+      <span class="cell" data-case="null-owner"><Icon icon="check" /><code>null owner → md</code></span>
+    </IconSizeOwner>
+    <span class="cell" data-case="no-owner"><Icon icon="check" /><code>no owner → md</code></span>
+    <span class="cell" data-case="no-owner-svg"><Icon icon={Sparkle} /><code>no owner, component → md</code></span>
+  </div>
+
+  <h3>Right-to-left</h3>
+  <div class="row" dir="rtl">
+    <span class="cell"><Icon icon="chevronRight" size="lg" class="ax-mirror-rtl" /><code>ax-mirror-rtl</code></span>
+    <span class="cell"><Icon icon="chevronRight" size="lg" /><code>not mirrored</code></span>
+  </div>
+</section>
+
+<style>
+  .icon-demo { display: grid; gap: var(--spacing-3); color: var(--color-text-primary); }
+  .icon-demo h3 { margin: var(--spacing-2) 0 0; font-size: var(--font-size-base); }
+  .icon-demo small { font-weight: var(--font-weight-normal); color: var(--color-text-secondary); }
+  .icon-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--spacing-2); }
+  .icon-grid li { display: flex; align-items: center; gap: var(--spacing-2); padding: var(--spacing-2); border-radius: var(--radius-inner); background: var(--color-background-muted); }
+  .icon-grid code, .cell code { font-size: var(--font-size-xs); color: var(--color-text-secondary); overflow-wrap: anywhere; }
+  .theme-scope { padding: var(--spacing-2); border-radius: var(--radius-element); background: var(--color-background-body); color: var(--color-text-primary); }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-3); }
+  .cell { display: inline-flex; flex-direction: column; align-items: center; gap: var(--spacing-1); min-width: 64px; }
+</style>

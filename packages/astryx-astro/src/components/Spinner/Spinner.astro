@@ -1,0 +1,124 @@
+---
+/**
+ * Spinner — indeterminate loading ring in four sizes and four shades.
+ * Port of @astryxdesign/core Spinner (Spinner.tsx, spinnerRotor.ts).
+ *
+ * Accessibility as in Astryx: a `role="progressbar"` element (no aria-valuenow) named by
+ * `aria-label` → a string `label` (via aria-labelledby on the visible text) → the
+ * translated "@astryx.spinner.loading". A caller `aria-hidden` or non-progressbar `role`
+ * wins (composed spinners inside an owner should pass aria-hidden="true").
+ *
+ * Not reproduced: Astryx also speaks the name through its shared polite live region when a
+ * spinner appears after page load (useAnnounceRenderedText, skipFirstRender). A spinner
+ * present when the page loads is silent there too, so server-rendered output matches; a
+ * spinner inserted later by client code is not announced until the announce runtime
+ * (src/elements/runtime/announce) is wired in.
+ *
+ * Geometry is themeable through --spinner-diameter / --spinner-stroke-width /
+ * --spinner-color / --spinner-track-color / --spinner-arc-fraction, declared on the
+ * element carrying the `astryx-spinner` target (the wrapper when there is a label).
+ *
+ * @example
+ * <Spinner />
+ * <Spinner size="xl" label="Loading results" />
+ * <Spinner shade="onMedia" aria-label="Uploading" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Text from '../Text/Text.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import './Spinner.css';
+
+export type SpinnerSize = 'sm' | 'md' | 'lg' | 'xl';
+export type SpinnerShade = 'default' | 'onMedia' | 'subtle' | 'inherit';
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** Ring diameter: sm 10px, md 14px, lg 18px, xl 28px (box adds the stroke on each side). @default 'md' */
+  size?: SpinnerSize;
+  /** @default 'default' */
+  shade?: SpinnerShade;
+  /**
+   * Visible text below the ring; a string also names the progressbar (aria-labelledby).
+   * For rich content use the `label` slot (then the name is `aria-label` or "Loading").
+   */
+  label?: string;
+  /** Accessible name. @default label (if a string), else translated "Loading" */
+  'aria-label'?: string;
+  'data-testid'?: string;
+  /** Locale for the default accessible name. */
+  locale?: string;
+}
+
+const SIZES: Record<SpinnerSize, {diameter: number; border: number}> = {
+  sm: {diameter: 10, border: 2},
+  md: {diameter: 14, border: 3},
+  lg: {diameter: 18, border: 3},
+  xl: {diameter: 28, border: 4},
+};
+const ARC_FRACTION = 0.375;
+
+const {
+  size = 'md',
+  shade = 'default',
+  label,
+  'aria-label': ariaLabel,
+  'data-testid': testId,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const {border, diameter} = SIZES[size] ?? SIZES.md;
+const frameSize = diameter + border * 2;
+const circumference = Math.PI * diameter;
+const arcLength = circumference * ARC_FRACTION;
+const hasLabelSlot = Astro.slots.has('label');
+const hasLabel = label != null || hasLabelSlot;
+const t = translator(Astro, locale);
+
+const namedByVisibleLabel = typeof label === 'string' && ariaLabel == null;
+const resolvedAriaLabel = ariaLabel ?? (typeof label === 'string' ? label : undefined) ?? t('@astryx.spinner.loading');
+const labelId = namedByVisibleLabel ? `ax-spinner-label-${Math.random().toString(36).slice(2, 10)}` : undefined;
+
+const {themeClass, attrs: themeAttrs} = themeProps('spinner', {size, shade});
+const boxSize = {width: `var(--_spinner-box-size, ${frameSize}px)`, height: `var(--_spinner-box-size, ${frameSize}px)`};
+
+// The progressbar box. Without a label it is the root and carries the theme target, the
+// caller's props, class and style (its own size wins over a caller width/height).
+const boxAttrs: Record<string, unknown> = hasLabel
+  ? {class: 'ax-spinner-box', style: mergeStyles(boxSize)}
+  : {
+      'data-testid': testId,
+      ...rest,
+      ...themeAttrs,
+      class: cx(themeClass, 'ax-spinner-box', className as string | undefined),
+      style: mergeStyles(style as StyleValue, boxSize),
+    };
+const wrapperAttrs: Record<string, unknown> = {
+  'data-testid': testId,
+  ...rest,
+  ...themeAttrs,
+  class: cx(themeClass, 'ax-spinner-labelled', className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+};
+// Astryx order: progressbar a11y first, so a caller role / aria-hidden in `rest` wins.
+const progressbarAttrs: Record<string, unknown> = {
+  role: 'progressbar',
+  'aria-label': namedByVisibleLabel ? undefined : resolvedAriaLabel,
+  'aria-labelledby': labelId,
+  ...boxAttrs,
+};
+const ring = `<svg width="0" height="0" aria-hidden="true" class="ax-spinner-ring"><circle cx="50%" cy="50%" r="${diameter / 2}" stroke-width="${border}" class="ax-spinner-circle ax-spinner-track"></circle></svg>`
+  + `<span aria-hidden="true" class="ax-spinner-rotor" data-ax-spinner-rotor><svg width="${frameSize}" height="${frameSize}" class="ax-spinner-ring"><circle cx="50%" cy="50%" r="${diameter / 2}" stroke-width="${border}" stroke-dasharray="${arcLength} ${circumference - arcLength}" class="ax-spinner-circle ax-spinner-arc"></circle></svg></span>`;
+---
+{hasLabel ? (
+  <div {...wrapperAttrs}>
+    <span {...progressbarAttrs} set:html={ring} />
+    {typeof label === 'string' ? <Text id={labelId} type="body" weight="bold">{label}</Text> : <slot name="label" />}
+  </div>
+) : (
+  <span {...progressbarAttrs} set:html={ring} />
+)}
+<script>import '../../behaviors/spinnerRotor';</script>

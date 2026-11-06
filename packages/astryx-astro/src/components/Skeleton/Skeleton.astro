@@ -1,0 +1,50 @@
+---
+/**
+ * Skeleton — a pulsing placeholder shape while content loads. Port of @astryxdesign/core
+ * Skeleton (Skeleton.tsx).
+ *
+ * Decorative (`aria-hidden="true"`, overridable): the surrounding region conveys the busy
+ * state (e.g. aria-busy). The pulse starts after 1s (no flash for fast loads), staggers
+ * 100ms per `index`, stops under prefers-reduced-motion, and stays visible in forced colors.
+ *
+ * @example
+ * <Skeleton width={200} height={20} />
+ * <Skeleton width={40} height={40} radius="rounded" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import './Skeleton.css';
+
+export type SkeletonRadius = 'none' | 0 | 1 | 2 | 3 | 4 | 'rounded';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Number (px) or any CSS length. @default '100%' */
+  width?: number | string;
+  /** Number (px) or any CSS length. @default '100%' */
+  height?: number | string;
+  /** Radius token step: none, 0 (none), 1 (inner), 2 (element), 3 (container), 4 (container), rounded (full). @default 3 */
+  radius?: SkeletonRadius;
+  /** Stagger index for a wave across sequential skeletons. @default 0 */
+  index?: number;
+  'data-testid'?: string;
+}
+
+const DELAY_TIME = 1000;
+const STAGGER_TIME = 100;
+
+const {width = '100%', height = '100%', radius = 3, index = 0, 'data-testid': testId, class: className, style, ...rest} = Astro.props;
+const {themeClass} = themeProps('skeleton');
+const attrs: Record<string, unknown> = {
+  'aria-hidden': 'true',
+  'data-testid': testId,
+  class: cx(themeClass, className as string | undefined),
+  'data-radius': String(radius),
+  style: mergeStyles(
+    {width: cssSize(width), height: cssSize(height), '--_ax-skeleton-delay': `${DELAY_TIME + STAGGER_TIME * index}ms`},
+    style as StyleValue,
+  ),
+  ...rest,
+};
+---
+<div {...attrs}></div>

@@ -1,0 +1,15 @@
+---
+/**
+ * Demo/test fixture (private): an owner that supplies a default icon size to its slot, the
+ * way Button does through Astryx's IconDefaultSizeContext. `size={null}` is a null
+ * provider (consumes the markers, stamps nothing).
+ */
+import {stampAttr} from '../../lib/cascade';
+import type {IconSize} from './iconRegistry';
+
+interface Props {
+  size: IconSize | null;
+}
+const html = await stampAttr(await Astro.slots.render('default'), 'icon-size', Astro.props.size, 'data-size');
+---
+<Fragment set:html={html} />

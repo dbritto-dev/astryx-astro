@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "intl-messageformat": "^12.1.4",
+    "lucide-static": "1.70.0",
     "ultrahtml": "^1.7.0"
   }
 }

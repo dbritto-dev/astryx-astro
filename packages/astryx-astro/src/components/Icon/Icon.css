@@ -1,0 +1,50 @@
+/*
+ * Port of @astryxdesign/core Icon/Icon.tsx (styles, registrySizeStyles, colorStyles) and
+ * Icon/IconSize.stylex.ts (iconSizeStyles). Rule order mirrors stylex.props() order:
+ * root/span → color → size.
+ *
+ * Two render modes share the `astryx-icon` target: a <span> wrapping 1em registry artwork
+ * (gets inline-flex centring and a font-size), or the artwork's own <svg> as the root.
+ * Themes size a glyph through the private --_icon-width / --_icon-height vars (derived
+ * from `components.icon['size:*'].width/height`); nothing else declares the dimensions.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-icon { flex-shrink: 0; }
+  .astryx-icon:where(:not(svg)) { display: inline-flex; align-items: center; justify-content: center; }
+
+  /* color */
+  .astryx-icon[data-color="primary"] { color: var(--color-icon-primary); }
+  .astryx-icon[data-color="secondary"] { color: var(--color-icon-secondary); }
+  .astryx-icon[data-color="tertiary"] { color: var(--color-icon-secondary); }
+  .astryx-icon[data-color="disabled"] { color: var(--color-icon-disabled); }
+  .astryx-icon[data-color="accent"] { color: var(--color-accent); }
+  .astryx-icon[data-color="info"] { color: var(--color-icon-info); }
+  .astryx-icon[data-color="success"] { color: var(--color-icon-success); }
+  .astryx-icon[data-color="error"] { color: var(--color-icon-error); }
+  .astryx-icon[data-color="warning"] { color: var(--color-icon-warning); }
+  .astryx-icon[data-color="inherit"] { color: inherit; }
+  .astryx-icon[data-color="blue"] { color: var(--color-icon-blue); }
+  .astryx-icon[data-color="red"] { color: var(--color-icon-red); }
+  .astryx-icon[data-color="green"] { color: var(--color-icon-green); }
+  .astryx-icon[data-color="gray"] { color: var(--color-icon-gray); }
+  .astryx-icon[data-color="cyan"] { color: var(--color-icon-cyan); }
+  .astryx-icon[data-color="teal"] { color: var(--color-icon-teal); }
+  .astryx-icon[data-color="yellow"] { color: var(--color-icon-yellow); }
+  .astryx-icon[data-color="orange"] { color: var(--color-icon-orange); }
+  .astryx-icon[data-color="pink"] { color: var(--color-icon-pink); }
+  .astryx-icon[data-color="purple"] { color: var(--color-icon-purple); }
+
+  /* size: the glyph box (both modes) */
+  .astryx-icon[data-size="xsm"] { width: var(--_icon-width, 0.75rem); height: var(--_icon-height, 0.75rem); }
+  .astryx-icon[data-size="sm"] { width: var(--_icon-width, 1rem); height: var(--_icon-height, 1rem); }
+  .astryx-icon[data-size="md"] { width: var(--_icon-width, 1.25rem); height: var(--_icon-height, 1.25rem); }
+  .astryx-icon[data-size="lg"] { width: var(--_icon-width, 1.5rem); height: var(--_icon-height, 1.5rem); }
+
+  /* registry artwork is 1em-based: the smaller side fits square art into a non-square box */
+  .astryx-icon:where(:not(svg))[data-size="xsm"] { font-size: min(var(--_icon-width, 0.75rem), var(--_icon-height, 0.75rem)); }
+  .astryx-icon:where(:not(svg))[data-size="sm"] { font-size: min(var(--_icon-width, 1rem), var(--_icon-height, 1rem)); }
+  .astryx-icon:where(:not(svg))[data-size="md"] { font-size: min(var(--_icon-width, 1.25rem), var(--_icon-height, 1.25rem)); }
+  .astryx-icon:where(:not(svg))[data-size="lg"] { font-size: min(var(--_icon-width, 1.5rem), var(--_icon-height, 1.5rem)); }
+}

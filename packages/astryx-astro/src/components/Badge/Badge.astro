@@ -1,0 +1,56 @@
+---
+/**
+ * Badge — a one-line status or category indicator. Port of @astryxdesign/core Badge
+ * (Badge.tsx).
+ *
+ * A string/number label is also the `title` (the full text stays reachable when the
+ * ellipsis cuts it); a rich `label` slot gets none, as in Astryx. Variants are extensible
+ * (Astryx BadgeVariantMap): any string is reflected as `data-variant` for theme rules, e.g.
+ * the neutral theme's `gray`.
+ *
+ * @example
+ * <Badge label="Active" />
+ * <Badge variant="success" label="Deployed" icon="check" />
+ * <Badge variant="purple"><Fragment slot="label"><strong>Design</strong></Fragment></Badge>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Badge.css';
+
+export type BadgeVariant =
+  | 'neutral' | 'info' | 'success' | 'warning' | 'error'
+  | 'blue' | 'cyan' | 'green' | 'orange' | 'pink' | 'purple' | 'red' | 'teal' | 'yellow'
+  | (string & {});
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** Semantic variants use solid fills; color variants use tinted fills. @default 'neutral' */
+  variant?: BadgeVariant;
+  /** Badge text (or use the `label` slot for rich content). */
+  label?: string | number;
+  /**
+   * Leading icon: a semantic name / SVG string / Astro component rendered through <Icon>
+   * (shorthand for `<Icon icon=… />` in the `icon` slot), or markup in the `icon` slot.
+   */
+  icon?: ExtendedIconName | AstroIconComponent;
+}
+
+const {variant = 'neutral', label, icon, class: className, style, ...rest} = Astro.props;
+
+const labelTitle = typeof label === 'number' ? String(label) : typeof label === 'string' && label.length > 0 ? label : undefined;
+const hasLabelSlot = Astro.slots.has('label');
+// The badge grows with its label (min-height: 1lh) only when a label renders.
+const hasLabel = hasLabelSlot || (label != null && label !== '');
+const {themeClass, attrs: themeAttrs} = themeProps('badge', {variant});
+const attrs: Record<string, unknown> = {
+  ...themeAttrs,
+  class: cx(themeClass, className as string | undefined),
+  style: mergeStyles(style as StyleValue),
+  'data-has-label': hasLabel ? '' : undefined,
+  title: labelTitle,
+  ...rest,
+};
+---
+<span {...attrs}>{Astro.slots.has('icon') ? <slot name="icon" /> : icon != null && <Icon icon={icon} />}<span class="ax-badge-label">{hasLabelSlot ? <slot name="label" /> : label}</span></span>

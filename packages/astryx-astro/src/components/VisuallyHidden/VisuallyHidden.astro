@@ -1,0 +1,29 @@
+---
+/**
+ * VisuallyHidden — content in the accessibility tree, hidden from sight: accessible names
+ * for icon-only controls, aria-live regions, screen-reader-only context.
+ * Port of @astryxdesign/core VisuallyHidden (VisuallyHidden.tsx).
+ *
+ * Deliberately styling-free, as in Astryx: `class` and `style` are not applied (a styled
+ * visually-hidden node is always a mistake), and there is no theme target. The a11y
+ * pass-throughs (`aria-*`, `role`, `id`, `data-*`) are kept for the live-region use.
+ * Astryx has no focusable ("show on focus") variant.
+ *
+ * @example
+ * <button><Icon icon="close" /><VisuallyHidden>Close dialog</VisuallyHidden></button>
+ * <VisuallyHidden as="div" aria-live="polite">Moved task to Done</VisuallyHidden>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import './VisuallyHidden.css';
+
+export interface Props extends Omit<HTMLAttributes<'span'>, 'class' | 'style' | 'class:list'> {
+  /** Element to render. Use a block element such as 'div' for content or a live region. @default 'span' */
+  as?: string;
+}
+
+const {as: Tag = 'span', ...props} = Astro.props;
+// Strip styling props even when passed through a cast, as Astryx does: a consumer `style`
+// would get the last word on `position` and un-hide the node.
+const {class: _class, style: _style, 'class:list': _classList, xstyle: _xstyle, ...rest} = props as typeof props & Record<string, unknown>;
+---
+<Tag {...rest} class="ax-visually-hidden"><slot /></Tag>
