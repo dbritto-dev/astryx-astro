@@ -243,3 +243,49 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Fixed: nested roving containers (a Toolbar containing a ButtonGroup that isn't first) produced
   two Tab stops. Containers now sync inner first and every enclosing container re-syncs on
   focus, keyboard moves and DOM changes (`tools/tests/roving-nested.test.mjs`).
+
+## Dialogs, drawers, toasts
+
+- `attachDialog({id?, triggerId?})` (Dialog/attach.ts) → `{trigger, close, layer}`; open/close
+  work without JS via invoker commands (`commandfor`/`command="show-modal"`), with a delegated
+  fallback. `attachDrawer({id?, hasScrim})` the same (`toggle-popover` without scrim).
+- Hosts `<ax-dialog>`, `<ax-alert-dialog>`, `<ax-drawer>`: `show({source?})`, `hide()`, `open()`,
+  `close()`, `toggle()`, `isOpen`, `data-ax-open`, `astryx-open-change` {isOpen, reason};
+  AlertDialog adds `astryx-action` and `actionLoading`.
+- Every modal surface calls `supplyModalOutlet(dialog)` after `showModal()` (runtime/modalOutlet.ts).
+- `toast({...})` / `createToastQueue()` / `getToastContext()` are client-only:
+  `import {toast} from 'astryx-astro/elements/toast'`.
+- A visible tooltip inside a dialog consumes the first Escape (Astryx useTooltip); tests that
+  press Escape on a focused control with a tooltip must expect two presses.
+- `astryx-open-change` from a tooltip bubbles through its container; listeners on a container
+  that has its own `astryx-open-change` must check `event.target`.
+
+## Item (List and menus build on it)
+
+- Props: `as`, `label`/`description` (prop or slot), slots `marker`/`startContent`/`endContent`,
+  `align`, `density`, `labelLines`, `descriptionLines`, `layout`, `href`/`target`/`rel`,
+  `isHighlighted`, `isSelected`, `isDisabled`, `role`, `swipeActions`, `swipeBehavior`;
+  `interactiveRole="button"` replaces onClick, `interactiveRef="<selector>"` the ref; internal
+  `__listRow`, `__markerColumns` for List.
+- Selection: `aria-selected` on roles that allow it, else `aria-current="true"`.
+- Key `item-description`: a slotted control with `data-ax-inherit="item-description"` gets the
+  description id in `aria-describedby`.
+- `behaviors/clickable.ts`: `data-ax-clickable="button|link|proxy|delegate"`, action marked
+  `[data-ax-clickable-action]` — whole-surface activation, nested controls keep their clicks.
+
+## Calendar (date inputs build on it)
+
+- `<ax-calendar>`: `value` (ISO, `{start, end}` or null), `focusDate`, `rangeSelectionStart`,
+  `navigateTo(iso)`, `focusDay(iso?)`, `cancelRangeSelection()`, `dateConstraints` (functions),
+  `configure({min, max, minRangeSpan, maxRangeSpan, numberOfMonths, hasOutsideDays,
+  hasWeekNumbers, hasVariableRowCount, weekStartsOn})`.
+- Events: `astryx-change` (cancelable) {value, valueAsDate} / {value: {start, end}};
+  `astryx-focus-date-change` {focusDate}. Escape cancels a range in progress and stops
+  propagation so a surrounding popover stays open.
+- Server and client markup come from one function (`calendarModel.ts`).
+- `Astro.locals.astryxCalendar` is the request/subtree calendar system (also read by Timestamp).
+
+## Cleanup backlog (lead)
+
+- Stepper/stepperContext.ts duplicates the AsyncLocalStorage pattern of lib/subtreeLocals.ts.
+- Token's behavior could use behaviors/clickable.ts.
