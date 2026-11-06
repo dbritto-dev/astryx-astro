@@ -64,7 +64,8 @@ import InputClearButton from '../Field/InputClearButton.astro';
 import TypeaheadPopup from './_TypeaheadPopup.astro';
 import {attachTooltip} from '../Tooltip/attach';
 import {cx, themeProps} from '../../lib/themeProps';
-import {inherits} from '../../lib/cascade';
+import {inherits, seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {mergeStyles} from '../../lib/style';
 import {resolveLocale, translator} from '../../lib/i18n';
 import {joinAriaIDs} from '../Field/fieldProps';
@@ -151,7 +152,8 @@ const locale = resolveLocale(Astro, r.locale);
 const t = translator(Astro, r.locale);
 const size: TypeaheadSize = sizeProp ?? 'md';
 const placeholder = placeholderProp ?? t('@astryx.typeahead.searchPlaceholder');
-const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+// The empty state renders in the popup layer (layer-scoped contexts reset, cascades sealed).
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await seal(await renderLayerContent(Astro, () => Astro.slots.render('emptySearchText')))).trim() : '';
 const startIconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
 const value = valueProp ?? null;
 

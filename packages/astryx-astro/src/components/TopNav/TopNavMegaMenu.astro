@@ -30,6 +30,7 @@ import Grid from '../Grid/Grid.astro';
 import NavMenuLayer from '../NavMenu/_NavMenuLayer.astro';
 import {cx, themeProps} from '../../lib/themeProps';
 import {uid} from '../../lib/uid';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {topNavMode} from '../AppShell/appShellContext';
 import {slugify, topNavId, topNavSlot} from './topNavContext';
 import '../NavItem/NavItem.css';
@@ -54,9 +55,11 @@ const slot = topNavSlot(Astro);
 const navId = topNavId(Astro);
 const layerId = uid(Astro, `ax-mega-menu-${slugify(label)}`);
 const triggerId = (idProp as string | undefined) ?? `${layerId}-trigger`;
-const itemsHtml = Astro.slots.has('items') ? (await Astro.slots.render('items')).trim() : '';
-const featuredHtml = Astro.slots.has('featured') ? (await Astro.slots.render('featured')).trim() : '';
 const isDrawer = mode === 'drawer';
+// The panel is a layer (layer-scoped contexts reset); the drawer section renders inline.
+const panelSlot = (name: string) => (isDrawer ? Astro.slots.render(name) : renderLayerContent(Astro, () => Astro.slots.render(name)));
+const itemsHtml = Astro.slots.has('items') ? (await panelSlot('items')).trim() : '';
+const featuredHtml = Astro.slots.has('featured') ? (await panelSlot('featured')).trim() : '';
 const {themeClass, attrs} = themeProps('top-nav-mega-menu', {mode: isDrawer ? 'drawer' : null});
 ---
 {isDrawer ? (

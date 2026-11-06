@@ -40,7 +40,8 @@ class AxBanner extends HTMLElement {
   }
 
   get isDismissed(): boolean {
-    return this.hidden;
+    // `hidden` may be 'until-found' (still hidden).
+    return this.hidden !== false;
   }
 
   open(): void { this.#apply(true); }

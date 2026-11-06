@@ -3,12 +3,15 @@
  * Internal: the `<ax-nav-menu>` layer (elements/nav-menu.ts) every hover-opened nav popover
  * renders — TopNavMenu, TopNavMegaMenu, TopNavHeading / SideNavHeading menus and a collapsed
  * SideNavItem's flyout. Ports usePopover's `render()` (the `.astryx-popover` surface, its role)
- * and the hover options of useMenuHover. The content is sealed (cascades end at a layer root).
+ * and the hover options of useMenuHover. The content is sealed (cascades end at a layer root) and
+ * rendered through `renderLayerContent()` (layer-scoped contexts reset). Callers that pre-render
+ * a slot into this layer render it through `renderLayerContent()` themselves.
  */
 import type {LayerAlignment, LayerPlacement} from '../../lib/types';
 import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, placementAttrs} from '../Layer/layer';
 import '../Layer/Layer.css';
 import '../Popover/Popover.css';
@@ -57,7 +60,7 @@ const {
   hasSurface = true, hasMotion = true, role = 'none', label, layerClass, layerStyle, surfaceClass, surfaceStyle,
 } = Astro.props;
 const surface = themeProps('popover');
-const html = await seal(Astro.slots.has('default') ? await Astro.slots.render('default') : '');
+const html = await seal(Astro.slots.has('default') ? await renderLayerContent(Astro, () => Astro.slots.render('default')) : '');
 const isDialog = role === 'dialog';
 ---
 <ax-nav-menu

@@ -61,7 +61,8 @@ import PanelSearchInput from '../Selector/_PanelSearchInput.astro';
 import OptionRow from './_MultiSelectorOptionRow.astro';
 import {attachTooltip} from '../Tooltip/attach';
 import {cx, themeProps} from '../../lib/themeProps';
-import {inherits} from '../../lib/cascade';
+import {inherits, seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {mergeStyles} from '../../lib/style';
 import {resolveLocale, translator} from '../../lib/i18n';
 import {clearance, placementAttrs} from '../Layer/layer';
@@ -195,8 +196,10 @@ const placeholder = placeholderProp ?? t('@astryx.multiSelector.selectPlaceholde
 const selectAllLabel = selectAllLabelProp ?? t('@astryx.multiSelector.selectAll');
 const searchPlaceholder = searchPlaceholderProp ?? t('@astryx.multiSelector.searchPlaceholder');
 const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
-const emptyHtml = await slotHtml('emptyText');
-const emptySearchHtml = await slotHtml('emptySearchText');
+// The empty states render in the listbox layer (layer-scoped contexts reset, cascades sealed).
+const layerSlotHtml = async (name: string) => (Astro.slots.has(name) ? (await seal(await renderLayerContent(Astro, () => Astro.slots.render(name)))).trim() : '');
+const emptyHtml = await layerSlotHtml('emptyText');
+const emptySearchHtml = await layerSlotHtml('emptySearchText');
 const startIconHtml = await slotHtml('startIcon');
 const emptyText = emptyTextProp ?? t('@astryx.multiSelector.empty');
 const emptySearchText = emptySearchTextProp ?? t('@astryx.multiSelector.emptySearchResults');

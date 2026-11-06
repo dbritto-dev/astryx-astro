@@ -197,9 +197,17 @@ Registered: `astryxList`, `astryxCheckboxList`, `astryxRadioList`, `astryxTabLis
 `astryxStepper` (Stepper/stepperContext.ts, now on lib/subtreeLocals.ts — `readStepperContext`).
 Not layer-scoped (as in Astryx): `astryxCommandPalette`, `astryxBottomSheetSwitcher` (BottomSheet
 still resets it to null in each sheet), `astryxLayerProvider`. Callers: Tooltip, HoverCard,
-InfoTip, Popover, Layer, DropdownMenu rows (`_MenuStamp`, so ContextMenu too) + header/footer +
-SubMenu flyouts, Dialog (AlertDialog, CommandPalette slots), Drawer, BottomSheet, ComplexSelector,
-the date pickers (`_PickerLayer`). A new overlay with a content slot must do the same.
+InfoTip, Popover, Layer, DropdownMenu rows (`_MenuStamp`, so ContextMenu and BreadcrumbItem's
+`menu` too) + header/footer + SubMenu flyouts, Dialog (AlertDialog, CommandPalette slots), Drawer,
+BottomSheet, MobileNav (header + content), ComplexSelector, the date pickers (`_PickerLayer`), the
+nav menus (`_NavMenuLayer`; TopNavHeading / SideNavHeading `menu`, TopNavMegaMenu `items` /
+`featured` outside the drawer, SideNavItem's rail flyout), the empty-state slots of Selector,
+MultiSelector, Typeahead and Tokenizer (+ Tokenizer's `endContent` in `unfocusedLayer` mode;
+PowerSearch forwards its `endContent` slot instead of pre-rendering it). A new overlay with a
+content slot must do the same — and so must a caller that renders a slot to HTML before handing
+it to a layer (`<Fragment set:html>` inside the layer is already rendered: the layer's own
+`renderLayerContent` cannot reset it). Overlays that render only data / function props need
+nothing: TabMenu, Lightbox, ToastViewport, the Chat trigger menu, the Table context-menu rows.
 
 Root theme: spread `themeRootAttributes(name, mode)` (theme/themeRoot.ts) on `<html>` and set
 `astryxTheme` in middleware; a `<Theme>` with neither above it syncs `<html>` with an inline script.
@@ -584,4 +592,7 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Context menus: `astryx-context-action` {id, columnKey, rowKey, kind} (cancelable);
   `table.registerContextAction(id, {state, select})`; sort and expand/collapse actions built in.
 - `<ax-table>` helpers `setRowPager()`, `matchCount`. All `useTable*` plugin functions exported.
-- Known: in the filter popover, autofocus lands on DateInput's calendar button, not its text field.
+- Filter popover initial focus: the popover takes the first genuine content control (usePopover
+  focusInitialTarget), and DateInput's calendar toggle precedes its text field (as in Astryx),
+  so `_FilterControl` (`isInPopover`) names the date field with `data-autofocus`, the
+  caller-preferred target the popover runtime takes first.

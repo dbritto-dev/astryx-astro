@@ -40,6 +40,12 @@ import {
 
 type Messages = Record<'goToPage' | 'pageOfTotal' | 'pageAnnounce' | 'count' | 'ofTotalPages', string>;
 
+/** Events the element listens for: the DOM's, plus the inner controls' `astryx-change`. */
+interface PaginationListenedEvents extends HTMLElementEventMap {
+  /** From the inner NumberInput ({value: number | null}) or page-size Selector ({value}). */
+  'astryx-change': CustomEvent<{value: unknown}>;
+}
+
 const ITEM = '[data-ax-pagination-item]';
 const DOT = 'button[role="radio"][data-page]';
 
@@ -149,7 +155,7 @@ export class PaginationElement extends HTMLElement {
     this.#hasMore = more == null ? undefined : more === 'true';
     try { this.#messages = JSON.parse(this.getAttribute('data-ax-messages') ?? '{}'); } catch { this.#messages = {}; }
 
-    const on = <K extends keyof HTMLElementEventMap>(type: K, fn: (e: HTMLElementEventMap[K]) => void, opts?: AddEventListenerOptions) => {
+    const on = <K extends keyof PaginationListenedEvents>(type: K, fn: (e: PaginationListenedEvents[K]) => void, opts?: AddEventListenerOptions) => {
       this.addEventListener(type, fn as EventListener, opts);
       this.#cleanup.push(() => this.removeEventListener(type, fn as EventListener, opts));
     };
@@ -159,7 +165,7 @@ export class PaginationElement extends HTMLElement {
       if ((e.target as Element | null)?.closest?.(DOT) && !this.#isLinks) e.preventDefault();
     });
     on('focusin', (e) => this.#onDotFocus(e));
-    on('astryx-change', (e) => this.#onInnerChange(e as CustomEvent<{value: unknown}>));
+    on('astryx-change', (e) => this.#onInnerChange(e));
   }
 
   disconnectedCallback(): void {

@@ -20,6 +20,8 @@ import TypeaheadPopup from './_TypeaheadPopup.astro';
 import {cx} from '../../lib/themeProps';
 import {resolveLocale, translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
+import {seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {pluralTemplates} from '../Field/clientMessages';
 import type {SearchableItem} from '../../lib/searchableItem';
 import type {StaticSearchSource} from './createStaticSource';
@@ -93,7 +95,8 @@ const t = translator(Astro, localeProp);
 const base = uid(Astro, 'ax-base-typeahead');
 const id = inputId ?? (idProp as string | undefined) ?? `${base}-input`;
 const ids = {host: `${base}-host`, layer: `${base}-layer`, listbox: `${base}-listbox`};
-const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+// The empty state renders in the popup layer (layer-scoped contexts reset, cascades sealed).
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await seal(await renderLayerContent(Astro, () => Astro.slots.render('emptySearchText')))).trim() : '';
 const disabledNative = isDisabled && !isFocusableDisabled;
 ---
 <ax-typeahead

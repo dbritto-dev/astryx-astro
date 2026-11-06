@@ -66,7 +66,8 @@ import InputClearButton from '../Field/InputClearButton.astro';
 import TypeaheadPopup from '../Typeahead/_TypeaheadPopup.astro';
 import {attachTooltip} from '../Tooltip/attach';
 import {cx, themeProps} from '../../lib/themeProps';
-import {inherits} from '../../lib/cascade';
+import {inherits, seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {mergeStyles} from '../../lib/style';
 import {resolveLocale, translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
@@ -192,9 +193,13 @@ const t = translator(Astro, r.locale);
 const size: TokenizerSize = sizeProp ?? 'md';
 const value = valueProp ?? [];
 const placeholder = placeholderProp ?? t('@astryx.typeahead.searchPlaceholder');
-const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+const isLayerMode = tokenOverflowBehavior === 'unfocusedLayer';
+// Slots that render inside a layer (the results popup; in unfocusedLayer mode the overlay box
+// with `endContent`): layer-scoped contexts reset, cascades sealed (Astryx LayerContentBoundary).
+const layerSlotHtml = async (name: string) => (await seal(await renderLayerContent(Astro, () => Astro.slots.render(name)))).trim();
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? await layerSlotHtml('emptySearchText') : '';
 const startIconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
-const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
+const endHtml = !Astro.slots.has('endContent') ? '' : isLayerMode ? await layerSlotHtml('endContent') : (await Astro.slots.render('endContent')).trim();
 const base = uid(Astro, 'ax-tokenizer');
 const ids = {
   box: `${base}-box`,
@@ -204,7 +209,6 @@ const ids = {
   wrapper: `${base}-wrapper`,
 };
 
-const isLayerMode = tokenOverflowBehavior === 'unfocusedLayer';
 const isTruncating = tokenOverflowBehavior !== 'none';
 const removable = (item: SearchableItem) => __isItemRemovable?.(item) ?? true;
 const isAtMax = maxEntries != null && value.length >= maxEntries;

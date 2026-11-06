@@ -1,3 +1,5 @@
+/// <reference types="astro/client" />
+// Vite import.meta typing (env) for plain tsc, through astro (which depends on vite).
 /**
  * Toasts: `<ax-toast>` (one card), `<ax-toast-viewport>` (the stack) and the imperative
  * `toast()` API.

@@ -209,7 +209,6 @@ const tokenProps = (item: SearchableItem) => {
   };
 };
 const startIconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
-const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
 const {themeClass, attrs: themeAttrs} = themeProps('power-search');
 const fieldIcon = (key: string) => {
   const field = config.getField(key);
@@ -274,7 +273,8 @@ const fieldIcon = (key: string) => {
     {startIconHtml && <Fragment slot="startIcon" set:html={startIconHtml} />}
     <Fragment slot="endContent">
       <span class="ax-power-search-result-count" data-ax-result-count-text hidden={resultCountText == null || undefined}>{resultCountText}</span>
-      {endHtml && <Fragment set:html={endHtml} />}
+      {/* Forwarded, not pre-rendered: in unfocusedLayer mode Tokenizer renders it in its layer. */}
+      <slot name="endContent" />
     </Fragment>
   </Tokenizer>
   <ax-layer

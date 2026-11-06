@@ -1,3 +1,5 @@
+/// <reference types="astro/client" />
+// Vite import.meta typing (glob) for plain tsc, through astro (which depends on vite).
 /**
  * Server-side translation using Astryx's own ICU catalogs (src/locales, generated).
  *

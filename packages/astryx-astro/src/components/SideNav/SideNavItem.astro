@@ -46,7 +46,7 @@ import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
 import {stamp} from '../../lib/cascade';
 import {mergeIds} from '../Layer/layer';
-import {renderWithLocals} from '../../lib/subtreeLocals';
+import {renderLayerContent, renderWithLocals} from '../../lib/subtreeLocals';
 import {buttonSizeStampers} from '../Button/buttonCascade';
 import {isInMobileDrawer} from '../AppShell/appShellContext';
 import {NOT_COLLAPSIBLE, ROW_CONTROL_SIZE, SIDE_NAV_DEPTH_LOCAL, SIDE_NAV_LOCAL, sideNavContext, sideNavDepth} from './sideNavContext';
@@ -130,7 +130,7 @@ const describedBy = rest['aria-describedby'] as string | undefined;
 // The flyout of a rail parent.
 const flyoutId = railMode === 'split' && hasChildren ? uid(Astro, 'ax-side-nav-flyout') : undefined;
 const flyoutHtml = flyoutId
-  ? (await renderWithLocals(Astro, {[SIDE_NAV_LOCAL]: NOT_COLLAPSIBLE, [SIDE_NAV_DEPTH_LOCAL]: 0}, () => Astro.slots.render('default'))).trim()
+  ? (await renderLayerContent(Astro, () => renderWithLocals(Astro, {[SIDE_NAV_LOCAL]: NOT_COLLAPSIBLE, [SIDE_NAV_DEPTH_LOCAL]: 0}, () => Astro.slots.render('default')))).trim()
   : '';
 
 // Shared attributes of the control the row renders (link or button).

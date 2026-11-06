@@ -58,7 +58,7 @@ const slotAttrs = op
     <span class="ax-table-filter-layer" title="">
       <Popover {...pop.layer} label={label} placement="below" alignment="start" locale={table.locale}>
         <div slot="content" class="ax-table-filter-popover-content">
-          <FilterControl header={header} operatorValue={op} value={value} size="md" locale={table.locale} />
+          <FilterControl header={header} operatorValue={op} value={value} size="md" isInPopover locale={table.locale} />
           <div class="ax-table-filter-actions">
             <Button label={t('@astryx.table.filter.reset')} variant="ghost" size="sm" data-ax-filter-action="reset" locale={table.locale} />
             <div class="ax-table-filter-actions-spacer"></div>
