@@ -456,3 +456,21 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Adopt the `presentation` contract in DropdownMenu, Selector, DateInput.
 - Table: filtering, pagination, context-menu rows, column settings plugins.
 - LayerProvider could render a ToastViewport from its toast config.
+
+## TabList and Pagination
+
+- TabList follows 0.7.9: `overflow` is `auto|scroll|visible` (scrolling strip with edge fades,
+  hover-only scroll buttons, selected tab kept in view); TabMenu is caller-added; per-tab
+  indicators fade (no sliding indicator); panels are not managed (`panelId` → `aria-controls`).
+  `astryx-change` {value} (cancelable), `el.value`, subtree local `astryxTabList`, root enrols `size`.
+- Pagination: `astryx-change` {page} (cancelable); `astryx-page-size-change` {pageSize}
+  (cancelable) then `astryx-change` {page: 1}; silent setters `page`, `pageSize`, `totalItems`,
+  `totalPages`, `hasMore`; `pageCount`, `goTo(page)`; links mode `href={(p) => url}` (extension).
+  Paging helpers incl. `generatePageRange` (exported) in `Pagination/pageRange.ts`.
+
+## More integration backlog (lead)
+
+- `.ax-keyboard-hint` rules are duplicated in Toolbar, SegmentedControl, TabList → shared.css.
+- Button overwrites a caller's `data-ax-tooltip`; accept an external tooltip id (Pagination uses
+  `data-ax-nav-tip` as a workaround).
+- Menu runtime options: focus-first on pointer open; no ↑/↓ open on the trigger (TabMenu).
