@@ -10,6 +10,8 @@ import NavIcon from '../NavIcon/NavIcon.astro';
 import NavHeadingMenu from '../NavMenu/NavHeadingMenu.astro';
 import NavHeadingMenuItem from '../NavMenu/NavHeadingMenuItem.astro';
 import TextInput from '../TextInput/TextInput.astro';
+import List from '../List/List.astro';
+import ListItem from '../List/ListItem.astro';
 import {bellIcon, boltIcon, chartIcon, chatIcon, featuredImage, gearIcon, layersIcon, logoMark, usersIcon} from '../NavItem/_demoIcons';
 
 const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
@@ -85,4 +87,21 @@ const solutions = [
       <TopNavMenu label="الحلول" items={[{title: 'التحليلات', href: '#a'}, {title: 'الرسائل', href: '#m'}]} id="top-nav-rtl-menu" />
     </TopNav>
   </div>
+</div>
+<div>
+  <p style={label}>
+    Layer-scoped contexts: the compact, divided List around this heading does not reach its menu
+    (the row inside the menu is a plain balanced row).
+  </p>
+  <List density="compact" hasDividers id="nav-scope-list" style="max-width:360px">
+    <ListItem label="Workspace" id="nav-scope-outer">
+      <TopNavHeading slot="endContent" heading="Acme" id="nav-scope-heading">
+        <NavHeadingMenu slot="menu">
+          <NavHeadingMenuItem label="Acme Cloud" href="#cloud" />
+        </NavHeadingMenu>
+        <ul slot="menu" style="margin:0;padding:0;list-style:none"><ListItem label="In the menu" id="nav-scope-inner" /></ul>
+      </TopNavHeading>
+    </ListItem>
+    <ListItem label="Billing" id="nav-scope-outer-2" />
+  </List>
 </div>

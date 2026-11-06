@@ -24,6 +24,7 @@
  * every stylesheet; layers only need the three cases Astryx's fallbacks cover).
  */
 import {ensureId, identFrom} from './dom';
+import {globalSingleton} from './global';
 
 export type LayerPlacement = 'above' | 'below' | 'start' | 'end';
 export type LayerAlignment = 'start' | 'center' | 'end';
@@ -83,7 +84,8 @@ interface State {
   exit: object | null;
 }
 
-const states = new WeakMap<HTMLElement, State>();
+/** Each shown layer's binding, shared by every copy of this module. */
+const states = globalSingleton('anchor', () => new WeakMap<HTMLElement, State>());
 
 function stopObservers(state: State) {
   for (const fn of state.cleanups.splice(0)) fn();

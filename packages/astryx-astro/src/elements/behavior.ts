@@ -10,14 +10,21 @@
  *
  * Elements are connected when they appear (including later DOM insertions, view
  * transitions and client-side swaps) and cleaned up when removed or when the attribute
- * is removed.
+ * is removed. One registry and one observer per page (`globalSingleton`): a behaviour that a
+ * second copy of this module defines again is not set up twice.
  */
+import {globalSingleton} from './runtime/global';
+
 type Cleanup = void | (() => void);
 type Setup = (el: HTMLElement) => Cleanup;
 
-const registry = new Map<string, Setup>();
-const active = new Map<string, WeakMap<HTMLElement, Cleanup>>();
-let observer: MutationObserver | null = null;
+interface BehaviorState {
+  registry: Map<string, Setup>;
+  active: Map<string, WeakMap<HTMLElement, Cleanup>>;
+  observer: MutationObserver | null;
+}
+const state: BehaviorState = globalSingleton('behaviors', () => ({registry: new Map(), active: new Map(), observer: null}));
+const {registry, active} = state;
 
 const attr = (name: string) => `data-ax-${name}`;
 
@@ -50,8 +57,8 @@ function sweep(root: Node, name: string) {
 }
 
 function ensureObserver() {
-  if (observer || typeof MutationObserver === 'undefined') return;
-  observer = new MutationObserver((records) => {
+  if (state.observer || typeof MutationObserver === 'undefined') return;
+  const observer = (state.observer = new MutationObserver((records) => {
     for (const r of records) {
       if (r.type === 'attributes') {
         const name = r.attributeName!.slice('data-ax-'.length);
@@ -66,7 +73,7 @@ function ensureObserver() {
         r.addedNodes.forEach((n) => { if (n instanceof HTMLElement) scan(n, name); });
       }
     }
-  });
+  }));
   observer.observe(document.documentElement, {
     subtree: true,
     childList: true,
@@ -80,8 +87,8 @@ export function defineBehavior(name: string, setup: Setup): void {
   registry.set(name, setup);
   active.set(name, new WeakMap());
   // Re-observe so the attribute filter includes the new behavior.
-  observer?.disconnect();
-  observer = null;
+  state.observer?.disconnect();
+  state.observer = null;
   const start = () => { scan(document, name); ensureObserver(); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true});
   else start();

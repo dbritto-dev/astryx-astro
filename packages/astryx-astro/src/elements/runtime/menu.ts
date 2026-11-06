@@ -95,6 +95,7 @@ import {focusForLastInput, getModality} from './modality';
 import {createRovingFocus, type RovingFocus} from './roving';
 import {createTypeahead} from './typeahead';
 import {createSheetSurface, type SheetSurface} from '../sheet/surface';
+import {brandClass} from './global';
 
 // ── Row roles (menuItemRoles.ts) ────────────────────────────────────────────────────────
 
@@ -1244,4 +1245,5 @@ export class MenuElement extends LayerElement {
   };
 }
 
+brandClass(MenuElement, 'menu-element');
 defineElement(MENU_TAG, MenuElement);

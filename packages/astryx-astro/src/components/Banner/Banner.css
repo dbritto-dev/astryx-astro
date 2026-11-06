@@ -106,9 +106,10 @@
   }
   /* Edge compensation (contract #15). StyleX replaces endArea's `auto` inline-start margin
      with this conditional value, so the margin exists only here. Tooltip layers (popover
-     siblings of their trigger) do not count as the first/last item. */
-  .ax-banner-end:has(> [data-astryx-edge-comp]:nth-child(1 of :not([popover]))) { margin-inline-start: calc(-1 * var(--spacing-2)); }
-  .ax-banner-end:has(> [data-astryx-edge-comp]:nth-last-child(1 of :not([popover]))) { margin-inline-end: calc(-1 * var(--spacing-2)); }
+     siblings of their trigger), templates, dialogs and in-place module scripts do not count
+     as the first/last item (ButtonGroup's model). */
+  .ax-banner-end:has(> [data-astryx-edge-comp]:nth-child(1 of :not([popover]):not(template):not(dialog):not(script))) { margin-inline-start: calc(-1 * var(--spacing-2)); }
+  .ax-banner-end:has(> [data-astryx-edge-comp]:nth-last-child(1 of :not([popover]):not(template):not(dialog):not(script))) { margin-inline-end: calc(-1 * var(--spacing-2)); }
 
   /* Built-in controls opt back into the status foreground (their own element only). */
   .astryx-banner[data-status="info"] .ax-banner-control { --color-text-primary: var(--color-on-info-muted); }

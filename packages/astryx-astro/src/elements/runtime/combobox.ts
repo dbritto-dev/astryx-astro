@@ -53,6 +53,7 @@ import type {LayerEscapeBehavior, LayerOutsidePress} from './layerStack';
 import {getModality} from './modality';
 import {createTypeahead, type Typeahead} from './typeahead';
 import {createSheetSurface, type SheetSurface} from '../sheet/surface';
+import {brandClass} from './global';
 
 export const OPTION_SELECTOR = '[role="option"]';
 const HIGHLIGHTED = 'data-ax-highlighted';
@@ -531,6 +532,7 @@ export class ComboboxLayerElement extends LayerElement {
   }
 }
 
+brandClass(ComboboxLayerElement, 'combobox-layer-element');
 defineElement('ax-combobox-layer', ComboboxLayerElement);
 
 /** Find a listbox layer by id (the owner's `data-ax-layer`). */

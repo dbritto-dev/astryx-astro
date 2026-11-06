@@ -42,6 +42,7 @@ import type {LinkComponentType} from '../LinkProvider/linkComponent';
 import {cx, themeProps} from '../../lib/themeProps';
 import {uid} from '../../lib/uid';
 import {devWarn} from '../../lib/devWarning';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {clearance, placementAttrs} from '../Layer/layer';
 import {BREADCRUMBS_LOCAL, DEFAULT_SEPARATOR_HTML, type BreadcrumbsContextValue} from './breadcrumbsShared';
 import '../Layer/Layer.css';
@@ -79,7 +80,8 @@ const variant = ctx.variant;
 const isSupporting = variant === 'supporting';
 const isCurrent = isCurrentProp === true;
 const isAutoCandidate = isCurrentProp == null;
-const menuSlot = Astro.slots.has('menu') ? (await Astro.slots.render('menu')).trim() : '';
+// The menu rows render in the menu layer (layer-scoped contexts reset; MenuStamp seals them).
+const menuSlot = Astro.slots.has('menu') ? (await renderLayerContent(Astro, () => Astro.slots.render('menu'))).trim() : '';
 const hasMenu = menuItems != null || menuSlot !== '';
 const resolvedMenuSize: DropdownMenuSize = menuSize ?? (isSupporting ? 'sm' : 'md');
 if (hasMenu && href != null) devWarn('BreadcrumbItem', '`menu` and `href` are mutually exclusive; `menu` takes precedence and `href` is ignored.');

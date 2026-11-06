@@ -4,6 +4,11 @@
  * and its Text / Number / Selector / MultiSelector / Date / Time / StringList controls), named
  * "Filter <header>" with a hidden label. Types without a control (nested, empty, date_relative,
  * date_range, custom) render nothing. Behaviour: elements/table-features/filter.ts.
+ *
+ * `isInPopover`: the popover opens on the first genuine content control (usePopover
+ * focusInitialTarget). DateInput's calendar toggle leads its text field in the DOM (as in
+ * Astryx), so the field is named the popover's initial focus with `data-autofocus` — the
+ * caller-preferred target the popover runtime takes first (Popover.tsx sheet focus, Dialog).
  */
 import TextInput from '../TextInput/TextInput.astro';
 import NumberInput from '../NumberInput/NumberInput.astro';
@@ -22,10 +27,12 @@ interface Props {
   value: TableFilterValue | undefined;
   size: 'sm' | 'md';
   hasClear?: boolean;
+  /** Rendered in the filter popover (its initial focus goes to the field). */
+  isInPopover?: boolean;
   locale: string;
 }
 
-const {header, operatorValue: op, value, size, hasClear = false, locale} = Astro.props;
+const {header, operatorValue: op, value, size, hasClear = false, isInPopover = false, locale} = Astro.props;
 const t = translator(Astro, locale);
 const label = t('@astryx.tableFiltering.filterByColumn', {header});
 const all = t('@astryx.table.filter.allPlaceholder');
@@ -40,7 +47,7 @@ const tokenSource = op.type === 'string_list' || op.type === 'entity_list' ? (op
 {numberBounds && <NumberInput label={label} isLabelHidden value={num} placeholder={label} min={numberBounds.min} max={numberBounds.max} step={numberBounds.step} size={size} hasClear={hasClear} locale={locale} />}
 {op.type === 'enum' && <Selector label={label} isLabelHidden options={options} value={str || null} placeholder={all} size={size} hasClear={hasClear} locale={locale} />}
 {op.type === 'enum_list' && <MultiSelector label={label} isLabelHidden options={options} value={list} placeholder={all} size={size} hasSelectAll hasSearch={false} hasClear={hasClear} locale={locale} />}
-{op.type === 'date_absolute' && <DateInput label={label} isLabelHidden value={str || undefined} size={size} hasClear={hasClear} locale={locale} />}
+{op.type === 'date_absolute' && <DateInput label={label} isLabelHidden value={str || undefined} size={size} hasClear={hasClear} locale={locale} data-autofocus={isInPopover ? '' : undefined} />}
 {op.type === 'time' && <TimeInput label={label} isLabelHidden value={str || undefined} size={size} hasClear={hasClear} locale={locale} />}
 {(op.type === 'string_list' || op.type === 'entity_list') && (
   <Tokenizer label={label} isLabelHidden searchSource={tokenSource} value={list.map((v) => ({id: v, label: v}))} size={size} hasClear={hasClear} presentation="popover" debounceMs={tokenSource ? undefined : 0} locale={locale} />

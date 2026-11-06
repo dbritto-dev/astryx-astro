@@ -26,6 +26,7 @@
 import {notifyTopLayerEntry} from '../runtime/modalOutlet';
 import {createSheetGestures, type SheetGestures} from './gestures';
 import {adaptiveQuery, resolvePresentation, watchQuery, type ResolvedPresentation} from './presentation';
+import {globalSingleton} from '../runtime/global';
 
 const MIN_RESERVE = 48;
 const SHEET_CLASS = 'astryx-bottom-sheet';
@@ -66,8 +67,8 @@ export interface SheetSurface {
   disconnect(): void;
 }
 
-/** Hosts following each adaptive query, and that query's one listener. */
-const watchers = new Map<string, {hosts: Set<SheetSurface>; stop: () => void}>();
+/** Hosts following each adaptive query, and that query's one listener (page-wide). */
+const watchers = globalSingleton('sheet-query-watchers', () => new Map<string, {hosts: Set<SheetSurface>; stop: () => void}>());
 
 function triggerText(trigger: HTMLElement | undefined): string {
   return trigger?.getAttribute('aria-label')?.trim() || trigger?.textContent?.trim() || '';

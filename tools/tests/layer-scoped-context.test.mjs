@@ -5,13 +5,14 @@
  * TabList and Stepper locals inside overlay content, while Theme, locale, link component and
  * calendar keys pass through — with and without AsyncLocalStorage. Then the Popover demo: a
  * compact, divided List around a Popover does not reach the row inside it, while the Theme
- * (its icon set) and the locale (fr-FR) do.
+ * (its icon set) and the locale (fr-FR) do; the same List reset for a nav menu (TopNavHeading's
+ * `menu` slot, pre-rendered by the heading) and a ContextMenu (`menuContent`, in its template).
  *   node tools/tests/layer-scoped-context.test.mjs
  */
 import {lib} from './lib-loader.mjs';
 import {setup} from './_harness.mjs';
 
-const {page, check, open, done} = await setup();
+const {page, context, check, open, done} = await setup();
 
 const components = new URL('../../packages/astryx-astro/src/components/', import.meta.url);
 const ctx = (path) => import(new URL(path, components).href);
@@ -91,6 +92,46 @@ check('the locale reaches popover content (fr-FR "Chargement")', html.spinner ==
 await page.click('#pop-scope-trigger');
 await page.waitForTimeout(100);
 check('the popover opens with its content', await page.evaluate(() => document.getElementById('pop-scope').matches(':popover-open') && document.getElementById('pop-scope-inner').checkVisibility()));
+await page.keyboard.press('Escape');
+
+// A ListItem's List context, read from its attributes (in the document or in a template).
+await context.addInitScript(() => {
+  window.__rowContext = (row) => row && {density: row.dataset.density, divided: row.hasAttribute('data-ax-divided'), inList: row.hasAttribute('data-ax-in-list')};
+});
+const listed = (r) => r?.density === 'compact' && r.divided && r.inList;
+const plain = (r) => r?.density === 'balanced' && !r.divided && !r.inList;
+
+console.log('Nav menu (TopNavHeading menu slot) inside a List');
+await open('top-nav');
+const nav = await page.evaluate(() => {
+  const inner = document.getElementById('nav-scope-inner');
+  return {
+    outer: window.__rowContext(document.getElementById('nav-scope-outer')),
+    inner: window.__rowContext(inner),
+    inLayer: !!inner?.closest('ax-nav-menu[data-astryx-layer-root]'),
+  };
+});
+check('the List rows outside the nav menu are compact and divided', listed(nav.outer), JSON.stringify(nav.outer));
+check('the row inside the nav menu layer reads no List context (balanced, undivided)', nav.inLayer && plain(nav.inner), JSON.stringify(nav));
+await page.click('#nav-scope-heading button[aria-haspopup]');
+await page.waitForFunction(() => document.getElementById('nav-scope-inner')?.checkVisibility());
+check('the nav menu opens with its content', await page.evaluate(() => document.getElementById('nav-scope-inner').closest('ax-nav-menu').matches(':popover-open')));
+await page.keyboard.press('Escape');
+
+console.log('Context menu (menuContent slot) inside a List');
+await open('context-menu');
+const cmLayer = '[data-ax-context-target="cm-scope-area"]';
+const cm = await page.evaluate((sel) => {
+  const template = document.querySelector(`${sel} > template[data-ax-menu-content]`);
+  return {outer: window.__rowContext(document.getElementById('cm-scope-outer')), inner: window.__rowContext(template?.content.getElementById('cm-scope-inner'))};
+}, cmLayer);
+check('the List rows outside the context menu are compact and divided', listed(cm.outer), JSON.stringify(cm.outer));
+check('the row in the context menu content reads no List context (balanced, undivided)', plain(cm.inner), JSON.stringify(cm.inner));
+const target = await page.locator('#cm-scope-target').boundingBox();
+await page.mouse.click(target.x + target.width / 2, target.y + target.height / 2, {button: 'right'});
+await page.waitForFunction((sel) => document.querySelector(sel).matches(':popover-open') && !!document.querySelector(`${sel} #cm-scope-inner`), cmLayer);
+const mounted = await page.evaluate(() => window.__rowContext(document.getElementById('cm-scope-inner')));
+check('the context menu opens with the plain row mounted', plain(mounted), JSON.stringify(mounted));
 await page.keyboard.press('Escape');
 
 await done();

@@ -1,3 +1,5 @@
+/// <reference types="astro/client" />
+// Vite import.meta typing (env) for plain tsc, through astro (which depends on vite).
 /**
  * Toasts: `<ax-toast>` (one card), `<ax-toast-viewport>` (the stack) and the imperative
  * `toast()` API.
@@ -27,6 +29,10 @@
  * motion and keeps focus. Toasts never take focus; F6 moves focus into the newest one.
  * Announcements go through runtime/announce.ts, which routes into the open modal's own region.
  *
+ * One queue per page: the viewports, the default queue, the id counter and the live cards are a
+ * `globalSingleton`, so a second copy of this module (Vite pre-bundling a consumer's
+ * `import {toast}` beside the viewport's own script) reaches the same viewport.
+ *
  * Deferred (touch extra): swipe-to-dismiss (useToastGesture.ts); the `--_toast-swipe-*`
  * variables are kept at rest so a later gesture port only writes them.
  */
@@ -34,6 +40,7 @@ import {announce, renderedText} from './runtime/announce';
 import {focusForLastInput} from './runtime/modality';
 import {isFocusDetached} from './runtime/dom';
 import {getActiveModalOutlet, subscribeModalOutlets, type ModalOutletChange} from './runtime/modalOutlet';
+import {brandClass, globalSingleton} from './runtime/global';
 
 export type ToastType = 'info' | 'error';
 export type ToastPosition = 'topEnd' | 'topStart' | 'bottomEnd' | 'bottomStart';
@@ -235,11 +242,32 @@ function pickMediaMode(surface: HTMLElement): 'dark' | 'light' | 'off' | null {
   return contrast(onDark, background) >= contrast(onLight, background) ? 'dark' : 'light';
 }
 
-const liveToasts = new Set<ToastElement>();
-let themeWatch = false;
+// ── Page-wide state (shared by every copy of this module) ───────────────────────
+interface ToastState {
+  /** Connected viewports in connection order (the first connected one is the primary). */
+  viewports: ToastViewportElement[];
+  /** The queue `toast()` uses: it forwards to the primary viewport once one connects. */
+  defaultQueue: ToastQueue;
+  /** Toast ids (`astryx-toast-<n>`). */
+  counter: number;
+  fallbackScheduled: boolean;
+  /** Connected cards, re-measured when the page theme changes. */
+  liveToasts: Set<ToastElement>;
+  themeWatch: boolean;
+}
+const shared: ToastState = globalSingleton('toast', () => ({
+  viewports: [],
+  defaultQueue: createToastQueue(),
+  counter: 0,
+  fallbackScheduled: false,
+  liveToasts: new Set(),
+  themeWatch: false,
+}));
+const {liveToasts, viewports, defaultQueue} = shared;
+
 function watchTheme() {
-  if (themeWatch || typeof MutationObserver === 'undefined') return;
-  themeWatch = true;
+  if (shared.themeWatch || typeof MutationObserver === 'undefined') return;
+  shared.themeWatch = true;
   const remeasure = () => { for (const t of liveToasts) t.measureMedia(); };
   new MutationObserver(remeasure).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme', 'data-astryx-theme', 'class', 'style']});
   matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', remeasure);
@@ -418,6 +446,7 @@ export class ToastElement extends Base {
   }
 }
 
+brandClass(ToastElement, 'toast-element');
 define('ax-toast', ToastElement);
 
 // ── The fallback card (no ToastViewport on the page: English, as Astryx without a provider) ──
@@ -426,9 +455,6 @@ const CLOSE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" f
 const FALLBACK_TEMPLATE = `<ax-toast class="astryx-toast" data-type="info"><div class="ax-toast-media" data-astryx-media="dark"><div class="ax-toast-inner"><div class="ax-toast-content"></div><div class="ax-toast-end"><button type="button" data-ax-toast-dismiss="" data-variant="ghost" data-size="sm" data-elevation="none" class="astryx-button ax-focus-visible ax-overlay-image" data-ax-icon-only="" aria-label="Dismiss notification" data-astryx-edge-comp=""><span class="ax-button-content"><span class="ax-button-icon"><span aria-hidden="true" data-size="sm" data-color="inherit" class="astryx-icon">${CLOSE_SVG}</span></span></span><span role="status" aria-live="polite" class="ax-visually-hidden"></span></button></div></div></div></ax-toast>`;
 
 // ── <ax-toast-viewport> ────────────────────────────────────────────────────────
-const viewports: ToastViewportElement[] = [];
-const defaultQueue = createToastQueue();
-let toastCounter = 0;
 
 function primaryViewport(): ToastViewportElement | null {
   return viewports.find((v) => v.isConnected) ?? null;
@@ -490,7 +516,7 @@ export class ToastViewportElement extends Base {
 
   /** Show a toast in this viewport; returns its dismiss function. */
   toast(options: ToastOptions): ToastDismissFn {
-    const id = `astryx-toast-${++toastCounter}`;
+    const id = `astryx-toast-${++shared.counter}`;
     this.#add({id, options, createdAt: Date.now()});
     return () => this.#remove(id, 'manual');
   }
@@ -949,16 +975,15 @@ function transitionMs(el: HTMLElement, property: string): number {
   return longest;
 }
 
+brandClass(ToastViewportElement, 'toast-viewport-element');
 define('ax-toast-viewport', ToastViewportElement);
 
 // ── The global API (useToast) ──────────────────────────────────────────────────
-let fallbackScheduled = false;
-
 function ensureFallbackViewport() {
-  if (fallbackScheduled || typeof document === 'undefined') return;
-  fallbackScheduled = true;
+  if (shared.fallbackScheduled || typeof document === 'undefined') return;
+  shared.fallbackScheduled = true;
   queueMicrotask(() => {
-    fallbackScheduled = false;
+    shared.fallbackScheduled = false;
     if (primaryViewport()) return connectDefaultQueue();
     if (import.meta.env?.DEV) console.warn('[astryx] toast(): no <ToastViewport> on the page; using a fallback viewport.');
     const home = document.createElement('div');
@@ -980,7 +1005,7 @@ function ensureFallbackViewport() {
  * Goes to the page's first ToastViewport, else a fallback viewport created on demand.
  */
 export function toast(options: ToastOptions): ToastDismissFn {
-  const id = `astryx-toast-${++toastCounter}`;
+  const id = `astryx-toast-${++shared.counter}`;
   const ctx = defaultQueue.context;
   ctx.addToast({id, options, createdAt: Date.now()});
   if (!primaryViewport()) ensureFallbackViewport();

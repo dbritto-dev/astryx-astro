@@ -21,6 +21,8 @@
  * Open / Remove actions, Button with a tooltip or a busy state); it is idempotent and
  * SSR-safe.
  */
+import {globalSingleton} from './global';
+
 const WIDGET_ROLES = [
   'button', 'checkbox', 'combobox', 'gridcell', 'link', 'menuitem', 'menuitemcheckbox', 'menuitemradio',
   'option', 'radio', 'scrollbar', 'searchbox', 'slider', 'spinbutton', 'switch', 'tab', 'textbox', 'treeitem',
@@ -29,7 +31,8 @@ const CONTROL = [
   'button', 'a', 'input', 'select', 'textarea', 'summary', '[tabindex]', '[data-ax-disabled-interaction]',
   ...WIDGET_ROLES.map((role) => `[role="${role}"]`),
 ].join(', ');
-const LISTENING = Symbol.for('astryx-astro/disabled-interaction/v1');
+/** Documents with the listeners installed, page-wide (shared by every copy of this module). */
+const installed = globalSingleton('disabled-interaction', () => new WeakSet<Document>());
 
 /** The aria-disabled control `target` is in, if any. */
 export function disabledControlOf(target: EventTarget | null): HTMLElement | null {
@@ -56,9 +59,8 @@ function onKeyDown(event: KeyboardEvent) {
 
 /** Install the listeners on a document (the page's own document is installed on import). */
 export function installDisabledInteraction(doc: Document = document): void {
-  const holder = doc as Document & {[LISTENING]?: true};
-  if (holder[LISTENING]) return;
-  Object.defineProperty(holder, LISTENING, {value: true});
+  if (installed.has(doc)) return;
+  installed.add(doc);
   doc.addEventListener('click', onClick, true);
   doc.addEventListener('keydown', onKeyDown, true);
 }

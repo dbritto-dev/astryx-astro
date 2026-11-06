@@ -8,6 +8,8 @@ import ContextMenuGroup from './ContextMenuGroup.astro';
 import ContextMenuDivider from './ContextMenuDivider.astro';
 import ContextMenuSubMenu from './ContextMenuSubMenu.astro';
 import Kbd from '../Kbd/Kbd.astro';
+import List from '../List/List.astro';
+import ListItem from '../List/ListItem.astro';
 import type {DropdownMenuOption} from '../DropdownMenu/menuShared';
 
 const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
@@ -62,5 +64,21 @@ const items: DropdownMenuOption[] = [
     <ContextMenu items={items} isDisabled id="cm-disabled-area">
       <div style={`${area};min-height:60px;margin-top:var(--spacing-3)`}>Disabled: the browser's context menu</div>
     </ContextMenu>
+  </section>
+
+  <section>
+    <h3 style={cap}>Layer-scoped contexts: the compact, divided List around a row's menu does not reach the menu (the row inside it is a plain balanced row)</h3>
+    <List density="compact" hasDividers id="cm-scope-list" style="max-width:360px">
+      <ListItem label="Quarterly report" id="cm-scope-outer">
+        <ContextMenu slot="endContent" triggerAs="span" label="Report actions" id="cm-scope-area">
+          <span tabindex="0" id="cm-scope-target">Right-click</span>
+          <Fragment slot="menuContent">
+            <ContextMenuItem label="Open" id="cm-scope-open" />
+            <ul role="none" style="margin:0;padding:0;list-style:none"><ListItem label="In the menu" id="cm-scope-inner" /></ul>
+          </Fragment>
+        </ContextMenu>
+      </ListItem>
+      <ListItem label="Annual report" id="cm-scope-outer-2" />
+    </List>
   </section>
 </div>

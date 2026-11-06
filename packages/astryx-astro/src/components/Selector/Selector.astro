@@ -72,7 +72,8 @@ import SelectorOptionRow from './_SelectorOptionRow.astro';
 import PanelSearchInput from './_PanelSearchInput.astro';
 import {attachTooltip} from '../Tooltip/attach';
 import {cx, themeProps} from '../../lib/themeProps';
-import {inherits} from '../../lib/cascade';
+import {inherits, seal} from '../../lib/cascade';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import {mergeStyles} from '../../lib/style';
 import {resolveLocale, translator} from '../../lib/i18n';
 import {clearance, placementAttrs} from '../Layer/layer';
@@ -131,7 +132,7 @@ export interface Props extends FieldComposedProps {
   disabledMessage?: string;
   /** Edge of the option row that carries the selection mark. @default 'end' */
   indicatorPosition?: 'start' | 'end';
-  /** Only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  /** The listbox surface: an anchored popover, a bottom sheet, or a sheet on compact touch screens (`adaptive`). @default 'popover' */
   presentation?: SelectorPresentation;
   /** Explicit placement (opts out of the selected-item overlay). */
   placement?: LayerPlacement;
@@ -189,8 +190,10 @@ const size: SelectorSize = sizeProp ?? 'md';
 const placeholder = placeholderProp ?? t('@astryx.selector.placeholder');
 const searchPlaceholder = searchPlaceholderProp ?? t('@astryx.selector.searchPlaceholder');
 const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
-const emptyHtml = await slotHtml('emptyText');
-const emptySearchHtml = await slotHtml('emptySearchText');
+// The empty states render in the listbox layer (layer-scoped contexts reset, cascades sealed).
+const layerSlotHtml = async (name: string) => (Astro.slots.has(name) ? (await seal(await renderLayerContent(Astro, () => Astro.slots.render(name)))).trim() : '');
+const emptyHtml = await layerSlotHtml('emptyText');
+const emptySearchHtml = await layerSlotHtml('emptySearchText');
 const startIconHtml = await slotHtml('startIcon');
 const emptyText = emptyTextProp ?? t('@astryx.selector.empty');
 const emptySearchText = emptySearchTextProp ?? t('@astryx.selector.emptySearchResults');
@@ -202,6 +205,9 @@ const ids = {
   search: r.ids.make('search'),
   readOnly: r.ids.make('readonly'),
 };
+// Astryx useSize(sizeProp): the rows (in the layer) take the box's effective size. While it is
+// inherited they follow the box's `size` stamp (lib/cascade followers), so SSR matches.
+const sizeFrom = sizeProp === undefined ? ids.box : undefined;
 const itemId = (index: number) => `${ids.listbox}-item-${index}`;
 
 const selectable = getSelectableOptions(options);
@@ -390,11 +396,11 @@ const MARKS = [
               <div role="group" aria-label={row.title} data-ax-section="">
                 {row.title && <div aria-hidden="true" class="astryx-selector-section-heading">{row.title}</div>}
                 {row.options.map(({option, index}) => (
-                  <SelectorOptionRow option={option} id={itemId(index)} isSelected={option.value === value} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
+                  <SelectorOptionRow option={option} id={itemId(index)} isSelected={option.value === value} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} content={renderOption?.(option)} />
                 ))}
               </div>
             ) : (
-              <SelectorOptionRow option={row.option} id={itemId(row.index)} isSelected={row.option.value === value} size={size} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
+              <SelectorOptionRow option={row.option} id={itemId(row.index)} isSelected={row.option.value === value} size={size} sizeFrom={sizeFrom} indicatorPosition={indicatorPosition} content={renderOption?.(row.option)} />
             ))}
             <div role="presentation" class="astryx-selector-empty-state" data-ax-empty="options" hidden={selectable.length > 0 || isLoading || undefined}>
               {emptyHtml ? <Fragment set:html={emptyHtml} /> : emptyText}

@@ -38,15 +38,18 @@
   .ax-toolbar-end[data-ax-only] { margin-inline-start: auto; }
 
   /* Edge compensation, container side: a slot whose edge child is a ghost Button / Tab pulls
-   * its own margin in by (container inline padding − the toolbar's spacing-2 block padding). */
+   * its own margin in by (container inline padding − the toolbar's spacing-2 block padding).
+   * The edge child is the first / last that renders a box: a Button's tooltip layer
+   * (`[popover]`, its next sibling here; Astryx mounts it only while shown), templates,
+   * dialogs and the module `<script>` Astro emits in place do not count (ButtonGroup's model). */
   .ax-toolbar-start,
   .ax-toolbar-end {
     --_ax-toolbar-edge-inset: calc(var(--container-padding-inline-start, var(--spacing-4)) - var(--spacing-2));
   }
-  .ax-toolbar-start:has(> [data-astryx-edge-comp]:first-child),
-  .ax-toolbar-end:has(> [data-astryx-edge-comp]:first-child) { margin-inline-start: calc(-1 * var(--_ax-toolbar-edge-inset)); }
-  .ax-toolbar-start:has(> [data-astryx-edge-comp]:last-child),
-  .ax-toolbar-end:has(> [data-astryx-edge-comp]:last-child) { margin-inline-end: calc(-1 * var(--_ax-toolbar-edge-inset)); }
+  .ax-toolbar-start:has(> [data-astryx-edge-comp]:nth-child(1 of :not([popover]):not(template):not(dialog):not(script))),
+  .ax-toolbar-end:has(> [data-astryx-edge-comp]:nth-child(1 of :not([popover]):not(template):not(dialog):not(script))) { margin-inline-start: calc(-1 * var(--_ax-toolbar-edge-inset)); }
+  .ax-toolbar-start:has(> [data-astryx-edge-comp]:nth-last-child(1 of :not([popover]):not(template):not(dialog):not(script))),
+  .ax-toolbar-end:has(> [data-astryx-edge-comp]:nth-last-child(1 of :not([popover]):not(template):not(dialog):not(script))) { margin-inline-end: calc(-1 * var(--_ax-toolbar-edge-inset)); }
 
   .ax-toolbar-slot { gap: var(--_ax-toolbar-gap, var(--spacing-1)); }
 }

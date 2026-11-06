@@ -43,7 +43,8 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
-import {renderWithLocals} from '../../lib/subtreeLocals';
+import {renderLayerContent, renderWithLocals} from '../../lib/subtreeLocals';
+import {seal} from '../../lib/cascade';
 import {prepareLayerContent} from '../Dialog/content';
 import {appShellContext, isShellDrawer, IN_MOBILE_NAV_LOCAL, SHELL_DRAWER_LOCAL} from '../AppShell/appShellContext';
 import '../Dialog/overlay.css';
@@ -76,11 +77,13 @@ const shell = appShellContext(Astro);
 const id = idProp ?? (shell && isShellDrawer(Astro) ? shell.mobileNavId : uid(Astro, 'ax-mobile-nav'));
 const resolvedSide = side === 'auto' ? 'end' : side;
 const {themeClass, attrs} = themeProps('mobile-nav', {side: resolvedSide});
-const headerHtml = Astro.slots.has('header') ? (await Astro.slots.render('header')).trim() : '';
+// Header and content render inside the drawer layer (Astryx LayerContentBoundary): layer-scoped
+// contexts reset, cascades sealed.
+const headerHtml = Astro.slots.has('header') ? (await seal(await renderLayerContent(Astro, () => Astro.slots.render('header')))).trim() : '';
 const label = labelProp ?? (typeof header === 'string' && header !== '' ? header : t('@astryx.mobileNav.navigation'));
 const hasHeader = headerHtml !== '' || (header != null && header !== '');
 const raw = Astro.slots.has('default')
-  ? await renderWithLocals(Astro, {[SHELL_DRAWER_LOCAL]: false, [IN_MOBILE_NAV_LOCAL]: true}, () => Astro.slots.render('default'))
+  ? await renderLayerContent(Astro, () => renderWithLocals(Astro, {[SHELL_DRAWER_LOCAL]: false, [IN_MOBILE_NAV_LOCAL]: true}, () => Astro.slots.render('default')))
   : '';
 const {html: content} = await prepareLayerContent(raw, {id, closeCommand: 'close'});
 ---

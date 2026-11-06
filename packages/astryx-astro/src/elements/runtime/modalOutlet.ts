@@ -13,11 +13,10 @@
  * `notifyTopLayerEntry()` and hosts re-enter the top layer in place.
  *
  * Listeners run synchronously, so a host leaves a modal in the same task the modal closes.
- * One registry per document (duplicate bundles share it through a global symbol).
+ * One registry per page (duplicate module copies share it: `globalSingleton`).
  * SSR-safe: nothing touches the DOM.
- *
- * Shared candidate: this belongs in src/elements/runtime/ next to layerStack.ts.
  */
+import {globalSingleton} from './global';
 
 export type ModalOutletChange = 'outlet' | 'entry';
 type Listener = (change: ModalOutletChange) => void;
@@ -27,12 +26,8 @@ interface Registry {
   listeners: Set<Listener>;
 }
 
-const KEY = Symbol.for('astryx-astro/modal-outlet/v1');
-
 function registry(): Registry {
-  const holder = globalThis as typeof globalThis & {[KEY]?: Registry};
-  if (!holder[KEY]) Object.defineProperty(holder, KEY, {value: {outlets: [], listeners: new Set()}});
-  return holder[KEY]!;
+  return globalSingleton<Registry>('modal-outlet', () => ({outlets: [], listeners: new Set()}));
 }
 
 function notify(change: ModalOutletChange): void {

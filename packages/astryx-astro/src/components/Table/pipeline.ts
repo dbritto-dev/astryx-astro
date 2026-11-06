@@ -12,6 +12,7 @@ import {styleToString, type StyleValue} from '../../lib/style';
 import {themeProps} from '../../lib/themeProps';
 import EmptyState from '../EmptyState/EmptyState.astro';
 import Text from '../Text/Text.astro';
+import {resolveContextActions} from './contextMenuOptions';
 import ContextMenuTemplates from './_ContextMenuTemplates.astro';
 import {defaultCellText, generateColumns, resolveColumnWidths, resolveTableMinWidth} from './columnUtils';
 import {comp, el, isRenderable} from './node';
@@ -24,7 +25,6 @@ import type {
   TableAttrs,
   TableColumn,
   TableContextAction,
-  TableContextActions,
   TableDensity,
   TableIdKey,
   TableNode,
@@ -59,14 +59,8 @@ export function mergeStyle(a: TableAttrs['style'], b: TableAttrs['style']): stri
 // Context-menu actions (tableContextMenu.tsx)
 // =============================================================================
 
-/**
- * Resolve a `contextMenuActions` value (array or getter) to a plain array — compose a prior
- * plugin's actions with `[...resolveContextActions(props.contextMenuActions), ...mine]`.
- */
-export function resolveContextActions(actions: TableContextActions | undefined): TableContextAction[] {
-  if (typeof actions === 'function') return actions();
-  return actions ?? [];
-}
+// `resolveContextActions` lives with the children-mode helpers (contextMenuOptions.ts).
+export {resolveContextActions};
 
 /**
  * Port-internal: a first-party action whose look follows client state (the active sort

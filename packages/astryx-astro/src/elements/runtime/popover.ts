@@ -46,6 +46,7 @@ import {focusForLastInput} from './modality';
 import type {LayerEscapeBehavior, LayerOutsidePress} from './layerStack';
 import type {ResolvedPresentation} from '../sheet/presentation';
 import {createSheetSurface} from '../sheet/surface';
+import {brandClass, globalSingleton} from './global';
 
 const FALLBACK_CLOSE = '[data-astryx-popover-fallback-close]';
 const OVERFLOW = 'data-astryx-overflow';
@@ -281,6 +282,7 @@ export class PopoverElement extends LayerElement {
   }
 }
 
+brandClass(PopoverElement, 'popover-element');
 defineElement('ax-popover', PopoverElement);
 
 // Triggers that are not native invokers (role="button"): one delegated listener.
@@ -299,9 +301,10 @@ function activate(trigger: HTMLElement, event: Event) {
   else layer.show({anchor: null, source: trigger, reason: 'toggle'});
 }
 
-const LISTENING = Symbol.for('astryx-astro/popover-triggers/v1');
-if (typeof document !== 'undefined' && !(document as Document & {[LISTENING]?: true})[LISTENING]) {
-  Object.defineProperty(document, LISTENING, {value: true});
+// One page-wide flag: a second copy of this module adds no second listener.
+const triggers = globalSingleton('popover-triggers', () => ({listening: false}));
+if (typeof document !== 'undefined' && !triggers.listening) {
+  triggers.listening = true;
   document.addEventListener('click', (event) => {
     const trigger = (event.target as Element | null)?.closest?.<HTMLElement>('[data-ax-popover-trigger]');
     if (trigger) activate(trigger, event);

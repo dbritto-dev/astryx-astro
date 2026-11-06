@@ -29,6 +29,11 @@ import {createKeyboardHint} from './runtime/keyboardHint';
 import {syncRovingTabStops} from './runtime/roving';
 import {isRtl} from './runtime/dom';
 
+/** Events the element listens for: the DOM's, plus a TabMenu radio group's `astryx-change`. */
+interface TabListListenedEvents extends HTMLElementEventMap {
+  'astryx-change': CustomEvent<{value: string}>;
+}
+
 const TAB = '[data-tab-value]';
 const MENU_TRIGGER = '[data-tab-menu]';
 const STOP = `${TAB},${MENU_TRIGGER}`;
@@ -86,7 +91,7 @@ export class TabListElement extends HTMLElement {
 
   connectedCallback(): void {
     this.#value = this.getAttribute('data-ax-value') ?? '';
-    const on = <K extends keyof HTMLElementEventMap>(target: EventTarget, type: K, fn: (e: HTMLElementEventMap[K]) => void, opts?: AddEventListenerOptions) => {
+    const on = <K extends keyof TabListListenedEvents>(target: EventTarget, type: K, fn: (e: TabListListenedEvents[K]) => void, opts?: AddEventListenerOptions) => {
       target.addEventListener(type, fn as EventListener, opts);
       this.#cleanup.push(() => target.removeEventListener(type, fn as EventListener, opts));
     };
@@ -99,7 +104,7 @@ export class TabListElement extends HTMLElement {
     });
     on(this, 'focusin', (e) => this.#onFocusIn(e));
     on(this, 'focusout', () => { this.#focusRevealedValue = null; });
-    on(this, 'astryx-change', (e) => this.#onMenuChange(e as CustomEvent<{value: string}>));
+    on(this, 'astryx-change', (e) => this.#onMenuChange(e));
     if (this.#hasScroll) this.#observeOverflow();
     this.#reveal();
   }

@@ -8,21 +8,31 @@
  * `data-density` onto it (cascade key `table-density`). Standalone it renders a plain `<th>`.
  * Theme hook: `.astryx-table-header-cell[data-density]`.
  *
- * Deferred: `contextMenuActions` (ContextMenu is not ported yet).
+ * `contextMenuActions` (Astryx wrapInTableContextMenu): the content sits in a ContextMenu
+ * trigger; choosing a row dispatches `astryx-select` on it, its `data-id` the action's `id`
+ * (`onSelect` is not called; a getter resolves on the server). Empty or omitted: no menu.
  *
  * @example
  * <TableHeader><TableRow isHeaderRow><TableHeaderCell scope="col">Name</TableHeaderCell></TableRow></TableHeader>
  */
 import type {HTMLAttributes} from 'astro/types';
 import {cx, themeProps} from '../../lib/themeProps';
+import ContextMenu from '../ContextMenu/ContextMenu.astro';
+import {contextMenuItems} from './contextMenuOptions';
+import type {TableContextActions} from './types';
 import './Table.css';
 
 export interface Props extends HTMLAttributes<'th'> {
   /** Which cells this header relates to. */
   scope?: 'col' | 'row' | 'colgroup' | 'rowgroup';
+  /** Right-click actions: a context menu around the header content (empty: none). */
+  contextMenuActions?: TableContextActions;
 }
 
-const {class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
+const {contextMenuActions, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('table-header-cell');
+const menuItems = contextMenuItems(contextMenuActions);
 ---
-<th {...rest} class={cx(themeClass, className)} data-ax-inherit="table-density"><slot /></th>
+<th {...rest} class={cx(themeClass, className)} data-ax-inherit="table-density">{menuItems ? (
+  <ContextMenu items={menuItems} triggerClass="ax-table-context-trigger" data-ax-context-kind="header"><slot /></ContextMenu>
+) : <slot />}</th>

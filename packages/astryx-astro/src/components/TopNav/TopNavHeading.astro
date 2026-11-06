@@ -31,6 +31,7 @@ import type {LinkComponentType} from '../LinkProvider/linkComponent';
 import {cx, themeProps} from '../../lib/themeProps';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
+import {renderLayerContent} from '../../lib/subtreeLocals';
 import '../NavMenu/NavMenu.css';
 import '../NavMenu/NavHeading.css';
 import './TopNav.css';
@@ -61,7 +62,8 @@ const t = translator(Astro, locale);
 const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
 const logoHtml = await slot('logo');
 const endHtml = await slot('headerEndContent');
-const menuHtml = await slot('menu');
+// The menu renders in the heading's layer (layer-scoped contexts reset).
+const menuHtml = Astro.slots.has('menu') ? (await renderLayerContent(Astro, () => Astro.slots.render('menu'))).trim() : '';
 const hasMenu = menuHtml !== '';
 const hasLogo = logoHtml !== '';
 const hasAnyHref = headingHref != null || superheadingHref != null || subheadingHref != null;

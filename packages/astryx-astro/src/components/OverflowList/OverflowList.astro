@@ -11,8 +11,9 @@
  * `overflowRenderer` becomes the `overflow` slot: markup shown while items overflow. Any
  * element inside it with `data-overflow-count` gets the number of collapsed items as its
  * text; the indicator wrapper carries `data-count`. The indicator is measured at its widest
- * (every item collapsed) to reserve its space. A menu listing the collapsed items needs
- * DropdownMenu (not ported yet): listen for `astryx-overflow-change` instead.
+ * (every item collapsed) to reserve its space. The slot is server markup, so it cannot receive
+ * the collapsed items as Astryx's render prop does: for a menu of them, put a DropdownMenu in
+ * the slot and show its rows from `astryx-overflow-change`.
  *
  * Events: `astryx-overflow-change` — detail `{overflowItems: {index, element}[]}`, fired when
  * the collapsed set changes (silent while nothing overflows, including on connect).

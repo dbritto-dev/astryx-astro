@@ -10,11 +10,24 @@ import {setup} from './_harness.mjs';
 
 const {page, check, open, done} = await setup();
 await open('banner');
-await page.waitForFunction(() => customElements.get('ax-banner'));
+await page.waitForFunction(() => {
+  const Banner = customElements.get('ax-banner');
+  return Banner && ['banner-expand', 'banner-open', 'banner-dismiss'].every((id) => document.getElementById(id) instanceof Banner);
+});
+// Wait (bounded) for the state an action should produce before the checks read it: under load
+// a read can land before the element has handled the input. A timeout leaves the checks to fail.
+const until = (fn, arg) => page.waitForFunction(fn, arg, {timeout: 5000}).then(() => true, () => false);
+const expandedIs = (id, value) => until(([i, v]) => document.querySelector(`#${i} [data-ax-banner-toggle]`)?.getAttribute('aria-expanded') === v, [id, value]);
+const eventCount = (n) => until((count) => window.__events.length >= count, n);
+// Only the banners' own events: the toggle and dismiss IconButtons' tooltips also bubble
+// `astryx-open-change`, on their own timers (200 ms hover delay, 100 ms hide bridge after focus
+// leaves), so under load one of theirs could land in any read and break the counts.
 await page.evaluate(() => {
   window.__events = [];
   for (const type of ['astryx-open-change', 'astryx-dismiss']) {
-    document.addEventListener(type, (e) => window.__events.push({type, id: e.target.id, detail: e.detail}));
+    document.addEventListener(type, (e) => {
+      if (e.target.localName === 'ax-banner') window.__events.push({type, id: e.target.id, detail: e.detail});
+    });
   }
 });
 const events = () => page.evaluate(() => window.__events.splice(0));
@@ -36,6 +49,8 @@ check('collapsed by default: aria-expanded=false, content hidden, no aria-contro
 check('collapsed: translated "Expand" name', s.label === 'Expand');
 check('collapsed card: header keeps all corners', s.radius !== '0px');
 await page.click('#banner-expand [data-ax-banner-toggle]');
+await expandedIs('banner-expand', 'true');
+await eventCount(1);
 s = await state('banner-expand');
 check('click expands: aria-expanded=true, content shown, aria-controls → region', s.expanded === 'true' && s.hidden === false && s.controls === s.contentId && s.contentId, JSON.stringify(s));
 check('expanded: "Collapse" name; header loses its bottom radius', s.label === 'Collapse' && s.radius === '0px', JSON.stringify(s));
@@ -44,6 +59,8 @@ check('astryx-open-change {isOpen: true}', e.length === 1 && e[0].type === 'astr
 check('chevron turns', await page.$eval('#banner-expand .ax-banner-chevron', (el) => getComputedStyle(el).transform !== 'none'));
 await page.focus('#banner-expand [data-ax-banner-toggle]');
 await page.keyboard.press('Enter');
+await expandedIs('banner-expand', 'false');
+await eventCount(1);
 s = await state('banner-expand');
 check('Enter collapses again', s.expanded === 'false' && s.hidden === true && s.controls === null, JSON.stringify(s));
 e = await events();
@@ -60,13 +77,15 @@ check('caller-supplied role is kept', await page.$eval('#banner-dismiss', (el) =
 await page.focus('[data-test="before"]');
 await page.keyboard.press('Tab'); // Retry
 await page.keyboard.press('Tab'); // dismiss
+await until(() => document.activeElement?.hasAttribute('data-ax-banner-dismiss'));
 check('Tab reaches the dismiss button', await page.evaluate(() => document.activeElement?.hasAttribute('data-ax-banner-dismiss')));
 await page.keyboard.press('Enter');
+await until(() => document.getElementById('banner-dismiss').hidden);
+await eventCount(1);
 check('dismiss hides the banner', await page.$eval('#banner-dismiss', (el) => el.hidden && el.getBoundingClientRect().height === 0));
 check('focus returns to the focus origin', await page.evaluate(() => document.activeElement?.getAttribute('data-test') === 'before'));
-// The dismiss IconButton's tooltip also reports astryx-open-change from inside the banner; only the banner's own events count.
-e = (await events()).filter((x) => x.id === 'banner-dismiss');
-check('astryx-dismiss dispatched', e.length === 1 && e[0].type === 'astryx-dismiss', JSON.stringify(e));
+e = await events();
+check('astryx-dismiss dispatched', e.length === 1 && e[0].type === 'astryx-dismiss' && e[0].id === 'banner-dismiss', JSON.stringify(e));
 
 // Programmatic API.
 await page.evaluate(() => document.getElementById('banner-expand').open());

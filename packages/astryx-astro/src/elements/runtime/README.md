@@ -8,6 +8,12 @@ document however many components import it, and is loaded from a component with
 **Never add a second document-level Escape, outside-press, modality or disabled-click
 listener.** Register with these modules instead.
 
+**One state per page, however many copies of a module load.** Vite can evaluate a module twice
+(a consumer's pre-bundled import beside the components' raw scripts), so module-level mutable
+state lives in `globalSingleton('<name>', create)` (`global.ts`,
+`globalThis[Symbol.for('astryx-astro/<name>/v1')]`), listener functions included, and classes
+other modules test with `instanceof` are branded with `brandClass()`.
+
 | Module | Ports (Astryx 0.7.9) |
 |---|---|
 | `modality.ts` | utils/interactionModality.ts, utils/focusReturn.ts |
@@ -22,6 +28,7 @@ listener.** Register with these modules instead.
 | `typeahead.ts` | utils/typeaheadMatch.ts, hooks/useTypeahead.ts |
 | `disabledInteraction.ts` | utils/disabledInteraction.ts (AST-085) |
 | `dom.ts` | utils/ime.ts, hooks/focusableSelector.ts, utils/isFocusDetached.ts |
+| `global.ts` | — (port infrastructure: page-wide singletons, cross-copy `instanceof`) |
 | `menu.ts` | DropdownMenu/menuItemRoles.ts, menuItemHover.ts, menuRegionStops.ts, useMenuOverflow.ts, hooks/useMenuHover.ts, hooks/useLongPress.ts; the menu paths of DropdownMenu.tsx, DropdownMenuSubMenu.tsx, ContextMenu.tsx |
 
 ---

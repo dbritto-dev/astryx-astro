@@ -6,7 +6,12 @@
  * within their group while the list is open, the trigger summary (count / labels / badges),
  * one hidden input per value, and the selection / search announcements.
  * Shared plumbing (open/close, search row, focus return, empty states): ./selector.ts.
+ * Each row's decorative checkbox is an inert CheckboxInput (as in Astryx); `setMark` sets its
+ * `value` in place.
  */
+// Defined first: the rows' checkboxes are upgraded before this element sets their values.
+import './checkbox-input';
+import type {CheckboxInputElement} from './checkbox-input';
 import {announce, createAnnouncer} from './runtime/announce';
 import type {ComboboxKeyConfig} from './runtime/combobox';
 import {ListboxSelectElement} from './selector';
@@ -264,6 +269,13 @@ export class MultiSelectorElement extends ListboxSelectElement {
     row.setAttribute('data-ax-order', String(100000 + this.#created));
     const label = row.querySelector('.ax-multi-selector-label');
     if (label) label.textContent = value;
+    // The template's checkbox id is shared by every clone: give this row's its own.
+    const input = row.querySelector<HTMLInputElement>('[data-ax-mark-slot] input.ax-checkbox-native');
+    if (input) {
+      const old = input.id;
+      input.id = `${row.id}-checkbox`;
+      for (const el of row.querySelectorAll(`label[for="${CSS.escape(old)}"]`)) el.setAttribute('for', input.id);
+    }
     const size = this.getAttribute('data-size');
     if (size) row.setAttribute('data-size', size);
     listbox.insertBefore(row, listbox.querySelector(':scope > [data-ax-empty]'));
@@ -297,6 +309,23 @@ export class MultiSelectorElement extends ListboxSelectElement {
       }
     }
     this.#isSorted = selectedFirst;
+  }
+
+  /** Rows take the box's size; their checkboxes the CheckboxInput size (Astryx: lg → md). */
+  protected override syncRowSize(size: string) {
+    super.syncRowSize(size);
+    const checkbox = size === 'lg' ? 'md' : size;
+    for (const el of this.listbox?.querySelectorAll<HTMLElement>('[data-ax-mark-slot] [data-size]') ?? []) el.setAttribute('data-size', checkbox);
+  }
+
+  /** The row's inert CheckboxInput takes the state in place (an option's disabled state is fixed). */
+  protected override setMark(option: HTMLElement, state: string) {
+    if (option.getAttribute('data-ax-mark-state') === state) return;
+    const box = option.querySelector<CheckboxInputElement>('[data-ax-mark-slot] ax-checkbox-input');
+    if (!box) return;
+    const mark = state.replace(/-disabled$/, '');
+    box.value = mark === 'indeterminate' ? 'indeterminate' : mark === 'checked';
+    option.setAttribute('data-ax-mark-state', state);
   }
 
   #syncSelectAll() {

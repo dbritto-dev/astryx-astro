@@ -113,6 +113,10 @@ export interface TableFilterFieldRef {
  * Rich cells: `renderCell` returns a `TableNode` (text, `{component, props}`, `{tag, attrs,
  * children}` or `{html}`), or pass markup as the Table's `cell:<key>` slot function:
  *   <Fragment slot="cell:status">{(row) => <Badge label={row.status} />}</Fragment>
+ *
+ * The callbacks use method syntax on purpose: their row parameter is then checked
+ * bivariantly, so typed columns (`const columns: TableColumn<Row>[] = …`) are assignable to the
+ * Table's `columns` prop (`TableColumn<Record<string, any>>[]`) under `strictFunctionTypes`.
  */
 export interface TableColumn<T extends Record<string, unknown> = Record<string, unknown>> {
   /** Unique key; also the field read for the cell value. */
@@ -130,17 +134,17 @@ export interface TableColumn<T extends Record<string, unknown> = Record<string, 
   /** Filtering plugin field (useTableFiltering): a PowerSearch field key or `{field, operator}`. */
   filter?: TableFilterFieldRef | string;
   /** Custom cell content (server-side; Astryx's render prop). */
-  renderCell?: (item: T) => TableNode;
+  renderCell?(item: T): TableNode;
   /**
    * Port extension: the value this column shows, when it is not `item[key]` (nested fields,
    * derived values). Read by the default renderer and as the column's default sort value.
    */
-  accessor?: (item: T) => unknown;
+  accessor?(item: T): unknown;
   /**
    * Port extension: format the value for the default renderer (currency, dates …). The
    * result is still default-rendered text, so `textOverflow="truncate"` keeps its tooltip.
    */
-  format?: (value: unknown, item: T) => string;
+  format?(value: unknown, item: T): string;
 }
 
 // =============================================================================

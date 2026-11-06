@@ -3,6 +3,7 @@ import Selector, {type SelectorSize, type SelectorOptionType, type SelectorOptio
 import SelectorOption from './SelectorOption.astro';
 import Button from '../Button/Button.astro';
 import InputGroup from '../InputGroup/InputGroup.astro';
+import MultiSelector from '../MultiSelector/MultiSelector.astro';
 import type {InputStatusType} from '../Field/fieldProps';
 
 const sizes: SelectorSize[] = ['sm', 'md', 'lg'];
@@ -123,6 +124,11 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
     <InputGroup label="Amount">
       <Selector label="Currency" options={['USD', 'EUR', 'PEN', 'COP']} value="PEN" />
       <Button label="Convert" variant="secondary" />
+    </InputGroup>
+    <p style="margin:var(--spacing-3) 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)">A small group: the selectors and their option rows take its size (rendered so on the server, as Astryx's useSize).</p>
+    <InputGroup label="Filters" size="sm" id="selector-group-sm">
+      <Selector label="Region" options={['North', 'South', 'East', 'West']} value="North" id="selector-in-sm-group" />
+      <MultiSelector label="Teams" options={['Platform', 'Payments', 'Design']} value={['Design']} hasSelectAll id="multi-selector-in-sm-group" />
     </InputGroup>
   </section>
 

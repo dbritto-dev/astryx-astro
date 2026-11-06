@@ -40,6 +40,7 @@
 import {isRtl} from './dom';
 import {focusForLastInput} from './modality';
 import {createTypeahead, type Typeahead} from './typeahead';
+import {globalSingleton} from './global';
 
 export type RovingOrientation = 'horizontal' | 'vertical' | 'both';
 
@@ -280,8 +281,15 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
 }
 
 // ── Attribute-driven containers: one delegated listener set per document ──
-const instances = new WeakMap<HTMLElement, RovingFocus & {typeahead?: Typeahead}>();
-const keyListeners = new WeakMap<HTMLElement, Set<(event: KeyboardEvent) => void>>();
+// Shared by every copy of this module: the delegated listeners one copy installs read the
+// controllers and key listeners any copy registers.
+interface RovingState {
+  instances: WeakMap<HTMLElement, RovingFocus & {typeahead?: Typeahead}>;
+  keyListeners: WeakMap<HTMLElement, Set<(event: KeyboardEvent) => void>>;
+  listening: WeakSet<Document>;
+}
+const shared: RovingState = globalSingleton('roving', () => ({instances: new WeakMap(), keyListeners: new WeakMap(), listening: new WeakSet()}));
+const {instances, keyListeners} = shared;
 
 /** The roving controller for a `[data-astryx-roving]` container (created on demand). */
 export function rovingFor(container: HTMLElement): RovingFocus {
@@ -364,12 +372,9 @@ export function syncRovingTabStops(root: ParentNode = document): void {
   syncInOrder(containersAround(root));
 }
 
-const LISTENING = Symbol.for('astryx-astro/roving/v1');
-
 function listen(doc: Document) {
-  const holder = doc as Document & {[LISTENING]?: true};
-  if (holder[LISTENING]) return;
-  Object.defineProperty(holder, LISTENING, {value: true});
+  if (shared.listening.has(doc)) return;
+  shared.listening.add(doc);
   doc.addEventListener('keydown', (event) => {
     // Innermost container first, as React bubbles a keydown through nested composites; a
     // level runs only while nothing prevented the key (a nested list that moved focus did).

@@ -23,6 +23,7 @@ import {isImeKeyEvent} from './runtime/dom';
 import {noteOutsideDismissal} from './runtime/layerStack';
 import {groupItems} from '../lib/groupItems';
 import {emit, fillPlural, formatNumber, onFormReset} from './field';
+import {globalSingleton} from './runtime/global';
 
 export interface TypeaheadItemData {
   id: string;
@@ -57,8 +58,8 @@ export interface TypeaheadQueryDetail<T extends TypeaheadItemData = TypeaheadIte
 const OPTION = '[role="option"]:not([data-ax-empty])';
 const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 
-// One CSS highlight shared by every typeahead (port extension hasMatchHighlight).
-const matchRanges = new Map<Element, Range[]>();
+// One CSS highlight shared by every typeahead (port extension hasMatchHighlight), page-wide.
+const matchRanges = globalSingleton('typeahead-match-ranges', () => new Map<Element, Range[]>());
 function syncMatchHighlight() {
   const registry = (globalThis as {CSS?: {highlights?: Map<string, unknown>}}).CSS?.highlights;
   const Ctor = (globalThis as {Highlight?: new (...r: Range[]) => unknown}).Highlight;

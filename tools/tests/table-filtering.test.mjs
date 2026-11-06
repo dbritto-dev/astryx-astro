@@ -128,7 +128,12 @@ check('clearFilters() shows every row, no event', (await visibleNames('#table-fi
 
 // Date filter (popover): a typed date, Apply → ISO value; rows started after it.
 await page.click(funnel('started'));
-await sleep(150);
+// Initial focus moves in after the popover shows: wait (bounded) until it is inside.
+await page.waitForFunction((s) => document.querySelector(s)?.contains(document.activeElement), popoverOf('started'), {timeout: 5000}).catch(() => {});
+check('the date popover opens on the DateInput text field, not its calendar toggle', await page.evaluate((s) => {
+  const a = document.activeElement;
+  return a?.matches('input[role="combobox"]') && a.closest('ax-date-input')?.closest(s) != null;
+}, popoverOf('started')), await page.evaluate(() => `${document.activeElement?.tagName}.${document.activeElement?.className}`));
 await page.click(`${popoverOf('started')} ax-date-input input:not([type="hidden"])`);
 await page.keyboard.type('1/1/2021');
 await page.keyboard.press('Enter');

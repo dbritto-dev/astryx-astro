@@ -5,12 +5,15 @@
  * IME-safe, `defaultPrevented` keys ignored, the first match wins and is `preventDefault()`ed).
  *
  * One shared `window` keydown listener, installed with the first registration (opt-in: only
- * components given a hotkey register — CommandPalette's `hotkey`).
+ * components given a hotkey register — CommandPalette's `hotkey`). The registry and the
+ * listener are page-wide (`globalSingleton`): a second copy of this module registers into the
+ * same set and adds no second listener.
  *
  *   const unregister = registerHotkey({keys: 'mod+k', onPress: () => palette.show()});
  */
 import {isImeKeyEvent} from './runtime/dom';
 import {isApplePlatform} from '../behaviors/kbdPlatform';
+import {globalSingleton} from './runtime/global';
 
 export interface Hotkey {
   /** Combination such as `mod+k`, `shift+?`, `esc`. */
@@ -56,8 +59,13 @@ export function matchesHotkey(keys: string, event: KeyboardEvent, isApple: boole
   return event.key.toLowerCase() === (KEY_ALIASES[key] ?? key);
 }
 
-const registry = new Set<Hotkey>();
-const INSTALLED = Symbol.for('astryx-astro/hotkeys/v1');
+interface HotkeyState {
+  registry: Set<Hotkey>;
+  /** Whether the window listener is installed. */
+  installed: boolean;
+}
+const state: HotkeyState = globalSingleton('hotkeys', () => ({registry: new Set(), installed: false}));
+const {registry} = state;
 
 function onKeyDown(event: KeyboardEvent) {
   if (event.defaultPrevented || isImeKeyEvent(event)) return;
@@ -76,12 +84,9 @@ function onKeyDown(event: KeyboardEvent) {
 
 export function registerHotkey(hotkey: Hotkey): () => void {
   registry.add(hotkey);
-  if (typeof window !== 'undefined') {
-    const holder = window as Window & {[INSTALLED]?: true};
-    if (!holder[INSTALLED]) {
-      Object.defineProperty(holder, INSTALLED, {value: true});
-      window.addEventListener('keydown', onKeyDown);
-    }
+  if (typeof window !== 'undefined' && !state.installed) {
+    state.installed = true;
+    window.addEventListener('keydown', onKeyDown);
   }
   return () => { registry.delete(hotkey); };
 }

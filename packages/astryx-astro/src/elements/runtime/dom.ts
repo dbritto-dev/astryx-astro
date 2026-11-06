@@ -3,6 +3,7 @@
  * Ports of @astryxdesign/core utils/ime.ts, hooks/focusableSelector.ts,
  * hooks/isRtlElement.ts, utils/isFocusDetached.ts and utils/focusReturn.ts `isFocusLost`.
  */
+import {globalSingleton} from './global';
 
 /**
  * Whether a keydown is part of an IME composition and must not act as a command. Both signals
@@ -49,11 +50,12 @@ export function identFrom(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-');
 }
 
-let counter = 0;
+/** The id counter, one per page (shared by every copy of this module). */
+const ids = globalSingleton('ensure-id', () => ({counter: 0}));
 /** A document-unique id for an element that has none. */
 export function ensureId(el: Element, prefix = 'ax'): string {
   if (!el.id) {
-    do { el.id = `${prefix}-${(++counter).toString(36)}`; } while (el.ownerDocument.querySelectorAll(`#${CSS.escape(el.id)}`).length > 1);
+    do { el.id = `${prefix}-${(++ids.counter).toString(36)}`; } while (el.ownerDocument.querySelectorAll(`#${CSS.escape(el.id)}`).length > 1);
   }
   return el.id;
 }

@@ -14,8 +14,9 @@
  *   Astryx has no such value; it is treated like `pointer` for the ring.
  *
  * SSR-safe to import; listeners attach once per document on first import in a browser and
- * stay for the document's lifetime (duplicate bundles share the store through a global symbol).
+ * stay for the document's lifetime (duplicate module copies share the stores: `globalSingleton`).
  */
+import {globalSingleton} from './global';
 
 export type InteractionModality = 'keyboard' | 'pointer' | 'virtual';
 
@@ -29,15 +30,15 @@ interface Store {
   listeners: Set<Listener>;
 }
 
-const STORE_KEY = Symbol.for('astryx-astro/modality/v1');
 const ATTRIBUTE = 'data-astryx-modality';
+/** One store per document, shared by every copy of this module. */
+const stores = globalSingleton('modality', () => new WeakMap<Document, Store>());
 
 function storeOf(doc: Document): Store {
-  const holder = doc as Document & {[STORE_KEY]?: Store};
-  const existing = holder[STORE_KEY];
+  const existing = stores.get(doc);
   if (existing) return existing;
   const store: Store = {modality: 'keyboard', pointerType: null, pressedAt: -Infinity, listeners: new Set()};
-  Object.defineProperty(holder, STORE_KEY, {value: store});
+  stores.set(doc, store);
   listen(doc, store);
   return store;
 }

@@ -2,7 +2,8 @@
 import SyntaxTheme from './SyntaxTheme.astro';
 import {defineSyntaxTheme} from './syntaxTheme';
 
-// CodeBlock is not ported yet: a hand-tokenized sample painted with the same tokens.
+// A hand-tokenized sample painted with the syntax tokens (CodeBlock reads the same ones), so
+// each token's color shows on its own.
 type Tok = [kind: string, text: string];
 const line1: Tok[] = [['keyword', 'const'], ['', ' '], ['variable', 'status'], ['', ' '], ['operator', '='], ['', ' '], ['variable', 'response'], ['punctuation', '.'], ['property', 'ok'], ['', ' '], ['operator', '?'], ['', ' '], ['string', "'success'"], ['', ' '], ['operator', ':'], ['', ' '], ['string', "'error'"], ['punctuation', ';']];
 const line2: Tok[] = [['comment', '// retry three times, then give up']];

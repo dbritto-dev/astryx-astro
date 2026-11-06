@@ -118,6 +118,16 @@ const input = 'font:inherit;font-size:var(--text-label-size);height:100%;min-hei
       </Toolbar>
       <div style="padding-block:var(--spacing-3);color:var(--color-text-secondary);font-size:var(--font-size-sm)">Card body</div>
     </Card>
+    <Card style="max-width:520px;margin-top:var(--spacing-3)" data-test="card-tooltips">
+      <Toolbar label="Card tools" size="sm" dividers={['bottom']}>
+        <Fragment slot="startContent"><IconButton label="Collapse" icon="chevronLeft" variant="ghost" tooltip="Collapse the panel" /></Fragment>
+        <Fragment slot="endContent">
+          <Button label="Share" />
+          <IconButton label="Settings" icon="wrench" variant="ghost" tooltip="Panel settings" />
+        </Fragment>
+      </Toolbar>
+      <div style="padding-block:var(--spacing-3);color:var(--color-text-secondary);font-size:var(--font-size-sm)">Ghost icon buttons with tooltips at both edges: the tooltip layer is the button's next sibling, and the slot still pulls in.</div>
+    </Card>
   </section>
 
   <section>

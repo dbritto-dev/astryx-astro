@@ -34,6 +34,7 @@ import './runtime/tooltip';
 import {comboboxLayer, type ComboboxLayerElement} from './runtime/combobox';
 import {defineElement} from './runtime/layer';
 import {isImeKeyEvent} from './runtime/dom';
+import {globalSingleton} from './runtime/global';
 import {characterCount} from '../lib/characters';
 import {
   ensureCaretInside, getSelectionRangeInside, insertTextAtCursor, isSelectionAtEnd, isSelectionAtStart,
@@ -82,8 +83,8 @@ function serialize(node: Node): string {
 const fillMessage = (template: string | undefined, values: Record<string, string>) =>
   (template ?? '').replace(/⁣([a-zA-Z]+)⁣/g, (_, name: string) => values[name] ?? '');
 
-let tokenCounter = 0;
-let layerCounter = 0;
+/** Id counters, page-wide (shared by every copy of this module). */
+const counters = globalSingleton('chat-composer-input-ids', () => ({token: 0, layer: 0}));
 
 /**
  * Port of useChatPasteAsToken: pastes longer than `threshold` (graphemes) become a token.
@@ -309,7 +310,7 @@ export class ChatComposerInputElement extends Base {
     if (!selection || selection.rangeCount === 0) return undefined;
     const range = selection.getRangeAt(0);
     const span = document.createElement('span');
-    const id = `token-${Date.now().toString(36)}-${(++tokenCounter).toString(36)}`;
+    const id = `token-${Date.now().toString(36)}-${(++counters.token).toString(36)}`;
     span.className = 'ax-chat-token';
     span.setAttribute('data-astryx-token', '');
     span.setAttribute('data-astryx-token-value', token.value);
@@ -399,7 +400,7 @@ export class ChatComposerInputElement extends Base {
   #pastedToken(template: HTMLTemplateElement, text: string): DocumentFragment {
     const fragment = template.content.cloneNode(true) as DocumentFragment;
     const layer = fragment.querySelector<HTMLElement>('ax-hover-card');
-    const id = `ax-chat-pasted-${(++layerCounter).toString(36)}-${Date.now().toString(36)}`;
+    const id = `ax-chat-pasted-${(++counters.layer).toString(36)}-${Date.now().toString(36)}`;
     const old = layer?.id;
     if (layer) layer.id = id;
     const label = this.pastedLabel(text);
@@ -449,7 +450,7 @@ export class ChatComposerInputElement extends Base {
     if (existing) return existing;
     const editable = this.#editable;
     if (!editable || this.#resolvedTriggers().length === 0) return null;
-    const n = (++layerCounter).toString(36);
+    const n = (++counters.layer).toString(36);
     if (!editable.id) editable.id = `ax-chat-input-c${n}`;
     const layer = document.createElement('ax-combobox-layer') as ComboboxLayerElement;
     layer.id = `ax-chat-trigger-layer-c${n}`;
