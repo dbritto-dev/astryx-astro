@@ -1,0 +1,292 @@
+---
+/**
+ * DateInput — type a date or pick it from a calendar popover. Port of @astryxdesign/core
+ * DateInput/DateInput.tsx (PointerDateField), DateInput/useTypedDate.ts,
+ * DateInput/useCalendarPresentation.ts, Field/inputStyles.stylex.ts,
+ * Field/inputDisabledFocus.ts (inputFocusRing), Layer/outsidePress.ts and Popover/usePopover.tsx
+ * for the calendar layer. Typed-entry logic: ./typedDate.ts (shared with the element and
+ * DateTimeInput); behaviour: src/elements/date-input.ts (`<ax-date-input>`).
+ *
+ * Entry model (0.7.9): one text input (`role="combobox"`, `aria-haspopup="dialog"`) that reads
+ * the date the way the locale writes it in the field's `calendar`, in any decimal digits
+ * (Arabic-Indic, Devanagari …) and IME-safe; month names, eras and two-digit years per
+ * lib/date's calendarDateParser. A date that more typing cannot change reports at once;
+ * other text commits on Enter or blur. Text that cannot commit stays and shows why (error
+ * status + announcement: invalid, nonexistent in the calendar, or outside min/max/constraints).
+ * The committed value is redrawn in `format`.
+ *
+ * Calendar: the toggle button (focus moves into the calendar), a click in the input or
+ * ArrowDown / Alt+ArrowDown (focus stays in the input, APG date picker combobox) open a
+ * `popover="manual"` layer anchored to the field (a text input cannot be an invoker); a press
+ * that starts and ends outside the field closes it, so does focus leaving the field, Escape
+ * (shared stack) and picking a day. Focus returns to the opener, else to the input.
+ *
+ * - Form: `htmlName`/`name` submits the ISO date (`YYYY-MM-DD`, '' when empty) through a hidden
+ *   input; the visible text is not submitted. Disabled fields submit nothing; a form reset
+ *   restores the server value.
+ * - `isDisabled` keeps the tab stops (`aria-disabled`, `readonly`); `disabledMessage` adds a
+ *   tooltip on the box that also describes the input and the toggle. `isLoading`: aria-busy,
+ *   spinner, typing/picking/clearing blocked, "Loading" announced once.
+ * - Field-composed (contract #8): base props go to the text input; `containerClass/Style` →
+ *   Field box, `controlClass/Style` → the bordered `.astryx-date-input` box. Groupable
+ *   (InputGroup). Size: explicit, else a size provider's (cascade `size`), else 'md'.
+ *
+ * Events (on `<ax-date-input>`, bubbling, composed): `astryx-change` `{value: ISODateString |
+ * undefined}` (Astryx onChange; undefined = cleared), cancelable — `preventDefault()` keeps
+ * the old value (a controlled owner then sets `el.value`). The calendar's own `astryx-change`
+ * stays inside. Element API: `value` (get/set ISO or undefined), `isOpen`, `open()`, `close()`,
+ * `clear()`, `focus()`, `dateConstraints` (client functions, added to the server mask),
+ * `formatValue` (client function for a `format` function).
+ *
+ * Port notes:
+ *  - `format` as a function formats the server render; set `el.formatValue` for client commits
+ *    (otherwise they use 'date_long'). `dateConstraints` run on the server over the Calendar's
+ *    window (two years either side of the opening months).
+ *  - `presentation` / `nativePicker` are accepted; every value renders this pointer surface.
+ *    Deferred (AGENTS.md scope): the coarse-pointer bottom sheet (TouchDateField: swipe-paged
+ *    months, month/year wheels, press feedback) and the native `<input type="date">` surface
+ *    (NativeDateField) — plain touch use (tap the field or the toggle, type, pick a day) works.
+ *  - `changeAction` (server actions / optimistic value) and `onChange` callbacks: use the event.
+ *
+ * @example
+ * <DateInput label="Event date" value="2026-03-21" />
+ * <DateInput label="Start date" calendar="persian" locale="fa-IR" min="2026-01-01" hasClear htmlName="start" />
+ */
+import Field from '../Field/Field.astro';
+import FieldStatus from '../FieldStatus/FieldStatus.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import Calendar from '../Calendar/Calendar.astro';
+import PickerLayer from './_PickerLayer.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {
+  GROUP_DISABLE,
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  statusIconPlan,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+} from '../Field/fieldProps';
+import {calendarFromLocals, type DayOfWeek, type DayOfWeekName} from '../Calendar/calendarModel';
+import {constraintMask, providerCalendarOf, typedDateServerConfig} from './serverConfig';
+import {TypedDate} from './typedDate';
+import type {CalendarSystem, ISODateString} from '../../lib/date';
+import '../Field/Field.css';
+import '../VisuallyHidden/VisuallyHidden.css';
+import './DateInput.css';
+
+export type DateInputSize = InputSize;
+export type DateInputStatus = InputStatus;
+export type DateInputFormat = 'date' | 'date_long' | 'date_weekday' | 'system_date';
+/** Which surface collects the date (only the popover surface is ported; see the header). */
+export type DateInputPresentation = 'popover' | 'bottom-sheet' | 'native' | 'adaptive-bottom-sheet' | 'adaptive-native';
+/** @deprecated Use `presentation`. */
+export type DateInputNativePicker = 'touch' | 'always' | 'never';
+
+export interface Props extends FieldComposedProps {
+  /** Selected date (`YYYY-MM-DD`). The element owns it afterwards. */
+  value?: ISODateString | null;
+  /** Why the input is disabled (tooltip on hover/focus; also describes the input). */
+  disabledMessage?: string;
+  /** Busy: aria-busy + spinner; typing, picking and clearing blocked. @default false */
+  isLoading?: boolean;
+  /** Minimum selectable date (ISO). */
+  min?: ISODateString;
+  /** Maximum selectable date (ISO). */
+  max?: ISODateString;
+  /** A date is disabled if ANY returns false (evaluated on the server, see the header). */
+  dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
+  /** Placeholder; a caller placeholder replaces the calendar format hint. @default translated "Select a date" */
+  placeholder?: string;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: DateInputSize;
+  /** Clear button while a date is set. @default false */
+  hasClear?: boolean;
+  /** Months shown in the calendar popover. @default 1 */
+  numberOfMonths?: 1 | 2;
+  /** First day of week: 0 (Sunday) … 6, or 'sun' … 'sat'. @default 0 */
+  weekStartsOn?: DayOfWeek | DayOfWeekName;
+  /** Committed display format (Timestamp's date vocabulary) or a function of the ISO value. @default 'date_long' */
+  format?: DateInputFormat | ((value: ISODateString) => string);
+  /** Calendar the field reads, writes and shows; values stay Gregorian ISO. @default Astro.locals.astryxCalendar ?? 'gregory' */
+  calendar?: CalendarSystem;
+  /** Picker surface (every value renders the popover; see the header). @default 'adaptive-native' */
+  presentation?: DateInputPresentation;
+  /** @deprecated Use `presentation`. */
+  nativePicker?: DateInputNativePicker;
+  /** Form field name for the hidden ISO value (`name` works too). Dropped while disabled. */
+  htmlName?: string;
+  name?: string;
+}
+
+const {
+  value: valueProp,
+  disabledMessage,
+  isLoading = false,
+  min,
+  max,
+  dateConstraints,
+  placeholder: placeholderProp,
+  size: sizeProp,
+  hasClear = false,
+  numberOfMonths = 1,
+  weekStartsOn,
+  format = 'date_long',
+  calendar: calendarProp,
+  presentation: _presentation,
+  nativePicker: _nativePicker,
+  htmlName,
+  name,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('DateInput', props as Props & Record<string, unknown>, {groupable: true});
+const {isDisabled, status, statusVariant} = r;
+const isEffectivelyDisabled = isDisabled || isLoading;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const calendar = calendarFromLocals(calendarProp, Astro, 'DateInput');
+const size: DateInputSize = sizeProp ?? 'md';
+const value = valueProp && /^\d{4}-\d{2}-\d{2}$/.test(valueProp) ? valueProp : undefined;
+const placeholder = placeholderProp ?? t('@astryx.dateInput.placeholder');
+
+const mask = constraintMask({dateConstraints, min, max, value, numberOfMonths, calendar});
+const {config: typedConfig, calendarDescription} = typedDateServerConfig({
+  t,
+  locale,
+  calendar,
+  providerCalendar: providerCalendarOf(Astro),
+  format,
+  min,
+  max,
+  mask,
+  hasPlaceholder: placeholderProp != null,
+});
+const typed = new TypedDate(typedConfig, {formatValue: () => (typeof format === 'function' ? format : null)});
+const displayValue = value ? typed.formatCommitted(value) : '';
+
+const boxId = uid(Astro, 'ax-date-input');
+const popoverId = uid(Astro, 'ax-date-input-calendar');
+const calendarDescriptionId = calendarDescription ? r.ids.make('calendar') : undefined;
+const plan = statusIconPlan(status, statusVariant);
+const typedPlan = statusIconPlan({type: 'error', message: ' '}, statusVariant);
+const typedMessageId = statusVariant !== 'tooltip' ? r.ids.make('typed-status') : undefined;
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const describedByCaller = r.describedBy(r.field.descriptionID, calendarDescriptionId, r.statusMessageId, plan.tooltipId, disabledTip?.id);
+const describedByTyped = r.describedBy(r.field.descriptionID, calendarDescriptionId, typedMessageId, typedPlan.tooltipId, disabledTip?.id);
+
+const {themeClass, attrs: themeAttrs} = themeProps('date-input', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const toggleIcon = themeProps('date-input-toggle-icon', {state: 'collapsed'});
+const fieldName = isDisabled ? undefined : (htmlName ?? name);
+const showsClear = hasClear && !isEffectivelyDisabled;
+const openLabel = t('@astryx.dateInput.openCalendar');
+const closeLabel = t('@astryx.dateInput.toggleCalendarClose');
+const elementConfig = {
+  typed: typedConfig,
+  placeholder,
+  numberOfMonths,
+  labels: {open: openLabel, close: closeLabel},
+};
+---
+<Field {...r.field}>
+  <ax-date-input
+    id={boxId}
+    class={cx(themeClass, 'ax-input', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isLoading ? t('@astryx.spinner.loading') : undefined}
+    data-locale={locale}
+    data-ax-config={JSON.stringify(elementConfig)}
+    data-ax-status-caller={status?.type}
+    data-ax-status-box={r.statusMessageId}
+    data-ax-describedby-caller={describedByCaller}
+    data-ax-describedby-typed={describedByTyped}
+    data-ax-default-value={value ?? ''}
+  >
+    <span {...r.groupLabel}>{r.label}</span>
+    <button
+      type="button"
+      class="ax-date-input-toggle ax-focus-visible"
+      data-ax-date-toggle=""
+      aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+      aria-describedby={disabledTip?.id}
+      aria-label={openLabel}
+      {...{[GROUP_DISABLE]: ''}}
+    ><Icon icon="calendar" size="sm" color="secondary" class={toggleIcon.themeClass} {...toggleIcon.attrs} /></button>
+    <input
+      {...r.native}
+      {...r.required}
+      {...r.groupInput}
+      class="ax-input-native"
+      id={r.id}
+      type="text"
+      role="combobox"
+      value={displayValue}
+      placeholder={placeholder}
+      aria-disabled={isEffectivelyDisabled ? 'true' : undefined}
+      readonly={isEffectivelyDisabled || undefined}
+      aria-labelledby={r.labelledBy}
+      aria-describedby={describedByCaller}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-busy={isLoading ? 'true' : undefined}
+      aria-expanded="false"
+      aria-haspopup="dialog"
+      aria-autocomplete="none"
+      autocomplete="off"
+    />
+    {fieldName && <input type="hidden" name={fieldName} value={value ?? ''} data-ax-date-value="" {...{[GROUP_DROP_DISABLED]: ''}} />}
+    <VisuallyHidden as="div" role="alert" aria-live="assertive" data-ax-date-alert="" />
+    {calendarDescription && <VisuallyHidden id={calendarDescriptionId}>{calendarDescription}</VisuallyHidden>}
+    {showsClear && <InputClearButton label={t('@astryx.dateInput.clear', {label: r.label})} isHidden={!value} locale={r.locale} {...{[GROUP_DROP_DISABLED]: ''}} />}
+    {isLoading && <Spinner size="sm" aria-hidden="true" />}
+    <span class="ax-date-status-slot" data-ax-status-slot=""><InputStatusIcon status={status} plan={plan} locale={r.locale} /></span>
+    <template data-ax-typed-icon=""><InputStatusIcon status={{type: 'error', message: ' '}} plan={typedPlan} locale={r.locale} /></template>
+    <PickerLayer
+      id={popoverId}
+      anchorId={boxId}
+      ownerId={boxId}
+      labelFor={r.id}
+      label={t('@astryx.dateInput.dialogLabel')}
+      closeLabel={t('@astryx.dateInput.closeCalendar')}
+      locale={r.locale}
+    >
+      <Calendar
+        mode="single"
+        value={value ?? null}
+        min={min}
+        max={max}
+        dateConstraints={dateConstraints}
+        numberOfMonths={numberOfMonths}
+        weekStartsOn={weekStartsOn}
+        calendar={calendar}
+        locale={r.locale}
+      />
+    </PickerLayer>
+  </ax-date-input>
+  {statusVariant === 'tooltip' ? (
+    <template data-ax-typed-status={boxId}><span hidden data-ax-field-status="" data-type="error"></span></template>
+  ) : (
+    <template data-ax-typed-status={boxId}><FieldStatus type="error" message="" id={typedMessageId} variant={statusVariant} /></template>
+  )}
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/date-input';</script>
+<script>import '../../behaviors/fieldStatus';</script>
+{isLoading && <script>import '../../behaviors/busyAnnounce';</script>}

@@ -1,0 +1,92 @@
+---
+import DateRangeInput, {type DateRangeInputSize, type DateRangePreset} from './DateRangeInput.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Button from '../Button/Button.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: DateRangeInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Range is too long', warning: 'Includes a holiday', success: 'All days available'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+
+// Fixed "today" so the demo (and its tests) are stable: presets relative to 2026-03-15.
+const iso = (y: number, m: number, d: number) => {
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.toISOString().slice(0, 10) as `${number}-${number}-${number}`;
+};
+const lastDays = (n: number) => ({start: iso(2026, 3, 15 - n + 1), end: iso(2026, 3, 15)});
+const presets: DateRangePreset[] = [
+  {label: 'Last 7 days', getRange: () => lastDays(7)},
+  {label: 'Last 14 days', getRange: () => lastDays(14)},
+  {label: 'Last 30 days', getRange: () => lastDays(30)},
+  {label: 'This month', range: {start: '2026-03-01', end: '2026-03-31'}},
+  {label: 'Last year', range: {start: '2025-01-01', end: '2025-12-31'}},
+];
+const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Calendar and presets</h3>
+    <div style={grid}>
+      <DateRangeInput label="Reporting period" value={{start: '2026-03-09', end: '2026-03-15'}} presets={presets} min="2025-06-01" max="2026-03-31" maxRangeSpan={31} description="Presets longer than 31 days are unavailable" data-test="presets" />
+      <DateRangeInput label="Stay" data-test="empty" />
+      <DateRangeInput label="One month" numberOfMonths={1} value={{start: '2026-03-02', end: '2026-03-06'}} weekStartsOn="mon" presets={presets.slice(0, 3)} data-test="one-month" />
+      <DateRangeInput label="At least 3 nights" minRangeSpan={4} maxRangeSpan={14} hasClear={false} data-test="spans" />
+      <DateRangeInput label="Weekdays only" dateConstraints={[noWeekends]} value={{start: '2026-03-02', end: '2026-03-06'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Locales and calendars</h3>
+    <div style={grid}>
+      <DateRangeInput label="Zeitraum (de-DE)" locale="de-DE" value={{start: '2025-12-28', end: '2026-01-03'}} weekStartsOn="mon" data-test="de" />
+      <DateRangeInput label="期間 (ja-JP)" locale="ja-JP" value={{start: '2026-03-09', end: '2026-03-15'}} data-test="ja" />
+      <div dir="rtl" lang="ar-SA"><DateRangeInput label="الفترة (ar-SA)" locale="ar-SA" value={{start: '2026-03-09', end: '2026-03-15'}} data-test="ar" /></div>
+      <DateRangeInput label="Buddhist calendar (th-TH)" locale="th-TH" calendar="buddhist" value={{start: '2026-03-09', end: '2026-03-15'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <DateRangeInput label={`${type} ${size}`} size={size} value={{start: '2026-03-09', end: '2026-03-15'}} status={{type, message: messages[type]}} />
+      )))}
+      <DateRangeInput label="Tooltip status" value={{start: '2026-03-09', end: '2026-03-15'}} status={{type: 'error', message: messages.error}} statusVariant="tooltip" />
+      <DateRangeInput label="Detached status" value={{start: '2026-03-09', end: '2026-03-15'}} status={{type: 'warning', message: messages.warning}} statusVariant="detached" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, loading</h3>
+    <div style={grid}>
+      <DateRangeInput label="Disabled" value={{start: '2026-03-09', end: '2026-03-15'}} isDisabled presets={presets.slice(0, 2)} data-test="disabled" />
+      <DateRangeInput label="Disabled with reason" value={{start: '2026-03-09', end: '2026-03-15'}} isDisabled disabledMessage="Locked while the report runs" />
+      <DateRangeInput label="Loading" value={{start: '2026-03-09', end: '2026-03-15'}} isLoading />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>In a form</h3>
+    <form data-test="form" style="max-width:560px;display:grid;gap:var(--spacing-3)">
+      <FormLayout direction="horizontal-labels">
+        <DateRangeInput label="Booking" htmlName="booking" value={{start: '2026-03-09', end: '2026-03-15'}} isRequired />
+        <DateRangeInput label="Blackout" htmlName="blackout" isOptional />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <Button type="submit" label="Submit" variant="primary" />
+        <Button type="reset" label="Reset" variant="secondary" />
+      </div>
+      <output data-test="form-output" style="font-family:var(--font-family-code);font-size:var(--font-size-sm)"></output>
+    </form>
+  </section>
+</div>
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-test="form"]');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const out = form.querySelector('output');
+    if (out) out.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+  });
+</script>

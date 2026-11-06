@@ -1,0 +1,85 @@
+/*
+ * Port of @astryxdesign/core DateTimeInput/DateTimeInput.tsx (styles.row, dateWrapper,
+ * timeWrapper, timeListbox, timeOption, timeOptionHighlighted, timeOptionSelected,
+ * timeOptionSizeStyles, sizeStyles) and Field/inputDisabledFocus.ts (withinRing on each
+ * segment). Each segment is the shared `.ax-input` box (Field/Field.css); the toggle, icon and
+ * text styles come from DateInput.css / TimeInput.css.
+ * Rule order mirrors stylex.props(): base → size → wrapper → disabled (+ ring) → status.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* styles.row: two 196px segments plus the 8px gap fit at 400px; below that each wraps onto
+   * its own full-width row. */
+  .astryx-date-time-input {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+  }
+
+  /* sizeStyles */
+  .astryx-date-time-input-date-segment[data-size="sm"],
+  .astryx-date-time-input-time-segment[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-date-time-input-date-segment[data-size="md"],
+  .astryx-date-time-input-time-segment[data-size="md"] { height: var(--size-element-md); }
+  .astryx-date-time-input-date-segment[data-size="lg"],
+  .astryx-date-time-input-time-segment[data-size="lg"] { height: var(--size-element-lg); }
+
+  /* styles.dateWrapper / timeWrapper */
+  .astryx-date-time-input-date-segment,
+  .astryx-date-time-input-time-segment {
+    flex: 1;
+    flex-basis: 196px;
+    min-width: 0;
+  }
+
+  /* withinRing: a disabled or busy segment restores the ring while focus is inside it */
+  :is(.astryx-date-time-input-date-segment, .astryx-date-time-input-time-segment).ax-input[data-disabled]:not([data-status]):focus-within { border-color: var(--color-accent); }
+  :is(.astryx-date-time-input-date-segment, .astryx-date-time-input-time-segment).ax-input[data-disabled]:focus-within { box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted); }
+  @media (forced-colors: active) {
+    :is(.astryx-date-time-input-date-segment, .astryx-date-time-input-time-segment).ax-input[data-disabled]:not([data-status]):focus-within { border-color: Highlight; }
+  }
+
+  /* The time list's layer is at least as wide as the time segment (styles.timeListbox
+   * minWidth: anchor-size(width), applied where anchor-size() is valid). */
+  .ax-date-time-input-list-layer {
+    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
+    min-width: min(anchor-size(width), var(--_ax-max-inline-size));
+  }
+  .ax-date-time-input-list-layer[data-astryx-rect] { min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size)); }
+
+  /* styles.timeListbox */
+  .ax-date-time-input-listbox {
+    box-sizing: border-box;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: var(--spacing-1);
+  }
+
+  /* styles.timeOption */
+  .ax-date-time-input-option {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding-block: var(--spacing-1-5);
+    padding-inline: var(--spacing-2);
+    border-radius: var(--radius-element);
+    cursor: pointer;
+    text-align: start;
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-primary);
+    background-color: transparent;
+  }
+  .ax-date-time-input-option:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-date-time-input-option[hidden] { display: none; }
+  /* timeOptionSizeStyles */
+  .ax-date-time-input-listbox[data-ax-size="sm"] > .ax-date-time-input-option { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); }
+  .ax-date-time-input-listbox[data-ax-size="md"] > .ax-date-time-input-option { padding-block: var(--spacing-1-5); }
+  .ax-date-time-input-listbox[data-ax-size="lg"] > .ax-date-time-input-option { padding-block: var(--spacing-2); }
+  /* styles.timeOptionHighlighted / timeOptionSelected */
+  .ax-date-time-input-option[data-ax-highlighted] { background-color: var(--color-overlay-hover); }
+  .ax-date-time-input-option[aria-selected="true"] { font-weight: var(--font-weight-medium); }
+}

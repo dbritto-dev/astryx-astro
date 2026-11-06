@@ -1,0 +1,87 @@
+---
+import TimeInput, {type TimeInputSize} from './TimeInput.astro';
+import InputGroup from '../InputGroup/InputGroup.astro';
+import InputGroupText from '../InputGroup/InputGroupText.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Button from '../Button/Button.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: TimeInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Outside business hours', warning: 'After the last train', success: 'Room available'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Typed entry and arrow keys</h3>
+    <div style={grid}>
+      <TimeInput label="Start time" value="14:30" description="Type a time; ↑/↓ change it by a minute" data-test="basic" />
+      <TimeInput label="Empty" data-test="empty" />
+      <TimeInput label="Quarter hours" value="09:00" increment={15} hasClear data-test="increment" />
+      <TimeInput label="With seconds" value="14:30:15" hasSeconds data-test="seconds" />
+      <TimeInput label="Business hours" value="09:00" min="09:00" max="17:00" increment={30} description="9 AM – 5 PM" data-test="bounds" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Hour cycles and locales</h3>
+    <div style={grid}>
+      <TimeInput label="en-US (12h)" locale="en-US" value="14:30" data-test="en-us" />
+      <TimeInput label="en-GB (24h)" locale="en-GB" value="14:30" data-test="en-gb" />
+      <TimeInput label="en-US-u-hc-h23" locale="en-US-u-hc-h23" value="14:30" data-test="h23" />
+      <TimeInput label="Uhrzeit (de-DE)" locale="de-DE" value="14:30" data-test="de" />
+      <TimeInput label="時刻 (ja-JP, 12h)" locale="ja-JP" hourFormat="12h" value="14:30" data-test="ja" />
+      <TimeInput label="시간 (ko-KR)" locale="ko-KR" value="14:30" />
+      <div dir="rtl" lang="ar-SA"><TimeInput label="الوقت (ar-SA)" locale="ar-SA" value="14:30" data-test="ar" /></div>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <TimeInput label={`${type} ${size}`} size={size} value="18:00" status={{type, message: messages[type]}} />
+      )))}
+      <TimeInput label="Tooltip status" value="18:00" status={{type: 'error', message: messages.error}} statusVariant="tooltip" />
+      <TimeInput label="Detached status" value="18:00" status={{type: 'warning', message: messages.warning}} statusVariant="detached" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, loading</h3>
+    <div style={grid}>
+      <TimeInput label="Disabled" value="08:15" isDisabled htmlName="disabled-time" data-test="disabled" />
+      <TimeInput label="Disabled with reason" value="08:15" isDisabled disabledMessage="Set by your administrator" />
+      <TimeInput label="Loading" value="08:15" isLoading />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>In a form, a FormLayout and an InputGroup</h3>
+    <form data-test="form" style="max-width:520px;display:grid;gap:var(--spacing-3)">
+      <FormLayout direction="horizontal-labels">
+        <TimeInput label="Opens" htmlName="opens" value="09:00" isRequired />
+        <TimeInput label="Closes" htmlName="closes" hasClear isOptional />
+      </FormLayout>
+      <InputGroup label="Meeting">
+        <InputGroupText>From</InputGroupText>
+        <TimeInput label="From" htmlName="from" value="10:00" />
+        <InputGroupText>UTC</InputGroupText>
+      </InputGroup>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <Button type="submit" label="Submit" variant="primary" />
+        <Button type="reset" label="Reset" variant="secondary" />
+      </div>
+      <output data-test="form-output" style="font-family:var(--font-family-code);font-size:var(--font-size-sm)"></output>
+    </form>
+  </section>
+</div>
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-test="form"]');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const out = form.querySelector('output');
+    if (out) out.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+  });
+</script>

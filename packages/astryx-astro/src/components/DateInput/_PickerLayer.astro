@@ -1,0 +1,74 @@
+---
+/**
+ * The picker layer of the date/time inputs (internal): usePopover's `render()` as
+ * DateInput, DateTimeInput and DateRangeInput call it. Port of @astryxdesign/core
+ * Popover/usePopover.tsx (surface, role, aria-modal, label, tabindex, hidden fallback close)
+ * on Layer/useLayer.tsx (placement below/start, the layer's own clearance).
+ *
+ * `<ax-picker-popover>` (src/elements/picker-popover.ts): `popover="manual"` + outside press
+ * for text-input owners, `popover="auto"` (light dismiss) otherwise. The layer root carries
+ * `data-astryx-layer-root` and the slot is sealed, so size and group cascades end here.
+ * usePopover passes no padding: the surface has none (the Calendar pads itself).
+ */
+import Button from '../Button/Button.astro';
+import {cx} from '../../lib/themeProps';
+import {seal} from '../../lib/cascade';
+import {clearance, placementAttrs} from '../Layer/layer';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './DateInput.css';
+
+export interface Props {
+  id: string;
+  /** Element id the layer anchors to (the field box or segment). */
+  anchorId: string;
+  /** Field box whose presses count as inside (manual layers). */
+  ownerId?: string;
+  /** Input whose labels count as inside (manual layers). */
+  labelFor?: string;
+  /** `manual` for text-input owners (outside press), `auto` for light dismiss. @default 'manual' */
+  mode?: 'manual' | 'auto';
+  /** usePopover `role`. @default 'dialog' */
+  role?: 'dialog' | 'none';
+  /** Dialog name (role="dialog"). */
+  label?: string;
+  /** Hidden close button label; omit for none (`hasCloseButton: false`). */
+  closeLabel?: string;
+  /** Extra class on the layer root. */
+  class?: string;
+  /** Extra class on the surface. */
+  surfaceClass?: string;
+  locale?: string;
+}
+
+const {id, anchorId, ownerId, labelFor, mode = 'manual', role = 'dialog', label, closeLabel, class: className, surfaceClass, locale} = Astro.props;
+const isDialog = role === 'dialog';
+const content = Astro.slots.has('default') ? await seal(await Astro.slots.render('default')) : '';
+---
+<ax-picker-popover
+  id={id}
+  popover={mode}
+  class={cx('ax-layer ax-layer-motion ax-picker-layer', className)}
+  data-astryx-layer-root=""
+  {...placementAttrs({placement: 'below', alignment: 'start'})}
+  data-ax-anchor={anchorId}
+  data-ax-owner={ownerId}
+  data-ax-label-for={labelFor}
+  style={clearance('var(--spacing-1)')}
+>
+  <div
+    class={cx('astryx-popover ax-focus-visible', surfaceClass)}
+    role={isDialog ? 'dialog' : undefined}
+    aria-modal={isDialog ? 'true' : undefined}
+    aria-label={isDialog ? label : undefined}
+    tabindex={isDialog ? -1 : undefined}
+  >
+    <Fragment set:html={content} />
+    {closeLabel && (
+      <div class="ax-popover-fallback-close" data-astryx-popover-fallback-close>
+        <Button variant="secondary" size="md" label={closeLabel} {...{popovertarget: id, popovertargetaction: 'hide'}} locale={locale} />
+      </div>
+    )}
+  </div>
+</ax-picker-popover>
+<script>import '../../elements/picker-popover';</script>
