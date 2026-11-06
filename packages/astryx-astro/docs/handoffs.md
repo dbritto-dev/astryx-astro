@@ -382,3 +382,27 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Stand-in: MultiSelector's decorative checkbox is `<Indicator name="checkbox">` until
   CheckboxInput lands. Deferred: BottomSheet presentation (`presentation` kept, popover
   rendered), MultiSelector option `action` grid rows and `renderTrigger`, touch press models.
+## Bottom sheets and the `presentation` contract
+
+- `<ax-bottom-sheet>` (elements/bottom-sheet.ts) extends `ModalHostElement`: same API and
+  `astryx-open-change` as `<ax-dialog>` (reason adds `swipe`, `host`). `attachBottomSheet({id,
+  hasScrim})` (BottomSheet/attach.ts) gives the invoker trigger. `id` names the `<dialog>`;
+  `class` / `style` / DOM props go on the panel (`.astryx-bottom-sheet`). `finalFocus` is a
+  selector (finalFocusRef). Content controls with `data-ax-dialog-close` close it.
+- Framework-free core in `elements/sheet/`: `createSheetGestures()` (drag-to-snap, flick
+  projection, rubber band, peek, layout split), `snapOffsets.ts` (verbatim), `motion.ts`
+  (`rubberBand`, `waitForTransition`), `stack.ts` (open order, recede depth, one scrim, the
+  replace handoff, `focusSheetPanel`, `closeDialogKeepingFocus`), `presentation.ts`.
+- Replacing: close the top sheet and open another in the same task from inside it (or a
+  switcher step change) → handoff. `forceReplaceThisTask()` pairs regardless of the actor.
+- BottomSheetSwitcher: `<ax-bottom-sheet-switcher>`, `activeSheet` property,
+  `data-ax-switch-to="<sheetId>"` controls, `astryx-active-sheet-change` `{activeSheet}`;
+  locals key `astryxBottomSheetSwitcher` (BottomSheet/switcherContext.ts), reset to null
+  inside each sheet's content.
+- `presentation` (`popover | bottom-sheet | adaptive`, Astryx useAdaptivePresentation): read
+  the header of `elements/sheet/presentation.ts`. One compact-touch query
+  (`COMPACT_TOUCH_QUERY`); the surface is latched in `data-ax-surface` as the layer opens;
+  the same layer is restyled (`astryx-bottom-sheet` class swap, full-viewport layer with
+  `::backdrop`, gestures on the surface, a grab handle element rendered only for
+  sheet-capable presentations). Reference: Popover (`runtime/popover.ts`, Popover.css).
+  DropdownMenu / ContextMenu / Selector / DateInput adopt it the same way.

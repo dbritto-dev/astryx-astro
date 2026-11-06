@@ -1,0 +1,271 @@
+/*
+ * Port of @astryxdesign/core 0.7.9 BottomSheet/BottomSheet.tsx (styles.dialog, dialogOpen,
+ * dialogPanelHost, dialogNonModal, scrim, scrimSettled, scrimClosing, exitHoldingFocus,
+ * positionerStackMotion, positionerReceded1/2), BottomSheet/BottomSheetPanel.tsx (styles.sheet,
+ * sheetSettled, sheetClosing, sheetClosingCrossFade, sheetFading, sheetInactive, handleBar,
+ * body, content, tallKeyboardBody, budget, hugHeight; container({useThemeDefault:
+ * 'bottom-sheet'}) from Layout/container.stylex.ts), BottomSheet/BottomSheetEdgeTint.tsx and
+ * focusOutline focusVisible on the body (shared `ax-focus-visible`).
+ *
+ * Rule groups follow the stylex.props() order. State Astryx derives in React is attributes the
+ * runtime (elements/bottom-sheet.ts) writes: `data-sheet-exit` (the close settled as an exit),
+ * `data-sheet-replaced` (retained in a replace), `data-sheet-stack(-depth)` (recede),
+ * `data-sheet-cross-fade`, `data-sheet-exit-focus`, `data-ax-settled` (open on page load).
+ * Without JS a native invoker still presents the dialog and the panel rises.
+ *
+ * Reduced motion (media query or `[data-astryx-reduced-motion]`): no travel. A coarse
+ * pointer cross-fades (≤ 200 ms), a fine one changes at once (the 0.01s collapse).
+ * The `.astryx-bottom-sheet` panel rules are shared by Popover's sheet presentation.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_sheet-budget { syntax: "*"; inherits: false; }
+@property --_ax-pad { syntax: "*"; inherits: false; }
+@property --_sheet-align-offset { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── styles.dialog / dialogOpen / dialogPanelHost: the dialog spans the viewport and hosts
+   *    the panel at its block end, centred. A tap beside the panel lands on the dialog. ── */
+  .ax-bottom-sheet-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100dvw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    overflow: visible;
+    display: none;
+    outline: none;
+    color: inherit;
+  }
+  .ax-bottom-sheet-dialog:is([open], :popover-open) {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  /* positionerStackMotion + receded: covered sheets shrink about their top edge and lift. */
+  .ax-bottom-sheet-dialog[data-sheet-stack] {
+    transform-origin: 50% 0;
+    transition-property: transform;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-bottom-sheet-dialog[data-sheet-stack] { transition-duration: 0.01s; }
+  }
+  :where([data-astryx-reduced-motion]) .ax-bottom-sheet-dialog[data-sheet-stack] { transition-duration: 0.01s; }
+  .ax-bottom-sheet-dialog[data-sheet-stack-depth="1"] { transform: translateY(calc(-1 * var(--spacing-2))) scale(0.96); }
+  .ax-bottom-sheet-dialog[data-sheet-stack-depth]:not([data-sheet-stack-depth="1"]) { transform: translateY(calc(-2 * var(--spacing-2))) scale(0.92); }
+
+  /* scrim: the browser's ::backdrop; one visible per stack (the runtime clears the others). */
+  .ax-bottom-sheet-dialog[data-ax-scrim]::backdrop {
+    background-color: var(--color-overlay);
+    opacity: var(--_sheet-scrim-opacity, 1);
+    transition-property: opacity, display;
+    transition-duration: var(--_sheet-scrim-duration, var(--duration-medium));
+    transition-timing-function: var(--ease-standard);
+    transition-behavior: allow-discrete;
+  }
+  @starting-style {
+    .ax-bottom-sheet-dialog[data-ax-scrim][open]::backdrop { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ax-bottom-sheet-dialog[data-ax-scrim]::backdrop { transition-duration: var(--_sheet-scrim-duration, 0.01s); }
+  }
+  :where([data-astryx-reduced-motion]) .ax-bottom-sheet-dialog[data-ax-scrim]::backdrop { transition-duration: var(--_sheet-scrim-duration, 0.01s); }
+  /* scrimSettled: a sheet open on page load dims at once. */
+  .ax-bottom-sheet-dialog[data-ax-scrim][data-ax-settled]::backdrop { transition-duration: 0.01s; }
+  /* scrimClosing: the dim leaves with the sheet on a linear curve (a fade covers no distance). */
+  .ax-bottom-sheet-dialog[data-ax-scrim][data-sheet-exit]::backdrop { transition-timing-function: linear; }
+
+  /* exitHoldingFocus: a closing sheet that keeps focus takes no pointer input. */
+  .ax-bottom-sheet-dialog[data-sheet-exit-focus] { pointer-events: none; }
+
+  /* dialogNonModal: a manual popover (no scrim); the page behind stays interactive. */
+  .ax-bottom-sheet-dialog:not([data-ax-scrim]) {
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ── styles.sheet: the painted panel (theme target `.astryx-bottom-sheet`) ── */
+  .astryx-bottom-sheet {
+    pointer-events: auto;
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    max-width: 640px;
+    background-color: var(--color-background-surface);
+    border-block-start-width: var(--border-width);
+    border-block-start-style: solid;
+    border-block-start-color: var(--color-border);
+    border-inline-start-width: var(--border-width);
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--color-border);
+    border-inline-end-width: var(--border-width);
+    border-inline-end-style: solid;
+    border-inline-end-color: var(--color-border);
+    border-start-start-radius: var(--radius-container);
+    border-start-end-radius: var(--radius-container);
+    box-shadow: var(--shadow-high);
+    outline: none;
+    overflow: hidden;
+    /* The reserve: the surface reaches below the screen so a pull past the top never shows
+     * the page; the home indicator's inset sits on top of it. */
+    padding-block-end: calc(env(safe-area-inset-bottom, 0px) + var(--_sheet-reserve, 48px));
+    margin-block-end: calc(-1 * var(--_sheet-reserve, 48px));
+    transform: translateY(0);
+    opacity: 1;
+    transition-property: transform, opacity;
+    transition-duration: var(--duration-medium);
+    transition-timing-function: var(--ease-standard);
+    will-change: transform, opacity;
+  }
+  @starting-style {
+    .astryx-bottom-sheet { transform: translateY(100%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-bottom-sheet { transition-duration: 0.01s; }
+    @starting-style {
+      .astryx-bottom-sheet { transform: translateY(0); }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-bottom-sheet { transition-duration: 0.01s, 200ms; }
+    @starting-style {
+      .astryx-bottom-sheet { opacity: 0; }
+    }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-bottom-sheet { transition-duration: 0.01s; }
+  @starting-style {
+    :where([data-astryx-reduced-motion]) .astryx-bottom-sheet { transform: translateY(0); }
+  }
+
+  /* budget / hugHeight: named budgets (hug 92dvh max, capped 62dvh, tall 92dvh) or a custom
+   * length, plus the reserve below the screen. */
+  .astryx-bottom-sheet { height: calc(var(--_sheet-budget, 62dvh) + var(--_sheet-reserve, 48px)); }
+  .astryx-bottom-sheet[data-ax-height="hug"] {
+    height: fit-content;
+    max-height: calc(92dvh + var(--_sheet-reserve, 48px));
+  }
+
+  /* sheetClosing: the exit is its own motion (accelerating), not the entrance backwards. */
+  .astryx-bottom-sheet[data-sheet-exit] {
+    transform: translateY(100%);
+    transition-timing-function: var(--ease-exit);
+  }
+  @media (pointer: coarse) {
+    .astryx-bottom-sheet[data-sheet-exit] { transition-timing-function: cubic-bezier(0.3, 0, 0.6, 0.6); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .astryx-bottom-sheet[data-sheet-exit] { transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) and (pointer: coarse) {
+    .astryx-bottom-sheet[data-sheet-exit] { opacity: 0; }
+  }
+  :where([data-astryx-reduced-motion]) .astryx-bottom-sheet[data-sheet-exit] { transform: translateY(0); }
+  /* sheetClosingCrossFade: a finger's swipe dismissal under reduced motion fades in place. */
+  .astryx-bottom-sheet[data-sheet-exit][data-sheet-cross-fade] {
+    transform: translateY(0);
+    opacity: 0;
+    transition-duration: 0.01s, 200ms;
+  }
+  /* sheetFading / sheetInactive: a replaced sheet fades once the entering one has arrived;
+   * retained and exiting panels take no pointer input. */
+  .astryx-bottom-sheet[data-sheet-replaced="fading"] { opacity: 0; }
+  .astryx-bottom-sheet[data-sheet-replaced],
+  .astryx-bottom-sheet[data-sheet-exit] { pointer-events: none; }
+  /* sheetSettled: a sheet open on page load opens where it rests. */
+  .astryx-bottom-sheet[data-ax-settled] { transition-duration: 0.01s; }
+
+  /* ── handleBar: floats over the body (out of flow); the pill is decoration on the bar. ── */
+  .ax-bottom-sheet-handle {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--spacing-6);
+    background-image: linear-gradient(to bottom, var(--color-background-surface) 60%, transparent);
+    will-change: transform;
+    touch-action: pinch-zoom;
+    cursor: grab;
+  }
+  .ax-bottom-sheet-handle::before {
+    content: "";
+    width: var(--size-element-lg);
+    height: var(--spacing-1);
+    border-radius: var(--radius-full);
+    background-color: var(--color-border);
+  }
+  .astryx-bottom-sheet[data-sheet-dragging] .ax-bottom-sheet-handle { cursor: grabbing; }
+
+  /* ── body: the scroll area (useScrollableArea, axis both, sticky containment always);
+   *    paints the surface so the panel edge stays uniform. ── */
+  .ax-bottom-sheet-body {
+    flex-grow: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    touch-action: pan-y pinch-zoom;
+    overflow: auto;
+    overscroll-behavior: contain;
+    outline-offset: 0;
+    background-color: var(--color-background-surface);
+    padding-block-end: 0;
+  }
+  .ax-bottom-sheet-body:focus-visible { outline-offset: calc(-1 * var(--focus-outline-width)); }
+  /* tallKeyboardBody: a focused control scrolls in with room above the keyboard. */
+  [data-ax-height="tall"] > .ax-bottom-sheet-body { scroll-padding-block-end: 48px; }
+
+  /* ── content: the container (padding published to Layout regions, Section, bleed
+   *    children); flow-root keeps block formatting and the percentage-height basis. ── */
+  .ax-bottom-sheet-content {
+    display: flow-root;
+    box-sizing: border-box;
+    height: 100%;
+    min-height: fit-content;
+    --container-padding-inline-start: var(--_ax-pad, var(--astryx-bottom-sheet-padding-inline-start, var(--astryx-bottom-sheet-padding-inline, var(--astryx-bottom-sheet-padding, var(--spacing-4)))));
+    --container-padding-inline-end: var(--_ax-pad, var(--astryx-bottom-sheet-padding-inline-end, var(--astryx-bottom-sheet-padding-inline, var(--astryx-bottom-sheet-padding, var(--spacing-4)))));
+    --container-padding-block-start: var(--_ax-pad, var(--astryx-bottom-sheet-padding-block-start, var(--astryx-bottom-sheet-padding, var(--spacing-4))));
+    --container-padding-block-end: var(--_ax-pad, var(--astryx-bottom-sheet-padding-block-end, var(--astryx-bottom-sheet-padding, var(--spacing-4))));
+    --layout-padding-outer-x: var(--_ax-pad, var(--astryx-bottom-sheet-padding-inline-start, var(--astryx-bottom-sheet-padding-inline, var(--astryx-bottom-sheet-padding, var(--spacing-4)))));
+    --layout-padding-outer-y: var(--_ax-pad, var(--astryx-bottom-sheet-padding-block-start, var(--astryx-bottom-sheet-padding, var(--spacing-4))));
+    --layout-padding-inner-x: var(--_ax-pad, var(--astryx-bottom-sheet-padding-inline-start, var(--astryx-bottom-sheet-padding-inline, var(--astryx-bottom-sheet-padding, var(--spacing-4)))));
+    --layout-padding-inner-y: var(--_ax-pad, var(--astryx-bottom-sheet-padding-block-start, var(--astryx-bottom-sheet-padding, var(--spacing-4))));
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    padding-inline-start: var(--container-padding-inline-start);
+    padding-inline-end: var(--container-padding-inline-end);
+    padding-block-start: var(--container-padding-block-start);
+    padding-block-end: var(--container-padding-block-end);
+  }
+
+  /* ── BottomSheetEdgeTint: colours the iOS Safari toolbar strip; masked out (Safari reads
+   *    the computed colour, not pixels). Rendered only while the dialog is presented. ── */
+  .ax-bottom-sheet-edge-tint {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    height: 12px;
+    background-color: var(--color-background-surface);
+    z-index: 2;
+    pointer-events: none;
+    mask-image: linear-gradient(transparent, transparent);
+    -webkit-mask-image: linear-gradient(transparent, transparent);
+  }
+
+  /* BottomSheetSwitcher's element adds no box. */
+  ax-bottom-sheet-switcher { display: contents; }
+}

@@ -1,0 +1,228 @@
+---
+import BottomSheet from './BottomSheet.astro';
+import {attachBottomSheet} from './attach';
+import Button from '../Button/Button.astro';
+import Text from '../Text/Text.astro';
+import Heading from '../Text/Heading.astro';
+import VStack from '../Stack/VStack.astro';
+import HStack from '../Stack/HStack.astro';
+import Section from '../Section/Section.astro';
+import Divider from '../Divider/Divider.astro';
+import TextInput from '../TextInput/TextInput.astro';
+import TextArea from '../TextArea/TextArea.astro';
+import Item from '../Item/Item.astro';
+
+const label = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+
+const capped = attachBottomSheet({id: 'bs-capped', triggerId: 'bs-capped-trigger'});
+const hug = attachBottomSheet({id: 'bs-hug', triggerId: 'bs-hug-trigger'});
+const tall = attachBottomSheet({id: 'bs-tall', triggerId: 'bs-tall-trigger'});
+const half = attachBottomSheet({id: 'bs-half', triggerId: 'bs-half-trigger'});
+const peek = attachBottomSheet({id: 'bs-peek', triggerId: 'bs-peek-trigger'});
+const notes = attachBottomSheet({id: 'bs-notes', triggerId: 'bs-notes-trigger'});
+const form = attachBottomSheet({id: 'bs-form', triggerId: 'bs-form-trigger'});
+const required = attachBottomSheet({id: 'bs-required', triggerId: 'bs-required-trigger'});
+const flush = attachBottomSheet({id: 'bs-flush', triggerId: 'bs-flush-trigger'});
+const nearby = attachBottomSheet({id: 'bs-nearby', triggerId: 'bs-nearby-trigger', hasScrim: false});
+const orders = attachBottomSheet({id: 'bs-orders', triggerId: 'bs-orders-trigger'});
+const order = attachBottomSheet({id: 'bs-order', triggerId: 'bs-order-trigger'});
+const edit = attachBottomSheet({id: 'bs-edit', triggerId: 'bs-edit-trigger'});
+
+const places = ['Blue Bottle Coffee', 'Tartine Bakery', 'Dolores Park', 'Mission Dolores', 'Bi-Rite Creamery', 'Ritual Coffee', 'Valencia Street Books', 'Golden Gate Park', 'Ferry Building', 'Coit Tower', 'Lands End Trail', 'Twin Peaks'];
+---
+<div>
+  <p style={label}>
+    A touch surface: drag the grab handle (a mouse works too) or pull the content down at its
+    top. At phone size with touch emulation (DevTools → device toolbar) a finger rubber-bands
+    past the top and a flick projects to the next stop.
+  </p>
+  <p style={label}>Heights: capped (default, a scrolling list), hug (fits its content), tall (near full)</p>
+  <div style={row}>
+    <Button {...capped.trigger} label="Nearby places (capped)" />
+    <Button {...hug.trigger} label="Share (hug)" />
+    <Button {...tall.trigger} label="Tall sheet" />
+  </div>
+</div>
+
+<div>
+  <p style={label}>Snap points: collapsible to half the screen ([0.5]); a peek, a working height and full (['96px', '50%'])</p>
+  <div style={row}>
+    <Button {...half.trigger} label="Half and full" />
+    <Button {...peek.trigger} label="Peek, half, full" />
+  </div>
+</div>
+
+<div>
+  <p style={label}>Scrollable and form content: long release notes (hug, keyboard-reachable scroll area); a form (purpose="form": Escape only, tall for the mobile keyboard); required (role="alertdialog", nothing implicit closes it); padding 0 with flush rows</p>
+  <div style={row}>
+    <Button {...notes.trigger} label="Release notes" />
+    <Button {...form.trigger} label="Edit profile (form)" />
+    <Button {...required.trigger} label="Terms (required)" variant="destructive" />
+    <Button {...flush.trigger} label="Flush list (padding 0)" />
+  </div>
+</div>
+
+<div>
+  <p style={label}>No scrim (hasScrim=false): a manual popover, the page stays interactive and scrollable</p>
+  <div style={row}>
+    <Button {...nearby.trigger} label="Toggle map results" />
+  </div>
+</div>
+
+<div>
+  <p style={label}>Stacking: the list opens the order over itself (the list recedes and stays mounted, one scrim); the order opens the editor; "Close all" closes the stack in one update and focus returns once. A multi-step flow replaces instead: "Continue" closes this step and opens the next in one task.</p>
+  <div style={row}>
+    <Button {...orders.trigger} label="Orders (stack)" />
+    <Button id="bs-step-trigger" label="Checkout (replace)" />
+  </div>
+</div>
+
+<BottomSheet {...capped.layer} label="Nearby places" data-testid="bs-capped-panel">
+  <VStack gap={2}>
+    <Heading level={3}>Nearby places</Heading>
+    {places.map((p, i) => <Item label={p} description={`${(i + 2) * 120} m away`} id={i === 0 ? 'bs-capped-first' : undefined} interactiveRole="button" />)}
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...hug.layer} label="Share" height="hug">
+  <VStack gap={3}>
+    <Heading level={3}>Share</Heading>
+    <Text type="body" color="secondary">Send this page to someone, or copy its link.</Text>
+    <HStack gap={2}>
+      <Button label="Copy link" id="bs-hug-copy" />
+      <Button label="Message" />
+      <Button label="Email" />
+    </HStack>
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...tall.layer} label="Activity" height="tall">
+  <VStack gap={2}>
+    <Heading level={3}>Activity</Heading>
+    {places.slice(0, 8).map((p) => <Item label={`Checked in at ${p}`} description="Today" />)}
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...half.layer} label="Places, half and full" height="tall" snapPoints={[0.5]} data-testid="bs-half-panel">
+  <VStack gap={2}>
+    <Heading level={3}>Drag me to half the screen</Heading>
+    {places.map((p) => <Item label={p} />)}
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...peek.layer} label="Route" height="tall" snapPoints={['96px', '50%']} data-testid="bs-peek-panel">
+  <VStack gap={2}>
+    <Heading level={3}>Route to Twin Peaks</Heading>
+    <Text type="body" color="secondary">18 min · 6.2 km. Drag down to a 96px peek (the scrim thins), half, or full.</Text>
+    {places.slice(0, 9).map((p, i) => <Item label={`${i + 1}. Turn toward ${p}`} />)}
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...notes.layer} label="Release notes" height="hug">
+  <VStack gap={3}>
+    <Heading level={3}>Release notes</Heading>
+    {Array.from({length: 14}, (_, i) => (
+      <Text type="body" color="secondary">Version 0.{14 - i}: snap points, stacking, safer focus return, a quieter scrim and better reduced-motion behaviour for every sheet in the flow.</Text>
+    ))}
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...form.layer} label="Edit profile" purpose="form" height="tall">
+  <VStack gap={4}>
+    <Heading level={3}>Edit profile</Heading>
+    <TextInput label="Display name" value="Ada Lovelace" id="bs-form-name" />
+    <TextInput label="Email" type="email" value="ada@example.com" />
+    <TextArea label="Bio" rows={4} value="Writes programs for engines that do not exist yet." />
+    <HStack gap={2} hAlign="end">
+      <Button label="Cancel" variant="ghost" data-ax-dialog-close />
+      <Button label="Save" variant="primary" data-ax-dialog-close id="bs-form-save" />
+    </HStack>
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...required.layer} label="Accept the terms" purpose="required" height="hug">
+  <VStack gap={3}>
+    <Heading level={3}>Accept the terms</Heading>
+    <Text type="body" color="secondary">Swipe, Escape and the scrim do nothing here: finish with the button.</Text>
+    <Button label="Accept" variant="primary" data-ax-dialog-close id="bs-required-accept" />
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...flush.layer} label="Recent files" padding={0} height="hug">
+  <Section padding={4}><Heading level={3}>Recent files</Heading></Section>
+  <Divider />
+  {['Budget.xlsx', 'Roadmap.pdf', 'Notes.md', 'Logo.svg'].map((f) => <Item label={f} interactiveRole="button" />)}
+</BottomSheet>
+
+<BottomSheet {...nearby.layer} label="Map results" hasScrim={false} height="hug">
+  <VStack gap={2}>
+    <Heading level={3}>Map results</Heading>
+    {places.slice(0, 4).map((p) => <Item label={p} />)}
+    <Button label="Hide" data-ax-dialog-close />
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...orders.layer} label="Orders" data-testid="bs-orders-panel">
+  <VStack gap={2}>
+    <Heading level={3}>Orders</Heading>
+    {['#1042 · Espresso beans', '#1041 · Pour-over kit', '#1040 · Mugs'].map((o, i) => (
+      <Button {...(i === 0 ? order.trigger : {})} label={o} variant="ghost" id={i === 0 ? 'bs-order-trigger' : undefined} />
+    ))}
+    <BottomSheet {...order.layer} label="Order #1042" height="hug">
+      <VStack gap={3}>
+        <Heading level={3}>Order #1042</Heading>
+        <Text type="body" color="secondary">Espresso beans, 2 × 1 kg. Shipped yesterday.</Text>
+        <HStack gap={2}>
+          <Button {...edit.trigger} label="Edit" />
+          <Button label="Close all" id="bs-close-all" />
+        </HStack>
+      </VStack>
+    </BottomSheet>
+  </VStack>
+</BottomSheet>
+
+<BottomSheet {...edit.layer} label="Edit order" height="hug">
+  <VStack gap={3}>
+    <Heading level={3}>Edit order</Heading>
+    <TextInput label="Quantity" value="2" />
+    <Button label="Save" variant="primary" data-ax-dialog-close id="bs-edit-save" />
+  </VStack>
+</BottomSheet>
+
+<BottomSheet id="bs-step-details" label="Details" height="tall">
+  <VStack gap={3}>
+    <Heading level={3}>Shipping details</Heading>
+    <TextInput label="Address" value="12 Analytical Way" />
+    <Text type="body" color="secondary">This step is tall; the next one is short, so this sheet moves down to meet it before it fades.</Text>
+    <Button label="Continue" variant="primary" id="bs-step-continue" />
+  </VStack>
+</BottomSheet>
+
+<BottomSheet id="bs-step-confirm" label="Confirm" height="hug">
+  <VStack gap={3}>
+    <Heading level={3}>Confirm order</Heading>
+    <Text type="body" color="secondary">2 items · ships tomorrow.</Text>
+    <HStack gap={2}>
+      <Button label="Back" id="bs-step-back" />
+      <Button label="Place order" variant="primary" data-ax-dialog-close id="bs-step-done" />
+    </HStack>
+  </VStack>
+</BottomSheet>
+
+<script>
+  type Host = HTMLElement & {show(o?: {source?: HTMLElement | null}): boolean; hide(r?: string): void; isOpen: boolean};
+  const host = (id: string) => document.getElementById(id)?.parentElement as Host | null;
+  // Replacing: close the open step and open the next in one task, from inside the step.
+  const go = (from: string | null, to: string | null, source?: HTMLElement) => {
+    if (from) host(from)?.hide();
+    if (to) host(to)?.show({source});
+  };
+  document.getElementById('bs-step-trigger')?.addEventListener('click', (e) => go(null, 'bs-step-details', e.currentTarget as HTMLElement));
+  document.getElementById('bs-step-continue')?.addEventListener('click', () => go('bs-step-details', 'bs-step-confirm'));
+  document.getElementById('bs-step-back')?.addEventListener('click', () => go('bs-step-confirm', 'bs-step-details'));
+  // Close all: every sheet of the stack closes in one update; focus returns once.
+  document.getElementById('bs-close-all')?.addEventListener('click', () => {
+    for (const id of ['bs-edit', 'bs-order', 'bs-orders']) host(id)?.hide();
+  });
+</script>

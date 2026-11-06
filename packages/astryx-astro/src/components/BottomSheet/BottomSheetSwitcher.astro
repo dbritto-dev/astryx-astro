@@ -1,0 +1,66 @@
+---
+/**
+ * BottomSheetSwitcher (deprecated in Astryx: write each step as its own BottomSheet and move
+ * between them by closing one and opening the next in the same task — see BottomSheet,
+ * "Replacing") — coordinates BottomSheets identified by `sheetId` as a mutually exclusive
+ * flow. Port of @astryxdesign/core 0.7.9 BottomSheet/BottomSheetSwitcher.tsx and
+ * BottomSheetSwitcherContext.ts. Behaviour: `<ax-bottom-sheet-switcher>` in
+ * src/elements/bottom-sheet.ts.
+ *
+ * One `activeSheet` names the interactive step (initial state; the element owns it
+ * afterwards: `switcher.activeSheet = 'confirm' | null`, or a control inside with
+ * `data-ax-switch-to="confirm"`, empty to close). On a handoff the next step enters above
+ * the inert previous one; a taller previous step moves down until the top edges align, then
+ * fades after both motions end; one scrim stays steady; focus moves into the next step and
+ * returns to the flow's opener when the flow closes. The active step's own dismissal
+ * (Escape, scrim, swipe — by its `purpose`) closes the flow (`activeSheet` → null).
+ * Each step owns its native `<dialog>`: `hasScrim` presents every step with `showModal()`
+ * (one scroll lock, one scrim, a modal flow is one level of the sheet stack), `false` as
+ * manual popovers.
+ *
+ * Event: `astryx-active-sheet-change` `{activeSheet}` on the element (Astryx
+ * `onActiveSheetChange`, here fired on every change). Open the flow from outside with an
+ * invoker on the first step (`attachBottomSheet({id})` + `<BottomSheet id sheetId>`).
+ *
+ * Deviations: `class` / `style` apply to every step `<dialog>` (as Astryx's dialog props);
+ * `id` / `data-testid` sit on the switcher element, not on the active step's dialog (each
+ * step's dialog keeps its own id for invokers). A no-scrim flow uses manual popovers (the
+ * top layer) rather than `show()` in a fixed wrapper — the migration Astryx recommends.
+ *
+ * @example
+ * <BottomSheetSwitcher activeSheet={null}>
+ *   <BottomSheet sheetId="details" id="flow-details" label="Details">…
+ *     <Button data-ax-switch-to="confirm" label="Continue" /></BottomSheet>
+ *   <BottomSheet sheetId="confirm" label="Confirm">…<Button data-ax-switch-to="" label="Done" /></BottomSheet>
+ * </BottomSheetSwitcher>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {styleToString, type StyleValue} from '../../lib/style';
+import {renderWithLocals} from '../../lib/subtreeLocals';
+import type {SwitcherContext} from './switcherContext';
+import './BottomSheet.css';
+
+export interface Props extends Pick<HTMLAttributes<'div'>, 'class' | 'style' | 'id'> {
+  /** The interactive step's `sheetId`, or null (closed). Initial state. */
+  activeSheet?: string | null;
+  /** Steps are modal with a native ::backdrop (`showModal()`); false: non-modal. @default true */
+  hasScrim?: boolean;
+  'data-testid'?: string;
+}
+
+const {activeSheet = null, hasScrim = true, class: className, style, id, 'data-testid': testId} = Astro.props;
+
+const context: SwitcherContext = {
+  activeSheet,
+  hasScrim,
+  dialogClass: className ?? undefined,
+  dialogStyle: styleToString(style as StyleValue) || undefined,
+};
+const html = Astro.slots.has('default')
+  ? await renderWithLocals(Astro, {astryxBottomSheetSwitcher: context}, () => Astro.slots.render('default'))
+  : '';
+---
+<ax-bottom-sheet-switcher id={id} data-testid={testId} data-ax-active-sheet={activeSheet ?? undefined} data-ax-modal={hasScrim ? '' : undefined}>
+  <Fragment set:html={html} />
+</ax-bottom-sheet-switcher>
+<script>import '../../elements/bottom-sheet';</script>
