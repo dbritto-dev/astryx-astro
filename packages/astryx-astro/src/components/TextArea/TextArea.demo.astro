@@ -1,0 +1,73 @@
+---
+import TextArea, {type TextAreaSize} from './TextArea.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: TextAreaSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Add a few more details', warning: 'Avoid sharing personal data', success: 'Looks good'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Sizes and rows</h3>
+    <div style={grid}>
+      {sizes.map((size) => <TextArea label={`Notes (${size})`} size={size} placeholder="Write a note…" />)}
+      <TextArea label="Long form" rows={6} description="Six rows; drag the corner to resize" value={'First line\nSecond line'} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Character counter (grapheme-aware)</h3>
+    <div style={grid}>
+      <TextArea label="Bio" maxLength={40} value="Hello 👋🏽 from Medellín 🇨🇴" data-test="counter" />
+      <TextArea label="Over the limit" maxLength={10} value="This is longer than ten" data-test="over" />
+      <TextArea label="Tweet" maxLength={280} startIcon="info" placeholder="What's happening?" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size</h3>
+    <div style={grid}>
+      {statuses.map((type) => sizes.map((size) => (
+        <TextArea label={`${type} ${size}`} size={size} rows={2} value="Short" status={{type, message: messages[type]}} />
+      )))}
+      <TextArea label="Tooltip status" rows={2} value="Short" status={{type: 'error', message: messages.error}} statusVariant="tooltip" />
+      <TextArea label="Detached status" rows={2} value="Short" status={{type: 'warning', message: messages.warning}} statusVariant="detached" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, read-only, loading</h3>
+    <div style={grid}>
+      <TextArea label="Disabled" value="Locked note" isDisabled />
+      <TextArea label="Disabled with reason" value="Locked note" isDisabled disabledMessage="Notes are locked after submission" />
+      <TextArea label="Read-only" value="Submitted as-is" isReadOnly />
+      <TextArea label="Loading" value="Saving draft" isLoading status={{type: 'success'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>In a form and a FormLayout</h3>
+    <form data-test="form" style="max-width:560px;display:grid;gap:var(--spacing-3)">
+      <FormLayout direction="horizontal-labels" defaultOptionality="required">
+        <TextArea label="Summary" htmlName="summary" value="Initial summary" maxLength={60} />
+        <TextArea label="Comments" htmlName="comments" isOptional rows={2} />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      form.querySelector('[data-test="form-output"]')!.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+    });
+  });
+</script>

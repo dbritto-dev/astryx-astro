@@ -1,0 +1,135 @@
+---
+/**
+ * FieldLabel — the label (+ description) block of a form field: sr-only hiding, disabled
+ * styling, the optional/required indicator, a label icon and an info-icon tooltip.
+ * Port of @astryxdesign/core Field/FieldLabel.tsx (used by Field, CheckboxInput, Switch).
+ *
+ * - `<label for={inputID}>`, or a `<span>` when `isGroupLabel` (a group is named through
+ *   `labelID` + `aria-labelledby`; a `<label>` names one control only).
+ * - Indicator: " ∙ Optional" / " ∙ Required" (`@astryx.field.*`). A FormLayout
+ *   `defaultOptionality` hides the one that restates the default — the label enrols in the
+ *   `form-optionality` cascade key and CSS hides the matching indicator (Astryx renders none).
+ * - The description is a sibling `<span>` (never inside the label, which would fold it into
+ *   the accessible name); clicking it forwards to the control like the label does
+ *   (useInputContainer; elements/field.ts). Group labels have nothing to forward to.
+ * - `labelTooltip`: an info Icon trigger; the tooltip layer is rendered after the label (not
+ *   inside it, so its text never joins the control's name). A tap on the icon opens the help
+ *   without activating the control (useTapStop); a mouse click keeps the label behaviour.
+ *
+ * @example
+ * <FieldLabel label="Email" inputID="email" description="We won't share it" />
+ * <FieldLabel label="Plan" inputID="plan" labelID="plan-label" isGroupLabel isRequired />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {translator} from '../../lib/i18n';
+import type {LabelIcon} from './fieldProps';
+import './Field.css';
+
+export interface Props extends Omit<HTMLAttributes<'label'>, 'for'> {
+  /** Label text (always rendered for accessibility). */
+  label: string;
+  /** Id of the control this label points at (`for`). */
+  inputID: string;
+  /** Id of the label element itself (for a group's `aria-labelledby`). */
+  labelID?: string;
+  /** Render a `<span>` for a group of controls. @default false */
+  isGroupLabel?: boolean;
+  /** Visually hide label and description (sr-only, no layout space). @default false */
+  isLabelHidden?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Mutually exclusive with isRequired (wins). @default false */
+  isOptional?: boolean;
+  /** @default false */
+  isRequired?: boolean;
+  /** Icon before the label text: a name / SVG string / Astro component, or the `labelIcon` slot. */
+  labelIcon?: LabelIcon;
+  /** Tooltip text on an info icon at the end of the label. */
+  labelTooltip?: string;
+  /** Text below the label (or the `description` slot). */
+  description?: string;
+  /** Id of the description (for the control's aria-describedby). */
+  descriptionID?: string;
+  locale?: string;
+}
+
+const {
+  label,
+  inputID,
+  labelID,
+  isGroupLabel = false,
+  isLabelHidden = false,
+  isDisabled = false,
+  isOptional = false,
+  isRequired = false,
+  labelIcon,
+  labelTooltip,
+  description,
+  descriptionID,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const Tag = isGroupLabel ? 'span' : 'label';
+const hasIndicator = isOptional || isRequired;
+const tip = labelTooltip ? attachTooltip() : null;
+// renderIconSlot: a name/component gets sm + inherit; slot markup renders as given.
+const iconSlot = Astro.slots.has('labelIcon') ? await Astro.slots.render('labelIcon') : null;
+const descriptionSlot = Astro.slots.has('description') ? await Astro.slots.render('description') : null;
+const hasDescription = !!description || !!descriptionSlot?.trim();
+const forwardsDescriptionClick = !isGroupLabel && inputID != null;
+---
+{hasDescription ? (
+  <div class="ax-field-label-group" data-ax-hidden={isLabelHidden ? '' : undefined}>
+    <Tag
+      {...rest}
+      id={labelID}
+      for={isGroupLabel ? undefined : inputID}
+      class={cx('astryx-field-label', isLabelHidden && 'ax-field-sr-only', className as string | undefined)}
+      style={mergeStyles(style as StyleValue)}
+      data-ax-disabled={isDisabled ? '' : undefined}
+      data-ax-inherit={inherits({'form-optionality': hasIndicator})}
+    >
+      {iconSlot ? <Fragment set:html={iconSlot} /> : labelIcon && <Icon icon={labelIcon} size="sm" color="inherit" />}
+      {label}
+      {isOptional && <span class="ax-field-indicator" data-ax-indicator="optional"><span aria-hidden="true"> ∙ </span>{t('@astryx.field.optional')}</span>}
+      {isRequired && <span class="ax-field-indicator" data-ax-indicator="required"><span aria-hidden="true"> ∙ </span>{t('@astryx.field.required')}</span>}
+      {tip && <Icon icon="info" size="sm" color="inherit" class="ax-field-label-tip" data-ax-label-tip="" {...tip.trigger} />}
+    </Tag>
+    {tip && <Tooltip {...tip.layer} content={labelTooltip} placement="above" touchTrigger="tap" />}
+    <span
+      id={descriptionID}
+      class={cx('ax-field-description', isLabelHidden && 'ax-field-sr-only')}
+      data-ax-field-description={forwardsDescriptionClick ? inputID : undefined}
+    >{descriptionSlot ? <Fragment set:html={descriptionSlot} /> : description}</span>
+  </div>
+) : (
+  <>
+    <Tag
+      {...rest}
+      id={labelID}
+      for={isGroupLabel ? undefined : inputID}
+      class={cx('astryx-field-label', isLabelHidden && 'ax-field-sr-only', className as string | undefined)}
+      style={mergeStyles(style as StyleValue)}
+      data-ax-disabled={isDisabled ? '' : undefined}
+      data-ax-inherit={inherits({'form-optionality': hasIndicator})}
+    >
+      {iconSlot ? <Fragment set:html={iconSlot} /> : labelIcon && <Icon icon={labelIcon} size="sm" color="inherit" />}
+      {label}
+      {isOptional && <span class="ax-field-indicator" data-ax-indicator="optional"><span aria-hidden="true"> ∙ </span>{t('@astryx.field.optional')}</span>}
+      {isRequired && <span class="ax-field-indicator" data-ax-indicator="required"><span aria-hidden="true"> ∙ </span>{t('@astryx.field.required')}</span>}
+      {tip && <Icon icon="info" size="sm" color="inherit" class="ax-field-label-tip" data-ax-label-tip="" {...tip.trigger} />}
+    </Tag>
+    {tip && <Tooltip {...tip.layer} content={labelTooltip} placement="above" touchTrigger="tap" />}
+  </>
+)}
+{(hasDescription || tip) && <script>import '../../elements/field';</script>}

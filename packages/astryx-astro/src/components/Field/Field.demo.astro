@@ -1,0 +1,89 @@
+---
+import Field from './Field.astro';
+import FieldLabel from './FieldLabel.astro';
+import InputClearButton from './InputClearButton.astro';
+import TextInput from '../TextInput/TextInput.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Icon from '../Icon/Icon.astro';
+
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+// A native control styled like a bordered field (the Field shell does not style its child).
+const native = 'box-sizing:border-box;width:100%;height:var(--size-element-md);padding:0 var(--spacing-2);border:var(--border-width) solid var(--color-border-emphasized);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);font:inherit;font-size:var(--text-body-size);position:relative;z-index:1';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Field around native controls</h3>
+    <div style={grid}>
+      <Field label="Email address" inputID="field-email" description="We never share your email" descriptionID="field-email-help" data-test="native">
+        <input id="field-email" type="email" aria-describedby="field-email-help" placeholder="you@example.com" style={native} />
+      </Field>
+      <Field label="Country" inputID="field-country" isRequired labelTooltip="Used for tax purposes">
+        <select id="field-country" style={native}><option>Colombia</option><option>Peru</option></select>
+      </Field>
+      <Field label="Due date" inputID="field-date" isOptional status={{type: 'warning', message: 'This date is in the past', messageID: 'field-date-status'}}>
+        <input id="field-date" type="date" aria-describedby="field-date-status" style={native} />
+      </Field>
+      <Field label="Slider" inputID="field-range" statusVariant="detached" status={{type: 'success', message: 'Within budget'}} width="100%">
+        <input id="field-range" type="range" aria-describedby="field-range-status" />
+      </Field>
+      <Field label="Hidden label" inputID="field-hidden" isLabelHidden description="Hidden description">
+        <input id="field-hidden" placeholder="Label is visually hidden" style={native} />
+      </Field>
+      <Field label="Disabled" inputID="field-disabled" isDisabled>
+        <input id="field-disabled" disabled value="Not editable" style={native} />
+      </Field>
+      <Field label="With icon" inputID="field-icon" labelIcon="calendar">
+        <input id="field-icon" style={native} />
+      </Field>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status placement on a Field-composed input (status icon, clear button)</h3>
+    <div style={grid}>
+      <TextInput label="Attached" value="ada@" hasClear status={{type: 'error', message: 'Enter a valid email address'}} />
+      <TextInput label="Detached" value="ada@" status={{type: 'warning', message: 'Check the domain'}} statusVariant="detached" />
+      <TextInput label="Tooltip" value="ada@example.com" status={{type: 'success', message: 'Verified'}} statusVariant="tooltip" data-test="tooltip-status" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>FieldLabel and InputClearButton on their own</h3>
+    <div style={grid}>
+      <div style="display:grid;gap:var(--spacing-1)">
+        <FieldLabel label="Plan" inputID="plan-group" labelID="plan-label" isGroupLabel isRequired description="Billed monthly" descriptionID="plan-desc" />
+        <div role="radiogroup" aria-labelledby="plan-label" aria-describedby="plan-desc" id="plan-group" style="display:flex;gap:var(--spacing-3)">
+          <label><input type="radio" name="plan" checked /> Starter</label>
+          <label><input type="radio" name="plan" /> Team</label>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:var(--spacing-2)">
+        <FieldLabel label="Subscribe" inputID="subscribe-box" description="Clicking this description toggles the box" />
+        <input type="checkbox" id="subscribe-box" />
+      </div>
+      <div style="display:flex;align-items:center;gap:var(--spacing-2)">
+        <span>Clear button:</span>
+        <InputClearButton label="Clear search" />
+        <Icon icon="search" size="sm" color="secondary" />
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Layouts: FormLayout horizontal-labels, and an explicit direction</h3>
+    <div style="display:grid;gap:var(--spacing-5);max-width:600px">
+      <FormLayout direction="horizontal-labels" defaultOptionality="optional">
+        <Field label="Project" inputID="hl-project" description="Shown in the sidebar" descriptionID="hl-project-desc" isRequired>
+          <input id="hl-project" aria-describedby="hl-project-desc" style={native} />
+        </Field>
+        <TextInput label="Owner" value="Ada" isOptional />
+      </FormLayout>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:var(--spacing-3) var(--spacing-4);align-items:start">
+        <Field label="Explicit direction" inputID="explicit-hl" formDirection="horizontal-labels" description="formDirection prop, no FormLayout" data-test="explicit-layout">
+          <input id="explicit-hl" style={native} />
+        </Field>
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,254 @@
+---
+/**
+ * NumberInput — numeric entry with locale-aware parsing, clamping, stepping and optional
+ * steppers. Port of @astryxdesign/core NumberInput/NumberInput.tsx, numberParser.ts,
+ * numberInputCommit.ts and utils/unicodeDigits.ts (logic in ./numberParser.ts, shared with
+ * the element), plus the Field family pieces TextInput uses. Behaviour:
+ * src/elements/number-input.ts.
+ *
+ * - `<input type="text" role="spinbutton" inputmode="numeric|decimal">` with
+ *   aria-valuemin/max/now (the COMMITTED value) and aria-valuetext when formatted.
+ * - Typing keeps a draft; it commits on blur or Enter, only when the whole draft parses in
+ *   the locale (`1.234,5` in de-DE, `(1,234)`, `€12`, Arabic-Indic digits …). Out-of-range
+ *   entries clamp to `min`/`max`; unparseable drafts stay visible, dimmed and
+ *   `aria-invalid`, "Invalid number" is announced (role=alert), blur reverts them.
+ *   An empty draft clears with `hasClear`, else reverts.
+ * - Keys: ArrowUp/ArrowDown step on the `step` grid anchored at `min` (IME-safe). Port
+ *   additions (APG spinbutton; Astryx 0.7.9 has none): PageUp/PageDown step ×10, Home/End
+ *   jump to `min`/`max` when set (otherwise they move the caret). Wheel over the focused
+ *   field steps (`isWheelEnabled`). Enter commits (and fires `astryx-enter`).
+ * - `hasNumberSteppers`: a mouse/pen-only column (hidden under a coarse pointer, tabindex -1,
+ *   keyboard stepping stays); holding repeats (500ms delay, 250ms → 50ms ×0.9) into a draft
+ *   committed once on release.
+ * - `formatValue`: Intl.NumberFormat options (server and client), or a function (server
+ *   render only — client-side changes then show the plain number). With it and a name, a
+ *   hidden input carries the raw value for the form; the visible text is not submitted.
+ * - Form: `htmlName`/`name` submits the committed text; disabled fields submit nothing;
+ *   reset restores the server value. Locale comes from the server (`locale` prop or request).
+ * - Theme hooks: `.astryx-number-input[data-size][data-status][data-disabled][data-readonly]`,
+ *   padding vars `--astryx-number-input-padding[-inline|-block][-start|-end]`, `--_field-radius`.
+ *
+ * Events (on `<ax-number-input>`): `astryx-change` `{value: number | null}` when a value
+ * commits (Astryx onChange; null only from a clear), `astryx-enter` `{}`. Element API:
+ * `el.value` (get/set number|null), `el.stepUp()`, `el.stepDown()`.
+ * Deferred: the coarse-pointer press controller (usePressFeedback) and pen selection lock.
+ *
+ * @example
+ * <NumberInput label="Quantity" value={1} min={0} max={10} hasNumberSteppers />
+ * <NumberInput label="Price" value={9.5} step={0.01} formatValue={{style: 'currency', currency: 'USD'}} htmlName="price" />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {
+  GROUP_DISABLE,
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  statusIconPlan,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+} from '../Field/fieldProps';
+import {getSteppedValue} from './numberParser';
+import '../Field/Field.css';
+import './NumberInput.css';
+
+export type NumberInputSize = InputSize;
+export type NumberInputStatus = InputStatus;
+export type NumberFormatter = ((value: number) => string) | Intl.NumberFormatOptions;
+
+export interface Props extends FieldComposedProps {
+  /** Initial committed value; null/undefined = empty. */
+  value?: number | null;
+  /** Placeholder shown while empty. */
+  placeholder?: string;
+  /** Read-only: still submitted, no stepping by any route. @default false */
+  isReadOnly?: boolean;
+  /** Why the input is disabled (tooltip; also describes the input). */
+  disabledMessage?: string;
+  /** Icon at the start (name / SVG string / Astro component) or the `startIcon` slot. */
+  startIcon?: LabelIcon;
+  /** Icon before the label text (or the `labelIcon` slot). */
+  labelIcon?: LabelIcon;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: NumberInputSize;
+  /** Smaller entries commit at this value. */
+  min?: number | null;
+  /** Larger entries commit at this value. */
+  max?: number | null;
+  /** Step increment. @default 1 */
+  step?: number | null;
+  /** Display format at rest: Intl.NumberFormat options, or a function (server render only). */
+  formatValue?: NumberFormatter;
+  /** Wheel over the focused field steps the value. @default true */
+  isWheelEnabled?: boolean;
+  /** Increment/decrement buttons (hidden under coarse pointers). @default false */
+  hasNumberSteppers?: boolean;
+  /** Units text at the end ("%", "GB"); describes the input. */
+  units?: string | null;
+  /** Integers only. @default false */
+  isIntegerOnly?: boolean;
+  /** Clear button while there is a value; an emptied draft then commits null. @default false */
+  hasClear?: boolean;
+  /** Form field name (`name` works too). */
+  htmlName?: string;
+  name?: string;
+  /** Native `autocomplete`. */
+  autoComplete?: string;
+  /** Focus on load. @default false */
+  hasAutoFocus?: boolean;
+}
+
+const {
+  value: valueProp,
+  placeholder,
+  isReadOnly = false,
+  disabledMessage,
+  startIcon,
+  labelIcon,
+  size: sizeProp,
+  min,
+  max,
+  step,
+  formatValue,
+  isWheelEnabled = true,
+  hasNumberSteppers = false,
+  units,
+  isIntegerOnly = false,
+  hasClear = false,
+  htmlName,
+  name,
+  autoComplete,
+  hasAutoFocus = false,
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('NumberInput', props as Props & Record<string, unknown>, {groupable: true, isReadOnly, labelIcon});
+const {isDisabled, status, statusVariant} = r;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const value = valueProp ?? null;
+const size: NumberInputSize = sizeProp ?? 'md';
+const plan = statusIconPlan(status, statusVariant);
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const unitsId = units ? r.ids.make('units') : undefined;
+const startIconHtml = Astro.slots.has('startIcon') ? await Astro.slots.render('startIcon') : null;
+const labelIconHtml = Astro.slots.has('labelIcon') ? await Astro.slots.render('labelIcon') : null;
+
+const formatOptions = formatValue != null && typeof formatValue === 'object' ? formatValue : undefined;
+const format = (v: number): string => {
+  if (typeof formatValue === 'function') return formatValue(v);
+  if (formatOptions) {
+    try { return new Intl.NumberFormat(locale, formatOptions).format(v); } catch { return String(v); }
+  }
+  return String(v);
+};
+const formattedValue = value == null ? '' : format(value);
+const fieldName = htmlName ?? name;
+const visibleName = isDisabled || formatValue ? undefined : fieldName;
+const grid = {currentValue: value, min, max, step, isIntegerOnly};
+const canIncrement = getSteppedValue({...grid, direction: 1}) !== value;
+const canDecrement = getSteppedValue({...grid, direction: -1}) !== value;
+const stepperOff = isDisabled || isReadOnly;
+const {themeClass, attrs: themeAttrs} = themeProps('number-input', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+  readonly: isReadOnly ? 'readonly' : null,
+});
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, plan.tooltipId, unitsId, disabledTip?.id);
+const showsClear = hasClear && !isDisabled && !isReadOnly;
+const disable = {[GROUP_DISABLE]: ''};
+const field = labelIconHtml != null ? {...r.field, labelIcon: undefined} : r.field;
+---
+<Field {...field}>
+  {labelIconHtml != null && <Fragment slot="labelIcon" set:html={labelIconHtml} />}
+  <ax-number-input
+    class={cx(themeClass, 'ax-input', r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    {...r.groupControl}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-steppers={hasNumberSteppers ? '' : undefined}
+    data-value={value == null ? '' : String(value)}
+    data-text={formatValue ? formattedValue : undefined}
+    data-min={min ?? undefined}
+    data-max={max ?? undefined}
+    data-step={step ?? undefined}
+    data-integer={isIntegerOnly ? '' : undefined}
+    data-clearable={hasClear ? '' : undefined}
+    data-wheel={isWheelEnabled ? undefined : 'false'}
+    data-locale={locale}
+    data-format={formatOptions ? JSON.stringify(formatOptions) : typeof formatValue === 'function' ? 'function' : undefined}
+    data-invalid-text={t('@astryx.numberInput.invalidNumber')}
+  >
+    {startIconHtml ? <Fragment set:html={startIconHtml} /> : startIcon && <Icon icon={startIcon} size="sm" color="secondary" />}
+    <span {...r.groupLabel}>{r.label}</span>
+    <input
+      {...r.native}
+      {...r.required}
+      {...r.groupInput}
+      class="ax-input-native"
+      id={r.id}
+      name={visibleName}
+      type="text"
+      inputmode={isIntegerOnly ? 'numeric' : 'decimal'}
+      role="spinbutton"
+      autocomplete={autoComplete}
+      value={formattedValue}
+      placeholder={placeholder}
+      aria-disabled={isDisabled ? 'true' : undefined}
+      readonly={isReadOnly || isDisabled || undefined}
+      autofocus={hasAutoFocus || undefined}
+      data-autofocus={hasAutoFocus ? '' : undefined}
+      aria-valuemin={min ?? undefined}
+      aria-valuemax={max ?? undefined}
+      aria-valuenow={value ?? undefined}
+      aria-valuetext={value == null || !formatValue ? undefined : formattedValue}
+      aria-describedby={describedBy}
+      aria-invalid={status?.type === 'error' ? 'true' : undefined}
+      aria-labelledby={r.labelledBy}
+    />
+    {formatValue && fieldName && !isDisabled && (
+      <input type="hidden" name={fieldName} value={value == null ? '' : String(value)} data-ax-number-value="" {...{[GROUP_DROP_DISABLED]: ''}} />
+    )}
+    {units && <span id={unitsId} class="ax-number-input-units">{units}</span>}
+    <VisuallyHidden as="div" role="alert" aria-live="assertive" data-ax-number-alert="" />
+    {showsClear && <InputClearButton label={t('@astryx.numberInput.clearLabel', {label: r.label})} isHidden={value == null} locale={r.locale} {...{[GROUP_DROP_DISABLED]: ''}} />}
+    <InputStatusIcon status={status} plan={plan} locale={r.locale} />
+    {hasNumberSteppers && (
+      <div class="ax-number-input-steppers">
+        <button
+          type="button"
+          tabindex="-1"
+          class="ax-number-input-stepper ax-overlay-image"
+          data-ax-step="1"
+          aria-disabled={stepperOff || !canIncrement ? 'true' : undefined}
+          aria-label={t('@astryx.numberInput.incrementLabel', {label: r.label})}
+          {...disable}
+        ><Icon icon="numberInput:stepperDown" size="xsm" color="inherit" class="ax-number-input-increment-icon" /></button>
+        <button
+          type="button"
+          tabindex="-1"
+          class="ax-number-input-stepper ax-overlay-image"
+          data-ax-step="-1"
+          aria-disabled={stepperOff || !canDecrement ? 'true' : undefined}
+          aria-label={t('@astryx.numberInput.decrementLabel', {label: r.label})}
+          {...disable}
+        ><Icon icon="numberInput:stepperDown" size="xsm" color="inherit" /></button>
+      </div>
+    )}
+  </ax-number-input>
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/number-input';</script>

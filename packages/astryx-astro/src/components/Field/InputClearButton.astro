@@ -1,0 +1,55 @@
+---
+/**
+ * InputClearButton — the shared clear (✕) affordance inside an input's control box
+ * (TextInput, NumberInput, FileInput; later TimeInput, DateInput, Selector, Typeahead …).
+ * Port of @astryxdesign/core Field/InputClearButton.tsx.
+ *
+ * A ghost, small, icon-only Button (`.astryx-input-clear-button`, glyph
+ * `.astryx-input-clear-icon`), 20px tall, whose accessible name is the contextual `label`
+ * ("Clear Search") while the visible tooltip is always the generic localized "Clear"
+ * (contract #10; WCAG 2.5.3 label-in-name holds). Pressing it never moves focus off the
+ * field (pointerdown/mousedown are cancelled by the owning element). Under a coarse pointer
+ * a ::after overlay grows the hit area to 24px (`--_input-clear-hit-inset` /
+ * `--_input-clear-hit-content`).
+ *
+ * The owner listens for `click` on `[data-ax-input-clear]`. Root: a `display: contents`
+ * wrapper (`rest` goes there) holding the button and its tooltip layer.
+ *
+ * @example
+ * <InputClearButton label="Clear Search" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Button from '../Button/Button.astro';
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import './Field.css';
+
+export interface Props extends HTMLAttributes<'span'> {
+  /** Contextual accessible name, such as "Clear Search". */
+  label: string;
+  /** Extra classes on the glyph, beside `astryx-input-clear-icon`. */
+  iconClass?: string;
+  /** Port extension: render the button `hidden` (the owner reveals it when a value appears). */
+  isHidden?: boolean;
+  locale?: string;
+}
+
+const {label, iconClass, isHidden = false, locale, class: className, ...rest} = Astro.props;
+const t = translator(Astro, locale);
+---
+<span {...rest} class={cx('ax-input-clear-slot', className as string | undefined)}>
+  <Tooltip content={t('@astryx.inputClearButton.tooltip')} placement="above">
+    <Button
+      label={label}
+      variant="ghost"
+      size="sm"
+      isIconOnly
+      class="astryx-input-clear-button"
+      data-ax-input-clear=""
+      hidden={isHidden || undefined}
+      locale={locale}
+    ><Icon slot="icon" icon="close" size="sm" color="secondary" class={cx('astryx-input-clear-icon', iconClass)} /></Button>
+  </Tooltip>
+</span>

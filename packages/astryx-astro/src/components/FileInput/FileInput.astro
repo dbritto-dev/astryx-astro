@@ -1,0 +1,209 @@
+---
+/**
+ * FileInput — pick files with a compact input-like control or a drag-and-drop dropzone.
+ * Port of @astryxdesign/core FileInput/FileInput.tsx (validation, formatFileSize, styles,
+ * statusBorderStyles) with hooks/useClickableContainer.ts, hooks/useInputStatusIcon.tsx,
+ * hooks/useResolvedRequired.ts, i18n/useListFormatter.ts and the Field family.
+ * Behaviour: src/elements/file-input.ts.
+ *
+ * - The focusable control is a visually hidden `<button>` (role, name, ARIA); the surface
+ *   around it is clickable without an interactive role, so the clear/status buttons are
+ *   siblings (no nested interactive content). Enter/Space or a click open the picker; focus
+ *   shows on the surface border (:focus-within).
+ * - The native `<input type="file">` (aria-hidden, tabindex -1) takes the caller's base props
+ *   (`name`, `data-*` … contract #8); caller `aria-*` props are copied to the trigger, where
+ *   assistive tech reads them. It keeps the accepted files, so the field submits with a
+ *   native `<form>` (and a form reset clears it); while disabled it is detached from its
+ *   form (`form=""`).
+ * - `accept` / `maxSize` / `maxFiles` (multiple only) are validated on pick and drop; every
+ *   rejected file is named in one error status (Intl.ListFormat, narrow conjunction), shown
+ *   per `statusVariant` and announced assertively; a successful pick is announced politely
+ *   ("1 file selected: a.pdf" / "3 files selected"). A `status` prop wins over these errors.
+ * - The trigger's name includes the selected file names; the clear button removes them and
+ *   returns focus to the trigger. `isLoading` (uploading) blocks picking and shows a Spinner.
+ * - Required (explicit, or a FormLayout `defaultOptionality="required"`) is conveyed by a
+ *   visually hidden "Required" the trigger is described by (buttons ignore aria-required).
+ * - `mode="dropzone"` does not support `statusVariant="attached"` (Astryx: use detached or
+ *   tooltip); it is rendered as given, as in 0.7.9.
+ *
+ * Events (on `<ax-file-input>`): `astryx-change` `{value: File | File[] | null}` (Astryx
+ * onChange; an array when `isMultiple`). Element API: `el.files` (File[]), `el.clear()`.
+ * Not available: a server-side `value` (File objects exist only in the browser), `changeAction`.
+ *
+ * @example
+ * <FileInput label="Resume" accept=".pdf" name="resume" />
+ * <FileInput label="Photos" mode="dropzone" accept="image/*" isMultiple maxFiles={5} maxSize={5_000_000} />
+ */
+import Field from '../Field/Field.astro';
+import FieldStatus from '../FieldStatus/FieldStatus.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import InputStatusIcon from '../Field/_InputStatusIcon.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator, type Translate} from '../../lib/i18n';
+import {messageTemplate} from '../Field/clientMessages';
+import {joinAriaIDs, routeFieldProps, statusIconPlan, type FieldComposedProps, type InputStatus} from '../Field/fieldProps';
+import '../Field/Field.css';
+import './FileInput.css';
+
+export type FileInputStatus = InputStatus;
+export type FileInputMode = 'dropzone' | 'input';
+
+export interface Props extends FieldComposedProps {
+  /** Accepted types (HTML `accept`): "image/*", ".pdf,.docx", "image/png,image/jpeg". */
+  accept?: string;
+  /** Several files; `astryx-change` then carries File[]. @default false */
+  isMultiple?: boolean;
+  /** Maximum size per file in bytes; larger files are rejected. */
+  maxSize?: number;
+  /** Maximum number of files (multiple only); extra files are dropped. */
+  maxFiles?: number;
+  /** Why the input is disabled (tooltip on the surface; describes the trigger). */
+  disabledMessage?: string;
+  /** Uploading: blocks picking, shows a Spinner, aria-busy. @default false */
+  isLoading?: boolean;
+  /** Text while no file is selected. @default "Choose file" / "Choose files" */
+  placeholder?: string;
+  /** Compact input or a dashed dropzone with drag and drop. @default 'input' */
+  mode?: FileInputMode;
+}
+
+const {
+  accept,
+  isMultiple = false,
+  maxSize,
+  maxFiles,
+  disabledMessage,
+  isLoading = false,
+  placeholder,
+  mode = 'input',
+  ...props
+} = Astro.props;
+
+const r = routeFieldProps('FileInput', props as Props & Record<string, unknown>);
+const {isDisabled, status, statusVariant} = r;
+const t = translator(Astro, r.locale);
+const locale = resolveLocale(Astro, r.locale);
+const isBusy = isLoading;
+const isSelectionDisabled = isDisabled || isBusy;
+const isDropzone = mode === 'dropzone';
+const plan = statusIconPlan(status, statusVariant);
+const disabledTip = isDisabled && disabledMessage ? attachTooltip() : null;
+const isOptional = !!props.isOptional;
+const explicitRequired = !!props.isRequired && !isOptional;
+const requiredId = !isOptional ? r.ids.make('required') : undefined;
+
+// Caller aria-* props are also set on the trigger (the native input is aria-hidden).
+const {'aria-label': _l, 'aria-labelledby': _lb, 'aria-hidden': _h, 'aria-disabled': _d, 'aria-busy': _b, 'aria-invalid': _i, ...nativeRest} = r.native;
+const triggerAria = Object.fromEntries(Object.entries(nativeRest).filter(([k, v]) => k.startsWith('aria-') && v != null));
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, plan.tooltipId, explicitRequired ? requiredId : null, disabledTip?.id);
+const displayPlaceholder = placeholder ?? (isMultiple ? t('@astryx.fileInput.placeholderMultiple') : t('@astryx.fileInput.placeholder'));
+
+function formatFileSize(bytes: number, tr: Translate): string {
+  if (bytes < 1024) return tr('@astryx.fileInput.fileSize.bytes', {size: bytes});
+  if (bytes < 1024 * 1024) return tr('@astryx.fileInput.fileSize.kilobytes', {size: bytes / 1024});
+  return tr('@astryx.fileInput.fileSize.megabytes', {size: bytes / (1024 * 1024)});
+}
+
+const {themeClass, attrs: themeAttrs} = themeProps('file-input', {mode, status: status?.type ?? null});
+const iconTarget = themeProps('file-input-icon', {mode});
+// The error status the element shows after a rejected pick (only without a `status` prop).
+const errorStatus: InputStatus = {type: 'error', message: '⁣message⁣'};
+const errorPlan = statusIconPlan(errorStatus, statusVariant);
+const errorStatusId = r.ids.make('error');
+const showsInlineStatus = !isDropzone && !isBusy;
+---
+<Field {...r.field}>
+  <ax-file-input
+    class={cx(themeClass, r.control.class)}
+    style={mergeStyles(r.control.style)}
+    {...themeAttrs}
+    data-ax-disabled={isDisabled ? '' : undefined}
+    data-ax-busy={isBusy ? '' : undefined}
+    data-ax-tooltip={disabledTip?.id}
+    data-ax-busy-announce={isBusy ? t('@astryx.spinner.loading') : undefined}
+    data-ax-has-status={status ? '' : undefined}
+    data-accept={accept}
+    data-multiple={isMultiple ? '' : undefined}
+    data-max-size={maxSize}
+    data-max-files={maxFiles}
+    data-locale={locale}
+    data-label={r.label}
+    data-placeholder={displayPlaceholder}
+    data-drop-hint={t('@astryx.fileInput.dropHint')}
+    data-msg-invalid-type={messageTemplate(t, locale, '@astryx.fileInput.errorInvalidType', {}, ['fileName'])}
+    data-msg-max-size={maxSize != null ? messageTemplate(t, locale, '@astryx.fileInput.errorMaxSize', {maxSize: formatFileSize(maxSize, t)}, ['fileName']) : undefined}
+    data-msg-max-files={maxFiles != null ? t('@astryx.fileInput.errorMaxFiles', {maxFiles}) : undefined}
+    data-msg-selected-one={messageTemplate(t, locale, '@astryx.fileInput.fileSelected', {}, ['fileName'])}
+    data-msg-selected-many={messageTemplate(t, locale, '@astryx.fileInput.filesSelected', {}, ['count'])}
+    data-msg-trigger={messageTemplate(t, locale, '@astryx.fileInput.triggerWithFiles', {label: r.label}, ['fileNames'])}
+    data-error-variant={statusVariant}
+    data-error-id={errorPlan.hasTooltip ? errorPlan.tooltipId : errorStatusId}
+    data-required-id={requiredId}
+  >
+    <VisuallyHidden>
+      <button
+        type="button"
+        tabindex="0"
+        data-ax-file-trigger=""
+        aria-disabled={isSelectionDisabled ? 'true' : undefined}
+        aria-label={r.label}
+        aria-busy={isBusy ? 'true' : undefined}
+        aria-invalid={status?.type === 'error' ? 'true' : undefined}
+        {...triggerAria}
+        aria-describedby={describedBy}
+        {...(!isOptional && !explicitRequired ? {'data-ax-inherit': 'form-required'} : {})}
+      ></button>
+    </VisuallyHidden>
+    <input
+      {...nativeRest}
+      class="ax-file-input-native"
+      id={r.id}
+      type="file"
+      accept={accept}
+      multiple={isMultiple || undefined}
+      form={isDisabled ? '' : undefined}
+      aria-hidden="true"
+      tabindex="-1"
+      data-ax-file-native=""
+    />
+    {isDropzone ? (
+      isBusy ? (
+        <><Spinner size="md" aria-hidden="true" />{plan.hasTooltip && <InputStatusIcon status={status} plan={plan} locale={r.locale} />}</>
+      ) : (
+        <>
+          <Icon icon="upload" size="md" color="secondary" class={iconTarget.themeClass} {...iconTarget.attrs} data-ax-file-empty="" />
+          <span class="ax-file-input-placeholder" data-ax-file-empty="" data-ax-file-placeholder="">{displayPlaceholder}</span>
+          <div class="ax-file-input-name" data-ax-file-names="" hidden></div>
+          <span class="ax-file-input-status-slot" data-ax-file-status-slot="">{plan.hasTooltip && <InputStatusIcon status={status} plan={plan} locale={r.locale} />}</span>
+        </>
+      )
+    ) : (
+      isBusy ? (
+        <><span class="ax-file-input-name">{displayPlaceholder}</span><Spinner size="sm" aria-hidden="true" />{plan.hasTooltip && <InputStatusIcon status={status} plan={plan} locale={r.locale} />}</>
+      ) : (
+        <>
+          <Icon icon="upload" size="sm" color="secondary" class={iconTarget.themeClass} {...iconTarget.attrs} />
+          <span class="ax-file-input-placeholder" data-ax-file-placeholder="" data-ax-file-text="">{displayPlaceholder}</span>
+          <span class="ax-file-input-status-slot" data-ax-file-status-slot=""><InputStatusIcon status={status} plan={plan} locale={r.locale} /></span>
+        </>
+      )
+    )}
+    {!isDisabled && !isBusy && <InputClearButton label={t('@astryx.fileInput.clearLabel', {label: r.label})} isHidden locale={r.locale} />}
+  </ax-file-input>
+  {requiredId && <VisuallyHidden id={requiredId}>{t('@astryx.fileInput.required')}</VisuallyHidden>}
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+  {!status && !isSelectionDisabled && (
+    <template data-ax-file-error-template="">
+      {statusVariant !== 'tooltip' && <FieldStatus type="error" message={errorStatus.message!} id={errorStatusId} variant={statusVariant} data-ax-file-error-box="" />}
+      {(showsInlineStatus || errorPlan.hasTooltip) && <span data-ax-file-error-icon=""><InputStatusIcon status={errorStatus} plan={errorPlan} locale={r.locale} /></span>}
+    </template>
+  )}
+</Field>
+<script>import '../../elements/file-input';</script>
+{isBusy && <script>import '../../behaviors/busyAnnounce';</script>}

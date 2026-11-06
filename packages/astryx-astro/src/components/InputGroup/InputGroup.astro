@@ -1,0 +1,125 @@
+---
+/**
+ * InputGroup — one connected row: a compatible input (TextInput, NumberInput; later
+ * TimeInput, DateInput, Typeahead, Selector, MultiSelector) with InputGroupText and Button
+ * addons. Port of @astryxdesign/core InputGroup/InputGroup.tsx, InputGroupContext.ts,
+ * InputGroupInternalContext.ts and groupStyles.ts (styles in InputGroup.css).
+ *
+ * - A Field with a group label (`<span id>`, not a `<label>`), description and a detached
+ *   status message; the row is `role="group"` named by that label (`aria-labelledby`) and
+ *   described by the description + status (`aria-describedby`). The group border never
+ *   changes with status; themes style `.astryx-input-group[data-status]`.
+ * - Contexts → slot transform (groupMembers.ts): inputs render without their own Field,
+ *   are named "<group label> <input label>" and described by the group text first; Button
+ *   addons and inputs get `data-astryx-input-group-item` and join corners; a focused member
+ *   is raised (z-index 2) so its ring shows in full (contract #9).
+ * - `isDisabled` dims the row (`aria-disabled`) and disables every member.
+ * - Size provider: an explicit `size` is stamped on members (cascade keys `size` +
+ *   `button-icon-size`, see Button/buttonCascade.ts); without one the group itself inherits
+ *   (`data-ax-inherit="size"`) and leaves its members to the same outer provider ('md').
+ *
+ * Not reproduced: a disabled outer InputGroup does not disable a nested InputGroup's members
+ * (nesting groups is unsupported in Astryx's guidance).
+ *
+ * @example
+ * <InputGroup label="Price">
+ *   <InputGroupText>$</InputGroupText>
+ *   <NumberInput label="Amount in USD" isLabelHidden value={12} />
+ * </InputGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Field from '../Field/Field.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits, stamp} from '../../lib/cascade';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import {buttonSizeStampers} from '../Button/buttonCascade';
+import {fieldId, joinAriaIDs, type InputStatus} from '../Field/fieldProps';
+import {adoptGroupMembers} from './groupMembers';
+import '../Field/Field.css';
+import '../VisuallyHidden/VisuallyHidden.css';
+import './InputGroup.css';
+
+export type InputGroupSize = 'sm' | 'md' | 'lg';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Label text for the group (required for accessibility). */
+  label: string;
+  /** Visually hide the label. @default false */
+  isLabelHidden?: boolean;
+  /** Helper text between the label and the row. */
+  description?: string;
+  /** Disable the whole group. @default false */
+  isDisabled?: boolean;
+  /** "Optional" indicator. @default false */
+  isOptional?: boolean;
+  /** "Required" indicator. @default false */
+  isRequired?: boolean;
+  /** Default size for the members; else a size provider's; else 'md'. */
+  size?: InputGroupSize;
+  /** Validation status; its message shows below the group. */
+  status?: InputStatus;
+  /** Tooltip text at the end of the label. */
+  labelTooltip?: string;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {
+  label,
+  isLabelHidden = false,
+  description,
+  isDisabled = false,
+  isOptional = false,
+  isRequired = false,
+  size: sizeProp,
+  status,
+  labelTooltip,
+  locale,
+  class: className,
+  style,
+  ...rest
+} = Astro.props;
+
+const size: InputGroupSize = sizeProp ?? 'md';
+const base = fieldId('input-group');
+const inputId = `${base}-field`;
+const labelID = `${base}-label`;
+const descriptionID = `${base}-desc`;
+const statusMessageId = `${base}-status`;
+const describedByIDs = joinAriaIDs(description ? descriptionID : null, status?.message ? statusMessageId : null);
+
+let html = Astro.slots.has('default') ? await Astro.slots.render('default') : '';
+html = await adoptGroupMembers(html, {labelID, describedByIDs, isDisabled});
+if (sizeProp !== undefined) html = await stamp(html, buttonSizeStampers(size));
+
+const {themeClass, attrs} = themeProps('input-group', {size, status: status?.type ?? null});
+---
+<Field
+  label={label}
+  isLabelHidden={isLabelHidden}
+  description={description}
+  inputID={inputId}
+  labelID={labelID}
+  descriptionID={description ? descriptionID : undefined}
+  isGroupLabel
+  isOptional={isOptional}
+  isRequired={isRequired}
+  isDisabled={isDisabled}
+  status={status ? {type: status.type, message: status.message, messageID: status.message ? statusMessageId : undefined} : undefined}
+  statusVariant="detached"
+  labelTooltip={labelTooltip}
+  locale={locale}
+>
+  <div
+    {...rest}
+    role="group"
+    aria-disabled={isDisabled ? 'true' : undefined}
+    aria-labelledby={labelID}
+    aria-describedby={describedByIDs}
+    class={cx(themeClass, className as string | undefined)}
+    style={mergeStyles(style as StyleValue)}
+    {...attrs}
+    data-ax-inherit={inherits({size: sizeProp === undefined})}
+  ><Fragment set:html={html} /></div>
+</Field>
+{isDisabled && <script>import '../../elements/runtime/disabledInteraction';</script>}

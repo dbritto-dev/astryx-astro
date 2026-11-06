@@ -1,0 +1,109 @@
+---
+import TextInput, {type TextInputSize} from './TextInput.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+import Icon from '../Icon/Icon.astro';
+import type {InputStatusType} from '../Field/fieldProps';
+
+const sizes: TextInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {
+  error: 'Enter a valid email address',
+  warning: 'This address is already invited',
+  success: 'Address verified',
+};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Sizes</h3>
+    <div style={grid} data-test="sizes">
+      {sizes.map((size) => <TextInput label={`Name (${size})`} size={size} placeholder="Ada Lovelace" />)}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Label, description, optional / required, tooltip</h3>
+    <div style={grid}>
+      <TextInput label="Display name" description="Shown on your public profile" value="Ada" data-test="described" />
+      <TextInput label="Nickname" isOptional placeholder="Optional field" />
+      <TextInput label="Email" type="email" isRequired placeholder="you@example.com" data-test="required" />
+      <TextInput label="Workspace" labelTooltip="The workspace URL is lowercase" value="astryx" data-test="label-tooltip" />
+      <TextInput label="Hidden label" isLabelHidden placeholder="Label is visually hidden" data-test="hidden-label" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status × size (attached)</h3>
+    <div style={grid} data-test="statuses">
+      {statuses.map((type) => sizes.map((size) => (
+        <TextInput label={`${type} ${size}`} size={size} value="ada@example" status={{type, message: messages[type]}} />
+      )))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status placement: detached, tooltip, icon only</h3>
+    <div style={grid}>
+      <TextInput label="Detached" value="ada@example" status={{type: 'error', message: messages.error}} statusVariant="detached" />
+      <TextInput label="Tooltip" value="ada@example" status={{type: 'warning', message: messages.warning}} statusVariant="tooltip" data-test="status-tooltip" />
+      <TextInput label="Status without message" value="ada@example.com" status={{type: 'success'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Disabled, read-only, loading</h3>
+    <div style={grid}>
+      <TextInput label="Disabled" value="Locked value" isDisabled htmlName="disabled" data-test="disabled" />
+      <TextInput label="Disabled with reason" value="Owner" isDisabled disabledMessage="You need the Editor role to change this" data-test="disabled-message" />
+      <TextInput label="Read-only" value="Submitted as-is" isReadOnly data-test="readonly" />
+      <TextInput label="Loading" value="Checking availability" isLoading hasClear data-test="loading" />
+      <TextInput label="Disabled error" value="ada@" isDisabled status={{type: 'error', message: 'Fix before submitting'}} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Clear button, start icon, search</h3>
+    <div style={grid}>
+      <TextInput label="Search" isLabelHidden type="search" enterKeyHint="search" hasAutoCorrect={false} hasClear startIcon="search" placeholder="Search orders" value="pending" data-test="search" />
+      <TextInput label="Filter" hasClear placeholder="Type to show the clear button" data-test="clear-empty" />
+      <TextInput label="Website" placeholder="example.com"><Icon slot="startIcon" icon="externalLink" size="sm" color="secondary" /></TextInput>
+      <TextInput label="Password" type="password" value="hunter2" autoComplete="current-password" />
+      <TextInput label="Phone" type="tel" inputMode="tel" placeholder="+57 300 000 0000" width={200} />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a FormLayout (horizontal labels, required by default) and a native form</h3>
+    <form data-test="form" novalidate style="display:grid;gap:var(--spacing-3);max-width:560px">
+      <FormLayout direction="horizontal-labels" defaultOptionality="required">
+        <TextInput label="First name" htmlName="first" value="Ada" />
+        <TextInput label="Last name" htmlName="last" description="As on your passport" value="Lovelace" />
+        <TextInput label="Middle name" htmlName="middle" isOptional />
+        <TextInput label="Email" htmlName="email" type="email" status={{type: 'error', message: messages.error}} value="ada@" />
+      </FormLayout>
+      <div style="display:flex;gap:var(--spacing-2)">
+        <button type="submit">Submit</button>
+        <button type="reset">Reset</button>
+        <output data-test="form-output"></output>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h3 style={cap}>Vertical FormLayout</h3>
+    <FormLayout defaultOptionality="optional">
+      <TextInput label="Company" description="Leave blank for personal accounts" containerClass="demo-container" controlClass="demo-control" />
+      <TextInput label="Tax id" isRequired />
+    </FormLayout>
+  </section>
+</div>
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-test="form"]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const out = form.querySelector('[data-test="form-output"]')!;
+      out.textContent = JSON.stringify(Object.fromEntries(new FormData(form)));
+    });
+  });
+</script>

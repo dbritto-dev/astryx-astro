@@ -1,0 +1,57 @@
+---
+/**
+ * The on-field status affordance every bordered input renders inside its control box.
+ * Port of @astryxdesign/core hooks/useInputStatusIcon.tsx. Plan it with `statusIconPlan()`
+ * (./fieldProps.ts) so the caller knows the tooltip id for its aria-describedby:
+ *
+ *   const plan = statusIconPlan(status, statusVariant);
+ *   <input aria-describedby={r.describedBy(…, plan.tooltipId)} />
+ *   <InputStatusIcon status={status} plan={plan} />
+ *
+ * - `attached` (and `tooltip` without a message): a decorative status Icon carrying the
+ *   theme target `.astryx-input-status-icon[data-size][data-status]`.
+ * - `tooltip` + message: a real `<button type="button">` named "<Type> details"
+ *   (`@astryx.input.statusButton.*`), described by its tooltip (the message). Focus or a
+ *   fine-pointer hover opens it, a tap toggles it (`touchTrigger="tap"`), Escape closes it.
+ * - `detached` / no status: nothing (the message box has its own icon).
+ * Inside an InputGroup the group drops it (GROUP_DROP), as Astryx renders none there.
+ */
+import Icon from '../Icon/Icon.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import {themeProps} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {GROUP_DROP, type InputStatus, type InputStatusType} from './fieldProps';
+import type {IconSize} from '../Icon/iconRegistry';
+
+export interface Props {
+  status?: InputStatus;
+  plan: {renders: boolean; hasTooltip: boolean; tooltipId?: string};
+  /** @default 'md' */
+  size?: IconSize;
+  locale?: string;
+}
+
+const {status, plan, size = 'md', locale} = Astro.props;
+const t = translator(Astro, locale);
+const LABEL_KEY: Record<InputStatusType, string> = {
+  warning: '@astryx.input.statusButton.warning',
+  error: '@astryx.input.statusButton.error',
+  success: '@astryx.input.statusButton.success',
+};
+const target = status ? themeProps('input-status-icon', {size, status: status.type}) : null;
+const drop = {[GROUP_DROP]: ''};
+---
+{plan.renders && status && target && (plan.hasTooltip ? (
+  <span class="ax-input-status-anchor" {...drop}>
+    <button
+      type="button"
+      class="ax-input-status-button ax-focus-visible"
+      aria-label={t(LABEL_KEY[status.type])}
+      aria-describedby={plan.tooltipId}
+      data-ax-tooltip={plan.tooltipId}
+    ><Icon icon={status.type} size={size} color={status.type} class={target.themeClass} {...target.attrs} /></button>
+    <Tooltip id={plan.tooltipId} content={status.message} placement="above" touchTrigger="tap" />
+  </span>
+) : (
+  <Icon icon={status.type} size={size} color={status.type} class={target.themeClass} {...target.attrs} {...drop} />
+))}

@@ -1,0 +1,90 @@
+/*
+ * Port of @astryxdesign/core NumberInput/NumberInput.tsx (styles, sizeStyles). The box is the
+ * shared `.ax-input` (Field/Field.css); its padding is re-declared per side from the public
+ * `--astryx-number-input-padding*` tokens (a theme's `padding` expands into them), so the
+ * stepper column can cancel the block padding edge by edge. Rule order mirrors
+ * stylex.props(): base (.ax-input) → wrapper → wrapperWithNumberSteppers → size.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-number-input.ax-input {
+    --_ax-ni-pad-inline: var(--astryx-number-input-padding-inline, var(--astryx-number-input-padding, var(--spacing-2)));
+    --_ax-ni-pad-block: var(--astryx-number-input-padding, var(--spacing-1));
+    --_ax-ni-pbs: var(--astryx-number-input-padding-block-start, var(--_ax-ni-pad-block));
+    --_ax-ni-pbe: var(--astryx-number-input-padding-block-end, var(--_ax-ni-pad-block));
+    --_ax-ni-pis: var(--astryx-number-input-padding-inline-start, var(--_ax-ni-pad-inline));
+    --_ax-ni-pie: var(--astryx-number-input-padding-inline-end, var(--_ax-ni-pad-inline));
+    z-index: 1;
+    padding-block-start: var(--_ax-ni-pbs);
+    padding-block-end: var(--_ax-ni-pbe);
+    padding-inline-start: var(--_ax-ni-pis);
+    padding-inline-end: var(--_ax-ni-pie);
+  }
+  .astryx-number-input.ax-input[data-ax-steppers] { padding-inline-end: 0; }
+  @media (pointer: coarse) {
+    .astryx-number-input.ax-input[data-ax-steppers] { padding-inline-end: var(--_ax-ni-pie); }
+  }
+
+  .astryx-number-input[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-number-input[data-size="md"] { height: var(--size-element-md); }
+  .astryx-number-input[data-size="lg"] { height: var(--size-element-lg); }
+
+  /* an unparseable draft reads dimmed until it is fixed or reverted */
+  .astryx-number-input .ax-input-native[data-ax-invalid] { color: var(--color-text-secondary); }
+
+  .ax-number-input-units {
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+  }
+
+  /* fine-pointer steppers: full field height, flush with the end edge */
+  .ax-number-input-steppers {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: var(--spacing-4);
+    margin-block-start: calc(-1 * var(--_ax-ni-pbs));
+    margin-block-end: calc(-1 * var(--_ax-ni-pbe));
+    border-inline-start-width: var(--border-width);
+    border-inline-start-style: solid;
+    border-inline-start-color: var(--color-border-emphasized);
+    overflow: hidden;
+    border-start-end-radius: var(--_field-radius);
+    border-end-end-radius: var(--_field-radius);
+  }
+  @media (pointer: coarse) {
+    .ax-number-input-steppers { display: none; }
+  }
+  .ax-number-input-stepper {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    color: var(--color-icon-secondary);
+    background-color: var(--color-background-surface);
+    cursor: pointer;
+    outline: none;
+  }
+  .ax-number-input-stepper[aria-disabled="true"] {
+    color: var(--color-icon-disabled);
+    cursor: default;
+    background-image: none;
+  }
+  .ax-number-input-stepper + .ax-number-input-stepper {
+    border-block-start-width: var(--border-width);
+    border-block-start-style: solid;
+    border-block-start-color: var(--color-border-emphasized);
+  }
+  .ax-number-input-increment-icon { transform: rotate(180deg); }
+}

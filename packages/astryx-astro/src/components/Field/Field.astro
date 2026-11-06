@@ -1,0 +1,160 @@
+---
+/**
+ * Field — low-level form field shell (label, description, optional/required indicator,
+ * status message) for controls that do not render one themselves. Every Astryx input
+ * (TextInput, TextArea, NumberInput, FileInput …) renders it for you.
+ * Port of @astryxdesign/core Field/Field.tsx, FieldStatus/useFieldStatusAnnouncement.ts and
+ * Field/fieldStatusPlacement.ts.
+ *
+ * Wiring is yours for a custom control: give it `id={inputID}` and
+ * `aria-describedby={descriptionID + status.messageID}` (Field-composed inputs do this with
+ * `routeFieldProps()` in ./fieldProps.ts).
+ *
+ * Status placement (contract #7): `attached` (default) tucks the message box under an
+ * opaque, bordered, fixed-height control; `detached` floats it below (custom/tall/bare
+ * controls); `tooltip` renders no box — the control shows it through its status icon — and
+ * Field still speaks the message on the field-status channel (errors assertive).
+ *
+ * FormLayout (lib/cascade.ts): the root enrols in `form-direction` (FormLayout stamps
+ * `data-form-direction`; `horizontal-labels` turns the field into two grid cells, label
+ * beside the control, description above the control) and `field-layout` (the Astryx theme
+ * hook `data-layout="horizontal-labels"`; see docs/handoffs.md). `formDirection` sets it
+ * explicitly instead. Theme hooks: `.astryx-field[data-layout]`, `--_field-status-overlap`.
+ *
+ * @example
+ * <Field label="Email" inputID="email" description="We never share it" descriptionID="email-help">
+ *   <input id="email" aria-describedby="email-help" type="email" />
+ * </Field>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import FieldLabel from './FieldLabel.astro';
+import FieldStatus from '../FieldStatus/FieldStatus.astro';
+import {cx} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import type {SizeValue} from '../../lib/types';
+import type {FieldStatusPlacement, FormLayoutDirection, InputStatusType, LabelIcon} from './fieldProps';
+import './Field.css';
+
+export type FieldStatusType = InputStatusType;
+export interface FieldStatusInput {
+  type: FieldStatusType;
+  /** Message shown below the control. */
+  message?: string;
+  /** Id of the message element (for the control's aria-describedby). @default `${inputID}-status` */
+  messageID?: string;
+}
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Label text (always rendered for accessibility). */
+  label: string;
+  /** Id of the control the label points at (`for`). */
+  inputID: string;
+  /** Id of the label element itself (group `aria-labelledby`). */
+  labelID?: string;
+  /** The field wraps a group of controls: the label renders as a `<span>`. @default false */
+  isGroupLabel?: boolean;
+  /** Visually hide label and description (still accessible). @default false */
+  isLabelHidden?: boolean;
+  /** Disabled styling on the label. @default false */
+  isDisabled?: boolean;
+  /** Text between the label and the control. */
+  description?: string;
+  /** @default `${inputID}-desc` when a description is set */
+  descriptionID?: string;
+  /** @default false */
+  isOptional?: boolean;
+  /** @default false */
+  isRequired?: boolean;
+  /** Icon before the label text (name / SVG string / Astro component), or the `labelIcon` slot. */
+  labelIcon?: LabelIcon;
+  /** Tooltip text on an info icon at the end of the label. */
+  labelTooltip?: string;
+  /** Status; with a message, shows a status box (unless `statusVariant="tooltip"`). */
+  status?: FieldStatusInput;
+  /** @default 'attached' */
+  statusVariant?: FieldStatusPlacement;
+  /** Width of the whole field (number = px, string = CSS). */
+  width?: SizeValue;
+  /** Port extension: explicit FormLayout direction (normally stamped by FormLayout). */
+  formDirection?: FormLayoutDirection;
+  locale?: string;
+}
+
+/** @internal Field-composed inputs (fieldProps.ts) — not public API. */
+interface InternalProps {
+  /** Enrol the root in the InputGroup member protocol (InputGroup unwraps this shell). */
+  __groupable?: boolean;
+}
+
+const {
+  label,
+  inputID,
+  labelID,
+  isGroupLabel = false,
+  isLabelHidden = false,
+  isDisabled = false,
+  description,
+  descriptionID,
+  isOptional = false,
+  isRequired = false,
+  labelIcon,
+  labelTooltip,
+  status,
+  statusVariant = 'attached',
+  width,
+  formDirection,
+  locale,
+  __groupable = false,
+  class: className,
+  style,
+  ...rest
+} = Astro.props as Props & InternalProps;
+
+const resolvedDescriptionID = descriptionID ?? (description ? `${inputID}-desc` : undefined);
+const resolvedMessageID = status?.messageID ?? (status?.message ? `${inputID}-status` : undefined);
+const isHorizontalLabels = formDirection === 'horizontal-labels';
+const showsStatusBox = !!status?.message && statusVariant !== 'tooltip';
+const announcesTooltipStatus = !!status?.message && statusVariant === 'tooltip';
+const labelIconHtml = Astro.slots.has('labelIcon') ? await Astro.slots.render('labelIcon') : null;
+---
+<div
+  {...rest}
+  class={cx('astryx-field', className as string | undefined)}
+  style={mergeStyles({width: isHorizontalLabels ? undefined : cssSize(width)}, style as StyleValue)}
+  data-layout={isHorizontalLabels ? 'horizontal-labels' : undefined}
+  data-form-direction={formDirection}
+  data-ax-label-hidden={isLabelHidden ? '' : undefined}
+  data-ax-inherit={inherits({'form-direction': formDirection === undefined, 'field-layout': formDirection === undefined, 'input-group': __groupable})}
+>
+  <div class="ax-field-label-cell">
+    {labelIconHtml != null ? (
+      <FieldLabel label={label} inputID={inputID} labelID={labelID} isGroupLabel={isGroupLabel} isLabelHidden={isLabelHidden} isDisabled={isDisabled} isOptional={isOptional} isRequired={isRequired} labelTooltip={labelTooltip} locale={locale}><Fragment slot="labelIcon" set:html={labelIconHtml} /></FieldLabel>
+    ) : (
+      <FieldLabel label={label} inputID={inputID} labelID={labelID} isGroupLabel={isGroupLabel} isLabelHidden={isLabelHidden} isDisabled={isDisabled} isOptional={isOptional} isRequired={isRequired} labelIcon={labelIcon} labelTooltip={labelTooltip} locale={locale} />
+    )}
+  </div>
+  <div class="ax-field-body">
+    {description && (
+      <span
+        id={resolvedDescriptionID}
+        class={cx('ax-field-description', isLabelHidden && 'ax-field-sr-only')}
+        data-ax-field-description={isGroupLabel ? undefined : inputID}
+      >{description}</span>
+    )}
+    {statusVariant === 'attached' ? (
+      <div class="ax-field-input-status">
+        <slot />
+        {showsStatusBox && <FieldStatus type={status!.type} message={status!.message!} id={resolvedMessageID} variant="attached" />}
+      </div>
+    ) : (
+      <>
+        <slot />
+        {showsStatusBox && <FieldStatus type={status!.type} message={status!.message!} id={resolvedMessageID} variant={statusVariant} />}
+      </>
+    )}
+    {announcesTooltipStatus && <span hidden data-ax-field-status="" data-type={status!.type}>{status!.message}</span>}
+  </div>
+</div>
+{(description || announcesTooltipStatus) && <script>import '../../elements/field';</script>}
+{announcesTooltipStatus && <script>import '../../behaviors/fieldStatus';</script>}

@@ -1,0 +1,83 @@
+---
+import InputGroup, {type InputGroupSize} from './InputGroup.astro';
+import InputGroupText from './InputGroupText.astro';
+import TextInput from '../TextInput/TextInput.astro';
+import NumberInput from '../NumberInput/NumberInput.astro';
+import Button from '../Button/Button.astro';
+import IconButton from '../IconButton/IconButton.astro';
+import Icon from '../Icon/Icon.astro';
+import FormLayout from '../FormLayout/FormLayout.astro';
+
+const sizes: InputGroupSize[] = ['sm', 'md', 'lg'];
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--spacing-5);align-items:start';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Text addons</h3>
+    <div style={grid}>
+      <InputGroup label="Website" description="Your public homepage" data-test="website">
+        <InputGroupText>https://</InputGroupText>
+        <TextInput label="Domain" isLabelHidden value="astryx.dev" hasClear />
+      </InputGroup>
+      <InputGroup label="Price" data-test="price">
+        <InputGroupText>$</InputGroupText>
+        <NumberInput label="Amount in USD" isLabelHidden value={12.5} step={0.5} min={0} />
+        <InputGroupText>USD</InputGroupText>
+      </InputGroup>
+      <InputGroup label="Weight">
+        <NumberInput label="Kilograms" isLabelHidden value={70} hasNumberSteppers />
+        <InputGroupText>kg</InputGroupText>
+      </InputGroup>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Button addons and sizes</h3>
+    <div style={grid}>
+      {sizes.map((size) => (
+        <InputGroup label={`Search (${size})`} size={size} data-test={`size-${size}`}>
+          <TextInput label="Query" isLabelHidden placeholder="Search orders" startIcon="search" />
+          <Button label="Search" variant="primary" />
+        </InputGroup>
+      ))}
+      <InputGroup label="Invite link" data-test="buttons">
+        <Button label="Regenerate" icon="arrowsUpDown" isIconOnly />
+        <TextInput label="Link" isLabelHidden value="https://astryx.dev/i/7f3a" isReadOnly />
+        <IconButton label="Copy link" icon="copy" />
+      </InputGroup>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Status, required, tooltip, disabled</h3>
+    <div style={grid}>
+      <InputGroup label="Coupon" status={{type: 'error', message: 'This code has expired'}} isRequired labelTooltip="Codes are case-insensitive" data-test="status">
+        <TextInput label="Code" isLabelHidden value="SPRING24" status={{type: 'error'}} />
+        <Button label="Apply" />
+      </InputGroup>
+      <InputGroup label="Discount" status={{type: 'success', message: '15% off applied'}} isOptional>
+        <NumberInput label="Percent" isLabelHidden value={15} units="%" />
+        <Button label="Reset" variant="ghost" />
+      </InputGroup>
+      <InputGroup label="Locked" isDisabled description="Contact an admin to change it" data-test="disabled">
+        <InputGroupText><Icon icon="info" size="sm" /></InputGroupText>
+        <TextInput label="Value" isLabelHidden value="read only for now" htmlName="locked" hasClear />
+        <Button label="Edit" />
+      </InputGroup>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a FormLayout with horizontal labels</h3>
+    <div style="max-width:560px">
+      <FormLayout direction="horizontal-labels" defaultOptionality="required">
+        <TextInput label="Name" value="Ada" />
+        <InputGroup label="Budget" description="Monthly limit">
+          <InputGroupText>€</InputGroupText>
+          <NumberInput label="Budget in euros" isLabelHidden value={1200} htmlName="budget" />
+        </InputGroup>
+      </FormLayout>
+    </div>
+  </section>
+</div>

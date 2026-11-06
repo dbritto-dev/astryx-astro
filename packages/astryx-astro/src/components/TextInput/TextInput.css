@@ -1,0 +1,12 @@
+/*
+ * Port of @astryxdesign/core TextInput/TextInput.tsx (sizeStyles). The bordered box is the
+ * shared `.ax-input` (Field/Field.css: inputWrapperStyles, status, disabled ring) and the
+ * text is `.ax-input-native`; InputGroup member geometry lives in InputGroup/InputGroup.css.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-text-input[data-size="sm"] { height: var(--size-element-sm); }
+  .astryx-text-input[data-size="md"] { height: var(--size-element-md); }
+  .astryx-text-input[data-size="lg"] { height: var(--size-element-lg); }
+}

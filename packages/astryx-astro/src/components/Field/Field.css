@@ -1,0 +1,242 @@
+/*
+ * Port of @astryxdesign/core Field/Field.tsx (styles), Field/FieldLabel.tsx (styles),
+ * Field/inputStyles.stylex.ts (inputWrapperStyles, inputStatus*Styles),
+ * Field/inputDisabledFocus.ts (ring), Field/InputClearButton.tsx (styles.button) and
+ * hooks/useInputStatusIcon.tsx (styles.iconAnchor, styles.statusButton).
+ *
+ * One DOM for every layout (FormLayout stamps the direction after the field rendered):
+ *   .astryx-field > .ax-field-label-cell > label     (cell: contents | label-align padding)
+ *                 > .ax-field-body                    (contents | Astryx inputStatusWrapper)
+ *                     > .ax-field-description         (joins the label | tops column 2)
+ *                     > .ax-field-input-status        (attached only: control + status box)
+ * Horizontal labels = `[data-form-direction="horizontal-labels"]` (FormLayout stamp) or
+ * `[data-layout="horizontal-labels"]` (theme hook).
+ *
+ * `.ax-input` is the shared bordered control box (TextInput, TextArea, NumberInput and the
+ * later Selector/DateInput ports): StyleX's "the later style replaces the whole property"
+ * is written as non-overlapping state guards (:not([data-disabled]) / :not([data-status]))
+ * so no rule depends on stylesheet order.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Field ─────────────────────────────────────────────────────────────── */
+  .astryx-field {
+    display: flex;
+    flex-direction: column;
+    isolation: isolate;
+    min-width: 0;
+    gap: var(--spacing-1);
+  }
+  .astryx-field[data-ax-label-hidden] { gap: 0; }
+  .ax-field-label-cell { display: contents; }
+  .ax-field-body { display: contents; }
+  /* The description belongs to the label block: cancel the field gap above it. */
+  .astryx-field:not([data-ax-label-hidden]) > .ax-field-body > .ax-field-description {
+    margin-block-start: calc(-1 * var(--spacing-1));
+  }
+
+  /* inputStatusWrapper: an attached FieldStatus extends behind the control's lower half */
+  .ax-field-input-status {
+    display: flex;
+    flex-direction: column;
+    isolation: isolate;
+    --_field-status-overlap: calc(var(--size-element-md) / 2);
+  }
+  .ax-field-input-status:has(> [data-size="sm"]) { --_field-status-overlap: calc(var(--size-element-sm) / 2); }
+  .ax-field-input-status:has(> [data-size="lg"]) { --_field-status-overlap: calc(var(--size-element-lg) / 2); }
+  .ax-field-input-status > .astryx-field-status[data-variant="attached"] { position: relative; z-index: -1; }
+
+  /* horizontal-labels: the field dissolves into FormLayout's `auto 1fr` grid */
+  .astryx-field:is([data-form-direction="horizontal-labels"], [data-layout="horizontal-labels"]) { display: contents; }
+  .astryx-field:is([data-form-direction="horizontal-labels"], [data-layout="horizontal-labels"]) > .ax-field-label-cell {
+    display: block;
+    padding-top: calc(var(--border-width) + var(--spacing-1));
+  }
+  .astryx-field:is([data-form-direction="horizontal-labels"], [data-layout="horizontal-labels"]) > .ax-field-body {
+    display: flex;
+    flex-direction: column;
+    isolation: isolate;
+    min-width: 0;
+    --_field-status-overlap: calc(var(--size-element-md) / 2);
+  }
+  .astryx-field:is([data-form-direction="horizontal-labels"], [data-layout="horizontal-labels"]) > .ax-field-body > .ax-field-description {
+    margin-block-start: 0;
+  }
+
+  /* ── FieldLabel ────────────────────────────────────────────────────────── */
+  .ax-field-label-group { display: flex; flex-direction: column; }
+  .ax-field-label-group[data-ax-hidden] { display: contents; }
+  .astryx-field-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-family: var(--font-family-body);
+    font-size: var(--text-label-size);
+    line-height: var(--text-label-leading);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+  .astryx-field-label:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-field-label[data-ax-disabled] { color: var(--color-text-disabled); cursor: default; }
+  .ax-field-sr-only {
+    border-style: none;
+    clip: rect(0, 0, 0, 0);
+    height: 1px;
+    inset-inline-start: 0;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    user-select: none;
+    white-space: nowrap;
+    width: 1px;
+  }
+  .ax-field-indicator {
+    font-weight: var(--font-weight-normal);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+  }
+  /* A form-level default marks only the exception (FieldLabel showRequired/showOptional). */
+  .astryx-field-label[data-form-optionality="required"] > .ax-field-indicator[data-ax-indicator="required"],
+  .astryx-field-label[data-form-optionality="optional"] > .ax-field-indicator[data-ax-indicator="optional"],
+  .astryx-field-label:not([data-form-optionality="optional"]) > .ax-field-indicator[data-ax-indicator="optional"] ~ .ax-field-indicator[data-ax-indicator="required"] {
+    display: none;
+  }
+  .ax-field-label-tip { cursor: inherit; }
+
+  .ax-field-description {
+    font-family: var(--font-family-body);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-secondary);
+  }
+  .ax-field-description[data-ax-field-description] { cursor: pointer; }
+  .astryx-field:is([data-form-direction="horizontal-labels"], [data-layout="horizontal-labels"]) .ax-field-description[data-ax-field-description] { cursor: auto; }
+
+  /* ── Shared bordered control box (inputWrapperStyles) ───────────────────── */
+  .ax-input {
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-1);
+    padding-inline: var(--spacing-2);
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--color-border-emphasized);
+    --_field-radius: var(--radius-element);
+    border-radius: var(--_field-radius);
+    background-color: var(--color-background-surface);
+    transition-property: border-color, box-shadow;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    box-shadow: none;
+    outline: none;
+  }
+  @media (prefers-reduced-motion: reduce) { .ax-input { transition-duration: 0s; } }
+  /* enabled, no status: accent border + inset ring on focus, soft inset ring on hover */
+  .ax-input:not([data-disabled]):not([data-status]):focus-within {
+    border-color: var(--color-accent);
+    box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted);
+  }
+  @media (hover: hover) {
+    .ax-input:not([data-disabled]):not([data-status]):hover:not(:focus-within) {
+      box-shadow: inset 0px 0px 0px 2px color-mix(in srgb, var(--color-border-emphasized) 30%, transparent);
+    }
+  }
+  /* disabled: dimmed, no hover; the ring returns while its own control has keyboard focus */
+  .ax-input[data-disabled] { cursor: default; opacity: 0.5; }
+  .ax-input[data-disabled]:not([data-status]):has(> [aria-disabled="true"]:focus-visible) { border-color: var(--color-accent); }
+  .ax-input[data-disabled]:has(> [aria-disabled="true"]:focus-visible) {
+    box-shadow: inset 0px 0px 0px 2px var(--color-accent-muted);
+  }
+  /* status: border (also while focused); hover inset in the status color (enabled only) */
+  .ax-input[data-status="warning"] { border-color: var(--color-border-warning); }
+  .ax-input[data-status="error"] { border-color: var(--color-border-error); }
+  .ax-input[data-status="success"] { border-color: var(--color-border-success); }
+  @media (hover: hover) {
+    .ax-input[data-status="warning"]:not([data-disabled]):hover:not(:focus-within) { box-shadow: var(--shadow-inset-warning); }
+    .ax-input[data-status="error"]:not([data-disabled]):hover:not(:focus-within) { box-shadow: var(--shadow-inset-error); }
+    .ax-input[data-status="success"]:not([data-disabled]):hover:not(:focus-within) { box-shadow: var(--shadow-inset-success); }
+  }
+  /* forced colors drop the inset ring and repaint borders: a focused field's border is Highlight */
+  @media (forced-colors: active) {
+    .ax-input:not([data-disabled]):focus-within,
+    .ax-input[data-status]:focus-within,
+    .ax-input[data-disabled]:not([data-status]):has(> [aria-disabled="true"]:focus-visible) { border-color: Highlight; }
+  }
+
+  /* Text entry inside the box (TextInput/NumberInput styles.input) */
+  .ax-input-native {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    border-width: 0;
+    border-style: none;
+    padding: 0;
+    margin: 0;
+    font-family: var(--font-family-body);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-leading);
+    color: var(--color-text-primary);
+    background-color: transparent;
+    outline: none;
+  }
+  .ax-input-native::placeholder { color: var(--color-text-secondary); }
+  .ax-input-native[aria-disabled="true"] { cursor: default; }
+  /* iOS-only 16px floor: Safari zooms into focused controls under 16px */
+  @media (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      .ax-input-native { font-size: max(1rem, var(--text-body-size)); }
+    }
+  }
+
+  /* ── InputClearButton ──────────────────────────────────────────────────── */
+  .ax-input-clear-slot { display: contents; }
+  .astryx-button.astryx-input-clear-button[data-size] {
+    height: 20px;
+    flex-shrink: 0;
+    position: relative;
+    --_input-clear-hit-inset: 0px;
+    --_input-clear-hit-content: none;
+  }
+  @media (pointer: coarse) {
+    .astryx-button.astryx-input-clear-button[data-size] {
+      --_input-clear-hit-inset: -2px;
+      --_input-clear-hit-content: "";
+    }
+  }
+  .astryx-button.astryx-input-clear-button[data-size]::after {
+    content: var(--_input-clear-hit-content);
+    position: absolute;
+    inset: var(--_input-clear-hit-inset);
+  }
+  .astryx-button.astryx-input-clear-button[hidden] { display: none; }
+
+  /* ── On-field status icon (useInputStatusIcon) ─────────────────────────── */
+  .ax-input-status-anchor { display: inline-flex; align-items: center; }
+  .ax-input-status-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border-width: 0;
+    border-style: none;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+    pointer-events: auto;
+    border-radius: var(--radius-full);
+  }
+  .ax-input-status-button:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-input-status-button.ax-focus-visible:focus-visible { outline-offset: 2px; }
+}
