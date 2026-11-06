@@ -474,3 +474,16 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 - Button overwrites a caller's `data-ax-tooltip`; accept an external tooltip id (Pagination uses
   `data-ax-nav-tip` as a workaround).
 - Menu runtime options: focus-first on pointer open; no ↑/↓ open on the trigger (TabMenu).
+
+## Tokenizer, PowerSearch, CommandPalette
+
+- `<ax-tokenizer>`: `astryx-change` {values, change: {item, type: add|create|remove}} (cancelable),
+  plus `astryx-change-query`/`astryx-query` (Typeahead contract); `value`, `searchSource`,
+  `renderItem`, `renderToken`, `isItemRemovable`, `focus/blur/open/close/clear`.
+- `<ax-power-search>`: `astryx-change` {filters, changeType, index} (cancelable); `filters`,
+  `resultCount`. Model in `PowerSearch/powerSearchModel.ts` (`createPowerSearchConfig`, exported,
+  with `applyFilters`). Editor `<ax-power-search-editor>`: `astryx-save` {filter|null}, `astryx-cancel`.
+- `<ax-command-palette>`: `astryx-select` {value, item}; `hotkey="mod+k"`,
+  `isHotkeyAllowedInInputs`; `show/hide/toggle/isOpen/value/searchSource`. One shared window
+  keydown listener for opt-in hotkeys: `registerHotkey()` in `elements/hotkeys.ts` (client-only,
+  `astryx-astro/elements/hotkeys`).

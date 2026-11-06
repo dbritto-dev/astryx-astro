@@ -32,6 +32,7 @@ const lines = [
   "export {attachDrawer} from './components/Drawer/attach';",
   "export {attachBottomSheet} from './components/BottomSheet/attach';",
   "export {generatePageRange} from './components/Pagination/pageRange';",
+  "export {createPowerSearchConfig} from './components/PowerSearch/powerSearchModel';",
   "export {proportional, pixel, generateColumns, resolveColumnWidths, DEFAULT_MIN_COLUMN_WIDTH, useTableSortable, useTableSortableState, useTableColumnResize, useTableStickyColumns, useTableRowExpansion, useTableRowStatus, useTableGroupedRows, useTableTreeData, useTableTreeState, useTableRowIndex, useTableSelection, useTableSelectionState} from './components/Table/table';",
   "export type * from './components/Table/types';",
   "export {createStaticSource} from './components/Typeahead/createStaticSource';",
