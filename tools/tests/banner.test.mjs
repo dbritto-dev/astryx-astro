@@ -64,8 +64,9 @@ check('Tab reaches the dismiss button', await page.evaluate(() => document.activ
 await page.keyboard.press('Enter');
 check('dismiss hides the banner', await page.$eval('#banner-dismiss', (el) => el.hidden && el.getBoundingClientRect().height === 0));
 check('focus returns to the focus origin', await page.evaluate(() => document.activeElement?.getAttribute('data-test') === 'before'));
-e = await events();
-check('astryx-dismiss dispatched', e.length === 1 && e[0].type === 'astryx-dismiss' && e[0].id === 'banner-dismiss', JSON.stringify(e));
+// The dismiss IconButton's tooltip also reports astryx-open-change from inside the banner; only the banner's own events count.
+e = (await events()).filter((x) => x.id === 'banner-dismiss');
+check('astryx-dismiss dispatched', e.length === 1 && e[0].type === 'astryx-dismiss', JSON.stringify(e));
 
 // Programmatic API.
 await page.evaluate(() => document.getElementById('banner-expand').open());

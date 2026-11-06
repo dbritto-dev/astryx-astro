@@ -14,7 +14,7 @@
  *
  * Deferred (touch extra): the slide-across press group over the two actions.
  */
-import '../behaviors/disabledInteraction';
+import './runtime/disabledInteraction';
 import '../behaviors/buttonLive';
 import '../behaviors/spinnerRotor';
 import {DialogElement, defineHost} from './dialog';

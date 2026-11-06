@@ -62,7 +62,6 @@ import {mergeStyles, type StyleValue} from '../../lib/style';
 import {safeHref} from '../../lib/safeUrl';
 import {uid} from '../../lib/uid';
 import {computeTargetAndRel, resolveLinkComponent, type LinkComponentType} from '../Link/linkComponent';
-import {cleanSlotHtml} from '../Button/buttonCascade';
 import './Item.css';
 
 export type ItemAlign = 'center' | 'start' | 'first-line';
@@ -191,7 +190,7 @@ const safe = href != null && !isDisabled ? safeHref(href) : undefined;
 const allowsAriaSelected = role != null && ARIA_SELECTED_ROLES.has(role);
 
 // Slots → HTML (isRenderable: empty output renders nothing).
-const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await cleanSlotHtml(await Astro.slots.render(name), name)).trim() : '');
+const slotHtml = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
 const markerHtml = await slotHtml('marker');
 const labelSlot = await slotHtml('label');
 const descriptionSlot = await slotHtml('description');

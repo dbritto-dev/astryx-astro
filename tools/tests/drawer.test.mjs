@@ -7,6 +7,16 @@
  */
 import {setup, sleep, activeId} from './_harness.mjs';
 
+// Astryx useTooltip: a visible tooltip is the topmost layer and consumes the first Escape
+// (the dialog stays open); a second Escape reaches the dialog.
+async function escapeThroughTooltip(page) {
+  const tipOpen = await page.evaluate(() => !!document.querySelector('ax-tooltip:popover-open, [role="tooltip"]:popover-open'));
+  await page.keyboard.press('Escape');
+  if (tipOpen) { await new Promise((r) => setTimeout(r, 40)); await page.keyboard.press('Escape'); }
+  return tipOpen;
+}
+
+
 const {page, check, open, done} = await setup({height: 700});
 await open('drawer');
 
@@ -48,7 +58,7 @@ for (let i = 0; i < 7; i++) {
   tabs.push(await page.evaluate(() => document.getElementById('drawer-end').contains(document.activeElement)));
 }
 check('Tab stays inside the drawer', tabs.every(Boolean));
-await page.keyboard.press('Escape');
+await escapeThroughTooltip(page);
 await sleep(150);
 s = await state('drawer-end');
 check('Escape closes after the slide-out', !s.open && !s.host);

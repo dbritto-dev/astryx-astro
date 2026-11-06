@@ -42,7 +42,6 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
-import {cleanSlotHtml} from '../Button/buttonCascade';
 import './Banner.css';
 
 /** Built-in statuses; themes may add more (Astryx BannerStatusMap). */
@@ -99,7 +98,7 @@ const {
 } = Astro.props;
 
 const t = translator(Astro, locale);
-const slot = async (name: string) => (Astro.slots.has(name) ? (await cleanSlotHtml(await Astro.slots.render(name), name)).trim() : '');
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
 const titleHtml = await slot('title');
 const descriptionHtml = await slot('description');
 const iconHtml = await slot('icon');

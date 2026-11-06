@@ -32,7 +32,6 @@ import {cx, themeProps} from '../../lib/themeProps';
 import {mergeStyles, type StyleValue} from '../../lib/style';
 import {translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
-import {cleanSlotHtml} from '../Button/buttonCascade';
 import {stepperContext} from './stepperContext';
 import {
   CHECK_CIRCLE_SVG, CURRENT_SVG, OT_ARRIVAL_SHARE_H, OT_ARRIVAL_SHARE_V, OT_RAIL_SHARE_OF_LEAVING,
@@ -87,8 +86,8 @@ const isVertical = orientation === 'vertical';
 const isOnTrack = indicatorPosition === 'on-track';
 const hasButton = isNonLinear;
 
-const customHtml = Astro.slots.has('indicator') ? (await cleanSlotHtml(await Astro.slots.render('indicator'), 'indicator')).trim() : '';
-const endHtml = Astro.slots.has('endContent') ? (await cleanSlotHtml(await Astro.slots.render('endContent'), 'endContent')).trim() : '';
+const customHtml = Astro.slots.has('indicator') ? (await Astro.slots.render('indicator')).trim() : '';
+const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
 const contentHtml = Astro.slots.has('default') ? (await Astro.slots.render('default')).trim() : '';
 const isCustom = customHtml !== '';
 const indicator: StepIndicatorPreset = isCustom ? 'auto' : indicatorProp;

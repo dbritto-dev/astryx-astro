@@ -8,6 +8,16 @@
  */
 import {setup, sleep, activeId} from './_harness.mjs';
 
+// Astryx useTooltip: a visible tooltip is the topmost layer and consumes the first Escape
+// (the dialog stays open); a second Escape reaches the dialog.
+async function escapeThroughTooltip(page) {
+  const tipOpen = await page.evaluate(() => !!document.querySelector('ax-tooltip:popover-open, [role="tooltip"]:popover-open'));
+  await page.keyboard.press('Escape');
+  if (tipOpen) { await new Promise((r) => setTimeout(r, 40)); await page.keyboard.press('Escape'); }
+  return tipOpen;
+}
+
+
 const {page, check, open, done} = await setup({height: 700});
 await open('dialog');
 
@@ -63,7 +73,7 @@ check('Shift+Tab wraps from the first control to the last', (await activeId(page
 console.log('Escape + focus return without scrolling');
 await page.evaluate(() => window.scrollTo(0, 0));
 const offscreen = await page.evaluate(() => document.getElementById('dlg-info-trigger').getBoundingClientRect().top > innerHeight);
-await page.keyboard.press('Escape');
+await escapeThroughTooltip(page);
 await sleep(80);
 check('Escape closes', !(await page.evaluate(() => document.getElementById('dlg-info').open)));
 check('focus returned to the trigger', (await activeId(page)) === 'dlg-info-trigger');
