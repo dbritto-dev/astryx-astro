@@ -1,0 +1,139 @@
+---
+/**
+ * PowerSearchFilterEditor — the default filter editor of PowerSearch: a field Selector, an
+ * operator Selector and the operator's value editor in one row, with Delete / Cancel / Apply.
+ * Port of @astryxdesign/core PowerSearch/PowerSearchFilterEditor.tsx over
+ * PowerSearchEditPopover.tsx and PowerSearchValueEditor.tsx (popover presentation).
+ * Behaviour: `<ax-power-search-editor>` (src/elements/power-search.ts). PowerSearch renders one
+ * inside its editor popover; render it yourself to compose a custom editing surface.
+ *
+ * Every value editor is server-rendered once per distinct operator configuration into a
+ * `<template>` and cloned into the row when its field/operator is chosen (the editor remounts
+ * on a field or operator switch, as Astryx keys it); its first control takes focus. Changing the
+ * operator keeps a value of the same type. An `empty` operator saves as soon as it is chosen;
+ * Selector-based values (enum, relative date) and a Typeahead pick save at once; Enter saves from
+ * a text or number field (a focused button keeps its Enter; IME composition never saves);
+ * Escape cancels. Apply is disabled until the filter has an operator and a value.
+ *
+ * Events (on `<ax-power-search-editor>`, bubbling, composed): `astryx-save` `{filter}` (Astryx
+ * `onSave`; `filter` is `null` for Delete), `astryx-cancel` `{}` (Astryx `onCancel`). Internal
+ * control events stop at the editor. Element API: `load(partialFilter, mode)`,
+ * `partialFilter`, `mode`.
+ *
+ * Deferred: the `nested` sub-filter tree editor (TreeList rows) and `custom` operator editors (a
+ * React component) render no value editor; `date_range` presets are not offered (Astryx's popover
+ * editor offers none either).
+ *
+ * @example
+ * <PowerSearchFilterEditor config={config} filter={{field: 'status'}} mode="create" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Selector from '../Selector/Selector.astro';
+import Button from '../Button/Button.astro';
+import ValueEditor from './_ValueEditor.astro';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+import {
+  createInternalConfig,
+  editorSignature,
+  toClientConfig,
+  withResolvedLabels,
+  type OperatorValue,
+  type PartialFilter,
+  type PowerSearchConfig,
+} from './powerSearchModel';
+import './PowerSearch.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  config: PowerSearchConfig;
+  /** The filter to edit (or the field to create one for). The element loads it on connect. */
+  filter?: PartialFilter | null;
+  /** 'create' for a new filter, 'edit' for an existing one (shows Delete). @default 'create' */
+  mode?: 'create' | 'edit';
+  /** @default translated "Apply" */
+  saveButtonLabel?: string;
+  /** Selectors and values are disabled; no Delete. @default false */
+  isReadOnly?: boolean;
+  /** IANA zone date values are read and written in (see PowerSearch `timezoneID`). */
+  timezoneID?: string;
+  /** Max suggestions in string and entity value typeaheads. @default 10 */
+  maxMenuItems?: number;
+  locale?: string;
+}
+
+const {
+  config: configProp,
+  filter = null,
+  mode = 'create',
+  saveButtonLabel,
+  isReadOnly = false,
+  timezoneID,
+  maxMenuItems,
+  locale,
+  class: className,
+  slot: _slot,
+  ...rest
+} = Astro.props as Props & {slot?: string};
+const t = translator(Astro, locale);
+const resolved = withResolvedLabels(configProp, t);
+const config = createInternalConfig(resolved);
+const fields = config.getVisibleFields();
+// One template per distinct operator configuration; (field, operator) → template index.
+const signatures = new Map<string, {value: OperatorValue; index: number}>();
+const editorFor: Record<string, number> = {};
+for (const field of fields) {
+  for (const op of field.operators) {
+    const type = op.value.type;
+    if (type === 'empty' || type === 'nested' || type === 'custom') continue;
+    const sig = editorSignature(field, op);
+    let entry = signatures.get(sig);
+    if (!entry) {
+      entry = {value: op.value, index: signatures.size};
+      signatures.set(sig, entry);
+    }
+    editorFor[`${field.key}\u0000${op.key}`] = entry.index;
+  }
+}
+const editors = [...signatures.values()];
+const fieldOptions = fields.map((field) => ({value: field.key, label: field.label}));
+---
+<ax-power-search-editor
+  {...rest}
+  class={cx('ax-power-search-editor', className as string | undefined)}
+  data-ax-config={JSON.stringify(toClientConfig(configProp, t))}
+  data-ax-editors={JSON.stringify(editorFor)}
+  data-ax-filter={filter ? JSON.stringify(filter) : undefined}
+  data-ax-mode={mode}
+  data-ax-read-only={isReadOnly ? '' : undefined}
+  data-ax-timezone={timezoneID}
+>
+  <div class="ax-power-search-editor-content">
+    <div class="ax-power-search-chip-row" data-ax-row>
+      <div class="ax-power-search-field-cell" data-ax-field-cell>
+        <Selector label={t('@astryx.powersearch.editor.field')} isLabelHidden options={fieldOptions} value={filter?.field ?? null} isDisabled={isReadOnly} size="md" locale={locale} />
+      </div>
+      <div class="ax-power-search-operator-cell" data-ax-operator-cell hidden></div>
+      <div class="ax-power-search-value-cell" data-ax-value-cell hidden></div>
+    </div>
+  </div>
+  <div class="ax-power-search-editor-footer" data-ax-footer>
+    <div class="ax-power-search-footer-row">
+      <span class="ax-power-search-footer-start" data-ax-delete-slot>
+        <Button label={t('@astryx.powersearch.editor.delete')} variant="ghost" size="sm" data-ax-delete="" locale={locale} />
+      </span>
+      <div class="ax-power-search-footer-actions">
+        <Button label={t('@astryx.powersearch.editor.cancel')} variant="ghost" size="sm" data-ax-cancel="" locale={locale} />
+        <Button label={saveButtonLabel ?? t('@astryx.powersearch.editor.apply')} variant="primary" size="sm" isDisabled data-ax-apply="" locale={locale} />
+      </div>
+    </div>
+  </div>
+  {fields.map((field) => field.operators.length > 0 && (
+    <template data-ax-operators-for={field.key}>
+      <Selector label={t('@astryx.powersearch.editor.operator')} isLabelHidden options={field.operators.map((op) => ({value: op.key, label: op.label ?? op.key}))} isDisabled={isReadOnly} size="md" locale={locale} />
+    </template>
+  ))}
+  {editors.map((entry) => (
+    <template data-ax-editor={entry.index}><ValueEditor operatorValue={entry.value} maxMenuItems={maxMenuItems} isDisabled={isReadOnly} locale={locale} /></template>
+  ))}
+</ax-power-search-editor>
+<script>import '../../elements/power-search';</script>

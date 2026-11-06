@@ -1,0 +1,301 @@
+---
+/**
+ * PowerSearch — a structured filter bar: each token is a filter (field + operator + value).
+ * Pick a field (or a field + operator, or a ready "field operator value" / content-search
+ * suggestion) from the typeahead, then set the operator and value in the editor popover;
+ * press a token to edit it, ✕ / Backspace / Clear all to remove. Port of @astryxdesign/core
+ * PowerSearch/PowerSearch.tsx (+ usePowerSearchSource.ts, useInternalConfig.ts,
+ * formatFilterValue.ts, formatTokenValue.ts, resolveOperatorLabel.ts, powerSearchDateZone.ts,
+ * PowerSearchEditPopover.tsx, PowerSearchValueEditor.tsx, usePowerSearchConfig.ts). Behaviour:
+ * src/elements/power-search.ts (`<ax-power-search>`, `<ax-power-search-editor>`), composed on
+ * Tokenizer (`<ax-tokenizer>`) and the combobox / layer runtimes.
+ *
+ * Markup: `<ax-power-search class="astryx-power-search">` holding a Tokenizer (label hidden by
+ * default, entries on focus, the field list unranked up to 1,000 rows, ranked results capped at
+ * `maxSearchResults`, rows with the field's icon and description, the result count + `endContent`
+ * in its end lane) and the editor layer (`popover="auto"`, below / start, as wide as the field,
+ * at least min(400px, viewport)): a `PowerSearchFilterEditor`. Adding: the popup's semantics
+ * stand alone (no dialog role); editing a token: a non-modal `role="dialog"` named by the token's
+ * text, the token `aria-expanded`. Read-only filters (and every filter of `isReadOnly`) have no
+ * ✕, are skipped by Backspace / Clear all and do not open the editor; an `empty` operator adds or
+ * re-commits without an editor.
+ *
+ * `config` is server-side data: fields `{key, label, operators: [{key, label | i18nKey, value}],
+ * icon?, defaultOperator?, group?, description?, typeaheadAliases?, typeaheadMinQueryLength?,
+ * isValueMatchAllowed?}`, `contentSearchFieldKey?`. Build one with `createPowerSearchConfig(defs)`
+ * (which also returns `applyFilters`). A string / string_list / entity_list operator's
+ * `searchSource` is a `createStaticSource(...)`, or `hasSearchSource: true` and the page answers
+ * `astryx-query` on that editor's field (see Typeahead / Tokenizer).
+ *
+ * Events (on `<ax-power-search>`, bubbling, composed): `astryx-change` `{filters, changeType, index}`
+ * (Astryx `onChange(filters, changeType, index)`, `changeType` `'add' | 'edit' | 'remove'`;
+ * cancelable: `preventDefault()` keeps the filters). Element API: `filters` (get/set),
+ * `resultCount` (number | string | null; a change is announced politely), `focus()` / `blur()`
+ * (Astryx handleRef focusTypeahead / blurTypeahead). Focus: `focusin` / `focusout`.
+ *
+ * Theme hook: `.astryx-power-search` (plus the Tokenizer, Token, Selector and Popover hooks).
+ * Deferred: the `bottom-sheet` / `adaptive` presentation (PowerSearchBottomSheet, sheet drafts,
+ * SheetConfirmation) — `presentation` is accepted and the popover renders everywhere; the `nested`
+ * value editor and `custom` operator editors; the `components` overrides (React components).
+ * Astryx has no submit callback; filters apply on every change (`astryx-change`).
+ *
+ * @example
+ * ---
+ * const {config} = createPowerSearchConfig([{key: 'title', type: 'string', label: 'Title'}]);
+ * ---
+ * <PowerSearch config={config} filters={[]} resultCount={42} />
+ */
+import Tokenizer from '../Tokenizer/Tokenizer.astro';
+import TypeaheadItem from '../Typeahead/TypeaheadItem.astro';
+import PowerSearchFilterEditor from './PowerSearchFilterEditor.astro';
+import FilterToken from './_FilterToken.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {messageTemplate, pluralTemplates} from '../Field/clientMessages';
+import type {FieldStatusPlacement, InputStatus, LabelIcon} from '../Field/fieldProps';
+import type {StyleValue} from '../../lib/style';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {TokenizerOverflowBehavior} from '../Tokenizer/Tokenizer.astro';
+import {
+  OPERATOR_VALUE_TYPE_TO_ICON,
+  commitsWithoutEditor,
+  createInternalConfig,
+  filtersToItems,
+  toClientConfig,
+  tokenText,
+  withResolvedLabels,
+  type FormatContext,
+  type PowerSearchAuxData,
+  type PowerSearchConfig,
+  type PowerSearchFilter,
+} from './powerSearchModel';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import './PowerSearch.css';
+
+export {createPowerSearchConfig} from './powerSearchModel';
+export type * from './powerSearchModel';
+export type PowerSearchSize = 'sm' | 'md' | 'lg';
+export type PowerSearchPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+
+export interface Props {
+  /** Fields and their operators (server-side data; see the header). */
+  config: PowerSearchConfig;
+  /** The active filters (the element owns them afterwards). @default [] */
+  filters?: ReadonlyArray<PowerSearchFilter>;
+  /** @default translated "Search" */
+  label?: string;
+  /** @default true */
+  isLabelHidden?: boolean;
+  /** Shown while there are no filters. @default translated "Search…" */
+  placeholder?: string;
+  /** @default false */
+  hasAutoFocus?: boolean;
+  /** Clear all (removes every editable filter; read-only ones stay). @default true */
+  hasClear?: boolean;
+  /** No adding, editing or removing. @default false */
+  isReadOnly?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Why it is disabled (tooltip; the input stays focusable). */
+  disabledMessage?: string;
+  status?: InputStatus;
+  /** @default 'attached' */
+  statusVariant?: Exclude<FieldStatusPlacement, 'tooltip'>;
+  /** Icon before the filters (or the `startIcon` slot). */
+  startIcon?: LabelIcon;
+  /** Width of the field menu in px. */
+  menuWidth?: number;
+  /** Max display length of a token's value. @default 40 */
+  maxTokenLength?: number;
+  /** Max suggestions in string and entity value typeaheads. @default 10 */
+  maxOperatorMenuItems?: number;
+  /** Max ranked results for a non-empty query (browsing shows up to 1,000 fields). @default 10 */
+  maxSearchResults?: number;
+  /** @default translated "Apply" */
+  popoverSaveButtonLabel?: string;
+  /** IANA zone date-only values (and range parts) are read and written in; unset: UTC days. */
+  timezoneID?: string;
+  /** Forwarded to Tokenizer. @default 'none' */
+  tokenOverflowBehavior?: TokenizerOverflowBehavior;
+  /** Results matching the filters: a number reads "N results", a string shows as is. */
+  resultCount?: number | string;
+  /** @default 'md' */
+  size?: PowerSearchSize;
+  /** Accepted for API parity; the popover renders on every device (the sheet flow is deferred). @default 'adaptive' */
+  presentation?: PowerSearchPresentation;
+  /** Root element id. */
+  id?: string;
+  /** Field container class / style (Astryx xstyle, className, style). */
+  class?: string;
+  style?: StyleValue;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {
+  config: configProp,
+  filters = [],
+  label: labelProp,
+  isLabelHidden = true,
+  placeholder: placeholderProp,
+  hasAutoFocus = false,
+  hasClear = true,
+  isReadOnly = false,
+  isDisabled = false,
+  disabledMessage,
+  status,
+  statusVariant = 'attached',
+  startIcon,
+  menuWidth,
+  maxTokenLength = 40,
+  maxOperatorMenuItems,
+  maxSearchResults = 10,
+  popoverSaveButtonLabel,
+  timezoneID,
+  tokenOverflowBehavior,
+  resultCount,
+  size = 'md',
+  presentation: _presentation = 'adaptive',
+  id: idProp,
+  class: className,
+  style,
+  'data-testid': testId,
+  locale: localeProp,
+} = Astro.props;
+
+const t = translator(Astro, localeProp);
+const locale = resolveLocale(Astro, localeProp);
+const calendar = (Astro.locals as {astryxCalendar?: FormatContext['calendar']}).astryxCalendar;
+const label = labelProp ?? t('@astryx.powersearch.label');
+const placeholder = placeholderProp ?? t('@astryx.powersearch.placeholder');
+const config = createInternalConfig(withResolvedLabels(configProp, t));
+const rootId = idProp ?? uid(Astro, 'ax-power-search');
+const layerId = `${rootId}-editor`;
+const plural = (key: string) => (count: number) => t(key, {count});
+const ctx: FormatContext = {
+  locale,
+  calendar,
+  timezoneID,
+  messages: {
+    itemsCount: plural('@astryx.powersearch.valueEditor.itemsCount'),
+    entitiesCount: plural('@astryx.powersearch.valueEditor.entitiesCount'),
+    filtersCount: plural('@astryx.powersearch.valueEditor.filtersCount'),
+    dateRange: t('@astryx.powersearch.valueEditor.dateRange'),
+  },
+};
+const items = filtersToItems(config, filters, maxTokenLength, ctx);
+const clearAllMessage = filters.some((f) => f.isReadOnly)
+  ? t('@astryx.powersearch.editableFiltersRemoved')
+  : t('@astryx.powersearch.allFiltersRemoved');
+const resultCountText = resultCount == null ? null : typeof resultCount === 'number' ? t('@astryx.powersearch.resultCount', {count: resultCount}) : resultCount;
+const isItemRemovable = (item: SearchableItem) => {
+  if (isReadOnly) return false;
+  const index = (item.auxiliaryData as PowerSearchAuxData | undefined)?.filterIndex;
+  return index == null || !filters[index]?.isReadOnly;
+};
+/** The built-in filter token's props for a tokenizer item (the JSX lives in the template). */
+const tokenProps = (item: SearchableItem) => {
+  const index = (item.auxiliaryData as PowerSearchAuxData).filterIndex ?? -1;
+  const filter = filters[index];
+  const operator = filter ? config.getOperator(filter.field, filter.operator) : undefined;
+  const text = filter ? tokenText(config, filter, maxTokenLength, ctx) : {label: item.label, value: null, full: item.label};
+  const canInteract = !isReadOnly && !isDisabled && !filter?.isReadOnly;
+  const entity = filter?.value.type === 'entity_list' && filter.value.value.length === 1 ? filter.value.value[0] : undefined;
+  return {
+    label: text.label, value: text.value, full: text.full, size, isInteractive: canInteract,
+    opensEditor: !commitsWithoutEditor(operator), isDisabled, photo: entity?.photo, photoName: entity?.label, locale: localeProp,
+  };
+};
+const startIconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
+const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
+const {themeClass, attrs: themeAttrs} = themeProps('power-search');
+const fieldIcon = (key: string) => {
+  const field = config.getField(key);
+  if (field?.icon) return field.icon;
+  const op = config.getDefaultOperator(key);
+  return OPERATOR_VALUE_TYPE_TO_ICON[op?.value.type ?? ''] ?? 'search';
+};
+---
+<ax-power-search
+  id={rootId}
+  class={cx(themeClass)}
+  {...themeAttrs}
+  data-ax-layer={layerId}
+  data-ax-config={JSON.stringify(toClientConfig(configProp, t))}
+  data-ax-filters={JSON.stringify(filters)}
+  data-ax-locale={locale}
+  data-ax-calendar={calendar}
+  data-ax-timezone={timezoneID}
+  data-ax-max-token-length={maxTokenLength}
+  data-ax-max-search-results={maxSearchResults}
+  data-ax-read-only={isReadOnly ? '' : undefined}
+  data-ax-disabled={isDisabled ? '' : undefined}
+  data-ax-size={size}
+  data-ax-result-count={resultCount == null ? undefined : String(resultCount)}
+  data-ax-msg-items={pluralTemplates(t, locale, '@astryx.powersearch.valueEditor.itemsCount', 'count')}
+  data-ax-msg-entities={pluralTemplates(t, locale, '@astryx.powersearch.valueEditor.entitiesCount', 'count')}
+  data-ax-msg-filters={pluralTemplates(t, locale, '@astryx.powersearch.valueEditor.filtersCount', 'count')}
+  data-ax-msg-date-range={t('@astryx.powersearch.valueEditor.dateRange')}
+  data-ax-msg-result-count={pluralTemplates(t, locale, '@astryx.powersearch.resultCount', 'count')}
+  data-ax-msg-remove={messageTemplate(t, locale, '@astryx.token.remove', {}, ['label'])}
+  data-ax-msg-all-removed={t('@astryx.powersearch.allFiltersRemoved')}
+  data-ax-msg-editable-removed={t('@astryx.powersearch.editableFiltersRemoved')}
+>
+  <Tokenizer
+    label={label}
+    isLabelHidden={isLabelHidden}
+    value={items}
+    renderToken={(item) => <FilterToken {...tokenProps(item)} />}
+    __isItemRemovable={isItemRemovable}
+    __clearAllMessage={clearAllMessage}
+    __hostAttrs={{'data-ax-power-search-field': ''}}
+    maxMenuItems={1000}
+    menuWidth={menuWidth}
+    placeholder={placeholder}
+    hasAutoFocus={hasAutoFocus}
+    hasClear={hasClear && !isReadOnly}
+    startIcon={startIcon}
+    isDisabled={isDisabled}
+    disabledMessage={disabledMessage}
+    size={size}
+    tokenOverflowBehavior={tokenOverflowBehavior}
+    hasEntriesOnFocus
+    debounceMs={0}
+    status={status}
+    statusVariant={statusVariant}
+    containerClass={className}
+    containerStyle={style}
+    data-testid={testId}
+    presentation="popover"
+    locale={localeProp}
+  >
+    {startIconHtml && <Fragment slot="startIcon" set:html={startIconHtml} />}
+    <Fragment slot="endContent">
+      <span class="ax-power-search-result-count" data-ax-result-count-text hidden={resultCountText == null || undefined}>{resultCountText}</span>
+      {endHtml && <Fragment set:html={endHtml} />}
+    </Fragment>
+  </Tokenizer>
+  <ax-layer
+    id={layerId}
+    popover="auto"
+    class="ax-layer ax-layer-motion ax-power-search-layer"
+    data-astryx-layer-root=""
+    data-placement="below"
+    data-align="start"
+    data-ax-anchor={rootId}
+    style="--_astryx-layer-clearance:var(--spacing-1)"
+  >
+    <div class="astryx-popover ax-power-search-surface" data-ax-surface>
+      <PowerSearchFilterEditor config={configProp} mode="create" saveButtonLabel={popoverSaveButtonLabel} isReadOnly={isReadOnly}
+        timezoneID={timezoneID} maxMenuItems={maxOperatorMenuItems} locale={localeProp} />
+    </div>
+  </ax-layer>
+  {config.getVisibleFields().map((field) => (
+    <template data-ax-row-for={field.key}><TypeaheadItem item={{id: field.key, label: field.label}} icon={fieldIcon(field.key)} description={field.description} class="ax-typeahead-default-item" /></template>
+  ))}
+  <template data-ax-filter-token="interactive"><FilterToken label="" value="" full="" size={size} isInteractive opensEditor isDisabled={false} locale={localeProp} /></template>
+  <template data-ax-filter-token="static"><FilterToken label="" value="" full="" size={size} isInteractive={false} opensEditor={false} isDisabled={isDisabled} locale={localeProp} /></template>
+</ax-power-search>
+<script>import '../../elements/power-search';</script>

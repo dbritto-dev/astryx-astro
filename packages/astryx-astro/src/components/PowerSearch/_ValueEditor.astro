@@ -1,0 +1,89 @@
+---
+/**
+ * One value editor of the PowerSearch filter editor (PowerSearchValueEditor.tsx, popover
+ * presentation), rendered without a value: PowerSearch server-renders one per distinct operator
+ * configuration into a `<template>`, and `<ax-power-search>` clones it into the editor and sets
+ * the element's `value`. The wrapper carries `data-ax-value-type` so the element knows how to
+ * read and write it.
+ *
+ * string → TextInput (or Typeahead with a search source) · string_list → Tokenizer (creatable
+ * without a source or with isArbitraryStringAllowed) · integer / float → NumberInput · time →
+ * TimeInput · date_absolute → DateInput (+ TimeInput when `isDateOnly: false`) · date_relative /
+ * enum → Selector · date_range → DateRangeInput · enum_list → Tokenizer over the closed
+ * vocabulary (every value listed) · entity_list → Tokenizer. `custom` (a React editor component)
+ * and `nested` (the TreeList sub-filter editor) are deferred and render nothing.
+ */
+import TextInput from '../TextInput/TextInput.astro';
+import NumberInput from '../NumberInput/NumberInput.astro';
+import DateInput from '../DateInput/DateInput.astro';
+import TimeInput from '../TimeInput/TimeInput.astro';
+import DateRangeInput from '../DateRangeInput/DateRangeInput.astro';
+import Selector from '../Selector/Selector.astro';
+import Typeahead from '../Typeahead/Typeahead.astro';
+import Tokenizer from '../Tokenizer/Tokenizer.astro';
+import {createStaticSource} from '../Typeahead/createStaticSource';
+import {translator} from '../../lib/i18n';
+import {buildRelativeDateOptions, type OperatorValue} from './powerSearchModel';
+
+export interface Props {
+  operatorValue: OperatorValue;
+  maxMenuItems?: number;
+  isDisabled?: boolean;
+  locale?: string;
+}
+
+const {operatorValue: v, maxMenuItems, isDisabled = false, locale} = Astro.props;
+const t = translator(Astro, locale);
+const source = 'searchSource' in v ? v.searchSource : undefined;
+const hasSource = source != null || ('hasSearchSource' in v && !!v.hasSearchSource);
+---
+<div class="ax-power-search-value" data-ax-value-type={v.type} data-ax-date-only={v.type === 'date_absolute' && v.isDateOnly === false ? 'false' : undefined}>
+  {v.type === 'string' && (hasSource ? (
+    <Typeahead label={t('@astryx.powersearch.valueEditor.value')} isLabelHidden isDisabled={isDisabled} searchSource={source}
+      placeholder={t('@astryx.powersearch.valueEditor.searchPlaceholder')} debounceMs={150} maxMenuItems={maxMenuItems} />
+  ) : (
+    <TextInput label={t('@astryx.powersearch.valueEditor.value')} isLabelHidden isDisabled={isDisabled}
+      placeholder={t('@astryx.powersearch.valueEditor.enterValuePlaceholder')} />
+  ))}
+  {v.type === 'string_list' && (
+    <Tokenizer label={t('@astryx.powersearch.valueEditor.values')} isLabelHidden isDisabled={isDisabled} searchSource={source}
+      placeholder={t('@astryx.powersearch.valueEditor.addValuesPlaceholder')} debounceMs={hasSource ? 150 : 0}
+      hasCreate={!!v.isArbitraryStringAllowed || !hasSource} maxMenuItems={maxMenuItems} presentation="popover" />
+  )}
+  {(v.type === 'integer' || v.type === 'float') && (
+    <NumberInput label={t('@astryx.powersearch.valueEditor.value')} isLabelHidden isDisabled={isDisabled}
+      min={v.minValue} max={v.maxValue} units={v.units} isIntegerOnly={v.type === 'integer'}
+      placeholder={t('@astryx.powersearch.valueEditor.enterNumberPlaceholder')} />
+  )}
+  {v.type === 'time' && (
+    <TimeInput label={t('@astryx.powersearch.valueEditor.time')} isLabelHidden isDisabled={isDisabled} min={v.minValue} max={v.maxValue} />
+  )}
+  {v.type === 'date_absolute' && (v.isDateOnly === false ? (
+    <div class="ax-power-search-date-time">
+      <DateInput label={t('@astryx.powersearch.valueEditor.date')} isLabelHidden isDisabled={isDisabled} />
+      <TimeInput label={t('@astryx.powersearch.valueEditor.time')} isLabelHidden isDisabled={isDisabled} />
+    </div>
+  ) : (
+    <DateInput label={t('@astryx.powersearch.valueEditor.date')} isLabelHidden isDisabled={isDisabled} />
+  ))}
+  {v.type === 'date_relative' && (
+    <Selector label={t('@astryx.powersearch.valueEditor.relativeDate')} isLabelHidden isDisabled={isDisabled} options={buildRelativeDateOptions(v)} />
+  )}
+  {v.type === 'date_range' && (
+    <DateRangeInput label={t('@astryx.powersearch.valueEditor.dateRange')} isLabelHidden isDisabled={isDisabled} hasClear={false} />
+  )}
+  {v.type === 'enum' && (
+    <Selector label={t('@astryx.powersearch.valueEditor.value')} isLabelHidden isDisabled={isDisabled} options={v.values.map((item) => ({value: item.value, label: item.label}))} />
+  )}
+  {v.type === 'enum_list' && (
+    <Tokenizer label={t('@astryx.powersearch.valueEditor.values')} isLabelHidden isDisabled={isDisabled}
+      searchSource={createStaticSource(v.values.map((item) => ({id: item.value, label: item.label})))}
+      placeholder={t('@astryx.powersearch.valueEditor.selectValuesPlaceholder')} hasEntriesOnFocus debounceMs={0}
+      maxMenuItems={v.values.length} presentation="popover" />
+  )}
+  {v.type === 'entity_list' && (
+    <Tokenizer label={t('@astryx.powersearch.valueEditor.entities')} isLabelHidden isDisabled={isDisabled} searchSource={source}
+      renderItem={v.renderItem} placeholder={t('@astryx.powersearch.valueEditor.searchPlaceholder')}
+      debounceMs={hasSource ? 150 : 0} maxMenuItems={maxMenuItems} presentation="popover" />
+  )}
+</div>

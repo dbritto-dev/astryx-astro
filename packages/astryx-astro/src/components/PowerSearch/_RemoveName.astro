@@ -1,0 +1,16 @@
+---
+/**
+ * Renames a slotted Token's remove button (Astryx TokenNamingContext `removeName`): the Token
+ * port names it from `label`; PowerSearch names it by the token's whole visible text. The
+ * attribute values are escaped as Astro escapes them.
+ */
+export interface Props {
+  from: string;
+  to: string;
+}
+const {from, to} = Astro.props;
+const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+const html = await Astro.slots.render('default');
+const out = from === to ? html : html.split(`aria-label="${escape(from)}"`).join(`aria-label="${escape(to)}"`);
+---
+<Fragment set:html={out} />

@@ -1,0 +1,27 @@
+---
+/**
+ * CommandPaletteGroup — a headed group of commands (`role="group"` named by `heading`; the
+ * visible heading is aria-hidden). Port of @astryxdesign/core CommandPalette/CommandPaletteGroup.tsx.
+ * CommandPalette groups results by `auxiliaryData.group` itself; use this when composing a
+ * standalone CommandPaletteList.
+ *
+ * Theme hooks: `.astryx-command-palette-group`, `.astryx-command-palette-group-heading`.
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './CommandPalette.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Group heading text (also the group's accessible name). */
+  heading: string;
+}
+
+const {heading, class: className, style, slot: _slot, ...rest} = Astro.props as Props & {slot?: string};
+const {themeClass, attrs} = themeProps('command-palette-group');
+const heading_ = themeProps('command-palette-group-heading');
+---
+<div role="group" aria-label={heading} class={cx(themeClass, className as string | undefined)} {...attrs} style={mergeStyles(style as StyleValue)} {...rest}>
+  <div aria-hidden="true" class={heading_.themeClass} {...heading_.attrs}>{heading}</div>
+  <slot />
+</div>

@@ -1,0 +1,411 @@
+---
+/**
+ * Tokenizer — a multi-select typeahead: selected items show as removable Token chips before a
+ * search input, in one Field-composed control. Port of @astryxdesign/core Tokenizer/Tokenizer.tsx,
+ * Tokenizer/useEndLaneReserve.ts, Tokenizer/TokenizerItemRemovableContext.ts,
+ * Tokenizer/TokenizerClearAllMessageContext.ts and the parts of Typeahead/BaseTypeahead.tsx the
+ * Tokenizer drives (busyIndicatorLane, committedChoicesKey, trailingKeyDown, `__queryEntries`).
+ * Behaviour: src/elements/tokenizer.ts (`<ax-tokenizer>`) on runtime/combobox.ts.
+ *
+ * Markup: a Field holding the bordered control box `<ax-tokenizer class="astryx-tokenizer"
+ * role="group" aria-label>` (start icon, tokens, the "+N more" overflow text, the
+ * `<input role="combobox" aria-autocomplete="list">`, hidden form inputs, and the end lane:
+ * busy Spinner, `endContent`, "Clear all"); its sibling `<ax-combobox-layer popover="manual">`
+ * holds the suggestion `role="listbox"` (`.astryx-typeahead-dropdown`, BaseTypeahead's popup).
+ * Focus never leaves the input while suggesting (`aria-activedescendant`); focus entering the
+ * box from outside lands on the input (tokens' remove buttons are reached with Shift+Tab).
+ *
+ * Search sources (as Typeahead): `searchSource={createStaticSource(items)}` (server-rendered,
+ * filtered in the browser), `el.searchSource = {search(query, context), bootstrap(), cancel?}`,
+ * or answer the `astryx-query` event (`preventDefault()`, then `respond(items)` /
+ * `update(items)` / `reject()`; `signal` aborts superseded queries). Selected items never show
+ * in a list (partial or final); `hasCreate` adds a `Create "…"` row for typed text that matches
+ * no result or token (offered below `minQueryLength` too: it is derived, not fetched).
+ *
+ * Keyboard (BaseTypeahead + Tokenizer): typing searches (debounced); ↓ opens; open: ↓/↑ wrap,
+ * Home/End first/last, Enter adds the active row (never submits), Escape closes, Tab closes.
+ * Backspace in an empty input removes the last token. IME composition is never a command.
+ * Removing (Backspace, a token's ✕, Clear all) moves focus to the input; additions and removals
+ * are announced politely ("Added X", "Removed X", "All items removed").
+ *
+ * `tokenOverflowBehavior`: `unfocusedInline` folds the tokens to one row with "+N more" while
+ * focus is outside (computeOverflow) and expands in place on focus; `unfocusedLayer` shows the
+ * folded row in the field and the full field in a top-layer layer over it while focused (as in
+ * Astryx, that layer opens on a press: a keyboard user cannot Tab into it).
+ *
+ * Events (on `<ax-tokenizer>`, bubbling, composed): `astryx-change` `{values, change}` —
+ * `change` is `{item, type: 'add' | 'create' | 'remove'}` (Astryx `onChange(items, change)`);
+ * cancelable: `preventDefault()` keeps the current tokens (a controlling owner sets
+ * `el.value` itself). `astryx-change-query` `{query}`, `astryx-query` (above),
+ * `astryx-open-change` from the layer. Focus: listen for `focusin`/`focusout` on the host.
+ * Element API: `value` (items, get/set), `query`, `searchSource`, `renderItem(item) → Node|string`
+ * and `renderToken(item) → Node|string` (client rows/tokens; server ones use the props),
+ * `isItemRemovable(item)`, `focus()`, `blur()`, `open()`, `close()`, `clear()` (Clear all).
+ * Forms: `htmlName` renders one hidden input per selected id (none while disabled); a form
+ * reset restores the server value.
+ *
+ * Theme hooks: `.astryx-tokenizer[data-size][data-status][data-disabled]` (also on the
+ * unfocusedLayer field), `.astryx-typeahead-dropdown`, `.astryx-typeahead-empty-state`,
+ * `.astryx-token`, private `--_tokenizer-end-lane-reserve`.
+ *
+ * Deferred (touch extras): the `bottom-sheet` / `adaptive` presentation (TokenizerBottomSheet,
+ * SheetConfirmation, sheet drafts, dismiss-on-drag) — `presentation` is accepted and the
+ * popover renders on every device. `renderToken`'s onRemove is the token's own `astryx-remove`
+ * (a Token with `isRemovable`); `onFocus`/`onBlur`/`onKeyDown`/`handleRef` callbacks are the
+ * DOM events and the element API.
+ *
+ * @example
+ * <Tokenizer label="Tags" searchSource={createStaticSource(tags)} hasCreate placeholder="Add tags…" />
+ */
+import Field from '../Field/Field.astro';
+import Icon from '../Icon/Icon.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import Token from '../Token/Token.astro';
+import Tooltip from '../Tooltip/Tooltip.astro';
+import InputClearButton from '../Field/InputClearButton.astro';
+import TypeaheadPopup from '../Typeahead/_TypeaheadPopup.astro';
+import {attachTooltip} from '../Tooltip/attach';
+import {cx, themeProps} from '../../lib/themeProps';
+import {inherits} from '../../lib/cascade';
+import {mergeStyles} from '../../lib/style';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+import {messageTemplate, pluralTemplates} from '../Field/clientMessages';
+import {
+  GROUP_DROP_DISABLED,
+  routeFieldProps,
+  type FieldComposedProps,
+  type InputSize,
+  type InputStatus,
+  type LabelIcon,
+} from '../Field/fieldProps';
+import type {SearchableItem} from '../../lib/searchableItem';
+import type {StaticSearchSource} from '../Typeahead/createStaticSource';
+import '../Field/Field.css';
+import '../Layer/Layer.css';
+import '../Popover/Popover.css';
+import '../Typeahead/Typeahead.css';
+import './Tokenizer.css';
+
+export {createStaticSource} from '../Typeahead/createStaticSource';
+export type {SearchableItem} from '../../lib/searchableItem';
+export type TokenizerSize = InputSize;
+export type TokenizerStatus = InputStatus;
+export type TokenizerOverflowBehavior = 'none' | 'unfocusedInline' | 'unfocusedLayer';
+export type TokenizerPresentation = 'popover' | 'bottom-sheet' | 'adaptive';
+/** Change metadata of `astryx-change` (Astryx TokenizerChange). */
+export type TokenizerChange<T extends SearchableItem = SearchableItem> =
+  | {item: T; type: 'add'}
+  | {item: T; type: 'create'}
+  | {item: T; type: 'remove'}
+  | {type: 'reorder'};
+
+export interface Props extends FieldComposedProps {
+  /** A static source (`createStaticSource(items)`), server-rendered; or set `el.searchSource` / answer `astryx-query`. */
+  searchSource?: StaticSearchSource;
+  /** The selected items (the element owns them afterwards). @default [] */
+  value?: SearchableItem[];
+  /** Server-side result content (Astryx `renderItem`), e.g. `(item) => <TypeaheadItem item={item} />`. */
+  renderItem?: (item: SearchableItem) => unknown;
+  /** Server-side token (Astryx `renderToken`); a removable custom token is a `<Token isRemovable>` (its `astryx-remove` removes the item). */
+  renderToken?: (item: SearchableItem) => unknown;
+  /** Shown while no token is selected. @default translated "Search…" */
+  placeholder?: string;
+  /** Max selections; at the limit the input collapses and nothing more is offered. */
+  maxEntries?: number;
+  /** Clear-all button while removable tokens exist. @default false */
+  hasClear?: boolean;
+  /** Why it is disabled (tooltip on hover/focus; the input stays focusable). */
+  disabledMessage?: string;
+  /** Show the source's bootstrap results on focus. @default false */
+  hasEntriesOnFocus?: boolean;
+  /** Max results shown (the Create row comes on top). @default 10 */
+  maxMenuItems?: number;
+  /** Popup width in px (never below the field's width). */
+  menuWidth?: number;
+  /** Shorter queries are not searched (grapheme count). @default 1 */
+  minQueryLength?: number;
+  /** Shown/announced when a query matched nothing, or the `emptySearchText` slot. @default "No results found" */
+  emptySearchText?: string;
+  /** @default false */
+  hasAutoFocus?: boolean;
+  /** Explicit size; else a size provider's; else 'md'. */
+  size?: TokenizerSize;
+  /** Debounce before searching (0 for synchronous sources). @default 150 */
+  debounceMs?: number;
+  /** Offer a `Create "…"` row for unmatched typed text. @default false */
+  hasCreate?: boolean;
+  /** Icon at the start, before the tokens (or the `startIcon` slot). */
+  startIcon?: LabelIcon;
+  /** Form field name: one hidden input per selected item id. */
+  htmlName?: string;
+  /** @default 'none' */
+  tokenOverflowBehavior?: TokenizerOverflowBehavior;
+  /** Accepted for API parity; the popover renders on every device (the sheet is deferred). @default 'adaptive' */
+  presentation?: TokenizerPresentation;
+  'data-testid'?: string;
+}
+
+/** @internal Composition hooks (Astryx contexts) used by PowerSearch. */
+interface InternalProps {
+  /** TokenizerItemRemovableContext: a locked token has no ✕ and no remove path removes it. */
+  __isItemRemovable?: (item: SearchableItem) => boolean;
+  /** TokenizerClearAllMessageContext: the words Clear all announces. */
+  __clearAllMessage?: string;
+  /** Extra attributes for the host (PowerSearch wiring). */
+  __hostAttrs?: Record<string, string | undefined>;
+}
+
+const {
+  searchSource,
+  value: valueProp = [],
+  renderItem,
+  renderToken,
+  placeholder: placeholderProp,
+  maxEntries,
+  hasClear = false,
+  disabledMessage,
+  hasEntriesOnFocus = false,
+  maxMenuItems = 10,
+  menuWidth,
+  minQueryLength = 1,
+  emptySearchText: emptySearchTextProp,
+  hasAutoFocus = false,
+  size: sizeProp,
+  debounceMs = 150,
+  hasCreate = false,
+  startIcon,
+  htmlName,
+  tokenOverflowBehavior = 'none',
+  presentation: _presentation = 'adaptive',
+  __isItemRemovable,
+  __clearAllMessage,
+  __hostAttrs,
+  slot: _slot,
+  ...props
+} = Astro.props as Props & InternalProps & {slot?: string};
+
+const r = routeFieldProps('Tokenizer', props as Props & Record<string, unknown>);
+const {isDisabled, status} = r;
+const locale = resolveLocale(Astro, r.locale);
+const t = translator(Astro, r.locale);
+const size: TokenizerSize = sizeProp ?? 'md';
+const value = valueProp ?? [];
+const placeholder = placeholderProp ?? t('@astryx.typeahead.searchPlaceholder');
+const emptySearchHtml = Astro.slots.has('emptySearchText') ? (await Astro.slots.render('emptySearchText')).trim() : '';
+const startIconHtml = Astro.slots.has('startIcon') ? (await Astro.slots.render('startIcon')).trim() : '';
+const endHtml = Astro.slots.has('endContent') ? (await Astro.slots.render('endContent')).trim() : '';
+const base = uid(Astro, 'ax-tokenizer');
+const ids = {
+  box: `${base}-box`,
+  layer: `${base}-layer`,
+  listbox: `${base}-listbox`,
+  overlay: `${base}-overlay`,
+  wrapper: `${base}-wrapper`,
+};
+
+const isLayerMode = tokenOverflowBehavior === 'unfocusedLayer';
+const isTruncating = tokenOverflowBehavior !== 'none';
+const removable = (item: SearchableItem) => __isItemRemovable?.(item) ?? true;
+const isAtMax = maxEntries != null && value.length >= maxEntries;
+const hasTokens = value.length > 0;
+const showsDisabledMessage = isDisabled && !!disabledMessage;
+// A disabled field keeps its tab stop (AST-085 FR1), except in unfocusedLayer mode without a
+// reason to show: its input lives in a layer a disabled field never opens.
+const isFocusableDisabled = showsDisabledMessage || (isDisabled && !isLayerMode);
+const disabledTip = showsDisabledMessage ? attachTooltip() : null;
+const describedBy = r.describedBy(r.field.descriptionID, r.statusMessageId, disabledTip?.id);
+const hasClearButton = hasClear && !isDisabled;
+const showsClear = hasClearButton && value.some(removable);
+// Wherever a search can run beside tokens, the spinner keeps its box while idle.
+const hasBusySlot = hasTokens && !isDisabled && !isAtMax;
+const laneShown = !!endHtml || showsClear || hasBusySlot;
+// Server-rendered folded state: blurred, with tokens.
+const isTruncated = isTruncating && hasTokens;
+
+const {themeClass, attrs: themeAttrs} = themeProps('tokenizer', {
+  size,
+  status: status?.type ?? null,
+  disabled: isDisabled ? 'disabled' : null,
+});
+const json = (items: SearchableItem[]) => JSON.stringify(items.map((i) => ({id: i.id, label: i.label, auxiliaryData: i.auxiliaryData})));
+const staticItems = searchSource?.items ?? [];
+const tokenTemplates = renderToken ? staticItems.filter((item) => !value.some((v) => v.id === item.id)) : [];
+const iconNode = startIconHtml || startIcon;
+const boxClass = cx(themeClass, 'ax-input', 'ax-tokenizer-box', r.control.class);
+const boxStyle = mergeStyles(r.control.style);
+---
+<Field {...r.field} labelID={r.field.labelID}>
+  {isLayerMode ? (
+    <ax-tokenizer
+      id={ids.box}
+      class={boxClass}
+      style={boxStyle}
+      {...themeAttrs}
+      {...__hostAttrs}
+      data-ax-inherit={inherits({size: sizeProp === undefined})}
+      data-ax-layer={ids.layer}
+      data-ax-listbox={ids.listbox}
+      data-ax-overlay={ids.overlay}
+      data-ax-wrapper={ids.wrapper}
+      data-ax-value={json(value)}
+      data-ax-debounce={debounceMs}
+      data-ax-min-query={minQueryLength}
+      data-ax-max-items={maxMenuItems}
+      data-ax-max-entries={maxEntries}
+      data-ax-entries-on-focus={hasEntriesOnFocus ? '' : undefined}
+      data-ax-has-create={hasCreate ? '' : undefined}
+      data-ax-has-clear={hasClearButton ? '' : undefined}
+      data-ax-overflow-behavior={tokenOverflowBehavior}
+      data-ax-html-name={htmlName}
+      data-ax-locale={locale}
+      data-ax-result-count={pluralTemplates(t, locale, '@astryx.typeahead.resultCount', 'count')}
+      data-ax-loading-label={t('@astryx.typeahead.loading')}
+      data-ax-placeholder-text={placeholder}
+      data-ax-msg-added={messageTemplate(t, locale, '@astryx.tokenizer.tokenAdded', {}, ['label'])}
+      data-ax-msg-removed={messageTemplate(t, locale, '@astryx.tokenizer.tokenRemoved', {}, ['label'])}
+      data-ax-msg-all-removed={__clearAllMessage ?? t('@astryx.tokenizer.allRemoved')}
+      data-ax-msg-create={messageTemplate(t, locale, '@astryx.tokenizer.create', {}, ['value'])}
+      data-ax-msg-remove={messageTemplate(t, locale, '@astryx.token.remove', {}, ['label'])}
+      data-ax-has-tokens={hasTokens ? '' : undefined}
+      data-ax-truncated={isTruncated ? '' : undefined}
+      data-ax-tooltip={disabledTip?.id}
+      data-ax-placeholder-box=""
+    >
+      {iconNode && (
+        <span class="ax-tokenizer-start-icon" data-ax-start-icon="">
+          {startIconHtml ? <Fragment set:html={startIconHtml} /> : <Icon icon={startIcon} size="sm" color="secondary" />}
+        </span>
+      )}
+      {value.map((item) => renderToken ? (
+        <span class="ax-tokenizer-token" data-ax-token-item={item.id} data-ax-token-label={item.label} data-ax-locked={removable(item) ? undefined : ''}>{renderToken(item)}</span>
+      ) : (
+        <Token label={item.label} size={size} isRemovable={!isDisabled && removable(item)} isDisabled={isDisabled} class="ax-tokenizer-token" data-ax-token-item={item.id} data-ax-token-label={item.label} data-ax-locked={removable(item) ? undefined : ''} locale={r.locale} />
+      ))}
+      <span class="ax-tokenizer-overflow" data-ax-overflow="" hidden>+<span data-ax-overflow-count></span> more</span>
+    </ax-tokenizer>
+  ) : null}
+  {(() => {
+    // The bordered box holding the input: the host itself, or (unfocusedLayer) a box inside
+    // the top-layer overlay.
+    const Host = isLayerMode ? 'div' : 'ax-tokenizer';
+    const hostAttrs = isLayerMode
+      ? {id: ids.wrapper, 'data-ax-wrapper-box': ''}
+      : {
+          id: ids.box,
+          ...__hostAttrs,
+          'data-ax-inherit': inherits({size: sizeProp === undefined}),
+          'data-ax-layer': ids.layer,
+          'data-ax-listbox': ids.listbox,
+          'data-ax-value': json(value),
+          'data-ax-debounce': String(debounceMs),
+          'data-ax-min-query': String(minQueryLength),
+          'data-ax-max-items': String(maxMenuItems),
+          'data-ax-max-entries': maxEntries != null ? String(maxEntries) : undefined,
+          'data-ax-entries-on-focus': hasEntriesOnFocus ? '' : undefined,
+          'data-ax-has-create': hasCreate ? '' : undefined,
+          'data-ax-has-clear': hasClearButton ? '' : undefined,
+          'data-ax-overflow-behavior': tokenOverflowBehavior,
+          'data-ax-html-name': htmlName,
+          'data-ax-locale': locale,
+          'data-ax-result-count': pluralTemplates(t, locale, '@astryx.typeahead.resultCount', 'count'),
+          'data-ax-loading-label': t('@astryx.typeahead.loading'),
+          'data-ax-placeholder-text': placeholder,
+          'data-ax-msg-added': messageTemplate(t, locale, '@astryx.tokenizer.tokenAdded', {}, ['label']),
+          'data-ax-msg-removed': messageTemplate(t, locale, '@astryx.tokenizer.tokenRemoved', {}, ['label']),
+          'data-ax-msg-all-removed': __clearAllMessage ?? t('@astryx.tokenizer.allRemoved'),
+          'data-ax-msg-create': messageTemplate(t, locale, '@astryx.tokenizer.create', {}, ['value']),
+          'data-ax-msg-remove': messageTemplate(t, locale, '@astryx.token.remove', {}, ['label']),
+          'data-ax-truncated': isTruncated ? '' : undefined,
+          'data-ax-tooltip': disabledTip?.id,
+        };
+    const box = (
+      <Host
+        {...hostAttrs}
+        class={boxClass}
+        style={boxStyle}
+        {...themeAttrs}
+        role="group"
+        aria-label={r.label}
+        data-ax-has-tokens={hasTokens && !isLayerMode ? '' : undefined}
+      >
+        {iconNode && (
+          <span class="ax-tokenizer-start-icon" data-ax-start-icon="">
+            {startIconHtml ? <Fragment set:html={startIconHtml} /> : <Icon icon={startIcon} size="sm" color="secondary" />}
+          </span>
+        )}
+        {!isLayerMode && value.map((item) => renderToken ? (
+          <span class="ax-tokenizer-token" data-ax-token-item={item.id} data-ax-token-label={item.label} data-ax-locked={removable(item) ? undefined : ''}>{renderToken(item)}</span>
+        ) : (
+          <Token label={item.label} size={size} isRemovable={!isDisabled && removable(item)} isDisabled={isDisabled} class="ax-tokenizer-token" data-ax-token-item={item.id} data-ax-token-label={item.label} data-ax-locked={removable(item) ? undefined : ''} locale={r.locale} />
+        ))}
+        {!isLayerMode && <span class="ax-tokenizer-overflow" data-ax-overflow="" hidden>+<span data-ax-overflow-count></span> more</span>}
+        <input
+          {...r.native}
+          {...r.required}
+          id={r.id}
+          type="text"
+          role="combobox"
+          class="ax-typeahead-input ax-tokenizer-input"
+          aria-expanded="false"
+          aria-controls={ids.listbox}
+          aria-autocomplete="list"
+          aria-describedby={describedBy}
+          aria-labelledby={r.labelledBy}
+          aria-invalid={status?.type === 'error' ? 'true' : undefined}
+          aria-disabled={isDisabled && isFocusableDisabled ? 'true' : undefined}
+          disabled={(isDisabled && !isFocusableDisabled) || undefined}
+          readonly={(isDisabled && isFocusableDisabled) || undefined}
+          placeholder={hasTokens ? ' ' : placeholder}
+          autocomplete="off"
+          enterkeyhint="search"
+          autocorrect="off"
+          autofocus={hasAutoFocus || undefined}
+          data-autofocus={hasAutoFocus ? '' : undefined}
+          data-ax-at-max={isAtMax ? '' : undefined}
+          data-ax-tokenizer-input=""
+        />
+        {htmlName != null && !isDisabled && value.map((item) => (
+          <input type="hidden" name={htmlName} value={item.id} data-ax-tokenizer-value="" {...{[GROUP_DROP_DISABLED]: ''}} />
+        ))}
+        <div class="ax-tokenizer-end-lane" data-ax-end-lane="" data-size={size} hidden={!laneShown || undefined}>
+          <Spinner size="sm" role="img" aria-label={t('@astryx.typeahead.loading')} aria-hidden="true" hidden={!hasBusySlot || undefined} data-ax-idle="" data-ax-tokenizer-spinner="" />
+          {endHtml && <Fragment set:html={endHtml} />}
+          {hasClearButton && (
+            <InputClearButton label={t('@astryx.tokenizer.clearAll')} isHidden={!showsClear} locale={r.locale} data-ax-keep-open="" />
+          )}
+        </div>
+        <template data-ax-token-template><Token label="" size={size} isRemovable class="ax-tokenizer-token" locale={r.locale} /></template>
+        {tokenTemplates.map((item) => (
+          <template data-ax-token-for={item.id}><span class="ax-tokenizer-token" data-ax-token-item={item.id} data-ax-token-label={item.label}>{renderToken!(item)}</span></template>
+        ))}
+      </Host>
+    );
+    return isLayerMode ? (
+      <ax-layer
+        id={ids.overlay}
+        popover="manual"
+        class="ax-layer ax-tokenizer-overlay"
+        data-astryx-layer-root=""
+        data-ax-anchor={ids.box}
+        data-ax-escape="none"
+      >{box}</ax-layer>
+    ) : box;
+  })()}
+  <TypeaheadPopup
+    layerId={ids.layer}
+    listboxId={ids.listbox}
+    anchorId={isLayerMode ? ids.wrapper : ids.box}
+    label={t('@astryx.typeahead.searchResults')}
+    size={size}
+    source={searchSource}
+    value={null}
+    renderItem={renderItem}
+    emptyText={emptySearchTextProp ?? t('@astryx.typeahead.emptySearchResults')}
+    emptyHtml={emptySearchHtml}
+    menuWidth={menuWidth}
+  />
+  {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
+</Field>
+<script>import '../../elements/tokenizer';</script>
+{isLayerMode && <script>import '../../elements/runtime/layer';</script>}

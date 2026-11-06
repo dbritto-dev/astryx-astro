@@ -1,0 +1,50 @@
+---
+/**
+ * PowerSearch's built-in filter token (PowerSearch.tsx renderFilterToken, default branch): a
+ * Token whose label is "Field: operator" and whose bold `endContent` is the value; clickable
+ * (opens the editor: `aria-haspopup="dialog"`, `aria-expanded`) and removable while the filter is
+ * editable; an Avatar icon for a single entity with a photo. TokenNamingContext: the action is
+ * named by all the token's visible text (a hidden label element), the remove button
+ * "Remove <all its text>" (patched into the rendered Token).
+ */
+import Token from '../Token/Token.astro';
+import Avatar from '../Avatar/Avatar.astro';
+import RemoveName from './_RemoveName.astro';
+import {translator} from '../../lib/i18n';
+import {uid} from '../../lib/uid';
+
+export interface Props {
+  label: string;
+  value: string | null;
+  full: string;
+  size: 'sm' | 'md' | 'lg';
+  isInteractive: boolean;
+  opensEditor: boolean;
+  isDisabled: boolean;
+  photo?: string;
+  photoName?: string;
+  locale?: string;
+}
+
+const {label, value, full, size, isInteractive, opensEditor, isDisabled, photo, photoName, locale} = Astro.props;
+const t = translator(Astro, locale);
+const nameId = uid(Astro, 'ax-power-search-token-name');
+---
+<span hidden id={nameId} data-ax-token-name>{full}</span>
+<RemoveName from={t('@astryx.token.remove', {label})} to={t('@astryx.token.remove', {label: full})}>
+  <Token
+    label={label}
+    size={size}
+    interactiveRole={isInteractive ? 'button' : undefined}
+    isRemovable={isInteractive}
+    isDisabled={isDisabled}
+    aria-labelledby={isInteractive ? nameId : undefined}
+    aria-haspopup={isInteractive && opensEditor ? 'dialog' : undefined}
+    aria-expanded={isInteractive && opensEditor ? 'false' : undefined}
+    data-ax-filter-token=""
+    locale={locale}
+  >
+    {photo && <Fragment slot="icon"><Avatar src={photo} name={photoName ?? ''} size={16} /></Fragment>}
+    {value != null && <Fragment slot="endContent"><span class="ax-power-search-token-value" data-ax-token-value>{value}</span></Fragment>}
+  </Token>
+</RemoveName>
