@@ -4,3 +4,4 @@ dist/
 .tokens-build/
 .DS_Store
 *.log
+.claude/
