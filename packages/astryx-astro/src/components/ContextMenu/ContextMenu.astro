@@ -33,8 +33,9 @@
  * rows: `astryx-select`, `astryx-change` (see DropdownMenuItem). API: `openAt(x, y)`,
  * `show()` / `hide()` on the `<ax-menu>`.
  *
- * Deferred: the `bottom-sheet` / `adaptive` presentation (BottomSheet not ported; both render
- * the cursor popover) and the touch press-drag-release model (useMenuPress).
+ * Deferred: the `bottom-sheet` / `adaptive` presentation (the context menu does not adopt the
+ * shared sheet presentation yet; both render the cursor popover) and the touch
+ * press-drag-release model (useMenuPress).
  *
  * @example
  * <ContextMenu items={[{label: 'Cut'}, {label: 'Copy'}, {type: 'divider'}, {label: 'Paste'}]}>
@@ -73,7 +74,7 @@ export interface Props extends HTMLAttributes<'div'> {
   label?: string;
   /** Leave the browser's own context menu. @default false */
   isDisabled?: boolean;
-  /** Only 'popover' is implemented (BottomSheet not ported). @default 'popover' */
+  /** Only 'popover' is implemented ('bottom-sheet' / 'adaptive' render the cursor popover: deferred). @default 'popover' */
   presentation?: ContextMenuPresentation;
   /** The trigger area element: 'div' (block) or 'span' (inline, inside prose). @default 'div' */
   triggerAs?: 'div' | 'span';
