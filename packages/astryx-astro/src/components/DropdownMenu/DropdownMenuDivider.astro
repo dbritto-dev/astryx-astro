@@ -1,0 +1,21 @@
+---
+/**
+ * DropdownMenuDivider — a horizontal rule between groups of rows (`role="separator"`, never a
+ * stop in the arrow order). Port of @astryxdesign/core DropdownMenu/DropdownMenuDivider.tsx:
+ * Divider + `.astryx-dropdown-menu-divider` with the menu's block margin. Data mode's
+ * `{type: 'divider'}` renders this same component. Host attributes reach the separator; its
+ * role and orientation stay component-owned.
+ *
+ * @example
+ * <DropdownMenuDivider />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Divider from '../Divider/Divider.astro';
+import {cx} from '../../lib/themeProps';
+import './DropdownMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'aria-orientation'> {}
+
+const {class: className, ...rest} = Astro.props;
+---
+<Divider {...rest} class={cx('astryx-dropdown-menu-divider', className as string | undefined)} />

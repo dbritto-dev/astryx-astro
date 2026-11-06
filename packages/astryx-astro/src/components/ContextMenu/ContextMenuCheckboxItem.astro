@@ -1,0 +1,15 @@
+---
+/**
+ * ContextMenuCheckboxItem — DropdownMenuCheckboxItem under its ContextMenu name (Astryx
+ * ContextMenu/index.ts re-export): `role="menuitemcheckbox"`, `astryx-change` `{value}`.
+ */
+import DropdownMenuCheckboxItem, {type Props as DropdownMenuCheckboxItemProps} from '../DropdownMenu/DropdownMenuCheckboxItem.astro';
+
+export type Props = DropdownMenuCheckboxItemProps;
+---
+<DropdownMenuCheckboxItem {...Astro.props}>
+  {Astro.slots.has('icon') && <slot name="icon" slot="icon" />}
+  {Astro.slots.has('label') && <slot name="label" slot="label" />}
+  {Astro.slots.has('description') && <slot name="description" slot="description" />}
+  {Astro.slots.has('endContent') && <slot name="endContent" slot="endContent" />}
+</DropdownMenuCheckboxItem>

@@ -1,0 +1,96 @@
+---
+/**
+ * DropdownMenuCheckboxItem — a row that toggles an independent boolean
+ * (`role="menuitemcheckbox"` + `aria-checked`). Port of @astryxdesign/core
+ * DropdownMenu/DropdownMenuCheckboxItem.tsx (styles.root, disabled, marker).
+ *
+ * The row owns the role, checked state and name; the checkbox visual is the shared
+ * `checkbox` Indicator (theme replacements apply), decorative, in Item's `marker` slot —
+ * sm in a sm menu, else md (cascade key `dropdown-menu-control-size`), moved to the row's end
+ * under a coarse pointer. Both states are rendered and the row's `aria-checked` shows one, so
+ * the element owns the state after load.
+ *
+ * Theme hook: `.astryx-dropdown-menu-item[data-size]`; the indicator keeps
+ * `.astryx-checkbox-indicator[data-checked][data-size]`.
+ *
+ * `value` is the initial checked state (Astryx: controlled). Events (runtime):
+ * `astryx-change` `{value: boolean}` on the row before it flips (cancelable: preventDefault
+ * keeps the state — a controlled caller sets `aria-checked` itself), then `astryx-select`
+ * `{event}`. Toggling keeps the menu open unless `hasCloseOnSelect`.
+ *
+ * @example
+ * <DropdownMenuCheckboxItem label="Show archived" value={true} />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item from '../Item/Item.astro';
+import Icon from '../Icon/Icon.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import Indicator from '../Indicator/Indicator.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {MENU_CONTROL_SIZE_KEY, MENU_SIZE_KEY, type DropdownMenuEndContent, type MenuIcon} from './menuShared';
+import './DropdownMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'tabindex' | 'aria-checked'> {
+  /** Primary label text (or the `label` slot). */
+  label?: string;
+  /** Secondary text below the label (or the `description` slot). */
+  description?: string;
+  /** Icon before the label (or the `icon` slot). */
+  icon?: MenuIcon;
+  /** Whether the item is checked (initial state; the element owns it afterwards). @default false */
+  value?: boolean;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Whether toggling closes the menu. Checkbox items stay open by default. @default false */
+  hasCloseOnSelect?: boolean;
+  /** Trailing content: text or `{keys}` for a `<Kbd>` shortcut (or the `endContent` slot). */
+  endContent?: DropdownMenuEndContent;
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  description,
+  icon,
+  value = false,
+  isDisabled = false,
+  hasCloseOnSelect = false,
+  endContent,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const iconHtml = await slot('icon');
+const labelHtml = await slot('label');
+const descriptionHtml = await slot('description');
+const endHtml = await slot('endContent');
+const {themeClass, attrs} = themeProps('dropdown-menu-item', {size: 'md'});
+---
+<Item
+  {...rest}
+  role="menuitemcheckbox"
+  aria-checked={value ? 'true' : 'false'}
+  tabindex={isDisabled ? undefined : -1}
+  label={label}
+  description={description}
+  isDisabled={isDisabled}
+  class={cx(themeClass, 'ax-focus-visible', className as string | undefined)}
+  {...attrs}
+  data-ax-inherit={MENU_SIZE_KEY}
+  data-ax-menu-row="checkbox"
+  data-ax-close-on-select={hasCloseOnSelect ? 'true' : 'false'}
+>
+  <Fragment slot="marker">
+    <Indicator name="checkbox" state="checked" size="md" isDisabled={isDisabled} data-ax-marker="checked" data-ax-inherit={MENU_CONTROL_SIZE_KEY} />
+    <Indicator name="checkbox" state="unchecked" size="md" isDisabled={isDisabled} data-ax-marker="unchecked" data-ax-inherit={MENU_CONTROL_SIZE_KEY} />
+  </Fragment>
+  {iconHtml !== '' ? <Fragment slot="startContent" set:html={iconHtml} /> : icon != null && icon !== '' && <Icon slot="startContent" icon={icon} size="sm" color="secondary" />}
+  {labelHtml !== '' && <Fragment slot="label" set:html={labelHtml} />}
+  {descriptionHtml !== '' && <Fragment slot="description" set:html={descriptionHtml} />}
+  {endHtml !== ''
+    ? <Fragment slot="endContent" set:html={endHtml} />
+    : typeof endContent === 'string' && endContent !== ''
+      ? <Fragment slot="endContent">{endContent}</Fragment>
+      : endContent != null && typeof endContent === 'object' && <Fragment slot="endContent"><Kbd keys={endContent.keys} /></Fragment>}
+</Item>

@@ -1,0 +1,35 @@
+---
+/**
+ * DropdownMenuGroup — a titled group of rows (`role="group"`, named by its visible heading
+ * through `aria-labelledby`; an omitted title leaves it unnamed). Port of @astryxdesign/core
+ * DropdownMenu/DropdownMenuGroup.tsx. The heading is not a row: arrows and typeahead skip it.
+ * Keep it non-interactive; controls belong in DropdownMenu's `header` / `footer`.
+ *
+ * Theme hook: `.astryx-dropdown-menu-section-heading` (shared with data-mode sections).
+ *
+ * @example
+ * <DropdownMenuGroup title="Version history">
+ *   <DropdownMenuItem label="Restore" />
+ *   <DropdownMenuItem label="Compare" />
+ * </DropdownMenuGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {themeProps} from '../../lib/themeProps';
+import {uid} from '../../lib/uid';
+import './DropdownMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** Heading above the rows and the group's accessible name (or the `title` slot). */
+  title?: string;
+}
+
+const {title, 'aria-labelledby': ariaLabelledBy, ...rest} = Astro.props;
+const titleHtml = Astro.slots.has('title') ? (await Astro.slots.render('title')).trim() : '';
+const hasTitle = titleHtml !== '' || (title != null && title !== '');
+const headingId = hasTitle ? uid(Astro, 'ax-dropdown-menu-group') : undefined;
+const heading = themeProps('dropdown-menu-section-heading');
+---
+<div {...rest} role="group" aria-labelledby={hasTitle ? headingId : ariaLabelledBy}>
+  {hasTitle && <div id={headingId} class={heading.themeClass} {...heading.attrs}>{titleHtml !== '' ? <Fragment set:html={titleHtml} /> : title}</div>}
+  <slot />
+</div>

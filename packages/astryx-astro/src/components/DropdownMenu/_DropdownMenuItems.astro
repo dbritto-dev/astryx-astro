@@ -1,0 +1,46 @@
+---
+/**
+ * Internal: data-driven rows → the compound components. Port of @astryxdesign/core
+ * DropdownMenu/renderDropdownItems.tsx: a divider renders DropdownMenuDivider; a section a
+ * `role="group"` named by its title (`aria-label`) with an `aria-hidden` heading; an item with
+ * nested `items` a DropdownMenuSubMenu (recursively); every other item a DropdownMenuItem.
+ */
+import DropdownMenuItem from './DropdownMenuItem.astro';
+import DropdownMenuDivider from './DropdownMenuDivider.astro';
+import DropdownMenuSubMenu from './DropdownMenuSubMenu.astro';
+import {themeProps} from '../../lib/themeProps';
+import type {DropdownMenuItemData, DropdownMenuOption} from './menuShared';
+
+interface Props {
+  items: DropdownMenuOption[];
+  locale?: string;
+}
+
+const {items, locale} = Astro.props;
+const heading = themeProps('dropdown-menu-section-heading');
+const isDivider = (o: DropdownMenuOption): o is {type: 'divider'} => 'type' in o && o.type === 'divider';
+const isSection = (o: DropdownMenuOption): o is Extract<DropdownMenuOption, {type: 'section'}> => 'type' in o && o.type === 'section';
+const leaf = (item: DropdownMenuItemData) => {
+  const {items: _nested, id, ...props} = item;
+  return {props, id};
+};
+const Self = Astro.self;
+---
+{items.map((option) => {
+  if (isDivider(option)) return <DropdownMenuDivider />;
+  if (isSection(option)) {
+    return (
+      <div role="group" aria-label={option.title} data-id={option.id}>
+        {option.title && <div aria-hidden="true" class={heading.themeClass} {...heading.attrs}>{option.title}</div>}
+        {option.items.map((item) => item.items && item.items.length > 0
+          ? <DropdownMenuSubMenu icon={item.icon} label={item.label} isDisabled={item.isDisabled} data-id={item.id} locale={locale}><Self items={item.items} locale={locale} /></DropdownMenuSubMenu>
+          : <DropdownMenuItem {...leaf(item).props} data-id={leaf(item).id} />)}
+      </div>
+    );
+  }
+  const item = option as DropdownMenuItemData;
+  if (item.items && item.items.length > 0) {
+    return <DropdownMenuSubMenu icon={item.icon} label={item.label} isDisabled={item.isDisabled} data-id={item.id} locale={locale}><Self items={item.items} locale={locale} /></DropdownMenuSubMenu>;
+  }
+  return <DropdownMenuItem {...leaf(item).props} data-id={leaf(item).id} />;
+})}

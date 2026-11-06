@@ -1,0 +1,42 @@
+---
+/**
+ * DropdownMenuRadioGroup — a named single-select group of DropdownMenuRadioItems
+ * (`role="group"` of `menuitemradio`). Port of @astryxdesign/core
+ * DropdownMenu/DropdownMenuRadioGroup.tsx (styles.group: the menu's 2px row rhythm) and the
+ * radio half of DropdownMenu/DropdownMenuContext.tsx.
+ *
+ * The group stamps its radios (cascade key `dropdown-menu-radio-group`): `aria-checked` for
+ * the one whose `value` matches, and the close policy. The element owns the selection after
+ * load. Events (runtime): `astryx-change` `{value: string}` on this element when a radio is
+ * chosen (Astryx `onChange(value)`; cancelable — preventDefault keeps the current radio), then
+ * `astryx-select` `{event}` on the radio. Selecting closes the menu unless
+ * `hasCloseOnSelect={false}`.
+ *
+ * @example
+ * <DropdownMenuRadioGroup label="Sort by" value="newest">…</DropdownMenuRadioGroup>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx} from '../../lib/themeProps';
+import {stampRadioGroup} from './menuShared';
+import './DropdownMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role'> {
+  /** The selected value (initial state); undefined selects nothing. */
+  value?: string;
+  /** Accessible name of the group (aria-label), e.g. "Sort by". Required. */
+  label: string;
+  /** Whether choosing a value closes the menu. @default true */
+  hasCloseOnSelect?: boolean;
+}
+
+const {value, label, hasCloseOnSelect = true, class: className, ...rest} = Astro.props;
+const html = await stampRadioGroup(Astro.slots.has('default') ? await Astro.slots.render('default') : '', value, hasCloseOnSelect);
+---
+<div
+  {...rest}
+  role="group"
+  aria-label={label}
+  class={cx('ax-dropdown-menu-radio-group', className as string | undefined)}
+  data-ax-radio-group=""
+  data-ax-close-on-select={hasCloseOnSelect ? undefined : 'false'}
+><Fragment set:html={html} /></div>

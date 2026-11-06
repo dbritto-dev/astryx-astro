@@ -1,0 +1,101 @@
+---
+/**
+ * MoreMenu — a three-dot icon button that opens a menu of secondary actions (table rows, card
+ * headers, toolbars). Port of @astryxdesign/core MoreMenu/MoreMenu.tsx: a thin DropdownMenu
+ * preset — `button` = {label, icon: moreHorizontal, variant ghost, size, isDisabled,
+ * tooltip: label, isIconOnly}, no chevron, `.astryx-more-menu` on the menu element (next to
+ * `.astryx-dropdown-menu`). The label defaults to the translated "More options"
+ * (`@astryx.moreMenu.label`) and is the trigger's aria-label and tooltip (the tooltip repeats
+ * the name, so it does not describe the button).
+ *
+ * Size (useSize(size, 'md')): an explicit `size` sizes the trigger and the rows; without one
+ * the trigger inherits a size provider's (ButtonGroup, Toolbar — cascade key `size`) and the
+ * rows follow the trigger's effective size when the menu opens (`data-ax-size-from-trigger`).
+ *
+ * `icon` overrides the three dots (a name / SVG string / Astro component, or the `icon` slot).
+ * Everything else — keyboard, focus, events (`astryx-open-change`, `astryx-select`), deferred
+ * touch extras — is DropdownMenu's.
+ *
+ * @example
+ * <MoreMenu items={[{label: 'Edit'}, {label: 'Delete', variant: 'destructive'}]} alignment="end" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import DropdownMenu, {type DropdownMenuOption, type DropdownMenuPresentation} from '../DropdownMenu/DropdownMenu.astro';
+import type {ButtonVariant} from '../Button/Button.astro';
+import type {AstroIconComponent, ExtendedIconName} from '../Icon/iconRegistry';
+import type {ComponentSize, LayerAlignment, LayerPlacement} from '../../lib/types';
+import {cx} from '../../lib/themeProps';
+import {translator} from '../../lib/i18n';
+
+export interface Props extends Pick<HTMLAttributes<'div'>, 'class' | 'style'> {
+  /** Menu entries: actions, dividers and sections (DropdownMenu `items`). Required. */
+  items: DropdownMenuOption[];
+  /** The trigger's aria-label and tooltip. @default translated "More options" */
+  label?: string;
+  /** Trigger variant. @default 'ghost' */
+  variant?: ButtonVariant;
+  /** Trigger (and row) size; else a size provider's; else 'md'. */
+  size?: ComponentSize;
+  /** Replaces the three-dot icon (or the `icon` slot). */
+  icon?: ExtendedIconName | AstroIconComponent;
+  /** @default false */
+  isDisabled?: boolean;
+  /** @default 'below' */
+  placement?: LayerPlacement;
+  /** 'end' aligns the menu with the trigger's trailing edge. @default 'start' */
+  alignment?: LayerAlignment;
+  /** Forwarded to DropdownMenu (only 'popover' is implemented). */
+  presentation?: DropdownMenuPresentation;
+  /** Render open (no focus move). */
+  isMenuOpen?: boolean;
+  'data-testid'?: string;
+  locale?: string;
+}
+
+const {
+  items,
+  label: labelProp,
+  variant = 'ghost',
+  size,
+  icon,
+  isDisabled = false,
+  placement,
+  alignment,
+  presentation,
+  isMenuOpen,
+  'data-testid': testId,
+  locale,
+  class: className,
+  style,
+} = Astro.props;
+
+const t = translator(Astro, locale);
+const label = labelProp ?? t('@astryx.moreMenu.label');
+const hasIconSlot = Astro.slots.has('icon');
+const button = {
+  label,
+  icon: hasIconSlot ? undefined : (icon ?? 'moreHorizontal'),
+  variant,
+  size,
+  isDisabled,
+  tooltip: label,
+  isIconOnly: true,
+};
+const props = {
+  class: cx('astryx-more-menu', className as string | undefined),
+  style,
+  isMenuOpen,
+  placement,
+  alignment,
+  presentation,
+  button,
+  items,
+  hasChevron: false,
+  'data-testid': testId,
+  locale,
+  __sizeFromTrigger: size === undefined,
+} as Record<string, unknown>;
+---
+{hasIconSlot
+  ? <DropdownMenu {...props}><slot name="icon" slot="icon" /></DropdownMenu>
+  : <DropdownMenu {...props} />}

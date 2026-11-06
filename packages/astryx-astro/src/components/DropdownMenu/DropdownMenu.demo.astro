@@ -1,0 +1,184 @@
+---
+import DropdownMenu from './DropdownMenu.astro';
+import DropdownMenuItem from './DropdownMenuItem.astro';
+import DropdownMenuCheckboxItem from './DropdownMenuCheckboxItem.astro';
+import DropdownMenuRadioGroup from './DropdownMenuRadioGroup.astro';
+import DropdownMenuRadioItem from './DropdownMenuRadioItem.astro';
+import DropdownMenuGroup from './DropdownMenuGroup.astro';
+import DropdownMenuDivider from './DropdownMenuDivider.astro';
+import DropdownMenuSubMenu from './DropdownMenuSubMenu.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import Badge from '../Badge/Badge.astro';
+import type {DropdownMenuOption} from './menuShared';
+import type {ComponentSize} from '../../lib/types';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+
+const actions: DropdownMenuOption[] = [
+  {label: 'Edit project', icon: 'wrench', id: 'edit', endContent: {keys: 'mod+e'}},
+  {label: 'Duplicate project', icon: 'copy', id: 'duplicate'},
+  {label: 'Share project', icon: 'externalLink', id: 'share', description: 'Anyone with the link can view'},
+  {type: 'divider'},
+  {label: 'Archive project', icon: 'stop', id: 'archive', isDisabled: true},
+  {label: 'Delete project', variant: 'destructive', id: 'delete'},
+];
+
+const sections: DropdownMenuOption[] = [
+  {type: 'section', title: 'Version history', items: [{label: 'Restore', id: 'restore'}, {label: 'Compare', id: 'compare'}]},
+  {type: 'divider'},
+  {label: 'Move to', icon: 'upload', items: [
+    {label: 'Inbox', id: 'inbox'},
+    {label: 'Archive', id: 'move-archive'},
+    {label: 'Projects', items: [{label: 'Website redesign', id: 'website'}, {label: 'Mobile app', id: 'mobile'}]},
+  ]},
+  {label: 'Open docs', href: '/components/dropdown-menu/', id: 'docs'},
+];
+
+const fruits = ['Apple', 'Apricot', 'Banana', 'Blackberry', 'Blueberry', 'Cherry', 'Clementine', 'Coconut', 'Cranberry', 'Date', 'Dragonfruit', 'Elderberry', 'Fig', 'Grape', 'Grapefruit', 'Guava', 'Kiwi', 'Lemon', 'Lime', 'Lychee', 'Mango', 'Melon', 'Nectarine', 'Orange', 'Papaya', 'Peach', 'Pear', 'Pineapple', 'Plum', 'Raspberry'];
+const long: DropdownMenuOption[] = fruits.map((label) => ({label, id: label.toLowerCase()}));
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>Data-driven: icons, a shortcut, a description, a disabled and a destructive row</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'Actions'}} items={actions} id="dm-basic-menu" data-testid="dm-basic-trigger" />
+      <span id="dm-basic-log" style="font-size:var(--font-size-sm);color:var(--color-text-secondary)" aria-live="polite"></span>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Compound rows: shortcuts (Kbd), a group, sub-menus (nested), a link and a spinner</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'File', variant: 'secondary'}} id="dm-compound-menu" data-testid="dm-compound-trigger">
+        <DropdownMenuItem label="New file" icon="upload" id="dm-new"><Kbd slot="endContent" keys="mod+n" /></DropdownMenuItem>
+        <DropdownMenuItem label="Open…" icon="search" id="dm-open"><Kbd slot="endContent" keys="mod+o" /></DropdownMenuItem>
+        <DropdownMenuItem label="Save" id="dm-save" description="Last saved 2 minutes ago"><Kbd slot="endContent" keys="mod+s" /></DropdownMenuItem>
+        <DropdownMenuItem label="Copy link" id="dm-copy" hasCloseOnSelect={false}><Badge slot="endContent" label="New" variant="info" /></DropdownMenuItem>
+        <DropdownMenuDivider />
+        <DropdownMenuGroup title="Export">
+          <DropdownMenuSubMenu label="Export as" icon="arrowUp" id="dm-export">
+            <DropdownMenuItem label="PDF" id="dm-pdf" />
+            <DropdownMenuItem label="PNG image" id="dm-png" />
+            <DropdownMenuSubMenu label="More formats" id="dm-more">
+              <DropdownMenuItem label="SVG" id="dm-svg" />
+              <DropdownMenuItem label="WebP" id="dm-webp" />
+            </DropdownMenuSubMenu>
+          </DropdownMenuSubMenu>
+          <DropdownMenuSubMenu label="Share to" icon="externalLink" id="dm-share">
+            <DropdownMenuItem label="Email" id="dm-email" />
+            <DropdownMenuItem label="Slack" id="dm-slack" />
+          </DropdownMenuSubMenu>
+          <DropdownMenuSubMenu label="Recent" hasSpinner id="dm-recent">
+            <DropdownMenuItem label="Loading…" isDisabled />
+          </DropdownMenuSubMenu>
+          <DropdownMenuSubMenu label="Templates" isDisabled id="dm-templates">
+            <DropdownMenuItem label="Blank" />
+          </DropdownMenuSubMenu>
+        </DropdownMenuGroup>
+        <DropdownMenuDivider />
+        <DropdownMenuItem label="Close window" id="dm-close" variant="destructive" icon="close"><Kbd slot="endContent" keys="mod+w" /></DropdownMenuItem>
+      </DropdownMenu>
+      <DropdownMenu button={{label: 'Sections'}} items={sections} id="dm-sections-menu" data-testid="dm-sections-trigger" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Checkbox and radio rows (toggling a checkbox keeps the menu open; a radio closes it)</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'View', icon: 'viewColumns'}} id="dm-view-menu" data-testid="dm-view-trigger">
+        <DropdownMenuCheckboxItem label="Show grid" value={true} id="dm-grid" />
+        <DropdownMenuCheckboxItem label="Show rulers" id="dm-rulers"><Kbd slot="endContent" keys="mod+r" /></DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem label="Snap to pixels" isDisabled value={true} id="dm-snap" />
+        <DropdownMenuDivider />
+        <DropdownMenuRadioGroup label="Sort by" value="newest" id="dm-sort">
+          <DropdownMenuRadioItem value="newest" label="Newest first" id="dm-newest" />
+          <DropdownMenuRadioItem value="oldest" label="Oldest first" icon="clock" id="dm-oldest" />
+          <DropdownMenuRadioItem value="name" label="By name" isDisabled id="dm-name" />
+          <DropdownMenuRadioItem value="size" label="By size" description="Largest first" id="dm-size" />
+        </DropdownMenuRadioGroup>
+      </DropdownMenu>
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes (the trigger's size sizes the rows)</h3>
+    <div style={row}>
+      {sizes.map((size) => (
+        <DropdownMenu button={{label: `Size ${size}`, size}} id={`dm-size-${size}-menu`} data-testid={`dm-size-${size}-trigger`}>
+          <DropdownMenuItem label="Rename" icon="wrench" />
+          <DropdownMenuCheckboxItem label="Pinned" value={true} />
+          <DropdownMenuRadioGroup label="Density" value="comfortable">
+            <DropdownMenuRadioItem value="comfortable" label="Comfortable" />
+            <DropdownMenuRadioItem value="compact" label="Compact" />
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSubMenu label="More">
+            <DropdownMenuItem label="Details" />
+          </DropdownMenuSubMenu>
+        </DropdownMenu>
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Long menu (scrolls past 300px; type to jump) and a taller cap</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'Fruit'}} items={long} id="dm-long-menu" data-testid="dm-long-trigger" />
+      <DropdownMenu button={{label: 'Fruit (480px cap)'}} items={long} menuMaxHeight={480} id="dm-tall-menu" data-testid="dm-tall-trigger" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Placement, alignment and width</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'Above'}} placement="above" items={actions.slice(0, 3)} data-testid="dm-above-trigger" />
+      <DropdownMenu button={{label: 'Below / end'}} alignment="end" menuWidth={240} items={actions.slice(0, 3)} data-testid="dm-end-trigger" />
+      <DropdownMenu button={{label: 'End'}} placement="end" items={actions.slice(0, 3)} />
+      <DropdownMenu button={{label: 'Wide'}} menuWidth="max-content" items={[{label: 'A row whose label is longer than the trigger'}]} />
+      <DropdownMenu button={{label: 'Options', isIconOnly: true, icon: 'moreHorizontal', variant: 'ghost', tooltip: 'Options'}} hasChevron={false} items={actions.slice(0, 2)} data-testid="dm-icon-trigger" />
+      <DropdownMenu button={{label: 'Disabled', isDisabled: true}} items={actions.slice(0, 2)} data-testid="dm-disabled-trigger" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Custom trigger (renderTrigger → the trigger slot) and a header / footer</h3>
+    <div style={row}>
+      <DropdownMenu items={actions.slice(0, 3)} id="dm-custom-menu">
+        <button slot="trigger" type="button" id="dm-custom-trigger" class="ax-demo-chip" style="display:inline-flex;align-items:center;gap:var(--spacing-2);font:inherit;font-size:var(--text-label-size);padding:var(--spacing-1) var(--spacing-3);border-radius:var(--radius-full);border:var(--border-width) solid var(--color-border);background:var(--color-background-surface);color:var(--color-text-primary);cursor:pointer">
+          <span aria-hidden="true" style="inline-size:20px;block-size:20px;border-radius:50%;background:var(--color-accent)"></span>Ada Lovelace
+        </button>
+      </DropdownMenu>
+      <DropdownMenu button={{label: 'Labels'}} id="dm-regions-menu" data-testid="dm-regions-trigger">
+        <input slot="header" type="search" id="dm-regions-filter" placeholder="Filter labels" aria-label="Filter labels" style="font:inherit;inline-size:100%;box-sizing:border-box;padding:var(--spacing-1) var(--spacing-2);border-radius:var(--radius-element);border:var(--border-width) solid var(--color-border-emphasized);background:var(--color-background-surface);color:var(--color-text-primary)" />
+        <DropdownMenuCheckboxItem label="Bug" value={true} />
+        <DropdownMenuCheckboxItem label="Feature" />
+        <DropdownMenuCheckboxItem label="Docs" />
+        <button slot="footer" type="button" id="dm-regions-create" style="font:inherit;font-size:var(--text-label-size);inline-size:100%;padding:var(--spacing-1) var(--spacing-2);border-radius:var(--radius-element);border:0;background:var(--color-neutral);color:var(--color-text-primary);cursor:pointer">Create label</button>
+      </DropdownMenu>
+    </div>
+  </section>
+
+  <section dir="rtl" lang="ar">
+    <h3 style={cap}>RTL: the flyout opens to the left; ← opens it, → closes it</h3>
+    <div style={row}>
+      <DropdownMenu button={{label: 'إجراءات'}} id="dm-rtl-menu" data-testid="dm-rtl-trigger">
+        <DropdownMenuItem label="تعديل" id="dm-rtl-edit" />
+        <DropdownMenuSubMenu label="نقل إلى" id="dm-rtl-move">
+          <DropdownMenuItem label="الأرشيف" id="dm-rtl-archive" />
+          <DropdownMenuItem label="المشاريع" id="dm-rtl-projects" />
+        </DropdownMenuSubMenu>
+        <DropdownMenuItem label="حذف" variant="destructive" />
+      </DropdownMenu>
+    </div>
+  </section>
+</div>
+<script>
+  // Demo: report what the basic menu did.
+  const log = document.getElementById('dm-basic-log');
+  const menu = document.getElementById('dm-basic-menu');
+  menu?.addEventListener('astryx-select', (event) => {
+    const row = event.target as HTMLElement;
+    if (log) log.textContent = `Selected: ${row.dataset.id ?? row.textContent?.trim()}`;
+  });
+</script>

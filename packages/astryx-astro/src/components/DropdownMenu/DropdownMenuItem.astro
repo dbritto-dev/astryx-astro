@@ -1,0 +1,116 @@
+---
+/**
+ * DropdownMenuItem — one action or destination row of a DropdownMenu / ContextMenu.
+ * Port of @astryxdesign/core DropdownMenu/DropdownMenuItem.tsx (menuItemStyles, itemSizeStyles)
+ * with DropdownMenu/menuItemHover.ts and DropdownMenu/menuItemRoles.ts (behaviour in
+ * src/elements/runtime/menu.ts). Composes Item (start content + label/description + end).
+ *
+ * Theme hook: `.astryx-dropdown-menu-item[data-size][data-variant="destructive"]` (on the Item
+ * root, next to `.astryx-item`). The size is the menu's (stamped by the root through the
+ * `dropdown-menu-size` cascade key; `md` outside a menu).
+ *
+ * `role="menuitem"`, `tabindex="-1"` (none while disabled: a disabled row stays in the
+ * accessibility tree as `aria-disabled` but takes no focus — arrows, typeahead and hover skip
+ * it). `href` makes the row itself the anchor (through `Astro.locals.astryxLinkComponent`), so a
+ * modified or middle click keeps the browser's meaning; a disabled link row has no destination.
+ *
+ * Events (runtime): `astryx-select` `{event}` on the row when it acts — Astryx `onClick`; a click
+ * or a keyboard activation (Enter / Space, a synthesized click with the key's modifiers). A
+ * native `click` listener works too. Skipped for a modified click on a link row (the browser's).
+ * `hasCloseOnSelect={false}` keeps the menu open (`data-ax-close-on-select="false"`).
+ *
+ * Slots: `icon` (markup instead of the `icon` prop), `label`, `description`, `endContent`
+ * (a `<Kbd>` shortcut, a badge).
+ *
+ * @example
+ * <DropdownMenuItem label="Edit" icon="wrench"><Kbd slot="endContent" keys="mod+e" /></DropdownMenuItem>
+ * <DropdownMenuItem label="Delete" variant="destructive" />
+ */
+import type {HTMLAttributes} from 'astro/types';
+import Item from '../Item/Item.astro';
+import Icon from '../Icon/Icon.astro';
+import Kbd from '../Kbd/Kbd.astro';
+import MenuLink from './_MenuLink.astro';
+import {cx, themeProps} from '../../lib/themeProps';
+import {resolveLinkComponent} from '../Link/linkComponent';
+import {MENU_SIZE_KEY, type DropdownMenuEndContent, type MenuIcon} from './menuShared';
+import './DropdownMenu.css';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'role' | 'tabindex'> {
+  /** Primary label text (or the `label` slot). */
+  label?: string;
+  /** Secondary text below the label (or the `description` slot). */
+  description?: string;
+  /** Icon before the label: a semantic name, SVG string or Astro component (or the `icon` slot). */
+  icon?: MenuIcon;
+  /** Trailing content: text or `{keys}` for a `<Kbd>` shortcut (or the `endContent` slot). */
+  endContent?: DropdownMenuEndContent;
+  /** The row navigates here (safeHref-checked); the row is the anchor. */
+  href?: string | URL;
+  /** Link target (only with `href`). */
+  target?: '_blank' | '_self';
+  /** Link rel; `noopener noreferrer` is added for `_blank` (only with `href`). */
+  rel?: string;
+  /** @default false */
+  isDisabled?: boolean;
+  /** Whether activating the row closes the menu. @default true */
+  hasCloseOnSelect?: boolean;
+  /** 'destructive' renders the label, description and icon in the error color. @default 'default' */
+  variant?: 'default' | 'destructive';
+  'data-testid'?: string;
+}
+
+const {
+  label,
+  description,
+  icon,
+  endContent,
+  href,
+  target,
+  rel,
+  isDisabled = false,
+  hasCloseOnSelect = true,
+  variant = 'default',
+  class: className,
+  ...rest
+} = Astro.props;
+
+const slot = async (name: string) => (Astro.slots.has(name) ? (await Astro.slots.render(name)).trim() : '');
+const iconHtml = await slot('icon');
+const labelHtml = await slot('label');
+const descriptionHtml = await slot('description');
+const endHtml = await slot('endContent');
+
+const isDestructive = variant === 'destructive';
+const linkComponent = href != null ? resolveLinkComponent(undefined, Astro) : undefined;
+const as = linkComponent == null ? undefined : typeof linkComponent === 'string' ? MenuLink : linkComponent;
+const {themeClass, attrs} = themeProps('dropdown-menu-item', {size: 'md', variant: isDestructive ? 'destructive' : null});
+const iconColor = isDestructive ? 'error' : 'secondary';
+---
+<Item
+  {...rest}
+  as={as}
+  role="menuitem"
+  tabindex={isDisabled ? undefined : -1}
+  label={label}
+  description={description}
+  href={href}
+  target={target}
+  rel={rel}
+  draggable={href != null ? 'false' : undefined}
+  isDisabled={isDisabled}
+  class={cx(themeClass, 'ax-focus-visible', className as string | undefined)}
+  {...attrs}
+  data-ax-inherit={MENU_SIZE_KEY}
+  data-ax-menu-row="item"
+  data-ax-close-on-select={hasCloseOnSelect ? undefined : 'false'}
+>
+  {iconHtml !== '' ? <Fragment slot="startContent" set:html={iconHtml} /> : icon != null && icon !== '' && <Icon slot="startContent" icon={icon} size="sm" color={iconColor} />}
+  {labelHtml !== '' && <Fragment slot="label" set:html={labelHtml} />}
+  {descriptionHtml !== '' && <Fragment slot="description" set:html={descriptionHtml} />}
+  {endHtml !== ''
+    ? <Fragment slot="endContent" set:html={endHtml} />
+    : typeof endContent === 'string' && endContent !== ''
+      ? <Fragment slot="endContent">{endContent}</Fragment>
+      : endContent != null && typeof endContent === 'object' && <Fragment slot="endContent"><Kbd keys={endContent.keys} /></Fragment>}
+</Item>

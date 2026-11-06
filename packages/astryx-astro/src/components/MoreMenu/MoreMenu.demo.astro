@@ -1,0 +1,48 @@
+---
+import MoreMenu from './MoreMenu.astro';
+import Toolbar from '../Toolbar/Toolbar.astro';
+import Button from '../Button/Button.astro';
+import type {DropdownMenuOption} from '../DropdownMenu/menuShared';
+import type {ComponentSize} from '../../lib/types';
+
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
+const card = 'display:flex;align-items:center;justify-content:space-between;gap:var(--spacing-3);padding:var(--spacing-3) var(--spacing-4);border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container);background:var(--color-background-surface);max-width:420px';
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const items: DropdownMenuOption[] = [
+  {label: 'Edit', icon: 'wrench', id: 'edit'},
+  {label: 'Duplicate', icon: 'copy', id: 'duplicate'},
+  {type: 'divider'},
+  {type: 'section', title: 'Danger zone', items: [{label: 'Delete', variant: 'destructive', id: 'delete'}]},
+];
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <section>
+    <h3 style={cap}>In a card header (aligned to the trigger's end)</h3>
+    <div style={card}>
+      <div>
+        <div style="font-weight:var(--font-weight-semibold)">Quarterly report</div>
+        <div style="font-size:var(--font-size-sm);color:var(--color-text-secondary)">Edited 2 hours ago</div>
+      </div>
+      <MoreMenu items={items} alignment="end" data-testid="more-card-trigger" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Sizes, variants, a custom label and icon, disabled</h3>
+    <div style={row}>
+      {sizes.map((size) => <MoreMenu items={items} size={size} data-testid={`more-${size}-trigger`} />)}
+      <MoreMenu items={items} variant="secondary" label="Row actions" data-testid="more-secondary-trigger" />
+      <MoreMenu items={items} icon="menu" label="Menu" />
+      <MoreMenu items={items} isDisabled data-testid="more-disabled-trigger" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Inside a small toolbar (the trigger and its rows follow the toolbar's size)</h3>
+    <Toolbar label="Table actions" size="sm">
+      <Fragment slot="startContent"><Button label="Filter" variant="ghost" /></Fragment>
+      <Fragment slot="endContent"><MoreMenu items={items} alignment="end" data-testid="more-toolbar-trigger" /></Fragment>
+    </Toolbar>
+  </section>
+</div>
