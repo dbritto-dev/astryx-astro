@@ -1,0 +1,47 @@
+---
+/**
+ * Center — centers its children on one or both flex axes.
+ * Port of @astryxdesign/core Center/Center.tsx.
+ *
+ * @example
+ * <Center width={300} height={200}><p>Centered</p></Center>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import {paddingVars, splitPadding, type PaddingProps} from '../../lib/padding';
+import './Center.css';
+
+export type CenterAxis = 'both' | 'horizontal' | 'vertical';
+
+export interface Props extends HTMLAttributes<'div'>, PaddingProps {
+  /**
+   * Center mode: `both` (default) centers on the flex main and cross axes, `horizontal`
+   * on the main/inline axis, `vertical` on the cross/block axis.
+   * @default 'both'
+   */
+  axis?: CenterAxis;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  minHeight?: SizeValue;
+  /** Render as `inline-flex` (useful for text/icons). @default false */
+  isInline?: boolean;
+}
+
+const [pad, props] = splitPadding(Astro.props);
+const {axis = 'both', width, height, maxWidth, minHeight, isInline = false, class: className, style, ...rest} = props;
+const {themeClass, attrs} = themeProps('center', {axis});
+---
+<div
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-inline={isInline ? '' : undefined}
+  style={mergeStyles(
+    paddingVars(pad),
+    {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)},
+    style as StyleValue,
+  )}
+  {...rest}
+><slot /></div>

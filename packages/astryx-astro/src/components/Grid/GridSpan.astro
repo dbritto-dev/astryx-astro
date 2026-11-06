@@ -1,0 +1,35 @@
+---
+/**
+ * GridSpan — makes a Grid child span several columns or rows.
+ * Port of @astryxdesign/core Grid/GridSpan.tsx. Use as a direct child of Grid.
+ *
+ * @example
+ * <Grid columns={3} gap={4}><GridSpan columns={2}>Wide</GridSpan><div>Normal</div></Grid>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './Grid.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Columns to span (`grid-column: span N`), or 'full' for every explicit column (`1 / -1`). */
+  columns?: number | 'full';
+  /** Rows to span (`grid-row: span N`). */
+  rows?: number;
+}
+
+const {columns, rows, class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('grid-span');
+---
+<div
+  class={cx(themeClass, className)}
+  {...attrs}
+  style={mergeStyles(
+    style as StyleValue,
+    {
+      gridColumn: columns != null ? (columns === 'full' ? '1 / -1' : `span ${columns}`) : undefined,
+      gridRow: rows != null ? `span ${rows}` : undefined,
+    },
+  )}
+  {...rest}
+><slot /></div>

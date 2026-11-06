@@ -1,0 +1,20 @@
+---
+import Center from './Center.astro';
+const frame = 'border:1px dashed var(--color-border);border-radius:var(--radius-element)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+---
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--spacing-3)">
+  <Center height={120} style={frame}><div style={box}>axis both</div></Center>
+  <Center axis="horizontal" height={120} style={frame}><div style={box}>axis horizontal</div></Center>
+  <Center axis="vertical" height={120} style={frame}><div style={box}>axis vertical</div></Center>
+</div>
+<Center width="100%" maxWidth={520} minHeight={140} padding={4} paddingBlockStart={8} style={frame}>
+  <div style={box}>padding 4, paddingBlockStart 8, maxWidth 520</div>
+</Center>
+<div>
+  Inline centering for icons:
+  <Center isInline width={28} height={28} style="border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-on-accent);vertical-align:middle">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg>
+  </Center>
+  sits in the text line.
+</div>

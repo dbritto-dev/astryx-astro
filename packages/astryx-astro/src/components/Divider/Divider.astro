@@ -1,0 +1,59 @@
+---
+/**
+ * Divider — visual separator with an optional centered label.
+ * Port of @astryxdesign/core Divider/Divider.tsx.
+ *
+ * Renders role="separator" with aria-orientation. A rendered label names the separator
+ * through aria-labelledby (a separator does not take its name from content); an explicit
+ * aria-label / aria-labelledby wins.
+ *
+ * @example
+ * <Divider label="or" />
+ * <Divider orientation="vertical" variant="strong" />
+ * <Divider isFullBleed />  <!-- escapes the enclosing Card/Section padding -->
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Divider.css';
+
+export type DividerVariant = 'subtle' | 'strong' | (string & {});
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** @default 'horizontal' */
+  orientation?: 'horizontal' | 'vertical';
+  /**
+   * Optional centered label (small secondary text). Numeric zero is kept; empty strings and
+   * booleans render no label. A `label` slot is accepted too.
+   */
+  label?: string | number;
+  /** 'subtle' uses --color-border, 'strong' --color-border-emphasized. @default 'subtle' */
+  variant?: DividerVariant;
+  /** Escape the parent's container padding with negative margins. @default false */
+  isFullBleed?: boolean;
+}
+
+const {
+  orientation = 'horizontal', label, variant = 'subtle', isFullBleed = false,
+  class: className, 'aria-label': ariaLabel, 'aria-labelledby': ariaLabelledBy, ...rest
+} = Astro.props;
+
+const hasLabelSlot = Astro.slots.has('label');
+const hasLabel = hasLabelSlot || (label != null && label !== '' && typeof label !== 'boolean');
+const labelId = `ax-divider-${Math.random().toString(36).slice(2, 10)}`;
+const resolvedLabelledBy = ariaLabelledBy ?? (hasLabel && ariaLabel == null ? labelId : undefined);
+const {themeClass, attrs} = themeProps('divider', {variant, orientation});
+---
+<div
+  {...rest}
+  role="separator"
+  aria-orientation={orientation}
+  aria-label={ariaLabel}
+  aria-labelledby={resolvedLabelledBy}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-full-bleed={isFullBleed ? '' : undefined}
+>
+  <div class="ax-divider-line"></div>
+  {hasLabel && <div id={labelId} class="ax-divider-label">{hasLabelSlot ? <slot name="label" /> : label}</div>}
+  {hasLabel && <div class="ax-divider-line"></div>}
+</div>

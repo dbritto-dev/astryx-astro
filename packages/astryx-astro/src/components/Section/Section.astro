@@ -1,0 +1,55 @@
+---
+/**
+ * Section — painted page region with background variants and divider edges.
+ * Port of @astryxdesign/core Section/Section.tsx.
+ *
+ * Renders two divs like Astryx: an outer wrapper (receives class, style and the rest of
+ * the attributes) that escapes the parent's container padding (edge to edge inside a
+ * Card or Layout region), and the painted inner `.astryx-section` that publishes its own
+ * padding. Without `padding` it takes the theme's section padding; an explicit `padding`
+ * propagates to nested Sections that have none.
+ *
+ * @example
+ * <Card><Section variant="muted" dividers={['bottom']}>Header strip</Section>…</Card>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import {paddingVars, splitPadding, type PaddingProps} from '../../lib/padding';
+import './Section.css';
+
+export type SectionVariant = 'section' | 'transparent' | 'muted' | (string & {});
+export type SectionDivider = 'top' | 'bottom' | 'start' | 'end';
+
+export interface Props extends HTMLAttributes<'div'>, PaddingProps {
+  /** 'section' = surface background, 'transparent', 'muted'. @default 'section' */
+  variant?: SectionVariant;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  minHeight?: SizeValue;
+  /** Sides that draw a divider border (`start`/`end` follow writing direction). */
+  dividers?: SectionDivider[];
+}
+
+const [pad, props] = splitPadding(Astro.props);
+const {variant = 'section', width, height, maxWidth, minHeight, dividers, class: className, style, ...rest} = props;
+const {themeClass, attrs} = themeProps('section', {variant});
+const explicit = spacing(pad.padding);
+---
+<div
+  class={cx('ax-section-outer', className)}
+  style={mergeStyles(
+    {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)},
+    style as StyleValue,
+  )}
+  {...rest}
+>
+  <div
+    class={themeClass}
+    {...attrs}
+    data-dividers={dividers?.length ? dividers.join(' ') : undefined}
+    style={mergeStyles(paddingVars(pad), {'--_ax-pad': explicit, '--_section-padding-propagated': explicit})}
+  ><slot /></div>
+</div>

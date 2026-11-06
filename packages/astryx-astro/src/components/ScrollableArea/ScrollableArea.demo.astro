@@ -1,0 +1,51 @@
+---
+import ScrollableArea from './ScrollableArea.astro';
+import Card from '../Card/Card.astro';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'margin:0;padding:var(--spacing-1-5) 0;border-bottom:1px solid var(--color-border);font-size:var(--font-size-sm);color:var(--color-text-primary)';
+const frame = 'border:1px solid var(--color-border);border-radius:var(--radius-element)';
+const chip = 'flex:none;padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+---
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--spacing-4)">
+  <div>
+    <p style={cap}>axis="block" (default), padding 3 — focusable while it scrolls</p>
+    <ScrollableArea id="sa-block" label="Activity history" height={180} padding={3} style={frame}>
+      {Array.from({length: 14}, (_, i) => <p style={row}>Event {i + 1}: deployment finished</p>)}
+    </ScrollableArea>
+  </div>
+  <div>
+    <p style={cap}>Content that fits: no tab stop, both edges reported</p>
+    <ScrollableArea id="sa-fit" label="Short list" height={180} padding={3} style={frame}>
+      {Array.from({length: 3}, (_, i) => <p style={row}>Item {i + 1}</p>)}
+    </ScrollableArea>
+  </div>
+  <div>
+    <p style={cap}>axis="inline", paddingInline 3, paddingBlock 2</p>
+    <ScrollableArea id="sa-inline" axis="inline" label="Tags" paddingInline={3} paddingBlock={2} style={frame}>
+      <div style="display:flex;gap:var(--spacing-2)">
+        {Array.from({length: 16}, (_, i) => <span style={chip}>Tag {i + 1}</span>)}
+      </div>
+    </ScrollableArea>
+  </div>
+  <div>
+    <p style={cap}>axis="both", role="region", overscroll="contain"</p>
+    <ScrollableArea id="sa-both" axis="both" role="region" label="Spreadsheet" overscroll="contain" height={160} maxWidth="100%" style={frame}>
+      <table style="border-collapse:collapse;font-size:var(--font-size-sm)">
+        {Array.from({length: 12}, (_, r) => (
+          <tr>{Array.from({length: 12}, (_, c) => <td style="padding:var(--spacing-1) var(--spacing-3);border:1px solid var(--color-border);white-space:nowrap">R{r + 1} C{c + 1}</td>)}</tr>
+        ))}
+      </table>
+    </ScrollableArea>
+  </div>
+</div>
+<Card maxWidth={520}>
+  <p style={cap}>isFullBleed inside a Card: the viewport reaches the card edges, content keeps padding 4</p>
+  <ScrollableArea label="Code sample" axis="inline" isFullBleed padding={4} paddingBlockStart={2} paddingBlockEnd={2} style="background:var(--color-background-muted)">
+    <pre style="margin:0;font-size:var(--font-size-sm)"><code>const result = await fetch('/api/reports?range=last-quarter&amp;groupBy=region&amp;include=forecasts,actuals');</code></pre>
+  </ScrollableArea>
+  <p style={`${cap};margin:var(--spacing-3) 0 0`}>stickyContainment="always" keeps a fitting viewport a sticky boundary:</p>
+  <ScrollableArea label="Pinned list" stickyContainment="always" width="100%" minHeight={60} height={120} paddingInlineStart={2} paddingInlineEnd={2} style={`${frame};margin-top:var(--spacing-2)`}>
+    <p style="position:sticky;top:0;margin:0;padding:var(--spacing-1) 0;background:var(--color-background-card);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold)">Sticky heading</p>
+    {Array.from({length: 8}, (_, i) => <p style={row}>Pinned row {i + 1}</p>)}
+  </ScrollableArea>
+</Card>

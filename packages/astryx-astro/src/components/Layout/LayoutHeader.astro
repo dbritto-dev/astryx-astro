@@ -1,0 +1,58 @@
+---
+/**
+ * LayoutHeader — top bar for Layout (page titles, app bars, toolbars).
+ * Port of @astryxdesign/core Layout/LayoutHeader.tsx. Place it in Layout's `header` slot.
+ *
+ * The outer element owns the divider and sizing; an inner wrapper owns the padding (outer
+ * inset on container edges, inner inset toward the content) and the contentWidth lane.
+ * Without a divider the following LayoutContent drops its top padding. Provides its own
+ * padding: use `padding={0}` when the content manages its own.
+ *
+ * @example
+ * <LayoutHeader slot="header" hasDivider role="banner" label="Site">…</LayoutHeader>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, spacing, type StyleValue} from '../../lib/style';
+import './Layout.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /**
+   * Themed border at the bottom edge. Unset falls back to the parent Layout's
+   * `defaultHasDividers`, then `false`.
+   * @default false
+   */
+  hasDivider?: boolean;
+  /** Height (number = px). */
+  height?: SizeValue;
+  /** Internal padding (spacing step); overrides the container's inset. */
+  padding?: SpacingStep;
+  /** Block-end padding override (wins over `padding` on that edge). */
+  paddingBlockEnd?: SpacingStep;
+  /** Accessible label for the landmark (needed when several share a role). */
+  label?: string;
+  /** Landmark role; 'banner' only for site-wide headers. */
+  role?: HTMLAttributes<'div'>['role'];
+}
+
+const {hasDivider, height, label, padding, paddingBlockEnd, role, class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('layout-header');
+---
+<div
+  role={role}
+  aria-label={label}
+  data-divider={hasDivider ? '' : undefined}
+  data-ax-inherit={hasDivider === undefined ? 'layout-divider' : undefined}
+  class={cx(themeClass, className)}
+  {...attrs}
+  style={mergeStyles({height: cssSize(height)}, style as StyleValue)}
+  {...rest}
+>
+  <div
+    class="ax-layout-header-inner"
+    data-padding={padding}
+    data-padding-block-end={paddingBlockEnd}
+    style={mergeStyles({'--_ax-pad': spacing(padding), '--_ax-pbe': spacing(paddingBlockEnd)})}
+  ><slot /></div>
+</div>

@@ -1,0 +1,40 @@
+---
+import FormLayout from './FormLayout.astro';
+const field = 'display:grid;gap:var(--spacing-1);font-size:var(--font-size-sm);color:var(--color-text-primary)';
+const input = 'font:inherit;padding:var(--spacing-1-5) var(--spacing-2);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);min-width:0';
+const label = 'font-size:var(--font-size-sm);color:var(--color-text-primary);padding-top:var(--spacing-1-5)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div>
+  <p style={cap}>direction="vertical" (default)</p>
+  <FormLayout style="max-width:360px">
+    <label style={field}>Name<input style={input} value="Ada Lovelace" /></label>
+    <label style={field}>Email<input style={input} type="email" value="ada@example.com" /></label>
+  </FormLayout>
+</div>
+<div>
+  <p style={cap}>direction="horizontal" — one 1fr track per child</p>
+  <FormLayout direction="horizontal">
+    <label style={field}>First name<input style={input} /></label>
+    <label style={field}>Last name<input style={input} /></label>
+    <label style={field}>Postal code<input style={input} /></label>
+  </FormLayout>
+</div>
+<div>
+  <p style={cap}>direction="horizontal-labels" defaultOptionality="required" (collapses to vertical at ≤480px)</p>
+  <FormLayout direction="horizontal-labels" defaultOptionality="required" style="max-width:480px">
+    <label style={label} for="fl-org">Organization</label><input style={input} id="fl-org" />
+    <label style={label} for="fl-site">Website</label><input style={input} id="fl-site" />
+    <label style={label} for="fl-notes">Notes</label><textarea style={input} id="fl-notes" rows="3"></textarea>
+  </FormLayout>
+</div>
+<div>
+  <p style={cap}>Nested: horizontal inside vertical, defaultOptionality="optional"</p>
+  <FormLayout defaultOptionality="optional" style="max-width:480px">
+    <label style={field}>Street<input style={input} /></label>
+    <FormLayout direction="horizontal">
+      <label style={field}>City<input style={input} /></label>
+      <label style={field}>Country<input style={input} /></label>
+    </FormLayout>
+  </FormLayout>
+</div>

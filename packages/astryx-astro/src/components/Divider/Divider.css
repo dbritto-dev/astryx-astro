@@ -1,0 +1,54 @@
+/* Port of @astryxdesign/core Divider/Divider.tsx (StyleX styles). Bleed consumer of the
+   container padding protocol (contract #14): isFullBleed subtracts --container-padding-*. */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-divider[data-orientation="horizontal"] {
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  .astryx-divider[data-orientation="vertical"] {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+  }
+  .astryx-divider[data-orientation="horizontal"][data-full-bleed] {
+    margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
+    margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
+    width: calc(100% + var(--container-padding-inline-start, 0px) + var(--container-padding-inline-end, 0px));
+  }
+  .astryx-divider[data-orientation="vertical"][data-full-bleed] {
+    margin-block-start: calc(-1 * var(--container-padding-block-start, 0px));
+    margin-block-end: calc(-1 * var(--container-padding-block-end, 0px));
+    height: calc(100% + var(--container-padding-block-start, 0px) + var(--container-padding-block-end, 0px));
+  }
+
+  /* Line segments */
+  .astryx-divider[data-orientation="horizontal"] > .ax-divider-line {
+    height: var(--border-width);
+    flex-grow: 1;
+    flex-shrink: 1;
+  }
+  .astryx-divider[data-orientation="vertical"] > .ax-divider-line {
+    width: var(--border-width);
+    flex-grow: 1;
+    flex-shrink: 1;
+  }
+  .astryx-divider[data-variant="subtle"] > .ax-divider-line { background-color: var(--color-border); }
+  .astryx-divider[data-variant="strong"] > .ax-divider-line { background-color: var(--color-border-emphasized); }
+
+  /* Label */
+  .ax-divider-label {
+    flex-shrink: 0;
+    padding-inline: var(--spacing-3);
+    font-size: var(--text-supporting-size);
+    line-height: var(--text-supporting-leading);
+    color: var(--color-text-secondary);
+  }
+  .astryx-divider[data-orientation="vertical"] > .ax-divider-label {
+    padding-inline: 0;
+    padding-block: var(--spacing-3);
+  }
+}

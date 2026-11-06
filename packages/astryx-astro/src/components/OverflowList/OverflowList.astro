@@ -1,0 +1,77 @@
+---
+/**
+ * OverflowList — a row that hides the items that don't fit and shows an overflow indicator.
+ * Port of @astryxdesign/core OverflowList/OverflowList.tsx + hooks/useOverflow.ts and the
+ * pure hooks/computeOverflow.ts; behaviour in src/elements/overflow-list.ts.
+ *
+ * The server renders every item (the default slot's element children). <ax-overflow-list>
+ * measures them with a ResizeObserver, takes the collapsed ones out of flow
+ * (`data-overflow-hidden` + `inert`) and shows the indicator.
+ *
+ * `overflowRenderer` becomes the `overflow` slot: markup shown while items overflow. Any
+ * element inside it with `data-overflow-count` gets the number of collapsed items as its
+ * text; the indicator wrapper carries `data-count`. The indicator is measured at its widest
+ * (every item collapsed) to reserve its space. A menu listing the collapsed items needs
+ * DropdownMenu (not ported yet): listen for `astryx-overflow-change` instead.
+ *
+ * Events: `astryx-overflow-change` — detail `{overflowItems: {index, element}[]}`, fired when
+ * the collapsed set changes (silent while nothing overflows, including on connect).
+ *
+ * @example
+ * <OverflowList gap={2}>
+ *   <button>Overview</button><button>Activity</button><button>Settings</button>
+ *   <button slot="overflow">+<span data-overflow-count></span></button>
+ * </OverflowList>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './OverflowList.css';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Gap between items (spacing step). @default 2 */
+  gap?: SpacingStep;
+  /** Minimum number of items always shown. @default 0 */
+  minVisibleItems?: number;
+  /** Maximum number of items ever shown (the floor wins when lower). @default undefined (no cap) */
+  maxVisibleItems?: number;
+  /** Wrap across up to this many rows before collapsing (uniform row height). @default undefined (single line) */
+  maxRows?: number;
+  /** Which end collapses. @default 'end' */
+  collapseFrom?: 'start' | 'end';
+  /**
+   * `observeSelf` measures the list's own width; `observeParent` measures the parent's
+   * content width, keeping the list content-sized until it overflows.
+   * @default 'observeSelf'
+   */
+  behavior?: 'observeParent' | 'observeSelf';
+}
+
+const {
+  gap = 2, minVisibleItems = 0, maxVisibleItems, maxRows, collapseFrom = 'end', behavior = 'observeSelf',
+  class: className, ...rest
+} = Astro.props;
+const hasIndicator = Astro.slots.has('overflow');
+const {themeClass, attrs} = themeProps('overflow-list');
+---
+<ax-overflow-list
+  {...rest}
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-gap={gap}
+  data-min-visible-items={minVisibleItems}
+  data-max-visible-items={maxVisibleItems}
+  data-max-rows={maxRows}
+  data-multi-row={maxRows != null && maxRows > 1 ? '' : undefined}
+  data-collapse-from={collapseFrom}
+  data-behavior={behavior}
+>
+  {hasIndicator && collapseFrom === 'start' && (
+    <div class="ax-overflow-list-indicator" data-overflow-indicator data-overflow-hidden inert><slot name="overflow" /></div>
+  )}
+  <slot />
+  {hasIndicator && collapseFrom === 'end' && (
+    <div class="ax-overflow-list-indicator" data-overflow-indicator data-overflow-hidden inert><slot name="overflow" /></div>
+  )}
+</ax-overflow-list>
+<script>import '../../elements/overflow-list';</script>

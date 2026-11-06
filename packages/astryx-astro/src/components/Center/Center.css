@@ -1,0 +1,17 @@
+/* Port of @astryxdesign/core Center/Center.tsx (StyleX styles) + Layout/padding.stylex.ts per-edge padding. */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-center { display: flex; }
+  .astryx-center[data-inline] { display: inline-flex; }
+  .astryx-center:is([data-axis="both"], [data-axis="vertical"]) { align-items: center; }
+  .astryx-center:is([data-axis="both"], [data-axis="horizontal"]) { justify-content: center; }
+  /* Per-edge padding (edge → axis → padding), resolved in lib/padding.ts. Stack/Center padding
+     does not publish container padding (layout-primitives FR9). */
+  .astryx-center {
+    padding-inline-start: var(--_ax-pis, 0);
+    padding-inline-end: var(--_ax-pie, 0);
+    padding-block-start: var(--_ax-pbs, 0);
+    padding-block-end: var(--_ax-pbe, 0);
+  }
+}

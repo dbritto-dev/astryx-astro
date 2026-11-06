@@ -1,0 +1,222 @@
+/*
+ * Port of @astryxdesign/core Resizable/ResizeHandle.tsx (StyleX styles), rule groups in the
+ * stylex.props() order of the handle, the grab zone (.ax-resize-handle-hit) and the grip
+ * pill (.astryx-resize-handle-pill, a theme target).
+ *
+ * Handle state lives on the root: data-direction, data-position (inline | overlay),
+ * data-divider, data-always-visible, data-pill-side (start | end | center, resolved from
+ * pillPlacement and the collapse state), data-resizing, aria-disabled. Astryx's React
+ * hover/focus state is `:focus` on the handle or `:hover` on the grab zone / pill.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  /* ── Handle ─────────────────────────────────────────────────────────── */
+  .astryx-resize-handle {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-border);
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  /* Overlay: absolutely positioned inside the parent panel (stays within its clip). */
+  .astryx-resize-handle[data-position="overlay"] {
+    position: absolute;
+    z-index: 2;
+    background-color: transparent;
+  }
+  .astryx-resize-handle[data-position="overlay"][data-direction="horizontal"] {
+    inset-inline-end: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--resize-handle-hit-area, 16px);
+  }
+  .astryx-resize-handle[data-position="overlay"][data-direction="vertical"] {
+    inset-block-end: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    height: var(--resize-handle-hit-area, 16px);
+  }
+  .astryx-resize-handle[data-position="overlay"][data-direction="horizontal"][data-pane-length] {
+    width: min(var(--resize-handle-hit-area, 16px), 50%);
+  }
+  .astryx-resize-handle[data-position="overlay"][data-direction="vertical"][data-pane-length] {
+    height: min(var(--resize-handle-hit-area, 16px), 50%);
+  }
+  .astryx-resize-handle[data-position="inline"][data-direction="horizontal"] {
+    width: 1px;
+    height: 100%;
+    cursor: col-resize;
+  }
+  .astryx-resize-handle[data-position="inline"][data-direction="vertical"] {
+    height: 1px;
+    width: 100%;
+    cursor: row-resize;
+  }
+  .astryx-resize-handle[data-position="inline"]:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .astryx-resize-handle[data-position="inline"][data-direction="horizontal"]:not([data-divider]) {
+    background-color: transparent;
+    width: 0;
+  }
+  .astryx-resize-handle[data-position="inline"][data-direction="vertical"]:not([data-divider]) {
+    background-color: transparent;
+    height: 0;
+  }
+  .astryx-resize-handle[data-position="inline"][data-divider]:is(:focus, :has(> .ax-resize-handle-hit:hover), :has(> .astryx-resize-handle-pill:hover)):not([data-resizing]) {
+    background-color: var(--color-border);
+  }
+  .astryx-resize-handle[data-position="inline"][data-divider][data-resizing] {
+    background-color: var(--color-border-emphasized);
+  }
+  .astryx-resize-handle[aria-disabled="true"] {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* ── Grab zone (wider invisible hit area, centred on the line) ──────── */
+  .ax-resize-handle-hit {
+    position: absolute;
+    z-index: 1;
+    touch-action: none;
+    user-select: none;
+  }
+  .astryx-resize-handle[data-direction="horizontal"] > .ax-resize-handle-hit {
+    width: var(--spacing-4);
+    top: 0;
+    bottom: 0;
+    cursor: col-resize;
+    /* rtlStyles.centerInline('0px'): physical left + translateX(-50%) centre in LTR and RTL. */
+    left: 50%;
+    transform: translate(-50%, 0px);
+  }
+  .astryx-resize-handle[data-direction="vertical"] > .ax-resize-handle-hit {
+    height: var(--spacing-4);
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    cursor: row-resize;
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+  }
+  .astryx-resize-handle[data-position="overlay"][data-direction="horizontal"] > .ax-resize-handle-hit {
+    width: min(var(--spacing-4), 100%);
+  }
+  .astryx-resize-handle[data-position="overlay"][data-direction="vertical"] > .ax-resize-handle-hit {
+    height: min(var(--spacing-4), 100%);
+  }
+  /* An inline zone reaches at most half of the pane it resizes: the element writes
+     `min(var(--spacing-4), <pane>px)` inline while the pane is open. */
+  .astryx-resize-handle[aria-disabled="true"] > .ax-resize-handle-hit {
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* ── Grip pill ──────────────────────────────────────────────────────── */
+  .astryx-resize-handle-pill {
+    position: absolute;
+    z-index: 2;
+    touch-action: none;
+    user-select: none;
+    border-radius: var(--radius-full);
+    background-color: var(--color-border);
+    transition-property: opacity, background-color, transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    top: 50%;
+  }
+  .astryx-resize-handle[data-direction="horizontal"] > .astryx-resize-handle-pill {
+    width: 3px;
+    height: var(--spacing-8);
+  }
+  .astryx-resize-handle[data-direction="vertical"] > .astryx-resize-handle-pill {
+    width: var(--spacing-8);
+    height: 3px;
+  }
+  /* Placement: centred on the line, or offset to one side of it. */
+  .astryx-resize-handle[data-pill-side="center"] > .astryx-resize-handle-pill {
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .astryx-resize-handle[data-direction="horizontal"][data-pill-side="start"] > .astryx-resize-handle-pill {
+    inset-inline-start: 0;
+    transform: translate(calc(-1 * (100% + var(--spacing-1))), -50%);
+  }
+  .astryx-resize-handle[data-direction="horizontal"][data-pill-side="end"] > .astryx-resize-handle-pill {
+    inset-inline-start: 0;
+    transform: translate(calc(1 * (100% + var(--spacing-1))), -50%);
+  }
+  .astryx-resize-handle[data-direction="vertical"][data-pill-side="start"] > .astryx-resize-handle-pill {
+    top: 0;
+    transform: translate(-50%, calc(-1 * (100% + var(--spacing-1))));
+  }
+  .astryx-resize-handle[data-direction="vertical"][data-pill-side="end"] > .astryx-resize-handle-pill {
+    top: 0;
+    transform: translate(-50%, calc(1 * (100% + var(--spacing-1))));
+  }
+  .astryx-resize-handle[data-direction="horizontal"] > .astryx-resize-handle-pill { cursor: col-resize; }
+  .astryx-resize-handle[data-direction="vertical"] > .astryx-resize-handle-pill { cursor: row-resize; }
+  .astryx-resize-handle-pill:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+
+  /* Visibility: always, or only on hover/focus (a hidden pill takes no pointer). */
+  .astryx-resize-handle[data-always-visible] > .astryx-resize-handle-pill { opacity: 1; }
+  .astryx-resize-handle:not([data-always-visible]) > .astryx-resize-handle-pill {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* A pill shown on hover can sit outside the grab zone: an invisible bridge toward the
+     handle keeps the hover on the way to it. The pill's offset is physical, so is this. */
+  .astryx-resize-handle:not([data-always-visible])[data-direction="horizontal"][data-pill-side="start"] > .astryx-resize-handle-pill::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inset-inline-end: calc(-1 * var(--spacing-1) - 1px);
+  }
+  .astryx-resize-handle:not([data-always-visible])[data-direction="horizontal"][data-pill-side="start"] > .astryx-resize-handle-pill:is([dir="rtl"] *)::before {
+    inset-inline-start: calc(-1 * var(--spacing-1) - 1px);
+    inset-inline-end: 0;
+  }
+  .astryx-resize-handle:not([data-always-visible])[data-direction="horizontal"][data-pill-side="end"] > .astryx-resize-handle-pill::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: calc(-1 * var(--spacing-1) - 1px);
+    inset-inline-end: 0;
+  }
+  .astryx-resize-handle:not([data-always-visible])[data-direction="horizontal"][data-pill-side="end"] > .astryx-resize-handle-pill:is([dir="rtl"] *)::before {
+    inset-inline-start: 0;
+    inset-inline-end: calc(-1 * var(--spacing-1) - 1px);
+  }
+  .astryx-resize-handle:not([data-always-visible])[data-direction="vertical"][data-pill-side="start"] > .astryx-resize-handle-pill::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: 0;
+    inset-block-end: calc(-1 * var(--spacing-1) - 1px);
+  }
+  .astryx-resize-handle:not([data-always-visible])[data-direction="vertical"][data-pill-side="end"] > .astryx-resize-handle-pill::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: calc(-1 * var(--spacing-1) - 1px);
+    inset-block-end: 0;
+  }
+  /* Hover / focus, then dragging, then disabled. */
+  .astryx-resize-handle:is(:focus, :has(> .ax-resize-handle-hit:hover), :has(> .astryx-resize-handle-pill:hover)):not([data-resizing]) > .astryx-resize-handle-pill {
+    opacity: 1;
+    pointer-events: auto;
+    background-color: var(--color-border);
+  }
+  .astryx-resize-handle[data-resizing] > .astryx-resize-handle-pill {
+    opacity: 1;
+    pointer-events: auto;
+    background-color: var(--color-border-emphasized);
+  }
+  .astryx-resize-handle[aria-disabled="true"] > .astryx-resize-handle-pill {
+    cursor: default;
+    pointer-events: none;
+  }
+}

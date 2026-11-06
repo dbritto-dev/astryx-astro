@@ -1,0 +1,99 @@
+---
+/**
+ * Grid — CSS Grid layout with fixed or responsive columns.
+ * Port of @astryxdesign/core Grid/Grid.tsx.
+ *
+ * - `columns={3}` — exactly three `1fr` tracks at every width (never reflows)
+ * - `columns={{minWidth: 240}}` — responsive auto-fill
+ * - `columns={{minWidth: 240, repeat: 'fit'}}` — responsive auto-fit (stretch)
+ * - `columns={{minWidth: 240, max: 4}}` — responsive, capped at four columns
+ *
+ * The track list is a class-level declaration fed by a private custom property, so
+ * unlayered consumer CSS can still override `grid-template-columns`.
+ *
+ * @example
+ * <Grid columns={3} gap={4}><Card>…</Card><Card>…</Card><Card>…</Card></Grid>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue, SpacingStep} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, type StyleValue} from '../../lib/style';
+import './Grid.css';
+
+export type GridAlignment = 'start' | 'center' | 'end' | 'stretch';
+export type GridColumns = number | {minWidth: number; max?: number; repeat?: 'fill' | 'fit'};
+
+export interface Props extends HTMLAttributes<'div'> {
+  /**
+   * Column configuration. A number creates exactly N `1fr` tracks and never reflows;
+   * `{minWidth, max?, repeat?}` creates responsive columns with a px floor and an optional cap.
+   */
+  columns?: GridColumns;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  minHeight?: SizeValue;
+  /** Spacing between all grid items (rows and columns). */
+  gap?: SpacingStep;
+  /** Spacing between rows. Overrides `gap` for rows. */
+  rowGap?: SpacingStep;
+  /** Spacing between columns. Overrides `gap` for columns. */
+  columnGap?: SpacingStep;
+  /** Height of each implicit row track in px (`grid-auto-rows`); pair with GridSpan `rows`. */
+  rowHeight?: number;
+  /** Vertical alignment of items (align-items). Unset leaves the browser default. */
+  align?: GridAlignment;
+  /** Horizontal alignment of items (justify-items). Unset leaves the browser default. */
+  justify?: GridAlignment;
+}
+
+const {
+  columns, rowHeight, width, height, maxWidth, minHeight, gap, rowGap, columnGap, align, justify,
+  class: className, style, ...rest
+} = Astro.props;
+
+const spacingVarNames: Record<string, string> = {
+  0: '--spacing-0', 0.5: '--spacing-0-5', 1: '--spacing-1', 1.5: '--spacing-1-5', 2: '--spacing-2', 3: '--spacing-3',
+  4: '--spacing-4', 5: '--spacing-5', 6: '--spacing-6', 8: '--spacing-8', 10: '--spacing-10',
+};
+
+/** Caps the column count at `max` while present columns still fill the row (Astryx buildCappedTemplate). */
+function buildCappedTemplate(minW: number, maxCols: number, repeatMode: string): string {
+  const gapVar = columnGap != null ? spacingVarNames[columnGap] : gap != null ? spacingVarNames[gap] : null;
+  const perColumn = gapVar ? `calc((100% - ${maxCols - 1} * var(${gapVar})) / ${maxCols})` : `calc(100% / ${maxCols})`;
+  const trackMin = `min(100%, max(${minW}px, ${perColumn}))`;
+  return `repeat(${repeatMode}, minmax(${trackMin}, 1fr))`;
+}
+
+let template: string;
+if (typeof columns === 'object' && columns != null) {
+  const repeatMode = columns.repeat === 'fit' ? 'auto-fit' : 'auto-fill';
+  template = columns.max != null && columns.max > 0
+    ? buildCappedTemplate(columns.minWidth, columns.max, repeatMode)
+    : `repeat(${repeatMode}, minmax(${columns.minWidth}px, 1fr))`;
+} else if (typeof columns === 'number' && columns > 0) {
+  template = `repeat(${columns}, 1fr)`;
+} else {
+  template = '1fr';
+}
+
+const {themeClass, attrs} = themeProps('grid', {
+  columns: typeof columns === 'number' ? columns : undefined,
+  gap, align, justify,
+});
+---
+<div
+  class={cx(themeClass, className)}
+  {...attrs}
+  data-row-gap={rowGap}
+  data-column-gap={columnGap}
+  style={mergeStyles(
+    {
+      '--_ax-grid-columns': template === '1fr' ? undefined : template,
+      '--_ax-grid-auto-rows': rowHeight != null ? `${rowHeight}px` : undefined,
+      width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight),
+    },
+    style as StyleValue,
+  )}
+  {...rest}
+><slot /></div>

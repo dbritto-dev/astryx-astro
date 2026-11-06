@@ -1,0 +1,43 @@
+---
+import Section from './Section.astro';
+import Card from '../Card/Card.astro';
+const title = 'margin:0;font-size:var(--font-size-base);font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const body = 'margin:var(--spacing-1) 0 0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--spacing-3)">
+  <Section><p style={title}>section</p><p style={body}>Surface background (default)</p></Section>
+  <Section variant="muted"><p style={title}>muted</p><p style={body}>Muted background</p></Section>
+  <Section variant="transparent" dividers={['top', 'bottom', 'start', 'end']}><p style={title}>transparent</p><p style={body}>All four dividers</p></Section>
+</div>
+<Card maxWidth={520} padding={0}>
+  <Section variant="muted" dividers={['bottom']}>
+    <p style={title}>Settings</p>
+    <p style={body}>First child of a Card: escapes the card padding to the edges.</p>
+  </Section>
+  <Section>
+    <p style={title}>Notifications</p>
+    <p style={body}>Theme section padding (no padding prop).</p>
+  </Section>
+  <Section variant="muted" dividers={['top']} padding={2}>
+    <p style={body}>Last child, padding 2.</p>
+  </Section>
+</Card>
+<Card maxWidth={520}>
+  <Section variant="muted" dividers={['bottom']}>
+    <p style={title}>Bleeds out of the card padding</p>
+    <p style={body}>Card keeps its theme padding; the Section's outer wrapper cancels it.</p>
+  </Section>
+  <p style={`${body};margin:var(--spacing-3) 0`}>Card body content between sections.</p>
+  <Section variant="muted" dividers={['top']} paddingInline={6} paddingBlockStart={1} paddingBlockEnd={3}>
+    <p style={body}>paddingInline 6, paddingBlockStart 1, paddingBlockEnd 3</p>
+  </Section>
+</Card>
+<div style="display:flex;gap:var(--spacing-3);align-items:flex-start">
+  <Section padding={6} width={260} variant="muted">
+    <p style={title}>padding 6 propagates</p>
+    <Section variant="section" minHeight={60}><p style={body}>A nested Section without padding inherits the parent's step.</p></Section>
+  </Section>
+  <Section height={140} maxWidth={260} paddingInlineStart={8} paddingInlineEnd={2} dividers={['start']}>
+    <p style={body}>height 140, maxWidth 260, paddingInlineStart 8, paddingInlineEnd 2</p>
+  </Section>
+</div>

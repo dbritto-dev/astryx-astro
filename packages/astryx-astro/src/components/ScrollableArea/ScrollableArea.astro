@@ -1,0 +1,87 @@
+---
+/**
+ * ScrollableArea — a native scroll viewport with axis-aware keyboard access.
+ * Port of @astryxdesign/core ScrollableArea/ScrollableArea.tsx + hooks/useScrollableArea.ts
+ * (+ scrollGeometry.ts); behaviour in src/elements/scrollable-area.ts (<ax-scrollable-area>).
+ *
+ * The root is the viewport (theme target, accessible name owner); its single child is a real
+ * content box with a 100% minimum size. The viewport enters the tab order only while a
+ * requested logical axis actually scrolls, and reports live edge state:
+ * `data-scrollable-inline|block="true"`, `data-scroll-inline-start|end="true"`,
+ * `data-scroll-block-start|end="true"` (a non-scrolling axis reports both edges).
+ * Overflow is `clip` while nothing overflows and `auto` on an axis that does;
+ * `stickyContainment="always"` keeps the requested axes scroll containers. Before the
+ * element upgrades (or without JS) the requested axes simply scroll.
+ * `overscroll="contain"` applies only to axes that scroll.
+ *
+ * Astryx draws no edge fades; descendants can use `@container scroll-state(…)` where the
+ * engine supports it (the viewport is a scroll-state container) or the data-scroll-* flags.
+ *
+ * @example
+ * <ScrollableArea label="Activity history" height={240} padding={3}>…</ScrollableArea>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import type {SizeValue} from '../../lib/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {cssSize, mergeStyles, styleToString, type StyleValue} from '../../lib/style';
+import {paddingVars, splitPadding, type PaddingProps} from '../../lib/padding';
+import './ScrollableArea.css';
+
+export type ScrollAxis = 'inline' | 'block' | 'both';
+export type ScrollOverscroll = 'allow' | 'contain';
+export type ScrollableAreaStickyContainment = 'whenScrollable' | 'always';
+
+export interface Props extends Omit<HTMLAttributes<'div'>, 'aria-label' | 'role' | 'tabindex'>, PaddingProps {
+  /** Logical axis or axes where scrolling is allowed. @default 'block' */
+  axis?: ScrollAxis;
+  /** Accessible name used when the viewport enters the tab order. */
+  label: string;
+  /** Semantics for the named viewport. @default 'group' */
+  role?: 'group' | 'region';
+  /** Whether scrolling axes pass scroll gestures to ancestors at an edge. @default 'allow' */
+  overscroll?: ScrollOverscroll;
+  width?: SizeValue;
+  height?: SizeValue;
+  maxWidth?: SizeValue;
+  minHeight?: SizeValue;
+  /** Whether a fitting viewport stays a Sticky containing boundary. @default 'whenScrollable' */
+  stickyContainment?: ScrollableAreaStickyContainment;
+  /** Let the viewport escape inherited container padding. @default false */
+  isFullBleed?: boolean;
+}
+
+const [pad, props] = splitPadding(Astro.props);
+const {
+  axis = 'block', label, role = 'group', overscroll = 'allow', width, height, maxWidth, minHeight,
+  stickyContainment = 'whenScrollable', isFullBleed = false, class: className, style, ...rest
+} = props;
+
+// Overflow belongs to the behaviour (the element writes it inline from measured geometry;
+// before it upgrades, the stylesheet lets the requested axes scroll): drop it from the
+// caller's style.
+const callerStyle = styleToString(style as StyleValue)
+  .split(';')
+  .filter((d) => !/^\s*overflow(-x|-y|-inline|-block)?\s*:/i.test(d))
+  .join(';');
+const {themeClass, attrs} = themeProps('scrollable-area', {axis});
+---
+<ax-scrollable-area
+  {...rest}
+  class={cx(themeClass, 'ax-focus-visible', className)}
+  {...attrs}
+  role={role}
+  aria-label={label}
+  data-scroll-axis={axis}
+  data-overscroll={overscroll}
+  data-sticky-containment={stickyContainment}
+  data-full-bleed={isFullBleed ? '' : undefined}
+  data-scroll-inline-start="true"
+  data-scroll-inline-end="true"
+  data-scroll-block-start="true"
+  data-scroll-block-end="true"
+  style={mergeStyles(
+    {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)},
+    callerStyle,
+  )}
+><div class="ax-scrollable-area-content" data-scroll-content="" style={mergeStyles(paddingVars({...pad, padding: pad.padding ?? 0}))}><slot /></div></ax-scrollable-area>
+<script>import '../../elements/scrollable-area';</script>

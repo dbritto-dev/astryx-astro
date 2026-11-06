@@ -1,0 +1,38 @@
+---
+/**
+ * AspectRatio — keeps its child at a width/height ratio.
+ * Port of @astryxdesign/core AspectRatio/AspectRatio.tsx.
+ *
+ * The box takes its width from its container and derives its height from `ratio`.
+ * `fit` sizes the child (`cover`/`contain` stretch it and set object-fit on img/video,
+ * `center` keeps its natural size); without `fit` the child styles itself.
+ *
+ * @example
+ * <AspectRatio ratio={16 / 9} fit="cover"><img src="/hero.jpg" alt="" /></AspectRatio>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import {mergeStyles, type StyleValue} from '../../lib/style';
+import './AspectRatio.css';
+
+export type AspectRatioShape = 'rectangle' | 'ellipse';
+export type AspectRatioFit = 'cover' | 'contain' | 'center';
+
+export interface Props extends HTMLAttributes<'div'> {
+  /** Width / height, e.g. 16 / 9, 4 / 3, 1. Overridable from unlayered CSS (`aspect-ratio`). */
+  ratio: number;
+  /** `ellipse` clips to an ellipse (a circle at ratio 1). @default 'rectangle' */
+  shape?: AspectRatioShape;
+  /** How the child is sized inside the box. Omit to leave the child unstyled. */
+  fit?: AspectRatioFit;
+}
+
+const {ratio, shape = 'rectangle', fit, class: className, style, ...rest} = Astro.props;
+const {themeClass, attrs} = themeProps('aspect-ratio', {shape});
+---
+<div
+  class={cx(themeClass, className)}
+  {...attrs}
+  style={mergeStyles({'--_ax-ratio': Number.isFinite(ratio) ? String(ratio) : undefined}, style as StyleValue)}
+  {...rest}
+><div class="ax-aspect-ratio-child" data-astryx-aspect-ratio-override={fit}><slot /></div></div>

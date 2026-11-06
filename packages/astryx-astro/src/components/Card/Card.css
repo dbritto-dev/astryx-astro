@@ -1,0 +1,77 @@
+/*
+ * Port of @astryxdesign/core Card/Card.tsx + Layout/container.stylex.ts (container({useThemeDefault:'card'})).
+ * Rule groups follow the React stylex.props() order: card, variant, elevation, scrollable,
+ * container padding, withBorder.
+ *
+ * Container padding publisher (contract #14): --container-padding-* equal the applied padding.
+ * Theme chain per edge: --astryx-card-padding-<edge> → -<axis> → shorthand → --spacing-4.
+ * An explicit `padding` prop arrives as the private, non-inheriting --_ax-pad.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-pad { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  .astryx-card {
+    --_card-radius: var(--radius-container);
+    border-radius: var(--_card-radius);
+    min-width: 0;
+    overflow: clip;
+    box-shadow: var(--_card-ring, 0 0 transparent), var(--_card-elevation, 0 0 transparent);
+  }
+
+  /* variant (a theme's own variant has no rule here and paints over base styles) */
+  .astryx-card[data-variant="default"] { background-color: var(--color-background-card); }
+  .astryx-card[data-variant="transparent"] { background-color: transparent; }
+  .astryx-card[data-variant="muted"] { background-color: var(--color-background-muted); }
+  .astryx-card[data-variant="blue"] { background-color: var(--color-background-blue); }
+  .astryx-card[data-variant="cyan"] { background-color: var(--color-background-cyan); }
+  .astryx-card[data-variant="gray"] { background-color: var(--color-background-gray); }
+  .astryx-card[data-variant="green"] { background-color: var(--color-background-green); }
+  .astryx-card[data-variant="orange"] { background-color: var(--color-background-orange); }
+  .astryx-card[data-variant="pink"] { background-color: var(--color-background-pink); }
+  .astryx-card[data-variant="purple"] { background-color: var(--color-background-purple); }
+  .astryx-card[data-variant="red"] { background-color: var(--color-background-red); }
+  .astryx-card[data-variant="teal"] { background-color: var(--color-background-teal); }
+  .astryx-card[data-variant="yellow"] { background-color: var(--color-background-yellow); }
+
+  /* elevation → --_card-elevation (composes with --_card-ring) */
+  .astryx-card[data-elevation="none"] { --_card-elevation: 0 0 transparent; }
+  .astryx-card[data-elevation="low"] { --_card-elevation: var(--shadow-low); }
+  .astryx-card[data-elevation="med"] { --_card-elevation: var(--shadow-med); }
+  .astryx-card[data-elevation="high"] { --_card-elevation: var(--shadow-high); }
+
+  /* Fixed-height cards scroll their content. */
+  .astryx-card[data-scrollable] { overflow: auto; }
+
+  /* container() */
+  .astryx-card {
+    box-sizing: border-box;
+    --container-padding-inline-start: var(--_ax-pad, var(--astryx-card-padding-inline-start, var(--astryx-card-padding-inline, var(--astryx-card-padding, var(--spacing-4)))));
+    --container-padding-inline-end: var(--_ax-pad, var(--astryx-card-padding-inline-end, var(--astryx-card-padding-inline, var(--astryx-card-padding, var(--spacing-4)))));
+    --container-padding-block-start: var(--_ax-pad, var(--astryx-card-padding-block-start, var(--astryx-card-padding, var(--spacing-4))));
+    --container-padding-block-end: var(--_ax-pad, var(--astryx-card-padding-block-end, var(--astryx-card-padding, var(--spacing-4))));
+    --layout-padding-outer-x: var(--_ax-pad, var(--astryx-card-padding-inline-start, var(--astryx-card-padding-inline, var(--astryx-card-padding, var(--spacing-4)))));
+    --layout-padding-outer-y: var(--_ax-pad, var(--astryx-card-padding-block-start, var(--astryx-card-padding, var(--spacing-4))));
+    --layout-padding-inner-x: var(--_ax-pad, var(--astryx-card-padding-inline-start, var(--astryx-card-padding-inline, var(--astryx-card-padding, var(--spacing-4)))));
+    --layout-padding-inner-y: var(--_ax-pad, var(--astryx-card-padding-block-start, var(--astryx-card-padding, var(--spacing-4))));
+    /* This container's --layout-padding-outer-* now describe the inset for Layouts inside it. */
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    padding-inline-start: var(--container-padding-inline-start);
+    padding-inline-end: var(--container-padding-inline-end);
+    padding-block-start: var(--container-padding-block-start);
+    padding-block-end: var(--container-padding-block-end);
+  }
+
+  /* Only `default` draws a border, inside the padding: border + padding = the padding token. */
+  .astryx-card[data-variant="default"] {
+    border-width: var(--border-width);
+    border-style: solid;
+    border-color: var(--color-border);
+    padding-inline-start: calc(var(--container-padding-inline-start) - var(--border-width));
+    padding-inline-end: calc(var(--container-padding-inline-end) - var(--border-width));
+    padding-block-start: calc(var(--container-padding-block-start) - var(--border-width));
+    padding-block-end: calc(var(--container-padding-block-end) - var(--border-width));
+  }
+}

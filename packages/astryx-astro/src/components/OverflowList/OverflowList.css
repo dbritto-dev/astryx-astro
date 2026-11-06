@@ -1,0 +1,57 @@
+/*
+ * Port of @astryxdesign/core OverflowList/OverflowList.tsx (StyleX styles).
+ * Astryx measures a hidden copy of every item; this port renders the items once and
+ * <ax-overflow-list> takes collapsed items out of flow instead (`data-overflow-hidden`:
+ * absolutely positioned, invisible, inert), so they stay measurable without a copy.
+ * `position: relative` makes the list their containing block so they never leak overflow.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@layer astryx-base {
+  .astryx-overflow-list {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+    min-width: 0;
+    position: relative;
+  }
+  .astryx-overflow-list[data-multi-row] {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    overflow: hidden;
+    white-space: normal;
+    min-width: 0;
+  }
+
+  .astryx-overflow-list[data-gap="0"] { gap: var(--spacing-0); }
+  .astryx-overflow-list[data-gap="0.5"] { gap: var(--spacing-0-5); }
+  .astryx-overflow-list[data-gap="1"] { gap: var(--spacing-1); }
+  .astryx-overflow-list[data-gap="1.5"] { gap: var(--spacing-1-5); }
+  .astryx-overflow-list[data-gap="2"] { gap: var(--spacing-2); }
+  .astryx-overflow-list[data-gap="3"] { gap: var(--spacing-3); }
+  .astryx-overflow-list[data-gap="4"] { gap: var(--spacing-4); }
+  .astryx-overflow-list[data-gap="5"] { gap: var(--spacing-5); }
+  .astryx-overflow-list[data-gap="6"] { gap: var(--spacing-6); }
+  .astryx-overflow-list[data-gap="8"] { gap: var(--spacing-8); }
+  .astryx-overflow-list[data-gap="10"] { gap: var(--spacing-10); }
+
+  /* observeParent: fill the parent while items overflow. */
+  .astryx-overflow-list[data-behavior="observeParent"][data-has-overflow] { width: 100%; }
+
+  /* The overflow indicator wrapper (the consumer's `overflow` slot). */
+  .astryx-overflow-list > .ax-overflow-list-indicator { display: inline-flex; }
+
+  /* Collapsed items, and every item for the duration of a measurement (single-line nowrap
+     max-content widths, as Astryx's measurement container). */
+  .astryx-overflow-list[data-measuring] { white-space: nowrap; }
+  .astryx-overflow-list[data-measuring] > *,
+  .astryx-overflow-list > [data-overflow-hidden] {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}

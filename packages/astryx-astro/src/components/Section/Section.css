@@ -1,0 +1,55 @@
+/*
+ * Port of @astryxdesign/core Section/Section.tsx + Layout/container.stylex.ts
+ * (container({useThemeDefault:'section'})) + Layout/padding.stylex.ts.
+ *
+ * Section is both a bleed consumer (the outer wrapper escapes the parent's container
+ * padding) and a publisher (the painted inner element sets --container-padding-* to its
+ * applied padding). Theme chain per edge: --astryx-section-padding-<edge> → -<axis> →
+ * --_section-padding-propagated (an ancestor Section's explicit padding) →
+ * --astryx-section-padding → --spacing-4.
+ *
+ * Private inputs (non-inheriting): --_ax-pad (the `padding` prop) and --_ax-pis/pie/pbs/pbe
+ * (edge → axis → padding, from lib/padding.ts).
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-pad { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* Outer wrapper escapes the parent's container padding. */
+  .ax-section-outer {
+    margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
+    margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
+  }
+  .ax-section-outer:first-child { margin-top: calc(-1 * var(--container-padding-block-start, 0px)); }
+  .ax-section-outer:last-child { margin-bottom: calc(-1 * var(--container-padding-block-end, 0px)); }
+
+  /* Inner (painted) element: nestedStyles.inner, then container(). */
+  .astryx-section {
+    height: 100%;
+    box-sizing: border-box;
+    --container-padding-inline-start: var(--_ax-pis, var(--astryx-section-padding-inline-start, var(--astryx-section-padding-inline, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4))))));
+    --container-padding-inline-end: var(--_ax-pie, var(--astryx-section-padding-inline-end, var(--astryx-section-padding-inline, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4))))));
+    --container-padding-block-start: var(--_ax-pbs, var(--astryx-section-padding-block-start, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4)))));
+    --container-padding-block-end: var(--_ax-pbe, var(--astryx-section-padding-block-end, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4)))));
+    --layout-padding-outer-x: var(--_ax-pad, var(--astryx-section-padding-inline-start, var(--astryx-section-padding-inline, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4))))));
+    --layout-padding-outer-y: var(--_ax-pad, var(--astryx-section-padding-block-start, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4)))));
+    --layout-padding-inner-x: var(--_ax-pad, var(--astryx-section-padding-inline-start, var(--astryx-section-padding-inline, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4))))));
+    --layout-padding-inner-y: var(--_ax-pad, var(--astryx-section-padding-block-start, var(--_section-padding-propagated, var(--astryx-section-padding, var(--spacing-4)))));
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    padding-inline-start: var(--container-padding-inline-start);
+    padding-inline-end: var(--container-padding-inline-end);
+    padding-block-start: var(--container-padding-block-start);
+    padding-block-end: var(--container-padding-block-end);
+  }
+
+  .astryx-section[data-variant="section"] { background-color: var(--color-background-surface); }
+  .astryx-section[data-variant="transparent"] { background-color: transparent; }
+  .astryx-section[data-variant="muted"] { background-color: var(--color-background-muted); }
+
+  .astryx-section[data-dividers~="top"] { border-top: 1px solid var(--color-border); }
+  .astryx-section[data-dividers~="bottom"] { border-bottom: 1px solid var(--color-border); }
+  .astryx-section[data-dividers~="start"] { border-inline-start: 1px solid var(--color-border); }
+  .astryx-section[data-dividers~="end"] { border-inline-end: 1px solid var(--color-border); }
+}

@@ -1,0 +1,55 @@
+---
+import Grid from './Grid.astro';
+import GridSpan from './GridSpan.astro';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div>
+  <p style={cap}>columns={'{3}'} gap={'{3}'}</p>
+  <Grid columns={3} gap={3}>
+    {Array.from({length: 6}, (_, i) => <div style={box}>Item {i + 1}</div>)}
+  </Grid>
+</div>
+<div>
+  <p style={cap}>Responsive auto-fill: columns={'{{minWidth: 140}}'}</p>
+  <Grid columns={{minWidth: 140}} gap={2}>
+    {Array.from({length: 5}, (_, i) => <div style={box}>Fill {i + 1}</div>)}
+  </Grid>
+</div>
+<div>
+  <p style={cap}>Auto-fit stretches the present items: repeat 'fit'</p>
+  <Grid columns={{minWidth: 140, repeat: 'fit'}} gap={2}>
+    {Array.from({length: 3}, (_, i) => <div style={box}>Fit {i + 1}</div>)}
+  </Grid>
+</div>
+<div>
+  <p style={cap}>Capped at 4 columns: columns={'{{minWidth: 100, max: 4}}'}, rowGap 1, columnGap 4</p>
+  <Grid columns={{minWidth: 100, max: 4}} rowGap={1} columnGap={4}>
+    {Array.from({length: 7}, (_, i) => <div style={box}>Capped {i + 1}</div>)}
+  </Grid>
+</div>
+<div>
+  <p style={cap}>rowHeight={'{40}'} with GridSpan rows / columns / 'full'</p>
+  <Grid columns={4} rowHeight={40} gap={2}>
+    <GridSpan rows={2}><div style={box}>rows 2</div></GridSpan>
+    <GridSpan columns={2}><div style={box}>columns 2</div></GridSpan>
+    <div style={box}>1 × 1</div>
+    <GridSpan columns={3}><div style={box}>columns 3</div></GridSpan>
+    <GridSpan columns="full"><div style={box}>columns full</div></GridSpan>
+  </Grid>
+</div>
+<div>
+  <p style={cap}>align / justify: center, start, end, stretch</p>
+  <Grid columns={4} gap={2} align="center" justify="center" height={72} style="border:1px dashed var(--color-border);border-radius:var(--radius-element)">
+    <div style={box}>center</div><div style={box}>center</div><div style={box}>center</div><div style={box}>center</div>
+  </Grid>
+  <Grid columns={3} gap={2} align="start" justify="start" width="100%" maxWidth={480} minHeight={56} style="margin-top:var(--spacing-2)">
+    <div style={box}>start</div><div style={box}>start</div><div style={box}>start</div>
+  </Grid>
+  <Grid columns={3} gap={2} align="end" justify="end" minHeight={56} style="margin-top:var(--spacing-2)">
+    <div style={box}>end</div><div style={box}>end</div><div style={box}>end</div>
+  </Grid>
+  <Grid columns={3} gap={2} align="stretch" justify="stretch" style="margin-top:var(--spacing-2)">
+    <div style={box}>stretch</div><div style={box}>stretch</div><div style={box}>stretch</div>
+  </Grid>
+</div>

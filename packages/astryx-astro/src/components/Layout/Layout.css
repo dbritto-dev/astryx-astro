@@ -1,0 +1,282 @@
+/*
+ * Port of @astryxdesign/core Layout/Layout.tsx, LayoutHeader.tsx, LayoutContent.tsx,
+ * LayoutPanel.tsx, LayoutFooter.tsx and their padding helpers (padding.stylex.ts,
+ * container.stylex.ts, layoutEdges.stylex.ts).
+ *
+ * Layout regions (contract #13) and the container padding protocol (contract #14):
+ *   - Containers (Card, Section, Dialog …) publish --layout-padding-outer-x/y and
+ *     --layout-padding-inner-x/y; a Layout's own `padding` writes --layout-padding-own-outer-*.
+ *   - Regions apply outer padding on edges that touch the container, inner padding on
+ *     interior edges, and republish --container-padding-* for bleed children.
+ *   - Which slots exist is stamped by Layout onto LayoutContent / LayoutPanel
+ *     (`data-layout-slots="header start end footer"`, `data-layout-area="start|end"`),
+ *     replacing LayoutSlotsContext / LayoutAreaContext. Unstamped regions behave as
+ *     Astryx's defaults (no slots, no area).
+ *
+ * StyleX resolves conflicts by the order styles are passed (last wins). Region rules keep
+ * one flat specificity — conditions sit inside :where() — so source order below mirrors
+ * the stylex.props() order in each React file.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+@property --_ax-pad { syntax: "*"; inherits: false; }
+
+@layer astryx-base {
+  /* ── Layout ─────────────────────────────────────────────────────────── */
+  /* Outer wrapper escapes the container padding with negative margins. */
+  .astryx-layout {
+    margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
+    margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
+    margin-block-start: calc(-1 * var(--container-padding-block-start, 0px));
+    margin-block-end: calc(-1 * var(--container-padding-block-end, 0px));
+  }
+  .astryx-layout[data-height="fill"] {
+    height: calc(100% + var(--container-padding-block-start, 0px) + var(--container-padding-block-end, 0px));
+    max-height: var(--container-max-height, none);
+  }
+  .astryx-layout[data-height="auto"] { min-height: 100%; }
+
+  /* Inner wrapper resets the container padding vars for descendants (values that depend on
+     props — padding, contentWidth — are set inline on this element). */
+  .ax-layout-inner {
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+    --layout-content-width: 100cqi;
+    --layout-alignment-width: 100cqi;
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    display: flex;
+    flex-direction: column;
+  }
+  .astryx-layout[data-height="fill"] > .ax-layout-inner {
+    height: calc(100% + var(--container-padding-block-start, 0px) + var(--container-padding-block-end, 0px));
+    max-height: var(--container-max-height, none);
+  }
+  .astryx-layout[data-height="auto"] > .ax-layout-inner { min-height: 100%; }
+
+  /* Middle row: start | content | end */
+  .ax-layout-middle {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    min-height: 0;
+  }
+  /* A header without a divider right before this row, or a footer without one right after
+     it, removes LayoutContent's adjacent inner padding. Sibling relations only. */
+  .astryx-layout-header:not([data-divider]) ~ .ax-layout-middle { --_layout-flush-block-start: 0px; }
+  .ax-layout-middle:has(~ .astryx-layout-footer:not([data-divider])) { --_layout-flush-block-end: 0px; }
+
+  /* contentWidth that cannot be aligned internally (or both panels): constrained row. */
+  .ax-layout-middle[data-content-width="constrained"] {
+    width: 100%;
+    max-width: var(--layout-content-width);
+    margin-inline: auto;
+  }
+  /* Internal alignment: LayoutContent owns the full-width scrollport and pads its children
+     into the contentWidth lane. */
+  .ax-layout-middle:is([data-content-width="internal"], [data-content-width="internal-start"], [data-content-width="internal-end"]):has(> .ax-layout-main > .astryx-layout-content) {
+    container-type: inline-size;
+  }
+  .ax-layout-middle:is([data-content-width="internal-start"], [data-content-width="internal-end"]) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--layout-content-width, none);
+    margin-inline: auto;
+  }
+  .ax-layout-middle:is([data-content-width="internal-start"], [data-content-width="internal-end"]):has(> .ax-layout-main > .astryx-layout-content) {
+    max-width: none;
+    margin-inline: 0;
+  }
+  .ax-layout-middle[data-content-width="internal-start"]:has(> .ax-layout-main > .astryx-layout-content) {
+    padding-inline-start: max(0px, calc((100% - var(--layout-content-width)) / 2));
+  }
+  .ax-layout-middle[data-content-width="internal-end"]:has(> .ax-layout-main > .astryx-layout-content) {
+    padding-inline-end: max(0px, calc((100% - var(--layout-content-width)) / 2));
+  }
+
+  /* Content cell (stackItem size="fill") */
+  .ax-layout-main {
+    min-height: 0;
+    min-width: 0;
+    flex-grow: 1;
+  }
+  .ax-layout-main[data-content-width="internal"] {
+    width: 100%;
+    max-width: var(--layout-content-width, none);
+    margin-inline: auto;
+  }
+  .ax-layout-main[data-content-width="internal"]:has(> .astryx-layout-content) { max-width: none; }
+
+  /* Layout root reset (Astryx Layout/layoutReset.ts = overlayPaddingReset + the Layout
+     widths, flush values and height cap): content inside lays out as at a page root.
+     For layout roots such as AppShell (component:Layout FR8, component:AppShell FR18). */
+  .ax-layout-root-reset {
+    --container-padding-inline-start: 0px;
+    --container-padding-inline-end: 0px;
+    --container-padding-block-start: 0px;
+    --container-padding-block-end: 0px;
+    --layout-padding-outer-x: initial;
+    --layout-padding-outer-y: initial;
+    --layout-padding-own-outer-x: initial;
+    --layout-padding-own-outer-y: initial;
+    --layout-padding-inner-x: initial;
+    --layout-padding-inner-y: initial;
+    --_section-padding-propagated: initial;
+    --layout-content-width: initial;
+    --layout-alignment-width: initial;
+    --_layout-flush-block-start: initial;
+    --_layout-flush-block-end: initial;
+    --container-max-height: initial;
+  }
+
+  /* ── LayoutHeader / LayoutFooter ────────────────────────────────────── */
+  .astryx-layout-header,
+  .astryx-layout-footer { flex-shrink: 0; }
+  .astryx-layout-header[data-divider] { border-block-end: 1px solid var(--color-border); }
+  .astryx-layout-footer[data-divider] { border-block-start: 1px solid var(--color-border); }
+
+  /* Inner wrapper: owns the padding and the optional content-width lane. */
+  .ax-layout-header-inner,
+  .ax-layout-footer-inner {
+    box-sizing: border-box;
+    max-width: var(--layout-content-width, none);
+    margin-inline: auto;
+    padding-inline-start: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+    padding-inline-end: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+    --container-padding-inline-start: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+    --container-padding-inline-end: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+  }
+  .ax-layout-header-inner {
+    padding-block-start: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+    padding-block-end: var(--layout-padding-inner-y, var(--spacing-4));
+    --container-padding-block-start: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+    --container-padding-block-end: var(--layout-padding-inner-y, var(--spacing-4));
+  }
+  .ax-layout-footer-inner {
+    padding-block-start: var(--layout-padding-inner-y, var(--spacing-4));
+    padding-block-end: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+    --container-padding-block-start: var(--layout-padding-inner-y, var(--spacing-4));
+    --container-padding-block-end: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+  }
+  /* `padding` (0 is full bleed), then the per-edge paddingBlockEnd override. */
+  :is(.ax-layout-header-inner, .ax-layout-footer-inner)[data-padding] {
+    padding: var(--_ax-pad);
+    --container-padding-inline-start: var(--_ax-pad);
+    --container-padding-inline-end: var(--_ax-pad);
+    --container-padding-block-start: var(--_ax-pad);
+    --container-padding-block-end: var(--_ax-pad);
+  }
+  .ax-layout-header-inner[data-padding-block-end] {
+    padding-block-end: var(--_ax-pbe);
+    --container-padding-block-end: var(--_ax-pbe);
+  }
+
+  /* ── LayoutContent ──────────────────────────────────────────────────── */
+  .astryx-layout-content {
+    box-sizing: border-box;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow: clip;
+    padding-inline-start: var(--layout-padding-inner-x, var(--spacing-4));
+    padding-inline-end: var(--layout-padding-inner-x, var(--spacing-4));
+    padding-block-start: var(--_layout-flush-block-start, var(--layout-padding-inner-y, var(--spacing-4)));
+    padding-block-end: var(--_layout-flush-block-end, var(--layout-padding-inner-y, var(--spacing-4)));
+    --container-padding-inline-start: var(--layout-padding-inner-x, var(--spacing-4));
+    --container-padding-inline-end: var(--layout-padding-inner-x, var(--spacing-4));
+    --container-padding-block-start: var(--layout-padding-inner-y, var(--spacing-4));
+    --container-padding-block-end: var(--layout-padding-inner-y, var(--spacing-4));
+  }
+  .astryx-layout-content:where(:not([data-layout-slots~="start"])) {
+    padding-inline-start: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+    --container-padding-inline-start: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+    --container-padding-inline-end: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+  }
+  .astryx-layout-content:where(:not([data-layout-slots~="end"])) {
+    padding-inline-end: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+  }
+  .astryx-layout-content:where(:not([data-layout-slots~="header"])) {
+    padding-block-start: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+    --container-padding-block-start: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+  }
+  .astryx-layout-content:where(:not([data-layout-slots~="footer"])) {
+    padding-block-end: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+    --container-padding-block-end: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+  }
+  .astryx-layout-content:where([data-scrollable]) { overflow: auto; }
+  .astryx-layout-content:where([data-padding]) {
+    padding: var(--_ax-pad);
+    --container-padding-inline-start: var(--_ax-pad);
+    --container-padding-inline-end: var(--_ax-pad);
+    --container-padding-block-start: var(--_ax-pad);
+    --container-padding-block-end: var(--_ax-pad);
+  }
+  /* Gutters that align direct children to contentWidth while LayoutContent stays the
+     scroll and padding owner. */
+  .astryx-layout-content:where(:not([data-layout-slots~="start"]):not([data-layout-slots~="end"]):not([data-padding="0"])) {
+    padding-inline-start: max(var(--container-padding-inline-start, 0px), calc((100cqi - var(--layout-alignment-width)) / 2 + var(--container-padding-inline-start, 0px)));
+    padding-inline-end: max(var(--container-padding-inline-end, 0px), calc((100cqi - var(--layout-alignment-width)) / 2 + var(--container-padding-inline-end, 0px)));
+  }
+  .astryx-layout-content:where([data-layout-slots~="start"]:not([data-layout-slots~="end"]):not([data-padding="0"])) {
+    padding-inline-end: max(var(--container-padding-inline-end, 0px), calc(100cqi - var(--layout-alignment-width) + var(--container-padding-inline-end, 0px)));
+  }
+  .astryx-layout-content:where([data-layout-slots~="end"]:not([data-layout-slots~="start"]):not([data-padding="0"])) {
+    padding-inline-start: max(var(--container-padding-inline-start, 0px), calc(100cqi - var(--layout-alignment-width) + var(--container-padding-inline-start, 0px)));
+  }
+
+  /* ── LayoutPanel ────────────────────────────────────────────────────── */
+  .astryx-layout-panel {
+    box-sizing: border-box;
+    flex-shrink: 0;
+    overflow: clip;
+    padding-inline-start: var(--layout-padding-inner-x, var(--spacing-4));
+    padding-inline-end: var(--layout-padding-inner-x, var(--spacing-4));
+    padding-block-start: var(--layout-padding-inner-y, var(--spacing-4));
+    padding-block-end: var(--layout-padding-inner-y, var(--spacing-4));
+    --container-padding-inline-start: var(--layout-padding-inner-x, var(--spacing-4));
+    --container-padding-inline-end: var(--layout-padding-inner-x, var(--spacing-4));
+    --container-padding-block-start: var(--layout-padding-inner-y, var(--spacing-4));
+    --container-padding-block-end: var(--layout-padding-inner-y, var(--spacing-4));
+  }
+  .astryx-layout-panel:where([data-layout-area="start"]) {
+    padding-inline-start: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+  }
+  .astryx-layout-panel:where([data-layout-area="end"]) {
+    padding-inline-end: var(--layout-padding-own-outer-x, var(--layout-padding-outer-x, var(--spacing-4)));
+  }
+  .astryx-layout-panel:where(:not([data-layout-slots~="header"])) {
+    padding-block-start: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+  }
+  .astryx-layout-panel:where(:not([data-layout-slots~="footer"])) {
+    padding-block-end: var(--layout-padding-own-outer-y, var(--layout-padding-outer-y, var(--spacing-4)));
+  }
+  .astryx-layout-panel:where([data-scrollable]) { overflow: auto; }
+  .astryx-layout-panel:where([data-padding]) {
+    padding: var(--_ax-pad);
+    --container-padding-inline-start: var(--_ax-pad);
+    --container-padding-inline-end: var(--_ax-pad);
+    --container-padding-block-start: var(--_ax-pad);
+    --container-padding-block-end: var(--_ax-pad);
+  }
+  .astryx-layout-panel:where([data-divider][data-layout-area="start"]) {
+    border-inline-end: 1px solid var(--color-border);
+  }
+  .astryx-layout-panel:where([data-divider][data-layout-area="end"]) {
+    border-inline-start: 1px solid var(--color-border);
+  }
+  /* Without a divider the panel collapses the inner spacing on the side facing content. */
+  .astryx-layout-panel:where([data-layout-area="start"]:not([data-divider]):not([data-padding]):not([data-zero-width])) {
+    margin-inline-end: calc(-1 * var(--layout-padding-inner-x, var(--spacing-4)));
+  }
+  .astryx-layout-panel:where([data-layout-area="end"]:not([data-divider]):not([data-padding]):not([data-zero-width])) {
+    margin-inline-start: calc(-1 * var(--layout-padding-inner-x, var(--spacing-4)));
+  }
+  /* At width 0 the padding box is 0 too, so the clip hides every child. */
+  .astryx-layout-panel:where([data-zero-width]) {
+    padding-inline-start: 0;
+    padding-inline-end: 0;
+    overflow: clip;
+  }
+}
