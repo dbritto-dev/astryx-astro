@@ -1,0 +1,38 @@
+---
+/**
+ * The tree column's cell content (Astryx useTableTreeData TreeCellContent): a flex row
+ * indented by level, with the expander (24px, "Expand <row>" / "Collapse <row>",
+ * `aria-expanded`) or a same-size spacer on leaves, then the cell's own content.
+ * Behaviour: elements/table-features/tree.ts.
+ */
+import Icon from '../Icon/Icon.astro';
+import {translator} from '../../lib/i18n';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  level: number;
+  hasChildren: boolean;
+  isExpanded: boolean;
+  rowLabel?: string;
+  indent: 'sm' | 'md' | 'lg';
+  table: TableRenderContext;
+}
+
+const {level, hasChildren, isExpanded, rowLabel, indent, table} = Astro.props;
+const t = translator(Astro, table.locale);
+const label = rowLabel?.trim();
+const expandLabel = label ? t('@astryx.tableTree.expandRowNamed', {label}) : t('@astryx.tableTree.expandRow');
+const collapseLabel = label ? t('@astryx.tableTree.collapseRowNamed', {label}) : t('@astryx.tableTree.collapseRow');
+---
+<div class="ax-table-tree-cell" data-indent={indent} style={level > 0 ? `--_ax-tree-level:${level}` : undefined}>{hasChildren ? (
+  <button
+    type="button"
+    class="ax-table-tree-toggle"
+    data-ax-tree-toggle=""
+    aria-label={isExpanded ? collapseLabel : expandLabel}
+    aria-expanded={isExpanded ? 'true' : 'false'}
+    data-ax-label-expand={expandLabel}
+    data-ax-label-collapse={collapseLabel}
+  ><Icon icon="chevronRight" size="xsm" class="ax-table-chevron" /></button>
+) : <span class="ax-table-tree-spacer"></span>}<slot /></div>
+<script>import '../../elements/table-features/tree';</script>

@@ -1,0 +1,32 @@
+---
+/**
+ * A group header's chevron (Astryx useTableGroupedRows): the section's disclosure control,
+ * "Expand group <key>" / "Collapse group <key>" with `aria-expanded`, a 16px chevron that
+ * turns while open. Both names are rendered for the client. Behaviour:
+ * elements/table-features/grouped.ts.
+ */
+import Icon from '../Icon/Icon.astro';
+import {translator} from '../../lib/i18n';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  groupKey: string;
+  isCollapsed: boolean;
+  table: TableRenderContext;
+}
+
+const {groupKey, isCollapsed, table} = Astro.props;
+const t = translator(Astro, table.locale);
+const expandLabel = t('@astryx.tableGroupedRows.expandGroup', {groupKey});
+const collapseLabel = t('@astryx.tableGroupedRows.collapseGroup', {groupKey});
+---
+<button
+  type="button"
+  class="ax-table-group-toggle"
+  data-ax-group-toggle=""
+  aria-label={isCollapsed ? expandLabel : collapseLabel}
+  aria-expanded={isCollapsed ? 'false' : 'true'}
+  data-ax-label-expand={expandLabel}
+  data-ax-label-collapse={collapseLabel}
+><Icon icon="chevronRight" size="sm" class="ax-table-chevron" /></button>
+<script>import '../../elements/table-features/grouped';</script>

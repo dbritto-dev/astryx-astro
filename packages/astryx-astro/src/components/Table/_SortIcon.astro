@@ -1,0 +1,19 @@
+---
+/**
+ * The sort indicator glyph: component icon slot `table-sort-indicator {direction}`
+ * (fallback arrowUp / arrowDown / arrowsUpDown, xsm; accent while sorted, secondary while
+ * not). A slot resolved to null renders nothing (the wrapper collapses via :empty).
+ * Port of the ComponentIcon use in @astryxdesign/core useTableSortable.tsx.
+ */
+import Icon from '../Icon/Icon.astro';
+import {resolveComponentIcon, type IconVariant} from '../Icon/iconRegistry';
+
+interface Props {
+  direction: 'ascending' | 'descending' | 'none';
+}
+
+const {direction} = Astro.props;
+const fallbackIcon = direction === 'ascending' ? 'arrowUp' : direction === 'descending' ? 'arrowDown' : 'arrowsUpDown';
+const resolved = resolveComponentIcon('table-sort-indicator', {direction}, {icon: fallbackIcon, size: 'xsm'}, Astro);
+---
+{resolved.icon != null && <Icon icon={resolved.icon} size={resolved.size} variant={resolved.variant as IconVariant | undefined} color={direction !== 'none' ? 'accent' : 'secondary'} />}

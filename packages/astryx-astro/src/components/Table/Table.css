@@ -1,0 +1,420 @@
+/*
+ * Table family — port of @astryxdesign/core Table/BaseTable.tsx, Table.tsx, TableRow.tsx,
+ * TableCell.tsx, TableHeaderCell.tsx, table.stylex.ts and the plugin styles
+ * (sortable, columnResize, stickyColumns, rowExpansion, rowStatus, groupedRows, tree,
+ * rowIndex).
+ *
+ * Context: the `<table>` carries the table's settings (`data-density`, `data-dividers`,
+ * `data-striped`, `data-hover`, `data-vertical-align`, `data-text-overflow`); cells carry
+ * their own `data-density` (theme hook; stamped in children mode). Context rules reach a
+ * cell only through its own table (`.astryx-table > section > tr > cell`), so a nested table
+ * keeps its settings, and sit in `:where()` so plugin rules (one class + attribute) still
+ * win by source order, as later StyleX styles do. A cell without `data-density` (a
+ * TableCell outside a Table) is unstyled, as in Astryx.
+ */
+@layer reset, astryx-base, astryx-theme;
+
+
+@layer astryx-base {
+  /* ── <table> (BaseTable styles.table + Table tableStyles.base) ─────────── */
+  .astryx-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    table-layout: fixed;
+    font-family: inherit;
+    color: var(--color-text-primary);
+  }
+  /* Children mode (styles.tableAutoLayout). */
+  .astryx-table[data-ax-layout="auto"] { table-layout: auto; }
+
+  /* ── Scroll wrapper (Table.tsx scrollWrapperStyles; contract 14 bleed) ─── */
+  .astryx-table-scroll-wrapper {
+    display: block;
+    -webkit-overflow-scrolling: touch;
+    margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
+    margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
+    width: calc(100% + var(--container-padding-inline-start, 0px) + var(--container-padding-inline-end, 0px));
+  }
+  .astryx-table-scroll-wrapper:first-child { margin-top: calc(-1 * var(--container-padding-block-start, 0px)); }
+  .astryx-table-scroll-wrapper:last-child { margin-bottom: calc(-1 * var(--container-padding-block-end, 0px)); }
+  /* Before <ax-table> upgrades (or without JS) the columns still scroll; the element then
+     owns overflow inline (clip while they fit, auto while they overflow). */
+  .astryx-table-scroll-wrapper:not(:defined) { overflow-x: auto; overflow-y: hidden; }
+  .astryx-table-scroll-wrapper:not(:defined)[data-scroll-axis="both"] { overflow: auto; }
+
+  /* Header label row when a plugin fills the `after` slot. */
+  .ax-table-header-label-row { display: inline-flex; align-items: center; gap: var(--spacing-1); min-width: 0; }
+  .ax-table-caption { text-align: start; }
+
+  /* ── TableHeaderCell: headerStyles, density, header divider, overflow, edge ── */
+  .astryx-table-header-cell[data-density] {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-align: start;
+  }
+  .astryx-table-header-cell[data-density="compact"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); font-size: var(--text-label-size); box-sizing: border-box; }
+  .astryx-table-header-cell[data-density="balanced"] { padding-block: var(--spacing-2); padding-inline: var(--spacing-3); font-size: var(--text-label-size); box-sizing: border-box; }
+  .astryx-table-header-cell[data-density="spacious"] { padding-block: var(--spacing-3); padding-inline: var(--spacing-4); font-size: var(--text-label-size); box-sizing: border-box; }
+  .astryx-table-header-cell[data-density] {
+    --_table-row-divider-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-border);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 0;
+  }
+  .astryx-table-header-cell[data-density="compact"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="compact"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="balanced"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="balanced"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="spacious"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
+  .astryx-table-header-cell[data-density="spacious"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
+  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-header-cell[data-density] {
+    border-inline-end-width: var(--border-width);
+    border-inline-end-style: solid;
+    border-inline-end-color: var(--color-border);
+  }
+  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-header-cell[data-density]:where(:last-child) { border-inline-end-width: 0; }
+
+  /* ── TableCell: density, overflow, edge, vertical align, dividers, glide ── */
+  .astryx-table-cell[data-density="compact"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); font-size: var(--text-body-size); box-sizing: border-box; }
+  .astryx-table-cell[data-density="balanced"] { padding-block: var(--spacing-2); padding-inline: var(--spacing-3); font-size: var(--text-body-size); box-sizing: border-box; }
+  .astryx-table-cell[data-density="spacious"] { padding-block: var(--spacing-3); padding-inline: var(--spacing-4); font-size: var(--text-body-size); box-sizing: border-box; }
+  /* wrapStyles (default) / overflowStyles (textOverflow="truncate") */
+  .astryx-table-cell[data-density] { overflow: hidden; overflow-wrap: break-word; word-break: break-word; max-width: 0; }
+  :where(.astryx-table[data-text-overflow="truncate"] > * > tr) > .astryx-table-cell[data-density] {
+    overflow: hidden;
+    overflow-wrap: normal;
+    word-break: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 0;
+  }
+  .astryx-table-cell[data-density="compact"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="compact"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-2)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="balanced"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="balanced"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-3)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="spacious"]:where(:first-child) { padding-inline-start: max(var(--container-padding-inline-start, var(--spacing-4)), var(--spacing-2)); }
+  .astryx-table-cell[data-density="spacious"]:where(:last-child) { padding-inline-end: max(var(--container-padding-inline-end, var(--spacing-4)), var(--spacing-2)); }
+  :where(.astryx-table[data-vertical-align="middle"] > * > tr) > .astryx-table-cell[data-density] { vertical-align: middle; }
+  :where(.astryx-table[data-vertical-align="top"] > * > tr) > .astryx-table-cell[data-density] { vertical-align: top; }
+  :where(.astryx-table[data-vertical-align="bottom"] > * > tr) > .astryx-table-cell[data-density] { vertical-align: bottom; }
+  /* Row dividers; none under the last (visible) row of a section (tableRowMarker scope). */
+  :where(.astryx-table:is([data-dividers="rows"], [data-dividers="grid"]) > * > tr) > .astryx-table-cell[data-density] {
+    --_table-row-divider-width: var(--border-width);
+    border-bottom-width: var(--border-width);
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-border);
+  }
+  :where(.astryx-table:is([data-dividers="rows"], [data-dividers="grid"]) > * > tr:nth-last-child(1 of :not([hidden]))) > .astryx-table-cell[data-density] {
+    --_table-row-divider-width: 0px;
+    border-bottom-width: 0;
+  }
+  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-cell[data-density] {
+    border-inline-end-width: var(--border-width);
+    border-inline-end-style: solid;
+    border-inline-end-color: var(--color-border);
+  }
+  :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-cell[data-density]:where(:last-child) { border-inline-end-width: 0; }
+  /* glidingDividerStyles.cell (the glide itself is not ported). */
+  .astryx-table-cell[data-density] { border-bottom-color: var(--color-border); }
+
+  /* ── TableRow: striping and hover (body rows only) ──────────────────────
+     A detail panel (and a row hidden by a collapsed group/subtree) is not a row of its
+     own, so it does not count toward the zebra. */
+  :where(.astryx-table[data-striped] > *) > .astryx-table-row:not([data-ax-header-row]):where(:nth-child(even of :not([data-expansion-panel], [hidden]))) {
+    background-color: var(--color-background-muted);
+    --table-row-overlay: var(--color-background-muted);
+  }
+  :where(.astryx-table[data-hover] > *) > .astryx-table-row:not([data-ax-header-row]) {
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  @media (hover: hover) {
+    :where(.astryx-table[data-hover] > *) > .astryx-table-row:not([data-ax-header-row]):hover:where(:not(:disabled, [aria-disabled="true"])) {
+      background-color: var(--color-overlay-hover);
+      --table-row-overlay: var(--color-overlay-hover);
+    }
+  }
+
+  /* ── Sorting (useTableSortable sortStyles) ─────────────────────────────── */
+  .ax-table-sort-button {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    height: 100%;
+    text-align: inherit;
+    border-radius: var(--radius-inner);
+  }
+  .ax-table-sort-button:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-table-sort-button[data-align="center"] { justify-content: center; }
+  .ax-table-sort-button[data-align="end"] { justify-content: flex-end; }
+  .ax-table-sort-icon { display: inline-flex; align-items: center; block-size: 0; }
+  .ax-table-sort-icon:empty { display: none; }
+  .ax-table-sort-icon[data-direction="none"] { opacity: 0.35; }
+  .ax-table-sort-icon[data-direction="none"]:is(th:hover *),
+  .ax-table-sort-icon[data-direction="none"]:focus-visible { opacity: 1; }
+  .ax-table-sort-rank { font-size: 10px; line-height: 1; color: var(--color-text-accent); }
+
+  /* ── Column resize (useTableColumnResize) ──────────────────────────────── */
+  .ax-table-resize-row { --resize-hint: transparent; }
+  @media (hover: hover) {
+    .ax-table-resize-row:hover:where(:not(:disabled, [aria-disabled="true"])) { --resize-hint: var(--resize-hint-gate, var(--color-border)); }
+  }
+  .astryx-table-header-cell.ax-table-resizable-cell { position: relative; overflow: visible; }
+  .ax-table-resize-handle {
+    position: absolute;
+    inset-inline-end: 0;
+    top: 0;
+    height: calc(var(--table-resize-height, 100%) - var(--table-resize-offset, 0px));
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 1;
+    touch-action: none;
+    user-select: none;
+    --indicator-color: var(--resize-hint, transparent);
+  }
+  .ax-table-resize-handle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-table-resize-handle:hover:where(:not(:disabled, [aria-disabled="true"])) { --indicator-color: var(--resize-hint-gate, var(--color-accent)); }
+  .ax-table-resize-handle:focus-visible { --indicator-color: var(--color-accent); }
+  @media (pointer: coarse) {
+    .ax-table-resize-handle { pointer-events: none; }
+  }
+  .ax-table-resize-handle::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--indicator-width, 1px);
+    background-color: var(--indicator-color, transparent);
+    transition: background-color 150ms ease, width 150ms ease;
+  }
+
+  /* ── Sticky columns (useTableStickyColumns) ────────────────────────────── */
+  .astryx-table-cell.ax-table-pinned,
+  .astryx-table-header-cell.ax-table-pinned {
+    position: sticky;
+    background-color: var(--table-sticky-background, var(--color-background-card));
+    background-clip: padding-box;
+    overflow: visible;
+  }
+  /* The row's overlay replayed over the opaque base, and the pinned cell's own divider:
+     the layer reaches over the cell's collapsed border, paints the base there and draws
+     the divider in the cell's own border style and color. */
+  .ax-table-pinned::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--table-row-overlay, transparent);
+    margin-bottom: calc(-1 * var(--_table-row-divider-app-width, var(--_table-row-divider-width, 0px)));
+    border-bottom-width: var(--_table-row-divider-app-width, var(--_table-row-divider-width, 0px));
+    border-bottom-style: inherit;
+    border-bottom-color: inherit;
+    background-image: linear-gradient(var(--table-sticky-background, var(--color-background-card)), var(--table-sticky-background, var(--color-background-card)));
+    background-size: 100% var(--_table-row-divider-app-width, var(--_table-row-divider-width, 0px));
+    background-position: bottom;
+    background-repeat: no-repeat;
+    background-origin: border-box;
+    background-clip: border-box;
+    transition-property: background-color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+  }
+  .astryx-table-header-cell.ax-table-pinned { z-index: 3; }
+  .astryx-table-cell.ax-table-pinned { z-index: 1; }
+  .ax-table-pinned-start::after,
+  .ax-table-pinned-end::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+  .ax-table-pinned-start::after {
+    inset-inline-end: 0;
+    transform: translateX(100%);
+    opacity: var(--table-sticky-shadow-start, 0);
+    background-image: linear-gradient(to right, var(--color-shadow), transparent);
+  }
+  .ax-table-pinned-start:is([dir="rtl"] *)::after { transform: translateX(-100%); background-image: linear-gradient(to left, var(--color-shadow), transparent); }
+  .ax-table-pinned-end::after {
+    inset-inline-start: 0;
+    transform: translateX(-100%);
+    opacity: var(--table-sticky-shadow-end, 0);
+    background-image: linear-gradient(to left, var(--color-shadow), transparent);
+  }
+  .ax-table-pinned-end:is([dir="rtl"] *)::after { transform: translateX(100%); background-image: linear-gradient(to right, var(--color-shadow), transparent); }
+  /* The shadow shows only while content is hidden behind that edge (scroll edge flags). */
+  .astryx-table-scroll-wrapper[data-ax-sticky-start]:not([data-scroll-inline-start]) { --table-sticky-shadow-start: 1; }
+  .astryx-table-scroll-wrapper[data-ax-sticky-end]:not([data-scroll-inline-end]) { --table-sticky-shadow-end: 1; }
+
+  /* ── Row expansion (useTableRowExpansion) ──────────────────────────────── */
+  .ax-table-expand-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: min(var(--spacing-6), 40px);
+    height: min(var(--spacing-6), 40px);
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--radius-inner);
+    cursor: pointer;
+    color: var(--color-icon-secondary);
+    transition-property: color;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    padding: 0;
+  }
+  .ax-table-expand-toggle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .ax-table-expand-toggle:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      background-image: linear-gradient(var(--color-overlay-hover), var(--color-overlay-hover));
+    }
+  }
+  .ax-table-expand-toggle:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-icon-primary); }
+  /* Centered in the 40px column. Astryx's offset also subtracts the density padding its
+     context-menu trigger wrapper adds inside the cell (`(40px - size) / 2 - spacing-N`);
+     that wrapper arrives with ContextMenu — restore the subtraction then. */
+  .astryx-table-cell[data-density] > .ax-table-expand-toggle { margin-inline-start: calc((40px - min(var(--spacing-6), 40px)) / 2); }
+  .ax-table-expand-glyph {
+    display: inline-block;
+    position: relative;
+    flex-shrink: 0;
+    width: 0.75rem;
+    height: 0.75rem;
+    font-size: 0.75rem;
+    transition-property: transform;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-standard);
+    transform: rotate(0deg);
+  }
+  .ax-table-expand-glyph:is([dir="rtl"] *) { transform: scaleX(-1) rotate(0deg); }
+  [aria-expanded="true"] > .ax-table-expand-glyph { transform: rotate(90deg); }
+  [aria-expanded="true"] > .ax-table-expand-glyph:is([dir="rtl"] *) { transform: scaleX(-1) rotate(90deg); }
+  .ax-table-expand-glyph-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .astryx-table-header-cell.ax-table-expansion-header { padding-inline-start: 0; padding-inline-end: 0; }
+  .astryx-table-cell.ax-table-expansion-cell { padding-inline-start: 0; }
+  /* The expanded row hands its divider to the panel below. */
+  .astryx-table-row[data-ax-expanded] > .astryx-table-cell { --_table-row-divider-width: 0px; border-bottom-width: 0; }
+  .ax-table-clickable-row { cursor: pointer; }
+  .ax-table-panel-row[data-variant="muted"] { background-color: var(--color-background-muted); }
+  .ax-table-panel-cell { padding-block: var(--spacing-4); padding-inline-end: var(--spacing-5); }
+  .ax-table-panel-cell[data-density="compact"] { padding-inline-start: calc(40px + var(--spacing-2)); }
+  .ax-table-panel-cell[data-density="balanced"] { padding-inline-start: calc(40px + var(--spacing-3)); }
+  .ax-table-panel-cell[data-density="spacious"] { padding-inline-start: calc(40px + var(--spacing-4)); }
+  :where(.astryx-table:is([data-dividers="rows"], [data-dividers="grid"]) > tbody > tr) > .ax-table-panel-cell {
+    --_table-row-divider-width: var(--_table-panel-divider-width, var(--border-width));
+    border-bottom-width: var(--_table-panel-divider-width, var(--border-width));
+    border-bottom-style: var(--_table-panel-divider-style, solid);
+    border-bottom-color: var(--_table-panel-divider-color, var(--color-border));
+  }
+  :where(.astryx-table:is([data-dividers="rows"], [data-dividers="grid"]) > tbody > tr:nth-last-child(1 of :not([hidden]))) > .ax-table-panel-cell {
+    --_table-row-divider-width: 0px;
+    border-bottom-width: 0;
+  }
+
+  /* ── Row status (useTableRowStatus) ────────────────────────────────────── */
+  .ax-table-row-status { display: flex; align-items: center; justify-content: center; }
+  .ax-table-row-status-dot { width: 8px; height: 8px; border-radius: 50%; background-color: var(--_ax-status-color); flex-shrink: 0; }
+
+  /* ── Grouped rows (useTableGroupedRows) ────────────────────────────────── */
+  .astryx-table-row.ax-table-group-header {
+    cursor: pointer;
+    user-select: none;
+    background-color: var(--color-background-muted);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-border);
+  }
+  .ax-table-group-cell { padding-block: var(--spacing-2); padding-inline-start: 0; padding-inline-end: var(--spacing-3); }
+  .ax-table-group-inner { display: flex; align-items: center; gap: var(--spacing-1); padding-inline-start: var(--spacing-1); }
+  .ax-table-group-inner:not([data-custom]) { inset-inline-start: 0; position: sticky; width: fit-content; }
+  .ax-table-group-inner[data-custom] > .ax-table-group-toggle { inset-inline-start: var(--spacing-1); position: sticky; z-index: 1; }
+  .ax-table-group-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    cursor: pointer;
+    color: var(--color-icon-secondary);
+  }
+  .ax-table-group-toggle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  .ax-table-group-toggle:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-icon-primary); }
+  .ax-table-group-label { font-weight: var(--font-weight-semibold); color: var(--color-text-primary); }
+  .ax-table-group-count { font-weight: var(--font-weight-normal); color: var(--color-text-secondary); }
+
+  /* Chevrons of group toggles and tree expanders: the glyph turns while open. */
+  .ax-table-group-toggle > .ax-table-chevron,
+  .ax-table-tree-toggle > .ax-table-chevron {
+    transition-property: transform;
+    transition-duration: 150ms;
+    transform: rotate(0deg);
+  }
+  :is(.ax-table-group-toggle, .ax-table-tree-toggle) > .ax-table-chevron:is([dir="rtl"] *) { transform: scaleX(-1) rotate(0deg); }
+  :is(.ax-table-group-toggle, .ax-table-tree-toggle)[aria-expanded="true"] > .ax-table-chevron { transform: rotate(90deg); }
+  :is(.ax-table-group-toggle, .ax-table-tree-toggle)[aria-expanded="true"] > .ax-table-chevron:is([dir="rtl"] *) { transform: scaleX(-1) rotate(90deg); }
+
+  /* ── Tree (useTableTreeData) ───────────────────────────────────────────── */
+  .ax-table-tree-cell { display: flex; align-items: center; gap: var(--spacing-1); }
+  .ax-table-tree-cell[data-indent="sm"] { padding-inline-start: calc(var(--_ax-tree-level, 0) * var(--spacing-3)); }
+  .ax-table-tree-cell[data-indent="md"] { padding-inline-start: calc(var(--_ax-tree-level, 0) * var(--spacing-4)); }
+  .ax-table-tree-cell[data-indent="lg"] { padding-inline-start: calc(var(--_ax-tree-level, 0) * var(--spacing-6)); }
+  .ax-table-tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background-color: transparent;
+    border-width: 0;
+    border-style: none;
+    border-radius: var(--radius-inner);
+    cursor: pointer;
+    color: var(--color-icon-secondary);
+    transition-property: color, background-color;
+    transition-duration: 150ms;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .ax-table-tree-toggle:is(:disabled, [aria-disabled="true"]) { cursor: default; }
+  @media (hover: hover) {
+    .ax-table-tree-toggle:hover:where(:not(:disabled, [aria-disabled="true"])) {
+      background-image: linear-gradient(var(--color-overlay-hover), var(--color-overlay-hover));
+    }
+  }
+  .ax-table-tree-toggle:hover:where(:not(:disabled, [aria-disabled="true"])) { color: var(--color-icon-primary); }
+  .ax-table-tree-spacer { display: inline-block; width: 24px; height: 24px; flex-shrink: 0; }
+  .ax-table-tree-header { display: inline-flex; align-items: center; gap: var(--spacing-1); min-width: 0; }
+
+  /* ── Row index (useTableRowIndex) ──────────────────────────────────────── */
+  .ax-table-row-index {
+    font-family: var(--font-family-code);
+    font-size: var(--text-supporting-size);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+  }
+}

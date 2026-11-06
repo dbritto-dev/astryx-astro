@@ -1,0 +1,20 @@
+---
+/**
+ * TableBody — the `<tbody>` section of a children-mode Table. Port of @astryxdesign/core
+ * Table/TableBody.tsx. Data-driven Tables render their sections themselves.
+ *
+ * @example
+ * <Table aria-label="Totals">
+ *   <TableBody>…<TableRow>…</TableRow></TableBody>
+ * </Table>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Table.css';
+
+export interface Props extends HTMLAttributes<'tbody'> {}
+
+const {class: className, ...rest} = Astro.props;
+const {themeClass} = themeProps('table-body');
+---
+<tbody {...rest} class={cx(themeClass, className)}><slot /></tbody>

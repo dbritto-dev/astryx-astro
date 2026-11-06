@@ -1,0 +1,9 @@
+---
+/**
+ * One `<template>` per sort direction holding the resolved indicator, for the client to swap
+ * in when the sort changes (states that change on the client are rendered on the server;
+ * templates keep them out of the rendered DOM and the accessibility tree).
+ */
+import SortIcon from './_SortIcon.astro';
+---
+<template data-ax-sort-icon="ascending"><SortIcon direction="ascending" /></template><template data-ax-sort-icon="descending"><SortIcon direction="descending" /></template><template data-ax-sort-icon="none"><SortIcon direction="none" /></template>

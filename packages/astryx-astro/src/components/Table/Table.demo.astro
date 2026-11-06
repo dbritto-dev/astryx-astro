@@ -1,0 +1,388 @@
+---
+import Table from './Table.astro';
+import TableHeader from './TableHeader.astro';
+import TableBody from './TableBody.astro';
+import TableFooter from './TableFooter.astro';
+import TableRow from './TableRow.astro';
+import TableCell from './TableCell.astro';
+import TableHeaderCell from './TableHeaderCell.astro';
+import {
+  pixel,
+  proportional,
+  useTableColumnResize,
+  useTableGroupedRows,
+  useTableRowExpansion,
+  useTableRowIndex,
+  useTableRowStatus,
+  useTableSortable,
+  useTableSortableState,
+  useTableStickyColumns,
+  useTableTreeData,
+  useTableTreeState,
+  comp,
+  el,
+  withFeature,
+  type TableColumn,
+  type TablePlugin,
+} from './table';
+import Badge from '../Badge/Badge.astro';
+import StatusDot from '../StatusDot/StatusDot.astro';
+import Avatar from '../Avatar/Avatar.astro';
+import Card from '../Card/Card.astro';
+import Skeleton from '../Skeleton/Skeleton.astro';
+import Spinner from '../Spinner/Spinner.astro';
+import EmptyState from '../EmptyState/EmptyState.astro';
+import Text from '../Text/Text.astro';
+import ScrollableArea from '../ScrollableArea/ScrollableArea.astro';
+
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+
+interface Person extends Record<string, unknown> {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  team: string;
+  location: string;
+  status: 'Active' | 'Away' | 'Offline';
+  salary: number;
+  startDate: string;
+  projects: number;
+  rating: number | null;
+  bio: string;
+}
+const people: Person[] = [
+  {id: 'p01', name: 'Alice Chen', email: 'alice.chen@example.com', role: 'Staff Engineer', team: 'Platform', location: 'Seattle', status: 'Active', salary: 212000, startDate: '2017-03-14', projects: 7, rating: 4.9, bio: 'Leads the storage migration and mentors the platform on-call rotation.'},
+  {id: 'p02', name: 'Bob Smith', email: 'bob.smith@example.com', role: 'Product Designer', team: 'Design', location: 'Austin', status: 'Active', salary: 148000, startDate: '2019-08-01', projects: 4, rating: 4.4, bio: 'Owns the checkout redesign; previously ran the design-system working group.'},
+  {id: 'p03', name: 'Carol Wu', email: 'carol.wu@example.com', role: 'Product Manager', team: 'Growth', location: 'New York', status: 'Away', salary: 176000, startDate: '2018-01-22', projects: 5, rating: 4.6, bio: 'Drives onboarding experiments across web and mobile.'},
+  {id: 'p04', name: 'Daniel Okafor', email: 'daniel.okafor@example.com', role: 'Site Reliability Engineer', team: 'Platform', location: 'Lagos', status: 'Active', salary: 165000, startDate: '2020-05-11', projects: 6, rating: 4.7, bio: 'Built the incident tooling; on-call lead this quarter.'},
+  {id: 'p05', name: 'Elena Petrova', email: 'elena.petrova@example.com', role: 'Data Scientist', team: 'Analytics', location: 'Berlin', status: 'Offline', salary: 158000, startDate: '2021-02-01', projects: 3, rating: 4.2, bio: 'Forecasting models for capacity planning and pricing.'},
+  {id: 'p06', name: 'Farhan Ahmed', email: 'farhan.ahmed@example.com', role: 'Frontend Engineer', team: 'Growth', location: 'Toronto', status: 'Active', salary: 139000, startDate: '2022-06-20', projects: 4, rating: 4.1, bio: 'Ships the landing pages and the experiment framework UI.'},
+  {id: 'p07', name: 'Grace Kim', email: 'grace.kim@example.com', role: 'Engineering Manager', team: 'Platform', location: 'Seattle', status: 'Away', salary: 228000, startDate: '2016-09-05', projects: 9, rating: 4.8, bio: 'Manages the platform org; sponsor of the reliability program.'},
+  {id: 'p08', name: 'Hiro Tanaka', email: 'hiro.tanaka@example.com', role: 'Backend Engineer', team: 'Payments', location: 'Tokyo', status: 'Active', salary: 151000, startDate: '2020-11-30', projects: 5, rating: 4.5, bio: 'Ledger service owner; leads the idempotency rework.'},
+  {id: 'p09', name: 'Isabel Moreno', email: 'isabel.moreno@example.com', role: 'UX Researcher', team: 'Design', location: 'Madrid', status: 'Active', salary: 132000, startDate: '2021-09-13', projects: 3, rating: null, bio: 'Runs the quarterly usability benchmark.'},
+  {id: 'p10', name: 'Jamal Wright', email: 'jamal.wright@example.com', role: 'Security Engineer', team: 'Platform', location: 'Chicago', status: 'Offline', salary: 171000, startDate: '2019-04-08', projects: 6, rating: 4.3, bio: 'Secrets management and the dependency audit pipeline.'},
+  {id: 'p11', name: 'Keiko Sato', email: 'keiko.sato@example.com', role: 'Mobile Engineer', team: 'Growth', location: 'Osaka', status: 'Active', salary: 143000, startDate: '2022-01-10', projects: 2, rating: 4.0, bio: 'iOS onboarding flows and push notification settings.'},
+  {id: 'p12', name: 'Liam O’Brien', email: 'liam.obrien@example.com', role: 'Support Lead', team: 'Operations', location: 'Dublin', status: 'Active', salary: 98000, startDate: '2018-07-16', projects: 2, rating: 4.6, bio: 'Leads the tier-two support desk and its runbooks.'},
+  {id: 'p13', name: 'Maya Patel', email: 'maya.patel@example.com', role: 'Analytics Engineer', team: 'Analytics', location: 'London', status: 'Away', salary: 137000, startDate: '2023-03-06', projects: 3, rating: 4.4, bio: 'Owns the metrics layer and the revenue dashboards.'},
+  {id: 'p14', name: 'Nikolai Ivanov', email: 'nikolai.ivanov@example.com', role: 'Backend Engineer', team: 'Payments', location: 'Warsaw', status: 'Active', salary: 129000, startDate: '2023-08-21', projects: 2, rating: 3.9, bio: 'Payouts and the reconciliation jobs.'},
+  {id: 'p15', name: 'Olivia Martins', email: 'olivia.martins@example.com', role: 'Design Manager', team: 'Design', location: 'Lisbon', status: 'Active', salary: 181000, startDate: '2017-11-27', projects: 8, rating: 4.7, bio: 'Manages product design; runs critique and hiring.'},
+  {id: 'p16', name: 'Pedro Alves', email: 'pedro.alves@example.com', role: 'Operations Analyst', team: 'Operations', location: 'São Paulo', status: 'Offline', salary: 91000, startDate: '2021-05-17', projects: 3, rating: 4.2, bio: 'Vendor management and the weekly ops review.'},
+  {id: 'p17', name: 'Quinn Harper', email: 'quinn.harper@example.com', role: 'Technical Writer', team: 'Platform', location: 'Denver', status: 'Active', salary: 112000, startDate: '2020-02-03', projects: 5, rating: 4.5, bio: 'API reference and the migration guides.'},
+  {id: 'p18', name: 'Rina Kapoor', email: 'rina.kapoor@example.com', role: 'Payments Lead', team: 'Payments', location: 'Bangalore', status: 'Active', salary: 168000, startDate: '2018-10-29', projects: 7, rating: 4.8, bio: 'Leads payments engineering; owns the card-network integrations.'},
+  {id: 'p19', name: 'Samuel Mensah', email: 'samuel.mensah@example.com', role: 'QA Engineer', team: 'Growth', location: 'Accra', status: 'Away', salary: 104000, startDate: '2022-10-03', projects: 4, rating: 4.0, bio: 'Test automation for the experiment platform.'},
+  {id: 'p20', name: 'Tara Nguyen', email: 'tara.nguyen@example.com', role: 'Recruiter', team: 'Operations', location: 'Sydney', status: 'Active', salary: 95000, startDate: '2023-01-09', projects: 1, rating: null, bio: 'Engineering recruiting for APAC.'},
+];
+const usd = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0});
+const date = new Intl.DateTimeFormat('en-US', {dateStyle: 'medium', timeZone: 'UTC'});
+const statusVariant = {Active: 'success', Away: 'warning', Offline: 'neutral'} as const;
+const few = people.slice(0, 5);
+
+// Basic columns.
+const basicColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Name', width: proportional(2)},
+  {key: 'role', header: 'Role', width: proportional(2)},
+  {key: 'team', header: 'Team'},
+  {key: 'salary', header: 'Salary', align: 'end', width: pixel(120), format: (v) => usd.format(v as number)},
+];
+
+// Sorting: in-page data, re-sorted on the client.
+const sorting = useTableSortableState({data: people, defaultSort: [{sortKey: 'name', direction: 'ascending'}], isMultiSortEnabled: true});
+const sortColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Name', sortable: true, width: proportional(2)},
+  {key: 'team', header: 'Team', sortable: true},
+  {key: 'location', header: 'Location', sortable: true},
+  {key: 'startDate', header: 'Start date', sortable: true, format: (v) => date.format(new Date(v as string))},
+  {key: 'rating', header: 'Rating', sortable: true, align: 'end', width: pixel(96)},
+  {key: 'salary', header: 'Salary', sortable: true, align: 'end', width: pixel(120), format: (v) => usd.format(v as number)},
+];
+
+// Column resize.
+const resizeColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Name', width: pixel(180)},
+  {key: 'email', header: 'Email', width: pixel(240)},
+  {key: 'role', header: 'Role', width: proportional(1)},
+  {key: 'location', header: 'Location', width: proportional(1)},
+];
+const resize = useTableColumnResize({columns: resizeColumns as TableColumn[], minWidth: 80, maxWidth: 420});
+
+// Wide table: sticky start + end columns, resize and sort together.
+const wideSorting = useTableSortableState({data: people});
+const wideColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Employee', width: pixel(180), sortable: true},
+  {key: 'email', header: 'Email', width: pixel(240)},
+  {key: 'role', header: 'Role', width: pixel(200), sortable: true},
+  {key: 'team', header: 'Team', width: pixel(130), sortable: true},
+  {key: 'location', header: 'Location', width: pixel(140)},
+  {key: 'startDate', header: 'Start date', width: pixel(130), format: (v) => date.format(new Date(v as string))},
+  {key: 'projects', header: 'Projects', width: pixel(100), align: 'end', sortable: true},
+  {key: 'rating', header: 'Rating', width: pixel(100), align: 'end'},
+  {key: 'bio', header: 'Notes', width: pixel(320)},
+  {key: 'salary', header: 'Salary', width: pixel(120), align: 'end', sortable: true, format: (v) => usd.format(v as number)},
+  {key: 'status', header: 'Status', width: pixel(120), resizable: false},
+];
+
+// Rich cells: renderCell nodes and the cell:<key> slot.
+const richColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Person', width: proportional(2)},
+  {key: 'status', header: 'Status', renderCell: (p) => comp(Badge, {variant: statusVariant[p.status], label: p.status})},
+  {key: 'presence', header: 'Presence', renderCell: (p) => comp(StatusDot, {variant: p.status === 'Active' ? 'success' : p.status === 'Away' ? 'warning' : 'neutral', label: p.status})},
+  {key: 'projects', header: 'Projects', align: 'end', renderCell: (p) => el('strong', undefined, p.projects)},
+];
+
+// Truncation + vertical alignment.
+const truncateColumns: TableColumn<Person>[] = [
+  {key: 'name', header: 'Name', width: pixel(140)},
+  {key: 'email', header: 'Email address (truncated with a tooltip)', width: pixel(170)},
+  {key: 'bio', header: 'Notes', width: proportional(2)},
+];
+
+// Row expansion.
+const expansion = useTableRowExpansion<Person>({
+  getRowKey: (p) => p.id,
+  getRowLabel: (p) => p.name,
+  expandedKeys: ['p02'],
+  getIsItemExpandable: (p) => p.id !== 'p04',
+});
+const expansionMuted = useTableRowExpansion<Person>({getRowKey: (p) => p.id, getRowLabel: (p) => p.name, panelVariant: 'muted', hasRowClickExpansion: true});
+
+// Row status.
+const rowStatus = useTableRowStatus<Person>({
+  getStatus: (p) =>
+    p.status === 'Offline'
+      ? {status: 'error', label: 'Offline'}
+      : p.status === 'Away'
+        ? {status: 'warning', label: 'Away'}
+        : p.rating != null && p.rating >= 4.7
+          ? {color: 'blue', icon: 'info', label: 'Top rated'}
+          : {color: 'green', label: 'Active'},
+});
+
+// Grouped rows.
+const grouped = useTableGroupedRows<Person>({data: people.slice(0, 12), groupBy: (p) => p.team, collapsedGroups: ['Design'], getRowKey: (p) => p.id, groupOrder: ['Platform']});
+
+// Tree.
+interface Node extends Record<string, unknown> {
+  id: string;
+  name: string;
+  kind: string;
+  size: string;
+  children?: Node[];
+}
+const files: Node[] = [
+  {id: 'src', name: 'src', kind: 'Folder', size: '1.2 MB', children: [
+    {id: 'components', name: 'components', kind: 'Folder', size: '840 KB', children: [
+      {id: 'table', name: 'Table.astro', kind: 'Astro', size: '9 KB'},
+      {id: 'button', name: 'Button.astro', kind: 'Astro', size: '6 KB'},
+    ]},
+    {id: 'lib', name: 'lib', kind: 'Folder', size: '120 KB', children: [{id: 'uid', name: 'uid.ts', kind: 'TypeScript', size: '1 KB'}]},
+    {id: 'index', name: 'index.ts', kind: 'TypeScript', size: '4 KB'},
+  ]},
+  {id: 'docs', name: 'docs', kind: 'Folder', size: '64 KB', children: [{id: 'handoffs', name: 'handoffs.md', kind: 'Markdown', size: '12 KB'}]},
+  {id: 'readme', name: 'README.md', kind: 'Markdown', size: '3 KB'},
+];
+const tree = useTableTreeState({data: files, idKey: 'id', defaultExpandedIds: ['src']});
+const treePlugin = useTableTreeData({...tree.treeConfig, hasExpandAllControl: true, getRowLabel: (n: Node) => n.name});
+
+// Row index + ARIA row indexing (page 2 of a 40-row result).
+const rowIndex = useTableRowIndex({data: few, startFrom: 6});
+
+// Sticky header recipe: Astryx has no prop; a custom plugin lets the region scroll both
+// ways under a fixed height, and caller CSS pins the header cells.
+const stickyHeader: TablePlugin = {
+  transformScrollWrapper: (p) => ({...p, htmlProps: {...withFeature(p.htmlProps, 'sticky-header'), 'data-scroll-axis': 'both', style: 'max-block-size:260px'}, xstyle: [...p.xstyle, 'demo-sticky-head']}),
+};
+const stickyHeaderSort = useTableSortableState({data: people});
+
+const skeletonRows = Array.from({length: 4}, (_, i) => ({id: `s${i}`, name: '', role: '', team: ''}));
+const skeletonColumns: TableColumn[] = ['name', 'role', 'team'].map((key, i) => ({
+  key,
+  header: key[0].toUpperCase() + key.slice(1),
+  renderCell: () => comp(Skeleton, {height: 14, width: i === 0 ? '70%' : '50%', index: i, radius: 1}),
+}));
+---
+<style is:global>
+  .demo-sticky-head .astryx-table-header-cell { position: sticky; top: 0; z-index: 2; background-color: var(--color-background-card); }
+  .demo-sticky-head .astryx-table-header-cell.ax-table-pinned { z-index: 3; }
+</style>
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-8);min-width:0">
+  <section>
+    <p style={caption}>Data-driven: columns + data, proportional/pixel widths, an end-aligned formatted column, a caption naming the scroll region</p>
+    <Table data={few} columns={basicColumns} idKey="id" id="table-basic">
+      <Fragment slot="caption">Team directory (first five)</Fragment>
+    </Table>
+  </section>
+
+  <section>
+    <p style={caption}>density="compact" · "balanced" (default) · "spacious"</p>
+    <div style="display:grid;gap:var(--spacing-4)">
+      {(['compact', 'balanced', 'spacious'] as const).map((density) => (
+        <Table aria-label={`Density ${density}`} data={people.slice(0, 3)} columns={basicColumns} density={density} />
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>dividers="rows" (default) · "columns" · "grid" · "none"</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:var(--spacing-4)">
+      {(['rows', 'columns', 'grid', 'none'] as const).map((dividers) => (
+        <Table aria-label={`Dividers ${dividers}`} data={people.slice(0, 3)} columns={basicColumns.slice(0, 3)} dividers={dividers} density="compact" />
+      ))}
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>isStriped + hasHover (hover a row); verticalAlign="top" with wrapped notes</p>
+    <Table aria-label="Striped" data={people.slice(0, 6)} columns={[...basicColumns.slice(0, 2), {key: 'bio', header: 'Notes', width: proportional(3)}]} isStriped hasHover verticalAlign="top" id="table-striped" />
+  </section>
+
+  <section>
+    <p style={caption}>textOverflow="truncate": default-rendered text clips with an ellipsis and shows its full text in a tooltip; verticalAlign="bottom"</p>
+    <Table aria-label="Truncated" data={people.slice(0, 4)} columns={truncateColumns} textOverflow="truncate" verticalAlign="bottom" id="table-truncate" />
+  </section>
+
+  <section>
+    <p style={caption}>Rich cells: renderCell returning components (Badge, StatusDot, an element) and a <code>&lt;template slot="cell:name"&gt;</code> function</p>
+    <Table aria-label="Rich cells" data={few} columns={richColumns} hasHover id="table-rich">
+      <template slot="cell:name">{(p: Person) => (
+        <span style="display:inline-flex;align-items:center;gap:var(--spacing-2)"><Avatar name={p.name} size="sm" tooltip={false} /><Text weight="semibold">{p.name}</Text></span>
+      )}</template>
+      <Fragment slot="header:projects"><span title="Active projects">Projects</span></Fragment>
+    </Table>
+  </section>
+
+  <section>
+    <p style={caption}>Sorting (useTableSortableState + useTableSortable): click or Enter/Space on a header; Shift adds a secondary key (multi-sort shows its priority). Rows re-sort in the page.</p>
+    <Table aria-label="Sortable people" data={sorting.sortedData} columns={sortColumns} idKey="id" plugins={{sort: useTableSortable(sorting.sortConfig)}} density="compact" hasHover id="table-sort" />
+  </section>
+
+  <section>
+    <p style={caption}>Column resize (useTableColumnResize): drag a header border or focus a handle and use ←/→ (Shift ×5), Home, End. Bounded 80–420px.</p>
+    <Table aria-label="Resizable columns" data={people.slice(0, 5)} columns={resizeColumns} plugins={{resize}} id="table-resize" />
+  </section>
+
+  <section>
+    <p style={caption}>Wide table: sticky "Employee" (start) and "Status" (end) columns with scroll shadows, plus sort and resize — scroll horizontally</p>
+    <Table
+      aria-label="All employees"
+      data={wideSorting.sortedData}
+      columns={wideColumns}
+      idKey="id"
+      isStriped
+      hasHover
+      dividers="grid"
+      density="compact"
+      id="table-wide"
+      plugins={{
+        sort: useTableSortable(wideSorting.sortConfig),
+        sticky: useTableStickyColumns({startKeys: ['name'], endKeys: ['status']}),
+        resize: useTableColumnResize({columns: wideColumns as TableColumn[]}),
+      }}
+    >
+      <template slot="cell:status">{(p: Person) => <Badge variant={statusVariant[p.status]} label={p.status} />}</template>
+    </Table>
+  </section>
+
+  <section>
+    <p style={caption}>Row expansion (useTableRowExpansion): the chevron toggles a detail panel; one row starts open, one is not expandable</p>
+    <Table aria-label="Expandable people" data={people.slice(0, 5)} columns={basicColumns} idKey="id" plugins={{expansion}} id="table-expand">
+      <template slot="expanded">{(p: Person) => (
+        <div style="display:grid;gap:var(--spacing-1)">
+          <Text weight="semibold">{p.email}</Text>
+          <Text type="supporting">{p.bio}</Text>
+        </div>
+      )}</template>
+    </Table>
+    <p style={caption + ';margin-top:var(--spacing-4)'}>panelVariant="muted", hasRowClickExpansion (click anywhere on a row), striped</p>
+    <Table aria-label="Row click expansion" data={people.slice(5, 9)} columns={basicColumns} idKey="id" isStriped plugins={{expansion: expansionMuted}} density="compact" id="table-expand-rowclick">
+      <template slot="expanded">{(p: Person) => <Text type="supporting">{p.bio}</Text>}</template>
+    </Table>
+  </section>
+
+  <section>
+    <p style={caption}>Row status (useTableRowStatus): semantic glyphs (error, warning) and custom markers (dot, icon); hover a marker</p>
+    <Table aria-label="Row status" data={people.slice(0, 7)} columns={basicColumns} plugins={{rowStatus}} id="table-status" />
+  </section>
+
+  <section>
+    <p style={caption}>Grouped rows (useTableGroupedRows): "Platform" first, "Design" starts collapsed; click a section header</p>
+    <Table aria-label="Grouped by team" data={grouped.data} columns={basicColumns} idKey={grouped.idKey} plugins={{grouped: grouped.plugin}} density="compact" id="table-grouped" />
+  </section>
+
+  <section>
+    <p style={caption}>Tree rows (useTableTreeState + useTableTreeData) with the header expand-all control</p>
+    <Table aria-label="Files" data={tree.visibleData} columns={[{key: 'name', header: 'Name', width: proportional(3)}, {key: 'kind', header: 'Kind'}, {key: 'size', header: 'Size', align: 'end', width: pixel(100)}]} idKey="id" plugins={{tree: treePlugin}} density="compact" id="table-tree" />
+  </section>
+
+  <section>
+    <p style={caption}>Row index (useTableRowIndex, startFrom 6) and ARIA row indexing (rowIndexStart 6, rowCount 40)</p>
+    <Table aria-label="Page two" data={few} columns={basicColumns} plugins={{rowIndex}} rowIndexStart={6} rowCount={40} id="table-index" />
+  </section>
+
+  <section>
+    <p style={caption}>Empty states: the default "No data", a custom EmptyState (empty slot), and emptyState=false</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:var(--spacing-4)">
+      <Table aria-label="Empty default" data={[]} columns={basicColumns.slice(0, 3)} id="table-empty" />
+      <Table aria-label="Empty custom" data={[]} columns={basicColumns.slice(0, 3)}>
+        <EmptyState slot="empty" icon="search" title="No matches" description="Try a different team or location." isCompact />
+      </Table>
+      <Table aria-label="Empty none" data={[]} columns={basicColumns.slice(0, 3)} emptyState={false} />
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Loading: a Spinner in the empty slot with aria-busy, and skeleton rows (renderCell → Skeleton)</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:var(--spacing-4)">
+      <Table aria-label="Loading people" aria-busy="true" data={[]} columns={basicColumns.slice(0, 3)} id="table-loading">
+        <div slot="empty" style="display:flex;justify-content:center;padding:var(--spacing-6)"><Spinner size="lg" label="Loading people…" /></div>
+      </Table>
+      <Table aria-label="Loading skeleton" aria-busy="true" data={skeletonRows} columns={skeletonColumns} id="table-skeleton" />
+    </div>
+  </section>
+
+  <section>
+    <p style={caption}>Children mode: TableHeader / TableBody / TableFooter with TableRow, TableHeaderCell and TableCell (colSpan); dividers="grid", compact</p>
+    <Table aria-label="Quarterly spend" dividers="grid" density="compact" isStriped id="table-children">
+      <TableHeader>
+        <TableRow isHeaderRow>
+          <TableHeaderCell scope="col">Team</TableHeaderCell>
+          <TableHeaderCell scope="col" style="text-align:end">Q1</TableHeaderCell>
+          <TableHeaderCell scope="col" style="text-align:end">Q2</TableHeaderCell>
+          <TableHeaderCell scope="col" style="text-align:end">Total</TableHeaderCell>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow><TableCell scope="row">Platform</TableCell><TableCell style="text-align:end">$412,000</TableCell><TableCell style="text-align:end">$398,500</TableCell><TableCell style="text-align:end">$810,500</TableCell></TableRow>
+        <TableRow><TableCell scope="row">Payments</TableCell><TableCell style="text-align:end">$221,300</TableCell><TableCell style="text-align:end">$240,100</TableCell><TableCell style="text-align:end">$461,400</TableCell></TableRow>
+        <TableRow><TableCell scope="row">Design</TableCell><TableCell style="text-align:end">$148,900</TableCell><TableCell style="text-align:end">$151,200</TableCell><TableCell style="text-align:end">$300,100</TableCell></TableRow>
+      </TableBody>
+      <TableFooter>
+        <TableRow><TableCell colSpan={3}><Text weight="semibold">Total</Text></TableCell><TableCell style="text-align:end"><Text weight="semibold">$1,572,000</Text></TableCell></TableRow>
+      </TableFooter>
+    </Table>
+  </section>
+
+  <section>
+    <p style={caption}>Container bleed (contract 14): inside a Card the table reaches the card's edges; first and last columns keep the card's inset</p>
+    <Card>
+      <Table aria-label="In a card" data={people.slice(0, 4)} columns={basicColumns} hasHover id="table-card" />
+    </Card>
+  </section>
+
+  <section>
+    <p style={caption}>Sticky header (recipe — Astryx has no prop): a small custom plugin makes the region scroll both ways at a fixed height; caller CSS pins the header cells</p>
+    <Table aria-label="Sticky header" data={stickyHeaderSort.sortedData} columns={sortColumns} idKey="id" density="compact" plugins={{sort: useTableSortable(stickyHeaderSort.sortConfig), stickyHeader}} id="table-sticky-header" />
+  </section>
+
+  <section>
+    <p style={caption}>Generated columns (no columns prop): headers and proportional widths come from the first row</p>
+    <Table aria-label="Generated" data={people.slice(0, 3).map(({name, role, location, projects}) => ({name, role, location, projects}))} density="compact" />
+  </section>
+
+  <section>
+    <p style={caption}>Inside a fixed-height ScrollableArea (the page-level way to keep a header in view while the columns fit)</p>
+    <ScrollableArea label="People list" height={200}>
+      <Table aria-label="Scrolling list" data={people.slice(0, 10)} columns={basicColumns} density="compact" class="demo-sticky-head" />
+    </ScrollableArea>
+  </section>
+</div>

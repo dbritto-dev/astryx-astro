@@ -1,0 +1,38 @@
+---
+/**
+ * A column resize handle (Astryx useTableColumnResize ResizeHandle): a focusable vertical
+ * separator on the header's inline-end edge, named "Resize column <label>", whose 1px
+ * indicator reaches through the body (`--table-resize-height`). Behaviour:
+ * elements/table-features/resize.ts. Coarse pointers keep the tab stop but not the drag.
+ */
+import {translator} from '../../lib/i18n';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  columnKey: string;
+  columnLabel: string;
+  currentWidth?: number;
+  minWidth: number;
+  maxWidth: number;
+  neighborKey: string | null;
+  table: TableRenderContext;
+}
+
+const {columnKey, columnLabel, currentWidth, minWidth, maxWidth, neighborKey, table} = Astro.props;
+const t = translator(Astro, table.locale);
+---
+<div
+  role="separator"
+  aria-orientation="vertical"
+  aria-valuenow={currentWidth ?? minWidth}
+  aria-valuemin={minWidth}
+  aria-valuemax={maxWidth === Infinity ? undefined : maxWidth}
+  aria-label={t('@astryx.table.columnResize.resizeColumn', {label: columnLabel})}
+  tabindex="0"
+  class="ax-table-resize-handle"
+  data-resize-handle=""
+  data-column-key={columnKey}
+  data-ax-neighbor={neighborKey ?? undefined}
+  data-ax-max={maxWidth === Infinity ? undefined : maxWidth}
+></div>
+<script>import '../../elements/table-features/resize';</script>

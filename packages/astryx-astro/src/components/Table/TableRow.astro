@@ -1,0 +1,27 @@
+---
+/**
+ * TableRow — a `<tr>` for children-mode Tables. Port of @astryxdesign/core Table/TableRow.tsx.
+ *
+ * Inside a Table it takes the table's striping and hover (`isStriped`, `hasHover`) unless it
+ * is the header row; standalone it renders a plain `<tr>`. Put rows inside TableHeader,
+ * TableBody or TableFooter: a `<tr>` directly in `<table>` gets an implied `<tbody>` from
+ * the HTML parser.
+ *
+ * @example
+ * <TableBody>
+ *   <TableRow><TableCell>Alice</TableCell><TableCell>30</TableCell></TableRow>
+ * </TableBody>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {cx, themeProps} from '../../lib/themeProps';
+import './Table.css';
+
+export interface Props extends HTMLAttributes<'tr'> {
+  /** The header row: skips the striped/hover body-row styling. @default false */
+  isHeaderRow?: boolean;
+}
+
+const {isHeaderRow = false, class: className, ...rest} = Astro.props;
+const {themeClass} = themeProps('table-row');
+---
+<tr {...rest} class={cx(themeClass, className)} data-ax-header-row={isHeaderRow ? '' : undefined}><slot /></tr>

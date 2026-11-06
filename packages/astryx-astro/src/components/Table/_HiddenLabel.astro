@@ -1,0 +1,14 @@
+---
+/** A visually hidden, translated header label for a synthetic column (expansion, row status). */
+import {translator} from '../../lib/i18n';
+import VisuallyHidden from '../VisuallyHidden/VisuallyHidden.astro';
+import type {TableRenderContext} from './types';
+
+interface Props {
+  messageKey: string;
+  table: TableRenderContext;
+}
+
+const {messageKey, table} = Astro.props;
+---
+<VisuallyHidden>{translator(Astro, table.locale)(messageKey)}</VisuallyHidden>

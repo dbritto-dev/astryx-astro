@@ -1,0 +1,184 @@
+---
+/**
+ * Table — a styled, data-driven table with density, dividers, striped rows, hover highlight
+ * and named plugins. Port of @astryxdesign/core Table/Table.tsx, BaseTable.tsx,
+ * columnUtils.ts, useBaseTablePlugins.ts, table.stylex.ts, useTableCellStyles.ts,
+ * TableContext.ts and the plugins under Table/plugins (sortable, columnResize,
+ * stickyColumns, rowExpansion, rowStatus, groupedRows, tree, rowIndex) — see README.md.
+ *
+ * Data-driven: `data` + `columns` ({key, header, width: proportional()/pixel(), align,
+ * sortable, resizable, renderCell, accessor, format}); rich cells via `renderCell` returning
+ * a TableNode or the `cell:<key>` slot function. Children mode: compose TableHeader /
+ * TableBody / TableFooter with TableRow / TableCell / TableHeaderCell in the default slot.
+ *
+ * The `<table>` sits in a horizontal scroll region (`<ax-table>`, theme target
+ * `astryx-table-scroll-wrapper`): `role="group"` named after the table (`aria-labelledby`,
+ * else `aria-label`, else the caption, else "Table"), in the tab order only while the
+ * columns overflow, overscroll contained, bleeding through its container's padding
+ * (contract 14). Consumer `class`, `style` and attributes go on the `<table>`.
+ *
+ * Slots: default (children mode), `caption`, `empty` (replaces the "No data" EmptyState),
+ * `cell:<key>` (row) => markup, `header:<key>`, `expanded` (row) => panel content,
+ * `group-header` (groupKey, count, collapsed) => markup.
+ *
+ * Events (bubbling, from the `<ax-table>`): `astryx-sort-change` {sort},
+ * `astryx-column-resize` {updates}, `astryx-expanded-change` {key, isExpanded, expandedKeys},
+ * `astryx-toggle-group` {groupKey, isCollapsed, collapsedGroups},
+ * `astryx-expanded-ids-change` {ids, id, isExpanded}. The cancelable ones keep the current
+ * state when prevented.
+ *
+ * Deferred: row selection + TableSelectionToolbar (CheckboxInput, Toolbar), filtering
+ * editors, pagination, column settings, context-menu actions, `animatedLayout` glides —
+ * README.md lists the hook points left for them. Touch: the resize handles ignore coarse
+ * pointers (as in Astryx); everything else is plain click/keyboard.
+ *
+ * @example
+ * ---
+ * import {proportional, pixel, useTableSortableState, useTableSortable} from '../components/Table/table';
+ * const {sortedData, sortConfig} = useTableSortableState({data: people, defaultSort: [{sortKey: 'name', direction: 'ascending'}]});
+ * ---
+ * <Table aria-label="People" data={sortedData} idKey="id" density="compact" dividers="grid" hasHover
+ *   columns={[{key: 'name', header: 'Name', sortable: true, width: proportional(2)}, {key: 'age', header: 'Age', align: 'end', width: pixel(80)}]}
+ *   plugins={{sort: useTableSortable(sortConfig)}}>
+ *   <Fragment slot="cell:name">{(p) => <strong>{p.name}</strong>}</Fragment>
+ * </Table>
+ */
+import type {HTMLAttributes} from 'astro/types';
+import {resolveLocale, translator} from '../../lib/i18n';
+import {stamp} from '../../lib/cascade';
+import {uid} from '../../lib/uid';
+import {buildTable, orderPlugins} from './pipeline';
+import {collectSlotNodes, html, slot} from './node';
+import TableNodeView from './_TableNode.astro';
+import type {
+  TableColumn,
+  TableDensity,
+  TableDividers,
+  TableIdKey,
+  TableNode,
+  TablePlugin,
+  TablePluginContext,
+  TableRenderContext,
+  TableTextOverflow,
+  TableVerticalAlign,
+} from './types';
+import './Table.css';
+
+type Row = Record<string, any>;
+
+export interface Props extends Omit<HTMLAttributes<'table'>, 'children'> {
+  /** Rows to render (data-driven mode). */
+  data?: readonly Row[];
+  /** Column definitions; generated from the first row's keys when omitted. */
+  columns?: TableColumn<Row>[];
+  /** Row key: a property name or an extractor (positional when omitted). */
+  idKey?: TableIdKey<Row>;
+  /** Cell padding and font size. @default 'balanced' */
+  density?: TableDensity;
+  /** Divider style between cells. @default 'rows' */
+  dividers?: TableDividers;
+  /** Wash on even body rows. @default false */
+  isStriped?: boolean;
+  /** Hover highlight on body rows (pointer devices). @default false */
+  hasHover?: boolean;
+  /** Vertical alignment of body cells. @default 'middle' */
+  verticalAlign?: TableVerticalAlign;
+  /** Body cell text past the column width: wrap, or clip with an ellipsis (+ tooltip on default cells). @default 'wrap' */
+  textOverflow?: TableTextOverflow;
+  /** Named plugins (`useTable*()` results); first-party names run in Astryx's canonical order. */
+  plugins?: Record<string, TablePlugin<any> | null | undefined>;
+  /** ARIA row index of the first body row; opts into aria-rowindex / aria-rowcount. */
+  rowIndexStart?: number;
+  /** Total rows across all pages for aria-rowcount (-1 when only rowIndexStart is set). */
+  rowCount?: number;
+  /** `false` renders an empty body for empty data; the `empty` slot replaces the default "No data". */
+  emptyState?: false;
+  /** Locale for the table's strings (else Astro.locals.astryxLocale / currentLocale). */
+  locale?: string;
+}
+
+const {
+  data,
+  columns: columnsProp,
+  idKey,
+  density = 'balanced',
+  dividers = 'rows',
+  isStriped = false,
+  hasHover = false,
+  verticalAlign = 'middle',
+  textOverflow = 'wrap',
+  plugins: pluginRecord,
+  rowIndexStart,
+  rowCount,
+  emptyState: emptyStateProp,
+  locale: localeProp,
+  ...rest
+} = Astro.props;
+
+const locale = resolveLocale(Astro, localeProp);
+const t = translator(Astro, localeProp);
+const idBase = uid(Astro, 'ax-table');
+const renderContext: TableRenderContext = {density, dividers, isStriped, hasHover, verticalAlign, textOverflow, locale};
+const isChildrenMode = data === undefined && columnsProp === undefined && Astro.slots.has('default');
+
+// Children mode: the Table's context reaches TableCell / TableHeaderCell by stamping.
+const children = isChildrenMode
+  ? html(await stamp(await Astro.slots.render('default'), 'table-density', (a) => { a['data-density'] = density; }))
+  : undefined;
+
+// Header slots render up front (their text names the resize handles); cell slots become
+// placeholders the pipeline carries and that are filled below.
+const columns = columnsProp
+  ? await Promise.all(
+      columnsProp.map(async (column) => {
+        let next = column;
+        if (Astro.slots.has(`header:${column.key}`)) next = {...next, header: html(await Astro.slots.render(`header:${column.key}`))};
+        if (!next.renderCell && Astro.slots.has(`cell:${column.key}`)) {
+          const name = `cell:${column.key}`;
+          next = {...next, renderCell: (item: Row) => slot(name, item)};
+        }
+        return next;
+      }),
+    )
+  : undefined;
+
+const emptyState: TableNode | false | undefined = Astro.slots.has('empty')
+  ? html(await Astro.slots.render('empty'))
+  : emptyStateProp === false
+    ? false
+    : undefined;
+const caption = Astro.slots.has('caption') ? {id: `${idBase}-caption`, node: html(await Astro.slots.render('caption'))} : undefined;
+
+const context: TablePluginContext<Row> = {
+  ...renderContext,
+  t,
+  idBase,
+  data: data as readonly Row[] | undefined,
+  hasSlot: (name) => Astro.slots.has(name),
+};
+
+const {root} = buildTable<Row>({
+  data: data as readonly Row[] | undefined,
+  columns,
+  idKey,
+  plugins: orderPlugins<Row>(pluginRecord as Record<string, TablePlugin<Row> | null | undefined> | undefined),
+  children,
+  caption,
+  emptyState,
+  rowIndexStart,
+  rowCount,
+  tableAttrs: rest as Record<string, unknown>,
+  context,
+});
+
+// Fill slot placeholders (cell:<key>, expanded, group-header …) with the slot's markup.
+const placeholders = collectSlotNodes(root);
+await Promise.all(
+  placeholders.map(async (node) => {
+    const rendered = Astro.slots.has(node.slot) ? await Astro.slots.render(node.slot, node.args ?? []) : '';
+    (node as unknown as {html: string}).html = rendered;
+  }),
+);
+---
+<TableNodeView node={root} table={renderContext} />
+<script>import '../../elements/table';</script>
