@@ -151,7 +151,7 @@ Generated Astryx themes style components through stable hooks, e.g.
 
 ## Cross-component contracts
 
-Read `docs/architecture-map.md` §5 (theming mechanics, private vars themes write such as
+Read `docs/handoffs.md` (contracts other batches established) and `docs/architecture-map.md` §5 (theming mechanics, private vars themes write such as
 `--_button-radius`, size cascade) and §8 (26 contracts: accessible names, `aria-disabled`
 for disabled-but-focusable, pending state, size/height contract, container padding protocol,
 edge compensation `data-astryx-edge-comp`, Field routing, InputGroup admission, navigation
