@@ -137,6 +137,18 @@ Generated Astryx themes style components through stable hooks, e.g.
   `globalSingleton()` (`runtime/global.ts`) so a duplicated module copy shares it (see
   docs/handoffs.md, "Global-singleton rule").
 
+## Platform
+
+The browser bar is **Baseline newly available** (web-features status `low` or `high`): such
+features are used directly, with no detection or fallback. Anything else is a progressive
+enhancement, feature-detected or harmless when missing. `docs/platform.md` has the policy and
+the table of features the package relies on (Required vs Enhancement, where, how each
+enhancement degrades); `scripts/platform-features.json` is the list and
+`pnpm -F astryx-astro check:baseline` checks it against the pinned web-features. Relying on a
+new feature means adding it there. User-agent / platform reads go through
+`src/elements/runtime/platform.ts` only. Server-side code is bound by Astro's Node floor
+instead (no `RegExp.escape`, no `Uint8Array` base64 there).
+
 ## Overlays (from docs/architecture-map.md §4 and §8)
 
 1. Native promotion only: `popover="auto|manual"` (or `hint` where supported) and

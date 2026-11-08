@@ -1,0 +1,480 @@
+{
+  "$comment": "The platform features astryx-astro relies on, checked by scripts/baseline.mjs against the pinned web-features data and rendered into docs/platform.md (node scripts/baseline.mjs --write). use: required = may be used without a fallback (must be Baseline: web-features status low or high); enhancement = not Baseline, so feature-detected or harmless when unsupported (`degrades` says what happens without it). keys: compat keys (by_compat_key) that must be Baseline too; with partial: true only those keys count, because the feature as a whole is not Baseline.",
+  "features": [
+    {
+      "id": "popover",
+      "use": "required",
+      "keys": [
+        "api.HTMLElement.showPopover.options_source_parameter"
+      ],
+      "where": "Every layer root (`LayerElement` in `elements/runtime/layer.ts` and its subclasses: Tooltip, HoverCard, Popover, menus, comboboxes, pickers), the toast viewport, non-modal Drawer and BottomSheet; `popovertarget` invokers and `:popover-open` in CSS and JS"
+    },
+    {
+      "id": "dialog",
+      "use": "required",
+      "where": "Modal surfaces: Dialog, AlertDialog, Drawer, BottomSheet, Lightbox, MobileNav, CommandPalette (`showModal()`, `::backdrop`, `cancel`)"
+    },
+    {
+      "id": "invoker-commands",
+      "use": "required",
+      "where": "Dialog, Drawer, BottomSheet and MobileNav triggers and close buttons (`commandfor` + `command`, zero JS); the `command` event the hosts in `elements/dialog.ts` take over"
+    },
+    {
+      "id": "toggleevent-source",
+      "use": "required",
+      "where": "`LayerElement` anchors a layer a native invoker opened to that invoker (`beforetoggle` `source`)"
+    },
+    {
+      "id": "anchor-positioning",
+      "use": "required",
+      "partial": true,
+      "keys": [
+        "css.properties.anchor-name",
+        "css.properties.position-anchor",
+        "css.properties.anchor-scope",
+        "css.properties.position-area",
+        "css.properties.position-area.self-block-start",
+        "css.properties.position-area.self-block-end",
+        "css.properties.position-area.self-inline-start",
+        "css.properties.position-area.self-inline-end",
+        "css.properties.position-area.span-self-block-start",
+        "css.properties.position-area.span-self-block-end",
+        "css.properties.position-area.span-self-inline-start",
+        "css.properties.position-area.span-self-inline-end",
+        "css.properties.position-area.span-all",
+        "css.properties.position-area.top",
+        "css.properties.position-area.bottom",
+        "css.properties.position-area.left",
+        "css.properties.position-area.right",
+        "css.properties.position-area.span-top",
+        "css.properties.position-area.span-bottom",
+        "css.properties.position-area.span-left",
+        "css.properties.position-area.span-right",
+        "css.properties.position-try-fallbacks",
+        "css.properties.position-try-fallbacks.flip-block",
+        "css.properties.position-try-fallbacks.flip-inline",
+        "css.properties.position-try-fallbacks.position-area",
+        "css.at-rules.position-try",
+        "api.CSSPositionTryDescriptors.inline-size",
+        "api.CSSPositionTryDescriptors.block-size",
+        "css.types.anchor",
+        "css.properties.top.anchor",
+        "css.types.anchor-size",
+        "css.properties.width.anchor-size",
+        "css.properties.min-width.anchor-size",
+        "css.properties.height.anchor-size",
+        "css.properties.block-size.anchor-size",
+        "css.properties.margin-block-start.anchor-size"
+      ],
+      "where": "Layer geometry (`components/Layer/Layer.css`, `elements/runtime/anchor.ts`): placement areas, flips, slide/beside/fit `@position-try` rules; trigger-width minimums (Popover, DropdownMenu, NavHeading, DateTimeInput, PowerSearch); the Outline indicator (`anchor()`, `anchor-size()`, `anchor-scope`)",
+      "note": "position-visibility (anchors-visible/anchors-valid) is the part that is not Baseline; it is not used."
+    },
+    {
+      "id": "starting-style",
+      "use": "required",
+      "where": "Entry transitions: layer motion (`Layer.css`), Dialog, Drawer, BottomSheet, MobileNav, Toast, FieldStatus, CommandPalette, TopNav, Overlay, Markdown"
+    },
+    {
+      "id": "transition-behavior",
+      "use": "required",
+      "where": "Exit transitions of popovers and dialogs (`transition-behavior: allow-discrete` on `display` / `overlay`), so the trigger keeps its anchor name until the exit ends"
+    },
+    {
+      "id": "has",
+      "use": "required",
+      "where": "Focus-within rings and scroll lock (`styles/shared.css`), SelectableCard, Field, Indicator, Toolbar, TabList, Tokenizer and other relational state"
+    },
+    {
+      "id": "inert",
+      "use": "required",
+      "where": "Collapsed regions (CodeBlock, Collapsible, TreeList, nav disclosures, ChatToolCalls), MultiSelector's decorative row checkboxes, sheets below the top one"
+    },
+    {
+      "id": "focus-events",
+      "use": "required",
+      "keys": [
+        "api.HTMLElement.focus.options_focusVisible_parameter"
+      ],
+      "where": "`focusForLastInput()` (`elements/runtime/modality.ts`): programmatic focus without a ring after pointer input (`focus({focusVisible: false})`)"
+    },
+    {
+      "id": "focus-visible",
+      "use": "required",
+      "where": "Every focus ring (`ax-focus-visible` and friends in `styles/shared.css`)"
+    },
+    {
+      "id": "autonomous-custom-elements",
+      "use": "required",
+      "where": "Every `<ax-*>` element in `src/elements/`"
+    },
+    {
+      "id": "mutationobserver",
+      "use": "required",
+      "where": "Behaviours (`elements/behavior.ts`), roving tab stops, announcements, overflow and scroll-area measurement"
+    },
+    {
+      "id": "resize-observer",
+      "use": "required",
+      "where": "Overflow and scroll measurement: Popover, menus, AppShell, TabList, Carousel, ScrollableArea, OverflowList, sheets, Stepper, Table column resize"
+    },
+    {
+      "id": "intersection-observer",
+      "use": "required",
+      "where": "Anchor-in-view and keep-clear tracking (`elements/runtime/anchor.ts`), ChatMessageList's scroll sentinel"
+    },
+    {
+      "id": "pointer-events-api",
+      "use": "required",
+      "where": "Drags with pointer capture: Slider, Resizable, sheet gestures, NumberInput press-and-hold; press tracking for dismissal"
+    },
+    {
+      "id": "web-animations",
+      "use": "required",
+      "where": "`getAnimations()`: waiting for exit transitions (`anchor.ts`, `sheet/motion.ts`), Spinner rotor sync"
+    },
+    {
+      "id": "scrollend",
+      "use": "required",
+      "where": "Outline navigation settle, ChatLayout stick-to-bottom, SnapPaging settle, the Table resize-hint scroll gate"
+    },
+    {
+      "id": "check-visibility",
+      "use": "required",
+      "where": "Tab stops (`elements/runtime/dom.ts`), announcements, TabList and Carousel measurement, CodeBlock chunk highlighting"
+    },
+    {
+      "id": "highlight",
+      "use": "required",
+      "where": "CodeBlock range highlighting (`lib/codeblock/highlightRanges.ts`, `::highlight(astryx-*)`), Typeahead match highlight"
+    },
+    {
+      "id": "content-visibility",
+      "use": "required",
+      "where": "CodeBlock line chunks (`content-visibility: auto`, `contentvisibilityautostatechange`), `hidden=\"until-found\"` content (`reset.css`), Collapsible and TreeList transitions, Tokenizer"
+    },
+    {
+      "id": "visual-viewport",
+      "use": "required",
+      "where": "Bottom sheets, ScrollableArea, Typeahead and Tokenizer keep content above the on-screen keyboard"
+    },
+    {
+      "id": "matchmedia",
+      "use": "required",
+      "where": "Adaptive presentation (`elements/sheet/presentation.ts`), AppShell breakpoint, reduced-motion and hover checks"
+    },
+    {
+      "id": "dom-geometry",
+      "use": "required",
+      "where": "`DOMMatrixReadOnly` reads a sheet panel's resting offset (`elements/sheet/stack.ts`)"
+    },
+    {
+      "id": "selection-api",
+      "use": "required",
+      "where": "Chat composer caret and trigger-menu anchor (`Range.getBoundingClientRect()`), text-selection guards"
+    },
+    {
+      "id": "contenteditable",
+      "use": "required",
+      "where": "ChatComposerInput"
+    },
+    {
+      "id": "async-clipboard",
+      "use": "required",
+      "where": "Copy buttons (`behaviors/clipboardCopy.ts`: CodeBlock, Timestamp, Markdown), Markdown heading permalinks"
+    },
+    {
+      "id": "font-loading",
+      "use": "required",
+      "where": "ScrollableArea re-measures when web fonts finish loading (`document.fonts`)"
+    },
+    {
+      "id": "performance",
+      "use": "required",
+      "where": "Elapsed-time measurement (`performance.now()`): modality, tooltip group handoff, menu hover guards, sheet press window, toast timers"
+    },
+    {
+      "id": "aborting",
+      "use": "required",
+      "where": "`signal` of async search sources (Typeahead, Tokenizer, CommandPalette, Chat trigger menu)"
+    },
+    {
+      "id": "css-escape",
+      "use": "required",
+      "where": "Id selectors built at run time (`CSS.escape`) across `src/elements/`"
+    },
+    {
+      "id": "promise-withresolvers",
+      "use": "required",
+      "where": "The `astryx-query` respond/reject pair of Typeahead, Tokenizer, CommandPalette and the Chat trigger menu"
+    },
+    {
+      "id": "iterator-methods",
+      "use": "required",
+      "where": "Tokenizer and Typeahead id sets (`Map.prototype.values().map()`)"
+    },
+    {
+      "id": "set-methods",
+      "use": "required",
+      "where": "InputGroup member transform (`difference`), Table selection state (`isSubsetOf`); server and client"
+    },
+    {
+      "id": "array-group",
+      "use": "required",
+      "where": "`groupItems()` (`lib/groupItems.ts`, `Map.groupBy`): CommandPalette, Typeahead, menus"
+    },
+    {
+      "id": "array-findlast",
+      "use": "required",
+      "where": "Topmost modal and modal outlet lookup (`runtime/announce.ts`, `runtime/modalOutlet.ts`), CodeBlock listed languages"
+    },
+    {
+      "id": "url-canparse",
+      "use": "required",
+      "where": "Markdown heading-links plugin validates `permalinkBaseUrl` (`lib/markdown/plugins/headingLinks.ts`)"
+    },
+    {
+      "id": "intl-segmenter",
+      "use": "required",
+      "where": "Grapheme counting and truncation (`lib/characters.ts`, Tokenizer, Typeahead), streaming Markdown grapheme boundaries"
+    },
+    {
+      "id": "intl-plural-rules",
+      "use": "required",
+      "where": "Client-side plural forms of server-rendered message templates (`elements/field.ts`, Chat pasted-text labels)"
+    },
+    {
+      "id": "intl-list-format",
+      "use": "required",
+      "where": "FileInput file-list summaries"
+    },
+    {
+      "id": "web-audio",
+      "use": "required",
+      "where": "ChatDictationButton start/stop sounds and level meter (only once speech recognition is available)"
+    },
+    {
+      "id": "media-capture",
+      "use": "required",
+      "where": "ChatDictationButton level meter (`getUserMedia`, only once speech recognition is available)"
+    },
+    {
+      "id": "cascade-layers",
+      "use": "required",
+      "where": "Every stylesheet (`@layer reset, astryx-base, astryx-theme`)"
+    },
+    {
+      "id": "scope",
+      "use": "required",
+      "where": "Theme CSS (`@scope ([data-astryx-theme]) to ([data-astryx-theme])`, generated `styles/themes/*`, `components/theme/`)"
+    },
+    {
+      "id": "light-dark",
+      "use": "required",
+      "where": "Color tokens (`styles/tokens.css`), MediaTheme, syntax themes"
+    },
+    {
+      "id": "color-scheme",
+      "use": "required",
+      "where": "`reset.css` maps `[data-theme]` to `color-scheme`; MediaTheme surfaces"
+    },
+    {
+      "id": "registered-custom-properties",
+      "use": "required",
+      "where": "`@property` registrations of non-inheriting private variables (`--_ax-*`) in component stylesheets"
+    },
+    {
+      "id": "container-queries",
+      "use": "required",
+      "where": "Layout, ScrollableArea, Chat, Slider, AspectRatio, PowerSearch"
+    },
+    {
+      "id": "dir-pseudo",
+      "use": "required",
+      "where": "RTL mirroring (`ax-mirror-rtl` in `styles/shared.css`), layer entry offsets, Carousel, TabList, Slider, Switch, ProgressBar, Toast, Dialog, Drawer"
+    },
+    {
+      "id": "color-mix",
+      "use": "required",
+      "where": "Overlays, Skeleton, Switch, Indicator, Link, FileInput, ChatDictationButton"
+    },
+    {
+      "id": "logical-properties",
+      "use": "required",
+      "where": "All component CSS (inline/block insets, margins, sizes)"
+    },
+    {
+      "id": "viewport-unit-variants",
+      "use": "required",
+      "where": "Layer caps (`100dvb`, `100vi`), Dialog, Drawer, BottomSheet, MobileNav, Lightbox, AppShell"
+    },
+    {
+      "id": "safe-area-inset",
+      "use": "required",
+      "where": "Layer viewport gutters, Dialog, Drawer, BottomSheet, Toast, AppShell (`env(safe-area-inset-*)`)"
+    },
+    {
+      "id": "subgrid",
+      "use": "required",
+      "where": "List numbered rows share one marker column"
+    },
+    {
+      "id": "focus-within",
+      "use": "required",
+      "where": "Focus-owner wrappers and reveal-on-focus (Thumbnail, Overlay)"
+    },
+    {
+      "id": "masks",
+      "use": "required",
+      "where": "Scroll-edge fades (Carousel, TabList), Chat layout blur, the BottomSheet edge tint"
+    },
+    {
+      "id": "backdrop-filter",
+      "use": "required",
+      "where": "Lightbox scrim, Chat layout blur, SegmentedControl lens"
+    },
+    {
+      "id": "scroll-snap",
+      "use": "required",
+      "where": "Carousel, SnapPaging"
+    },
+    {
+      "id": "scrollbar-width",
+      "use": "required",
+      "where": "SnapPaging, ScrollableArea, Carousel, TabList strip"
+    },
+    {
+      "id": "scrollbar-gutter",
+      "use": "required",
+      "where": "Modal scroll lock (`styles/shared.css`), ScrollableArea"
+    },
+    {
+      "id": "overflow-clip",
+      "use": "required",
+      "where": "Card, Overlay, MobileNav"
+    },
+    {
+      "id": "text-wrap",
+      "use": "required",
+      "where": "Text / Heading `textWrap` (`wrap`, `nowrap`)"
+    },
+    {
+      "id": "text-wrap-balance",
+      "use": "required",
+      "where": "Text / Heading `textWrap=\"balance\"`"
+    },
+    {
+      "id": "linear-easing",
+      "use": "required",
+      "where": "Collapsible and TreeList spring curves sampled into `linear()`"
+    },
+    {
+      "id": "aspect-ratio",
+      "use": "required",
+      "where": "AspectRatio, icon-only Buttons, Thumbnail"
+    },
+    {
+      "id": "media-query-range-syntax",
+      "use": "required",
+      "where": "AppShell breakpoint query (`(width < Npx)`), compact-screen queries"
+    },
+    {
+      "id": "interaction",
+      "use": "required",
+      "where": "`(hover: hover)` gating of hover paint, `(pointer: coarse)` touch sizing and presentation"
+    },
+    {
+      "id": "prefers-reduced-motion",
+      "use": "required",
+      "where": "Every motion rule's travel-free branch"
+    },
+    {
+      "id": "forced-colors",
+      "use": "required",
+      "where": "Forced-colors fallbacks of rings, indicators and fields"
+    },
+    {
+      "id": "touch-action",
+      "use": "required",
+      "where": "Slider, Switch, Resizable, sheets and drawers, menus, TabList, Table"
+    },
+    {
+      "id": "popover-hint",
+      "use": "enhancement",
+      "where": "Tooltip layers (`popover=\"hint\"`)",
+      "degrades": "The value is invalid there and reads as `manual` (Astryx's fallback too); the tooltip runtime's group handoff closes the previous tooltip itself."
+    },
+    {
+      "id": "dialog-closedby",
+      "use": "enhancement",
+      "where": "Dialog / Drawer / BottomSheet / MobileNav server markup (`closedby`), for zero-JS light dismiss",
+      "degrades": "Before `elements/dialog.ts` runs, Escape closes even a `purpose=\"required\"` dialog and a backdrop press does nothing; once it runs, its `cancel` handler and backdrop rule apply `purpose` in every engine (it switches `closedby=\"any\"` to `closerequest` and takes backdrop presses over)."
+    },
+    {
+      "id": "hidden-until-found",
+      "use": "enhancement",
+      "where": "Closed Collapsible, TreeList and Banner content (`hidden=\"until-found\"`, `beforematch`)",
+      "degrades": "The content is plain `hidden`: find-in-page does not reveal it."
+    },
+    {
+      "id": "interpolate-size",
+      "use": "enhancement",
+      "where": "Collapsible and TreeList height animation (inside `@supports (interpolate-size: allow-keywords)`)",
+      "degrades": "Content opens and closes without the height glide (the fade still runs)."
+    },
+    {
+      "id": "overlay",
+      "use": "enhancement",
+      "where": "`overlay` in the exit `transition-property` of layers and dialogs",
+      "degrades": "A closing layer leaves the top layer at once, so its fade-out can paint below page content."
+    },
+    {
+      "id": "container-scroll-state-queries",
+      "use": "enhancement",
+      "where": "ScrollableArea's viewport is a scroll-state container (inside `@supports (container-type: scroll-state)`), for consumer `@container scroll-state(…)` rules",
+      "degrades": "Such rules do not apply; the `data-scroll-*` edge flags the element writes still do."
+    },
+    {
+      "id": "text-box",
+      "use": "enhancement",
+      "where": "Collapsible title and Text `capsize` (`text-box-trim` / `text-box-edge`)",
+      "degrades": "Text keeps its half-leading: a few pixels of extra space above and below.",
+      "note": "The two longhands used are Baseline per key (since 2026-08-18); the feature as a whole is not."
+    },
+    {
+      "id": "text-wrap-pretty",
+      "use": "enhancement",
+      "where": "Text / Heading `textWrap=\"pretty\"`",
+      "degrades": "Lines wrap greedily (`wrap`)."
+    },
+    {
+      "id": "overscroll-behavior",
+      "use": "enhancement",
+      "where": "Layers, sheets, menus and scroll areas contain their scroll (`overscroll-behavior: contain`)",
+      "degrades": "Scrolling past the end of a layer chains to the page behind it."
+    },
+    {
+      "id": "user-select",
+      "use": "enhancement",
+      "where": "Non-selectable chrome (buttons, segments, handles, chips)",
+      "degrades": "Safari needs the `-webkit-` prefix, written beside it where selection must stay off (Slider, ContextMenu); elsewhere the text stays selectable there."
+    },
+    {
+      "id": "scheduler",
+      "use": "enhancement",
+      "where": "CodeBlock async tokenizing yields with `scheduler.yield()` (`lib/codeblock/tokenizer.ts`)",
+      "degrades": "Yields with `setTimeout(0)`."
+    },
+    {
+      "id": "speech-recognition",
+      "use": "enhancement",
+      "where": "ChatDictationButton (feature-detected, `isSupported`)",
+      "degrades": "The button is hidden (`isHiddenWhenUnsupported`, default) or rendered disabled."
+    },
+    {
+      "id": "ua-client-hints",
+      "use": "enhancement",
+      "where": "`isApplePlatform()` (`elements/runtime/platform.ts`) reads `navigator.userAgentData.platform`: Kbd's ⌘ / Ctrl labels, hotkeys' `mod`, Slider's Ctrl+click rule",
+      "degrades": "Falls back to `navigator.platform`."
+    }
+  ]
+}
