@@ -208,15 +208,7 @@ export function listedLanguage(
   languages: ReadonlyArray<CodeLanguage> | undefined,
   word: string,
 ): CodeLanguage | undefined {
-  if (languages == null) {
-    return undefined;
-  }
-  for (let i = languages.length - 1; i >= 0; i--) {
-    if (languages[i].identifiers.includes(word)) {
-      return languages[i];
-    }
-  }
-  return undefined;
+  return languages?.findLast(language => language.identifiers.includes(word));
 }
 
 /** The listed value a file's name or extension infers; a later entry wins. */
@@ -225,19 +217,11 @@ export function listedLanguageForFile(
   fileName: string,
   extension: string | null,
 ): CodeLanguage | undefined {
-  if (languages == null) {
-    return undefined;
-  }
-  for (let i = languages.length - 1; i >= 0; i--) {
-    const language = languages[i];
-    if (
+  return languages?.findLast(
+    language =>
       language.fileNames.includes(fileName) ||
-      (extension != null && language.fileExtensions.includes(extension))
-    ) {
-      return language;
-    }
-  }
-  return undefined;
+      (extension != null && language.fileExtensions.includes(extension)),
+  );
 }
 
 /** A keyword alternation from a space-separated word list. */

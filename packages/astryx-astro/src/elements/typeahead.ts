@@ -317,9 +317,7 @@ export class TypeaheadElement extends Base {
     }
     const controller = new AbortController();
     this.#controller = controller;
-    let resolve!: (items: TypeaheadItemData[]) => void;
-    let reject!: (error?: unknown) => void;
-    const answer = new Promise<TypeaheadItemData[]>((res, rej) => { resolve = res; reject = rej; });
+    const {promise: answer, resolve, reject} = Promise.withResolvers<TypeaheadItemData[]>();
     const detail: TypeaheadQueryDetail = {
       query,
       kind,
@@ -470,7 +468,7 @@ export class TypeaheadElement extends Base {
     const visible = new Set(items.map((i) => i.id));
     for (const [id, row] of staticRows) row.hidden = !(useStatic && visible.has(id));
     if (!useStatic) {
-      const used = new Set<string>([...staticRows.values()].map((r) => r.id));
+      const used = new Set<string>(staticRows.values().map((r) => r.id));
       const doc = this.ownerDocument;
       const tpl = this.#layer?.querySelector<HTMLTemplateElement>(':scope > template[data-ax-option-template]');
       const buildRow = (item: TypeaheadItemData) => {

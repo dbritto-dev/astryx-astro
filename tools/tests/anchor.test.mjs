@@ -2,8 +2,9 @@
 /**
  * Anchor positioning: every placement × alignment lands beside its trigger with the
  * clearance; layers flip near a viewport edge and keep the gutter; RTL mirrors start/end;
- * names compose on a shared trigger and exist only while shown (until the exit ends); a
- * keep-clear tooltip never covers its trigger.
+ * a layer with two native invokers anchors to the one that opened it; names compose on a
+ * shared trigger and exist only while shown (until the exit ends); a keep-clear tooltip never
+ * covers its trigger.
  *   node tools/tests/anchor.test.mjs
  */
 import {setup, isOpen, sleep} from './_harness.mjs';
@@ -113,6 +114,25 @@ await page.click('#pop-rtl-trigger');
 await sleep(60);
 m = await measure('#pop-rtl-anchor', '#pop-rtl');
 check('RTL alignment start aligns the right edges', Math.abs(m.a.r - m.b.r) <= TOL && Math.abs(m.b.t - m.a.b - GAP) <= TOL, JSON.stringify(m));
+await page.keyboard.press('Escape');
+
+console.log('\nA second native invoker: the layer anchors to the one that opened it (ToggleEvent.source)');
+await open('layer');
+const second = await page.evaluate(async () => {
+  const first = document.querySelector('[data-demo-trigger="below-start"]');
+  const other = first.cloneNode(true);
+  other.removeAttribute('data-demo-trigger');
+  other.id = 'second-invoker';
+  other.style.cssText += ';position:fixed;top:120px;left:600px';
+  document.body.append(other);
+  other.click();
+  await new Promise((r) => setTimeout(r, 80));
+  const layer = document.getElementById('layer-below-start');
+  const t = other.getBoundingClientRect();
+  const l = layer.getBoundingClientRect();
+  return {open: layer.matches(':popover-open'), anchor: layer.anchor?.id ?? null, below: Math.abs(l.top - t.bottom - 4) <= 2 && Math.abs(l.left - t.left) <= 2};
+});
+check('anchored to the invoker that was clicked', second.open && second.anchor === 'second-invoker' && second.below, JSON.stringify(second));
 await page.keyboard.press('Escape');
 
 console.log('\nAnchor names compose on a shared trigger and exist only while shown');

@@ -329,7 +329,7 @@ export class AxTable extends AxScrollableArea {
         stack.push(unit);
       }
       const emit = (list: Unit[]) => {
-        const sorted = [...list].sort((a, b) => compare(a.row, b.row));
+        const sorted = list.toSorted((a, b) => compare(a.row, b.row));
         for (const u of sorted) {
           out.push(u.row, ...u.rest);
           emit(u.children);

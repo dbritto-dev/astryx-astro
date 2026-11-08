@@ -716,9 +716,7 @@ export class TokenizerElement extends Base {
     }
     const controller = new AbortController();
     this.#controller = controller;
-    let resolve!: (items: TokenizerItem[]) => void;
-    let reject!: (error?: unknown) => void;
-    const answer = new Promise<TokenizerItem[]>((res, rej) => { resolve = res; reject = rej; });
+    const {promise: answer, resolve, reject} = Promise.withResolvers<TokenizerItem[]>();
     const detail: TypeaheadQueryDetail = {
       query,
       kind,
@@ -913,7 +911,7 @@ export class TokenizerElement extends Base {
     const useStatic = this.#shownFromStatic && sourceItems.every((item) => staticRows.has(item.id));
     const visible = new Set(sourceItems.map((i) => i.id));
     for (const [id, row] of staticRows) row.hidden = !(useStatic && visible.has(id));
-    const used = new Set<string>([...staticRows.values()].map((r) => r.id));
+    const used = new Set<string>(staticRows.values().map((r) => r.id));
     const doc = this.ownerDocument;
     const tpl = this.#layer?.querySelector<HTMLTemplateElement>(':scope > template[data-ax-option-template]');
     const buildRow = (item: TokenizerItem, isEntry: boolean) => {

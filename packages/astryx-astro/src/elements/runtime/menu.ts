@@ -735,13 +735,13 @@ export class MenuElement extends LayerElement {
 
   // ── LayerElement policy ──────────────────────────────────────────────────
 
-  protected resolveAnchor(): HTMLElement | null {
+  protected resolveAnchor(invoker: HTMLElement | null = null): HTMLElement | null {
     // The first hook of every open (the native invoker's too): choose the surface here.
     if (this.#sheet) {
       this.#sheet.latch();
       if (this.#sheet.isSheet) return null;
     }
-    return super.resolveAnchor();
+    return super.resolveAnchor(invoker);
   }
 
   protected escapeBehavior(): LayerEscapeBehavior | null {

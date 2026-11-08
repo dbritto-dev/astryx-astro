@@ -154,8 +154,8 @@ abstract class HoverLayerElement extends LayerElement {
     return [...this.ownerDocument.querySelectorAll<HTMLElement>(`[${attr}="${CSS.escape(this.id)}"]`)];
   }
 
-  protected resolveAnchor(): HTMLElement | null {
-    return super.resolveAnchor() ?? this.triggers()[0] ?? null;
+  protected resolveAnchor(invoker: HTMLElement | null = null): HTMLElement | null {
+    return super.resolveAnchor(invoker) ?? this.triggers()[0] ?? null;
   }
 
   /**

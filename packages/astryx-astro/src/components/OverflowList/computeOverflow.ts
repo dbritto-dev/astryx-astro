@@ -131,7 +131,7 @@ export function computeOverflow(input: ComputeOverflowInput): ComputeOverflowRes
   const itemCount = widths.length;
   if (itemCount === 0) return {visibleCount: 0, rows: 0};
   const {floor, ceiling} = resolveBounds(itemCount, minVisibleItems, maxVisibleItems);
-  const orderedWidths = collapseFrom === 'end' ? widths : [...widths].reverse();
+  const orderedWidths = collapseFrom === 'end' ? widths : widths.toReversed();
   const multiRow = maxRows != null && maxRows > 1;
   if (!multiRow) {
     const fitCount = computeSingleLineFit(orderedWidths, gap, availableWidth, indicatorWidth, floor, ceiling);

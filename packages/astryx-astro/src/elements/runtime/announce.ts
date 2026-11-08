@@ -118,7 +118,8 @@ export function enclosingModal(element: Element | null | undefined): HTMLDialogE
 export function topmostModal(): HTMLDialogElement | null {
   if (typeof document === 'undefined') return null;
   watchDialogs();
-  for (let i = presented.length - 1; i >= 0; i--) if (presented[i].isConnected && isExposedModal(presented[i])) return presented[i];
+  const top = presented.findLast((d) => d.isConnected && isExposedModal(d));
+  if (top) return top;
   const open = [...document.querySelectorAll('dialog')].filter((d) => isExposedModal(d as HTMLDialogElement));
   return (open.at(-1) as HTMLDialogElement | undefined) ?? null;
 }

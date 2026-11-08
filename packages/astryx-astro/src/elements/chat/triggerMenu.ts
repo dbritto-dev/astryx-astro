@@ -475,9 +475,7 @@ export function createTriggerMenu(options: TriggerMenuOptions): TriggerMenu {
       }
       const ctrl = new AbortController();
       controller = ctrl;
-      let resolve!: (items: TriggerItem[]) => void;
-      let rejectFn!: (error?: unknown) => void;
-      const answer = new Promise<TriggerItem[]>((res, rej) => { resolve = res; rejectFn = rej; });
+      const {promise: answer, resolve, reject: rejectFn} = Promise.withResolvers<TriggerItem[]>();
       const detail: TriggerQueryDetail = {
         query: q,
         kind: 'search',

@@ -126,7 +126,7 @@ function unwrapMember(field: El, ctx: GroupContext): Node[] {
   removeWhere(control, (n) => GROUP_DROP in attrsOf(n) || (ctx.isDisabled && GROUP_DROP_DISABLED in attrsOf(n)));
   const keptIds = new Set<string>();
   for (const k of keep) collectIds(k, keptIds);
-  const removedIds = new Set([...allIds].filter((id) => !keptIds.has(id)));
+  const removedIds = allIds.difference(keptIds);
   const keepToken = (list: string | undefined) => (list ?? '').split(/\s+/).filter((id) => id && !removedIds.has(id)).join(' ');
 
   const label = find(control, (n) => GROUP_LABEL in attrsOf(n));
