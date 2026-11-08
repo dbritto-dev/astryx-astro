@@ -19,6 +19,7 @@
 import './runtime/disabledInteraction';
 import {isRtl} from './runtime/dom';
 import {getModality} from './runtime/modality';
+import {isApplePlatform} from './runtime/platform';
 import {emit, onFormReset} from './field';
 import {clamp, constrainRange, getPercent, snapToStep, travelFraction} from '../components/Slider/sliderMath';
 
@@ -35,7 +36,7 @@ interface Drag {
   coincidentOrigin: boolean;
 }
 
-const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+/** utils/primaryClick.ts: a Ctrl+click on a Mac is a secondary click. */
 const isPrimaryClick = (event: PointerEvent) => event.button === 0 && !(event.ctrlKey && isApplePlatform());
 const TAP_SLOP = 10;
 

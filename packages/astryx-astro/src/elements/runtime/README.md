@@ -29,6 +29,7 @@ other modules test with `instanceof` are branded with `brandClass()`.
 | `disabledInteraction.ts` | utils/disabledInteraction.ts (AST-085) |
 | `dom.ts` | utils/ime.ts, hooks/focusableSelector.ts, utils/isFocusDetached.ts |
 | `global.ts` | — (port infrastructure: page-wide singletons, cross-copy `instanceof`) |
+| `platform.ts` | utils/isApplePlatform.ts, CodeBlock.tsx `isSafari`, useChatDictation.ts `isIOS`: the only user-agent / platform reads (docs/platform.md) |
 | `menu.ts` | DropdownMenu/menuItemRoles.ts, menuItemHover.ts, menuRegionStops.ts, useMenuOverflow.ts, hooks/useMenuHover.ts, hooks/useLongPress.ts; the menu paths of DropdownMenu.tsx, DropdownMenuSubMenu.tsx, ContextMenu.tsx |
 
 ---

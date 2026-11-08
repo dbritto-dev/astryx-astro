@@ -12,7 +12,7 @@
  *   const unregister = registerHotkey({keys: 'mod+k', onPress: () => palette.show()});
  */
 import {isImeKeyEvent} from './runtime/dom';
-import {isApplePlatform} from '../behaviors/kbdPlatform';
+import {isApplePlatform} from './runtime/platform';
 import {globalSingleton} from './runtime/global';
 
 export interface Hotkey {

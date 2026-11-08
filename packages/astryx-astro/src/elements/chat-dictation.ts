@@ -17,6 +17,7 @@
  */
 import {defineElement} from './runtime/layer';
 import {globalSingleton} from './runtime/global';
+import {isIOSDevice} from './runtime/platform';
 import type {ChatComposerInputElement} from './chat-composer-input';
 
 const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
@@ -282,8 +283,6 @@ export function createSpeechRecognition(options: SpeechRecognitionOptions = {}):
 
 // ── Dictation ────────────────────────────────────────────────────────────────
 
-const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
-
 function playPlop(freq: number, delay: number, getCtx: () => AudioContext, volume = 0.25) {
   try {
     const ctx = getCtx();
@@ -403,7 +402,7 @@ export function createChatDictation(options: ChatDictationOptions = {}): ChatDic
     },
     onResult: (transcript) => { if (!hasInput()) options.onResult?.(transcript); },
     onStart: () => {
-      if (options.hasSounds && !isIOS) {
+      if (options.hasSounds && !isIOSDevice()) {
         playPlop(392, 0, getCtx);
         playPlop(523, 0.07, getCtx);
       }
@@ -417,7 +416,7 @@ export function createChatDictation(options: ChatDictationOptions = {}): ChatDic
     },
     onEnd: () => {
       stopPolling();
-      if (options.hasSounds && !isIOS) {
+      if (options.hasSounds && !isIOSDevice()) {
         playPlop(523, 0, getCtx);
         playPlop(392, 0.07, getCtx);
       }
