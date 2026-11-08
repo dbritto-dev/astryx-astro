@@ -61,7 +61,7 @@ export class AppShellElement extends Base {
       this.#off.push(() => target.removeEventListener(type, fn, opts));
     };
     const px = Number(root.getAttribute('data-ax-breakpoint-px'));
-    if (px > 0 && typeof matchMedia === 'function') {
+    if (px > 0) {
       const query = (this.#query = matchMedia(`(width < ${px}px)`));
       const sync = () => this.#setMobile(query.matches);
       on(query, 'change', sync);
@@ -124,22 +124,22 @@ export class AppShellElement extends Base {
       main.toggleAttribute('data-ax-scroll-region-active', overflows);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-    ro?.observe(main);
-    for (const child of main.children) ro?.observe(child);
+    const ro = new ResizeObserver(schedule);
+    ro.observe(main);
+    for (const child of main.children) ro.observe(child);
     const mo = new MutationObserver(() => {
-      if (ro) for (const child of main.children) ro.observe(child);
+      for (const child of main.children) ro.observe(child);
       schedule();
     });
     mo.observe(main, {childList: true, subtree: true, characterData: true});
     schedule();
-    this.#off.push(() => { ro?.disconnect(); mo.disconnect(); if (frame) cancelAnimationFrame(frame); });
+    this.#off.push(() => { ro.disconnect(); mo.disconnect(); if (frame) cancelAnimationFrame(frame); });
   }
 
   /** `auto`: the sticky rail sits below the header (`--_app-shell-header-height`). */
   #observeHeader(root: HTMLElement): void {
     const header = root.querySelector<HTMLElement>('[data-ax-app-shell-header]');
-    if (!header || typeof ResizeObserver === 'undefined') return;
+    if (!header) return;
     const update = () => root.style.setProperty('--_app-shell-header-height', `${header.getBoundingClientRect().height}px`);
     const ro = new ResizeObserver(update);
     ro.observe(header);

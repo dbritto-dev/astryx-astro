@@ -402,7 +402,7 @@ function detectReplace(batch: Batch): {replaced: Entry; replacer: Entry} | null 
 function restingTopOf(panel: HTMLElement): number {
   const top = panel.getBoundingClientRect().top;
   const {transform} = getComputedStyle(panel);
-  if (!transform || transform === 'none' || typeof DOMMatrixReadOnly !== 'function') return top;
+  if (!transform || transform === 'none') return top;
   return top - new DOMMatrixReadOnly(transform).m42;
 }
 

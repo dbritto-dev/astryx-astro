@@ -398,7 +398,6 @@ function listen(doc: Document) {
   });
   const start = () => {
     syncRovingTabStops(doc);
-    if (typeof MutationObserver === 'undefined') return;
     let pending: HTMLElement[] = [];
     let queued = false;
     new MutationObserver((records) => {

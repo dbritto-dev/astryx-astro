@@ -92,7 +92,7 @@ function setAttr(el: Element, name: string, value: string | null) {
 }
 
 function matches(view: Window, query: string): boolean {
-  return view.matchMedia?.(query).matches ?? false;
+  return view.matchMedia(query).matches;
 }
 
 export class BottomSheetElement extends ModalHostElement implements SheetStackHost {
@@ -310,7 +310,7 @@ export class BottomSheetElement extends ModalHostElement implements SheetStackHo
     this.#quietClose = false;
     const finalFocus = this.#finalFocusTarget();
     const groupTarget = wasGrouped ? takeGroupReturnTarget(doc) : null;
-    const focusLost = () => isFocusDetached(doc) || !(doc.activeElement as HTMLElement | null)?.checkVisibility?.();
+    const focusLost = () => isFocusDetached(doc) || !(doc.activeElement as HTMLElement | null)?.checkVisibility();
     if (wasGrouped) {
       if (groupTarget?.isConnected) returnFocusForLastInput(groupTarget);
     } else if (quiet) {
@@ -580,12 +580,10 @@ export class BottomSheetElement extends ModalHostElement implements SheetStackHo
         else setAttr(body, 'tabindex', this.ownerDocument.activeElement === body ? '-1' : null);
       };
       measure();
-      if (typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(measure);
-        ro.observe(body);
-        if (content) ro.observe(content);
-        this.#presentedCleanup.push(() => ro.disconnect());
-      }
+      const ro = new ResizeObserver(measure);
+      ro.observe(body);
+      if (content) ro.observe(content);
+      this.#presentedCleanup.push(() => ro.disconnect());
       // Tall sheets: bring a focused text control above the on-screen keyboard (v1:
       // `interactive-widget=resizes-content` + scrollIntoView), only while fully expanded.
       if (this.#isTall) {

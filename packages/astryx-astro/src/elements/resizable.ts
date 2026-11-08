@@ -519,7 +519,7 @@ class AxResizable extends HTMLElement {
     const ending = this.#drag;
     this.#drag = null;
     const target = ending?.target;
-    if (ending && target?.hasPointerCapture?.(ending.pointerId)) target.releasePointerCapture(ending.pointerId);
+    if (ending && target?.hasPointerCapture(ending.pointerId)) target.releasePointerCapture(ending.pointerId);
     if (ending) {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -531,8 +531,7 @@ class AxResizable extends HTMLElement {
     if (this.#isDisabled() || this.#drag != null) return;
     e.preventDefault();
     e.stopPropagation();
-    const current = e.currentTarget as Element | null;
-    const target = typeof current?.setPointerCapture === 'function' ? current : null;
+    const target = e.currentTarget as Element | null;
     target?.setPointerCapture(e.pointerId);
     const horizontal = this.#direction() === 'horizontal';
     this.#drag = {pointerId: e.pointerId, startPos: horizontal ? e.clientX : e.clientY, rtl: horizontal ? this.#rtl() : 1, target};

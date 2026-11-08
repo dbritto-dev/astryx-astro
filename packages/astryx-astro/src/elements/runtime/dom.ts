@@ -24,7 +24,7 @@ export function tabbables(container: Element): HTMLElement[] {
   return [...container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)].filter((el) =>
     el.tabIndex >= 0 &&
     !el.closest('[inert], [aria-hidden="true"]') &&
-    (el.checkVisibility?.({visibilityProperty: true} as CheckVisibilityOptions) ?? el.getClientRects().length > 0),
+    el.checkVisibility({visibilityProperty: true}),
   );
 }
 

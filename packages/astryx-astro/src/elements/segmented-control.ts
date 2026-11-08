@@ -50,7 +50,7 @@ function isSegmentDisabled(segment: Element): boolean {
 }
 
 function prefersReducedMotion(el: Element): boolean {
-  return (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) ||
+  return matchMedia('(prefers-reduced-motion: reduce)').matches ||
     el.closest('[data-astryx-reduced-motion]') != null;
 }
 

@@ -19,7 +19,6 @@ function pinRotorsToTimelineOrigin() {
 }
 
 defineBehavior('spinner-rotor', (rotor) => {
-  if (typeof rotor.getAnimations !== 'function') return;
   pending.add(rotor);
   if (!scheduled) {
     scheduled = true;

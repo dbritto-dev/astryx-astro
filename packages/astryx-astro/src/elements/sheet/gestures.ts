@@ -439,7 +439,7 @@ export function createSheetGestures(options: SheetGestureOptions): SheetGestures
     const velocity = event.timeStamp - d.lastTime < VELOCITY_WINDOW_MS ? d.velocity : 0;
     drag = null;
     panel.removeAttribute('data-sheet-dragging');
-    if (d.capture?.hasPointerCapture?.(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
+    if (d.capture?.hasPointerCapture(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
     settleFromDrag(d, offset, velocity, dir, Math.abs(delta), d.pointerType === 'touch');
   }
 
@@ -449,7 +449,7 @@ export function createSheetGestures(options: SheetGestureOptions): SheetGestures
     if (!d) return;
     drag = null;
     panel.removeAttribute('data-sheet-dragging');
-    if (d.capture?.hasPointerCapture?.(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
+    if (d.capture?.hasPointerCapture(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
     const animating = prepareSettle(d.baseLayoutOffset, d.baseOffset, d.baseLayoutOffset, d.renderedOffset, d.layoutOffset, d.naturalEndGap, true);
     settledOffset = d.baseOffset;
     activeOffset = d.baseOffset;
@@ -719,13 +719,11 @@ export function createSheetGestures(options: SheetGestureOptions): SheetGestures
       if (attached) return;
       attached = true;
       for (const [t, type, fn, opts] of listeners) t.addEventListener(type, fn, opts);
-      if (typeof ResizeObserver !== 'undefined') {
-        observer = new ResizeObserver((entries) => {
-          const entry = entries[0];
-          if (entry) recordHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height);
-        });
-        observer.observe(panel);
-      }
+      observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (entry) recordHeight(entry.borderBoxSize[0]?.blockSize ?? entry.target.getBoundingClientRect().height);
+      });
+      observer.observe(panel);
     },
     detach() {
       if (!attached) return;
@@ -733,7 +731,7 @@ export function createSheetGestures(options: SheetGestureOptions): SheetGestures
         const d = drag;
         drag = null;
         panel.removeAttribute('data-sheet-dragging');
-        if (d.capture?.hasPointerCapture?.(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
+        if (d.capture?.hasPointerCapture(d.pointerId)) d.capture.releasePointerCapture(d.pointerId);
       }
       touchDrag?.releaseHold?.();
       touchDrag = null;

@@ -61,19 +61,14 @@ const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} 
 // One CSS highlight shared by every typeahead (port extension hasMatchHighlight), page-wide.
 const matchRanges = globalSingleton('typeahead-match-ranges', () => new Map<Element, Range[]>());
 function syncMatchHighlight() {
-  const registry = (globalThis as {CSS?: {highlights?: Map<string, unknown>}}).CSS?.highlights;
-  const Ctor = (globalThis as {Highlight?: new (...r: Range[]) => unknown}).Highlight;
-  if (!registry || !Ctor) return;
   const all = [...matchRanges.values()].flat();
-  if (all.length) registry.set('astryx-typeahead-match', new Ctor(...all));
-  else registry.delete('astryx-typeahead-match');
+  if (all.length) CSS.highlights.set('astryx-typeahead-match', new Highlight(...all));
+  else CSS.highlights.delete('astryx-typeahead-match');
 }
 
 function graphemes(text: string): number {
-  const Segmenter = (Intl as {Segmenter?: new (l?: string, o?: {granularity: string}) => {segment(t: string): Iterable<unknown>}}).Segmenter;
-  if (!Segmenter) return [...text].length;
   let n = 0;
-  for (const _ of new Segmenter(undefined, {granularity: 'grapheme'}).segment(text)) n++;
+  for (const _ of new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(text)) n++;
   return n;
 }
 

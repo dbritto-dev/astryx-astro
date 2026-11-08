@@ -43,7 +43,7 @@ export function isTransitionRunning(element: HTMLElement, property: string): boo
 
 /** Whether a CSS transition of `property` still runs on `element`. */
 function hasRunningTransition(element: HTMLElement, property: string): boolean {
-  return (element.getAnimations?.() ?? []).some(
+  return element.getAnimations().some(
     (a) => (a as Animation & {transitionProperty?: string}).transitionProperty === property && (a.playState === 'running' || a.playState === 'paused'),
   );
 }
@@ -122,6 +122,6 @@ export function waitForTransition(element: HTMLElement | null, property: 'transf
 /** `(prefers-reduced-motion: reduce)` or a theme's `[data-astryx-reduced-motion]`. */
 export function prefersReducedMotion(el?: Element | null): boolean {
   if (typeof window === 'undefined') return false;
-  if (el?.closest?.('[data-astryx-reduced-motion]')) return true;
-  return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  if (el?.closest('[data-astryx-reduced-motion]')) return true;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

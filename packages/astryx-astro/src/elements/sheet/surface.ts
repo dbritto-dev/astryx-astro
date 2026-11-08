@@ -84,7 +84,7 @@ export function createSheetSurface(options: SheetSurfaceOptions): SheetSurface {
 
   const reserve = () => {
     const v = view() ?? window;
-    return v.matchMedia?.('(any-pointer: coarse)').matches ? Math.max(MIN_RESERVE, Math.ceil(v.innerHeight * 0.4)) : MIN_RESERVE;
+    return v.matchMedia('(any-pointer: coarse)').matches ? Math.max(MIN_RESERVE, Math.ceil(v.innerHeight * 0.4)) : MIN_RESERVE;
   };
   const presentation = () => layer.getAttribute('data-ax-presentation') ?? 'popover';
   const haspopup = (isSheet: boolean) => (isSheet ? 'dialog' : options.anchoredHaspopup(original ? original.role : (options.surface()?.getAttribute('role') ?? null)));

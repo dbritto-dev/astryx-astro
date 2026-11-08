@@ -155,7 +155,7 @@ export function createCombobox(config: ComboboxConfig): Combobox {
       option.toggleAttribute(KEYBOARD, ring);
       if (source !== 'pointer' && config.isOpen()) {
         const before = listbox.scrollTop;
-        option.scrollIntoView?.({block: 'nearest'});
+        option.scrollIntoView({block: 'nearest'});
         // Scrolling the list (or its scroll parent) moves rows under the pointer: hold.
         if (source === 'keyboard' || listbox.scrollTop !== before) isHeld = true;
       }

@@ -31,7 +31,7 @@ export class AlertDialogElement extends DialogElement {
   };
 
   protected didConnect(): void {
-    this.#media = typeof matchMedia === 'function' ? matchMedia(SMALL_SCREEN_QUERY) : null;
+    this.#media = matchMedia(SMALL_SCREEN_QUERY);
     this.#media?.addEventListener('change', this.#onMedia);
     this.dialog?.addEventListener('click', this.#onClick);
     this.#applyLayout();

@@ -291,8 +291,8 @@ export function createTriggerMenu(options: TriggerMenuOptions): TriggerMenu {
     removeAnchorSpan();
     const range = selection.getRangeAt(0).cloneRange();
     range.collapse(true);
-    const rect = typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect() : null;
-    if (!rect || (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.left === 0)) return editable;
+    const rect = range.getBoundingClientRect();
+    if ((rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.left === 0)) return editable;
     const span = document.createElement('span');
     span.setAttribute('aria-hidden', 'true');
     span.setAttribute('data-astryx-trigger-anchor', '');

@@ -29,7 +29,7 @@ export class ChatMessageListElement extends Base {
 
   connectedCallback(): void {
     const sentinel = this.querySelector<HTMLElement>('[data-ax-chat-sentinel]');
-    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+    if (!sentinel) return;
     const layout = this.closest('ax-chat-layout');
     let root: Element | null = null;
     if (layout) {

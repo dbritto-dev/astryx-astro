@@ -335,7 +335,7 @@ export class NumberInputElement extends HTMLElement {
     if (e.button !== 0 || e.pointerType === 'touch' || !this.#canStep(direction) || this.isDisabled || this.isReadOnly) return;
     const first = this.#nextValue(direction);
     if (first == null) return;
-    button.setPointerCapture?.(e.pointerId);
+    button.setPointerCapture(e.pointerId);
     const hold: StepperHold = {pointerId: e.pointerId, timer: null, held: null, intervalMs: STEPPER_HOLD.firstIntervalMs, isFrozen: false};
     const repeat = () => {
       if (this.isDisabled || this.isReadOnly) { hold.isFrozen = true; hold.timer = null; return; }

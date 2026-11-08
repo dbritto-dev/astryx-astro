@@ -22,8 +22,8 @@ interface OverflowState {
 }
 
 const isRtlElement = (el: Element | null) => el != null && getComputedStyle(el).direction === 'rtl';
-const prefersReducedMotion = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const isRendered = (el: HTMLElement) => typeof el.checkVisibility !== 'function' || el.checkVisibility();
+const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isRendered = (el: HTMLElement) => el.checkVisibility();
 
 export class AxCarousel extends HTMLElement {
   #state: OverflowState = {overflowStart: false, overflowEnd: false, hasOverflow: false};

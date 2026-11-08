@@ -190,7 +190,7 @@ defineBehavior('stepper', (ol) => {
   summary?.addEventListener('click', onControl);
 
   let observer: ResizeObserver | null = null;
-  if (minStepWidth > 0 && typeof ResizeObserver !== 'undefined') {
+  if (minStepWidth > 0) {
     const measure = () => {
       const count = steps().length;
       const width = ol.clientWidth;

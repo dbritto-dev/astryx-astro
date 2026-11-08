@@ -115,8 +115,8 @@ class AxScrollableArea extends HTMLElement {
     mo.observe(this.#content, {attributes: true, attributeFilter: filter, characterData: true, childList: true, subtree: true});
     for (let a = this.parentElement; a; a = a.parentElement) mo.observe(a, {attributes: true, attributeFilter: filter});
     const fonts = document.fonts;
-    fonts?.addEventListener?.('loadingdone', schedule);
-    void fonts?.ready.then(schedule);
+    fonts.addEventListener('loadingdone', schedule);
+    void fonts.ready.then(schedule);
     const content = this.#content;
     this.#cleanup.push(() => {
       ro.disconnect();
@@ -130,7 +130,7 @@ class AxScrollableArea extends HTMLElement {
         t.removeEventListener('transitionend', schedule);
         t.removeEventListener('animationend', schedule);
       }
-      fonts?.removeEventListener?.('loadingdone', schedule);
+      fonts.removeEventListener('loadingdone', schedule);
     });
     this.#measure();
   }

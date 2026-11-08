@@ -215,9 +215,7 @@ export class SliderElement extends HTMLElement {
     const thumb = thumbs[thumbIndex];
     thumb?.focus();
     thumb?.removeAttribute('data-ax-keyboard-focus');
-    if (typeof control.setPointerCapture === 'function') {
-      try { control.setPointerCapture(event.pointerId); } catch { /* the pointer is gone */ }
-    }
+    try { control.setPointerCapture(event.pointerId); } catch { /* the pointer is gone */ }
   }
 
   #onPointerMove(event: PointerEvent) {
@@ -260,7 +258,7 @@ export class SliderElement extends HTMLElement {
     if (tap && event.pointerId === tap.pointerId) {
       this.#tap = null;
       if (this.isDisabled) return;
-      const mark = this.ownerDocument.elementFromPoint?.(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mark-value]');
+      const mark = this.ownerDocument.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mark-value]');
       const value = mark && this.#control?.contains(mark) ? Number(mark.dataset.markValue) : this.#valueAt(event.clientX, event.clientY);
       const index = this.#closestThumb(value);
       this.#update(index, value);
@@ -287,7 +285,7 @@ export class SliderElement extends HTMLElement {
     if (!drag || drag.pointerId !== pointerId) return;
     this.#drag = null;
     const control = this.#control;
-    if (control?.hasPointerCapture?.(pointerId)) {
+    if (control?.hasPointerCapture(pointerId)) {
       try { control.releasePointerCapture(pointerId); } catch { /* already released */ }
     }
     this.#press(null);

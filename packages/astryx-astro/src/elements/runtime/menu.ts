@@ -228,7 +228,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
   let closedAt = 0;
   let hoverOpenedAt = 0;
 
-  const hasHover = () => typeof matchMedia === 'function' && matchMedia('(hover: hover)').matches;
+  const hasHover = () => matchMedia('(hover: hover)').matches;
 
   const clear = () => {
     if (showTimer) clearTimeout(showTimer);
@@ -1135,8 +1135,8 @@ export class MenuElement extends LayerElement {
     const view = this.ownerDocument.defaultView ?? window;
     let frame = 0;
     const schedule = () => { if (!frame) frame = view.requestAnimationFrame(() => { frame = 0; this.#measureOverflow(); }); };
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-    ro?.observe(menu);
+    const ro = new ResizeObserver(schedule);
+    ro.observe(menu);
     const mo = new MutationObserver(schedule);
     mo.observe(menu, {childList: true, characterData: true, subtree: true});
     view.addEventListener('resize', schedule);

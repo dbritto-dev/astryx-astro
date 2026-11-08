@@ -85,7 +85,7 @@ function modalRegion(dialog: HTMLDialogElement, politeness: AnnouncePoliteness):
 // `showModal()` sets `open` as it is called, so the order of the attribute records is the
 // top-layer order; the last one still open as a modal is on top.
 function watchDialogs() {
-  if (shared.watching || typeof MutationObserver === 'undefined') return;
+  if (shared.watching) return;
   shared.watching = true;
   for (const dialog of document.querySelectorAll('dialog[open]')) presented.push(dialog as HTMLDialogElement);
   new MutationObserver((records) => {
@@ -295,7 +295,7 @@ export function createRenderedTextAnnouncer(element: HTMLElement, options: Rende
     sync(isShown = true, occasion = ''): void {
       const first = isFirstRun;
       isFirstRun = false;
-      if (!isShown || element.closest(HIDDEN) || element.checkVisibility?.() === false) {
+      if (!isShown || element.closest(HIDDEN) || !element.checkVisibility()) {
         spoken = null;
         return;
       }

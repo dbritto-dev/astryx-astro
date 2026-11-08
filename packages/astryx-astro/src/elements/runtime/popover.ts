@@ -264,8 +264,8 @@ export class PopoverElement extends LayerElement {
     };
     const schedule = () => { if (!frame) frame = view.requestAnimationFrame(measure); };
     measure();
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-    ro?.observe(surface);
+    const ro = new ResizeObserver(schedule);
+    ro.observe(surface);
     const mo = new MutationObserver(schedule);
     mo.observe(surface, {childList: true, characterData: true, subtree: true});
     view.addEventListener('resize', schedule);

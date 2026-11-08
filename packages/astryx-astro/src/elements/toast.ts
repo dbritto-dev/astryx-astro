@@ -266,11 +266,11 @@ const shared: ToastState = globalSingleton('toast', () => ({
 const {liveToasts, viewports, defaultQueue} = shared;
 
 function watchTheme() {
-  if (shared.themeWatch || typeof MutationObserver === 'undefined') return;
+  if (shared.themeWatch) return;
   shared.themeWatch = true;
   const remeasure = () => { for (const t of liveToasts) t.measureMedia(); };
   new MutationObserver(remeasure).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme', 'data-astryx-theme', 'class', 'style']});
-  matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', remeasure);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', remeasure);
 }
 
 // ── <ax-toast> ─────────────────────────────────────────────────────────────────

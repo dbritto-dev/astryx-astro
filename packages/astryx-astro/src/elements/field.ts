@@ -35,7 +35,7 @@ export function hasInteractiveAncestor(el: Element, root: Element): boolean {
 }
 
 export function hasTextSelection(node: Element): boolean {
-  const selection = node.ownerDocument.getSelection?.();
+  const selection = node.ownerDocument.getSelection();
   return !!selection && !selection.isCollapsed && node.contains(selection.anchorNode);
 }
 

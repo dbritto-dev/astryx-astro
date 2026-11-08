@@ -51,10 +51,8 @@ const CREATE_PREFIX = '__xds_create__';
 const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 
 function graphemes(text: string): number {
-  const Segmenter = (Intl as {Segmenter?: new (l?: string, o?: {granularity: string}) => {segment(t: string): Iterable<unknown>}}).Segmenter;
-  if (!Segmenter) return [...text].length;
   let n = 0;
-  for (const _ of new Segmenter(undefined, {granularity: 'grapheme'}).segment(text)) n++;
+  for (const _ of new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(text)) n++;
   return n;
 }
 

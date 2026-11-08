@@ -57,7 +57,7 @@ function sweep(root: Node, name: string) {
 }
 
 function ensureObserver() {
-  if (state.observer || typeof MutationObserver === 'undefined') return;
+  if (state.observer) return;
   const observer = (state.observer = new MutationObserver((records) => {
     for (const r of records) {
       if (r.type === 'attributes') {

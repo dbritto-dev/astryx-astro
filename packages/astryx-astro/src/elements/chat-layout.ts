@@ -69,7 +69,7 @@ export function createChatStreamScroll(options: ChatStreamScrollOptions): ChatSt
   // The last position this controller set or saw: a reader's move between two spring frames
   // still shows as "above where we put it".
   let lastScrollTop = el.scrollTop;
-  const reduced = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
   const notify = () => onChange?.({isScrolledUp, isLocked: locked});
   const setScrolledUp = (next: boolean) => {
@@ -123,7 +123,7 @@ export function createChatStreamScroll(options: ChatStreamScrollOptions): ChatSt
 
   const startAnimation = () => {
     if (!locked) return;
-    if (reduced?.matches) {
+    if (reduced.matches) {
       jumpToBottom();
       return;
     }
@@ -256,7 +256,7 @@ export function createChatNewMessages(options: {isLocked: () => boolean; onResiz
       if (el === current) return;
       detach();
       current = el;
-      if (!el || typeof ResizeObserver === 'undefined') return;
+      if (!el) return;
       observer = new ResizeObserver(() => {
         options.onResize?.();
         const messages = el.getElementsByClassName('astryx-chat-message');
