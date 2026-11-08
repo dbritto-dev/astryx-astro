@@ -5,6 +5,7 @@ import InputGroupText from '../InputGroup/InputGroupText.astro';
 import FormLayout from '../FormLayout/FormLayout.astro';
 import Button from '../Button/Button.astro';
 import type {InputStatusType} from '../Field/fieldProps';
+import {Temporal} from '../../lib/temporal';
 
 const sizes: TimeInputSize[] = ['sm', 'md', 'lg'];
 const statuses: InputStatusType[] = ['error', 'warning', 'success'];
@@ -21,6 +22,7 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
       <TimeInput label="Quarter hours" value="09:00" increment={15} hasClear data-test="increment" />
       <TimeInput label="With seconds" value="14:30:15" hasSeconds data-test="seconds" />
       <TimeInput label="Business hours" value="09:00" min="09:00" max="17:00" increment={30} description="9 AM – 5 PM" data-test="bounds" />
+      <TimeInput label="Temporal.PlainTime value" value={Temporal.PlainTime.from('08:45')} min={Temporal.PlainTime.from('08:00')} max={Temporal.PlainTime.from('12:00')} increment={15} description="value, min and max are Temporal.PlainTime" data-test="temporal" />
     </div>
   </section>
 

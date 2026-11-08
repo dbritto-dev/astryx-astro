@@ -1,11 +1,22 @@
 ---
 import Calendar from './Calendar.astro';
+import {Temporal} from '../../lib/temporal';
 
 const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
 const grid = 'display:flex;flex-wrap:wrap;gap:var(--spacing-5);align-items:flex-start';
 const frame = 'border:1px solid var(--color-border);border-radius:var(--radius-container)';
 const out = 'margin:var(--spacing-2) 0 0;font-size:var(--font-size-sm);color:var(--color-text-primary);font-family:var(--font-family-code)';
+// dateConstraints receive the day's local midnight as a Date (Astryx's API).
 const noWeekends = [(d: Date) => d.getDay() !== 0 && d.getDay() !== 6];
+// Calendar systems the server renders with Temporal (native, or the /full polyfill in Node).
+const systems = [
+  {id: 'cal-persian', calendar: 'persian', locale: 'fa-IR', value: '2026-03-21', caption: 'persian, fa-IR (Nowruz)'},
+  {id: 'cal-hebrew', calendar: 'hebrew', locale: 'he-IL', value: '2026-09-12', caption: 'hebrew, he-IL', dir: 'rtl'},
+  {id: 'cal-islamic', calendar: 'islamic-umalqura', locale: 'ar-SA', value: '2026-02-18', caption: 'islamic-umalqura, ar-SA', dir: 'rtl'},
+  {id: 'cal-japanese', calendar: 'japanese', locale: 'ja-JP', value: '2019-05-01', caption: 'japanese, ja-JP (Reiwa 1)'},
+  {id: 'cal-chinese', calendar: 'chinese', locale: 'zh-CN', value: '2026-11-06', caption: 'chinese, zh-CN'},
+  {id: 'cal-ethiopic', calendar: 'ethiopic', locale: 'am-ET', value: '2026-09-11', caption: 'ethiopic, am-ET'},
+] as const;
 ---
 <div style="display:grid;gap:var(--spacing-6)" data-test="calendars">
   <div style={grid}>
@@ -53,6 +64,23 @@ const noWeekends = [(d: Date) => d.getDay() !== 0 && d.getDay() !== 6];
     <div dir="rtl" lang="he">
       <p style={cap}>RTL (dir="rtl", locale he-IL)</p>
       <Calendar id="cal-rtl" locale="he-IL" defaultValue="2026-10-14" style={frame} />
+    </div>
+  </div>
+
+  <div style={grid} data-test="systems">
+    {systems.map((s) => (
+      <div dir={'dir' in s ? s.dir : undefined}>
+        <p style={cap}>{s.caption}</p>
+        <Calendar id={s.id} calendar={s.calendar} locale={s.locale} defaultValue={s.value} style={frame} />
+      </div>
+    ))}
+  </div>
+
+  <div style={grid}>
+    <div>
+      <p style={cap}>Temporal values: defaultValue, min and max are Temporal.PlainDate</p>
+      <Calendar id="cal-temporal" defaultValue={Temporal.PlainDate.from('2026-12-24')} min={Temporal.PlainDate.from('2026-12-01')} max={Temporal.PlainDate.from('2026-12-31')} style={frame} />
+      <p style={out} data-output-for="cal-temporal">—</p>
     </div>
   </div>
 </div>

@@ -3,6 +3,7 @@ import DateRangeInput, {type DateRangeInputSize, type DateRangePreset} from './D
 import FormLayout from '../FormLayout/FormLayout.astro';
 import Button from '../Button/Button.astro';
 import type {InputStatusType} from '../Field/fieldProps';
+import {Temporal} from '../../lib/temporal';
 
 const sizes: DateRangeInputSize[] = ['sm', 'md', 'lg'];
 const statuses: InputStatusType[] = ['error', 'warning', 'success'];
@@ -10,12 +11,10 @@ const messages: Record<InputStatusType, string> = {error: 'Range is too long', w
 const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--spacing-5);align-items:start';
 const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
 
-// Fixed "today" so the demo (and its tests) are stable: presets relative to 2026-03-15.
-const iso = (y: number, m: number, d: number) => {
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return date.toISOString().slice(0, 10) as `${number}-${number}-${number}`;
-};
-const lastDays = (n: number) => ({start: iso(2026, 3, 15 - n + 1), end: iso(2026, 3, 15)});
+// Fixed "today" so the demo (and its tests) are stable: presets relative to 2026-03-15. A
+// preset range may be Temporal.PlainDates (port addition) as well as ISO strings.
+const today = Temporal.PlainDate.from('2026-03-15');
+const lastDays = (n: number) => ({start: today.subtract({days: n - 1}), end: today});
 const presets: DateRangePreset[] = [
   {label: 'Last 7 days', getRange: () => lastDays(7)},
   {label: 'Last 14 days', getRange: () => lastDays(14)},
@@ -23,6 +22,7 @@ const presets: DateRangePreset[] = [
   {label: 'This month', range: {start: '2026-03-01', end: '2026-03-31'}},
   {label: 'Last year', range: {start: '2025-01-01', end: '2025-12-31'}},
 ];
+// dateConstraints receive the day's local midnight as a Date (Astryx's API).
 const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
 ---
 <div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
@@ -44,6 +44,14 @@ const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
       <DateRangeInput label="期間 (ja-JP)" locale="ja-JP" value={{start: '2026-03-09', end: '2026-03-15'}} data-test="ja" />
       <div dir="rtl" lang="ar-SA"><DateRangeInput label="الفترة (ar-SA)" locale="ar-SA" value={{start: '2026-03-09', end: '2026-03-15'}} data-test="ar" /></div>
       <DateRangeInput label="Buddhist calendar (th-TH)" locale="th-TH" calendar="buddhist" value={{start: '2026-03-09', end: '2026-03-15'}} />
+      <DateRangeInput label="Persian calendar (fa-IR)" locale="fa-IR" calendar="persian" value={{start: '2026-03-09', end: '2026-03-15'}} data-test="persian" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Temporal values: a range of Temporal.PlainDate, PlainDate bounds</h3>
+    <div style={grid}>
+      <DateRangeInput label="Sprint" value={{start: Temporal.PlainDate.from('2026-03-02'), end: Temporal.PlainDate.from('2026-03-13')}} min={Temporal.PlainDate.from('2026-01-01')} max={today.add({months: 3})} data-test="temporal" />
     </div>
   </section>
 
