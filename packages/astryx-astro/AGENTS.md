@@ -182,6 +182,23 @@ keyboard riding. Plain touch use (tap, scroll, native controls) must still work.
   `node tools/shot.mjs <slug> [--mode=dark] [--theme=butter]` for screenshots (reads
   apps/docs/dist; slug = kebab-case component name).
 
+## Dates
+
+- Temporal comes from `src/lib/temporal.ts` only: `import {Temporal} from '../../lib/temporal'`
+  (native where the runtime has it, else `temporal-polyfill/full` loaded on demand — never a
+  global polyfill, never a static import of the polyfill).
+- Never `Date` for calendar math: days, months, diffs, comparisons, weeks, zones, times and
+  durations are Temporal (through `src/lib/date` where it has a helper). `Date` stays only where
+  an API demands it (Astryx's `dateConstraints` / `valueAsDate`, free-form text parsing); say
+  why in a comment.
+- Never hand a Temporal object to `Intl.DateTimeFormat` or call `toLocaleString` on one: format
+  its `epochMilliseconds` (lib/date does) — engines pick other patterns for Temporal objects.
+- Import lib/temporal (or lib/date) only from date code: it makes the importing script wait for
+  Temporal. Code all pages of a kind ship recognizes Temporal values with `lib/temporalKind.ts`.
+- Props that take ISO strings, `Date`s or epoch numbers in Astryx also take the matching
+  Temporal type (`lib/date/values.ts`); events keep Astryx's ISO strings. Test both modes:
+  `AX_TEMPORAL=polyfill node tools/tests/<name>.test.mjs`. See docs/handoffs.md.
+
 ## i18n
 
 User-visible strings Astryx gets from `useComponentTranslator` come from the same keys:

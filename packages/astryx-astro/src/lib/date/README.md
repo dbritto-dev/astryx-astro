@@ -5,7 +5,7 @@ Astryx's pure date / time / digit logic and Timestamp formatting, ported from
 it in Astro frontmatter (SSR) and in custom elements. Entry: `index.ts`. Tests:
 `node tools/tests/lib-date.test.mjs` (Node: polyfilled Temporal) and the browser half in
 `tools/tests/lib-date-browser.test.mjs` (native Chrome Temporal, and the polyfill with
-`#no-temporal`).
+Chrome's Temporal removed).
 
 ## Temporal
 
@@ -38,6 +38,9 @@ PlainDate (`plainDate.ts`)
 - Arithmetic: `plainDateAddDays`, `plainDateAddMonths` (clamps to month end), `plainDateDiffDays(a, b)` (= b − a), `getDaysInMonth`, `plainDateDayOfWeek`, `plainDateGetWeekNumber` (ISO), `plainDateSetFirstOfMonth`, `plainDateSetStartOfWeek`, `plainDateSetEndOfWeekExclusive`.
 - Compare: `plainDateIsBefore/IsAfter/IsEqual/Max/Min`, `plainDateIsInRange(pd, [start, end])`, `nearestAcceptedDate(pd, options)`.
 - Zones: `getTimeZoneParts(exactTime, zone)`, `getWallClock(exactTime, timeZone)` (`WallClock`).
+
+Component values (`values.ts`, port addition)
+- `DateValue` (ISO or `Temporal.PlainDate`), `TimeValue` (ISO or `PlainTime`), `DateTimeValue` (ISO, `PlainDateTime` or `ZonedDateTime`), `isoDateOf`, `isoTimeOf`, `isoDateTimeOf`: Temporal props → the ISO strings components use (strings pass through).
 
 Instants (`instant.ts`, port addition)
 - `ExactTime`, `toInstant`, `epochMillisecondsOf`, `zonedOf(exactTime, zone?)`, `hostTimeZone()`, `secondsBetween(from, to)`.
