@@ -387,7 +387,7 @@ export class ToastElement extends Base {
   #start() {
     if (!this.isAutoHide || this.#pause.size > 0 || this.#dismissed || !this.isConnected) return;
     this.#clear();
-    this.#startedAt = Date.now();
+    this.#startedAt = performance.now();
     this.#timer = setTimeout(() => this.dismiss('auto'), this.#remaining);
   }
 
@@ -397,7 +397,7 @@ export class ToastElement extends Base {
     if (!wasRunning) return;
     this.#clear();
     if (this.#startedAt != null) {
-      this.#remaining = Math.max(this.#remaining - (Date.now() - this.#startedAt), MIN_REMAINING_MS);
+      this.#remaining = Math.max(this.#remaining - (performance.now() - this.#startedAt), MIN_REMAINING_MS);
       this.#startedAt = null;
     }
   }

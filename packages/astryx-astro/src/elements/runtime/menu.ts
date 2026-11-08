@@ -239,7 +239,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
   };
 
   const confirmHoverOpen = () => {
-    const confirming = clickGuardMs > 0 && hoverOpenedAt > 0 && Date.now() - hoverOpenedAt < clickGuardMs;
+    const confirming = clickGuardMs > 0 && hoverOpenedAt > 0 && performance.now() - hoverOpenedAt < clickGuardMs;
     if (!confirming) return false;
     hoverMode = false;
     hoverOpenedAt = 0;
@@ -301,7 +301,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
   return {
     triggerEnter() {
       if (!options.isEnabled() || !hasHover()) return;
-      if (closedAt > 0 && Date.now() - closedAt < REOPEN_SUPPRESS_MS) return;
+      if (closedAt > 0 && performance.now() - closedAt < REOPEN_SUPPRESS_MS) return;
       // Re-entering an open menu's trigger never re-arms the click guard.
       if (options.isOpen()) { clear(); return; }
       hoverMode = true;
@@ -309,7 +309,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
       const openByHover = () => {
         showTimer = null;
         if (!options.isEnabled()) return;
-        hoverOpenedAt = Date.now();
+        hoverOpenedAt = performance.now();
         options.show({skipAutoFocus: true});
       };
       if (showDelay > 0) showTimer = setTimeout(openByHover, showDelay);
@@ -342,7 +342,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
       clear();
       hoverMode = false;
       hoverOpenedAt = 0;
-      closedAt = Date.now();
+      closedAt = performance.now();
     },
     clear,
   };

@@ -105,7 +105,7 @@ interface HoverState {
   listening: WeakSet<Document>;
 }
 const hover: HoverState = globalSingleton('hover-layers', () => ({activeTooltip: null, lastTooltipClosedAt: -Infinity, tapStart: null, listening: new WeakSet()}));
-const now = () => (typeof performance === 'undefined' ? Date.now() : performance.now());
+const now = () => performance.now();
 
 abstract class HoverLayerElement extends LayerElement {
   protected abstract readonly kind: 'tooltip' | 'hover-card';
