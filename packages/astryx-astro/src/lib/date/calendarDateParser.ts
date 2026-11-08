@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/calendarDateParser.ts (locale type import path adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/calendarDateParser.ts (locale type import path adjusted;
+// ISO samples and Gregorian dates are read and checked with Temporal).
 
 /**
  * @file calendarDateParser.ts
@@ -29,14 +30,15 @@ import {
   type SharedDateFormat,
   SHARED_DATE_FORMAT_OPTIONS,
   formatSharedDate,
-  getDaysInMonth,
   plainDateAddDays,
   plainDateDiffDays,
   plainDateFormat,
   plainDateFormatToParts,
+  plainDateFromTemporal,
   plainDateToday,
 } from './plainDate';
 import {INVISIBLE_CHARS, toAsciiDigits} from './unicodeDigits';
+import {Temporal} from '../temporal';
 
 /** How a typed text reads in a calendar. */
 export type CalendarDateParseResult =
@@ -199,12 +201,9 @@ function partType(part: Intl.DateTimeFormatPart): string {
   return part.type;
 }
 
+/** An ISO sample date (extended years such as `-000100-06-15` included). */
 function isoToPlainDate(iso: string): PlainDate {
-  const match = /^(-?\d+)-(\d+)-(\d+)$/.exec(iso);
-  if (match == null) {
-    throw new RangeError(`Bad sample date ${iso}`);
-  }
-  return {year: +match[1], month: +match[2], day: +match[3]};
+  return plainDateFromTemporal(Temporal.PlainDate.from(iso));
 }
 
 function partsOf(
@@ -1175,22 +1174,22 @@ function applyDefaultYear(
   fields.year = calendarYearOf(lex.calendar, today);
 }
 
+/** The Gregorian date, or null outside years 1-9999 or for a day its month lacks. */
 function gregorianDate(
   year: number,
   month: number,
   day: number,
 ): PlainDate | null {
-  if (
-    year < 1 ||
-    year > 9999 ||
-    month < 1 ||
-    month > 12 ||
-    day < 1 ||
-    day > getDaysInMonth(year, month)
-  ) {
+  if (year < 1 || year > 9999) {
     return null;
   }
-  return {year, month, day};
+  try {
+    return plainDateFromTemporal(
+      Temporal.PlainDate.from({year, month, day}, {overflow: 'reject'}),
+    );
+  } catch {
+    return null;
+  }
 }
 
 /** The Gregorian date for calendar fields, or null when it does not exist. */

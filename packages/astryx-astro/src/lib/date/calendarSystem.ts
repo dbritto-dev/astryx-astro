@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/calendarSystem.ts (locale type import path adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/calendarSystem.ts (locale type import path adjusted;
+// every calendar's arithmetic runs on Temporal from lib/temporal.ts, which is always there).
 
 /**
  * @file calendarSystem.ts
@@ -9,7 +10,7 @@
  *   availability of each calendar, and calendar labels and digits
  * @position Shared date utility; read by the i18n calendar resolution, by
  *   the date components, and by Calendar's public hooks. Values stay Gregorian PlainDates. Temporal owns the arithmetic of
- *   every calendar whose months are not Gregorian.
+ *   every calendar, Gregorian ones included; Intl writes the labels.
  */
 
 import type {Locale} from './locale';
@@ -19,15 +20,16 @@ import {
   dateTimeFormatAtCall,
   dateTimeFormatFor,
   plainDateAddDays,
-  plainDateAddMonths,
   plainDateFormatDayNumber,
   plainDateFormatStandaloneMonthYear,
   plainDateFormatToParts,
-  plainDateFromDate,
   plainDateFromInstant,
+  plainDateFromTemporal,
   plainDateIsInRange,
-  getDaysInMonth,
+  plainDateToTemporal,
 } from './plainDate';
+import {Temporal} from '../temporal';
+import {epochMillisecondsOf, toInstant, zonedOf, type ExactTime} from './instant';
 
 /**
  * A calendar system that date components can show: the calendars that
@@ -101,97 +103,41 @@ export function isCalendarSystem(value: string): value is CalendarSystem {
   return Object.hasOwn(KNOWN_CALENDARS, value);
 }
 
-// The published types must not need the `esnext.temporal` library.
-// This module declares only the Temporal members it reads.
-interface TemporalPlainDate {
-  readonly year: number;
-  readonly month: number;
-  readonly day: number;
-  readonly daysInMonth: number;
-  readonly monthsInYear: number;
-  with(fields: {year?: number; month?: number; day: number}): TemporalPlainDate;
-  add(duration: {months?: number; years?: number}): TemporalPlainDate;
-  until(
-    other: TemporalPlainDate,
-    options: {largestUnit: 'months'},
-  ): {readonly months: number};
-  withCalendar(calendar: 'iso8601'): TemporalPlainDate;
-}
-
-interface TemporalPlainDateConstructor {
-  new (
-    isoYear: number,
-    isoMonth: number,
-    isoDay: number,
-    calendar: string,
-  ): TemporalPlainDate;
-  from(
-    fields: CalendarDateFields & {calendar: string},
-    options: {overflow: 'reject'},
-  ): TemporalPlainDate;
-}
-
-interface TemporalNamespace {
-  PlainDate: TemporalPlainDateConstructor;
-}
-
-function getTemporal(): TemporalNamespace | undefined {
-  const temporal = (globalThis as {Temporal?: Partial<TemporalNamespace>})
-    .Temporal;
-  return typeof temporal?.PlainDate === 'function'
-    ? (temporal as TemporalNamespace)
-    : undefined;
-}
-
-// The key is the Temporal object, so a polyfill that loads later gets its
-// own probe.
-const supportedCalendars = new WeakMap<object, Map<CalendarSystem, boolean>>();
+// Whether Temporal knows each calendar: the native one and the `/full` polyfill know all of
+// them, so this only guards an engine whose Temporal lacks one.
+const supportedCalendars = new Map<CalendarSystem, boolean>();
 
 /**
  * Whether this runtime can show the calendar. Gregorian-aligned calendars
- * always can. The others need a `Temporal` that knows the calendar: a
- * polyfill build without non-ISO calendars throws for them.
+ * always can; the others need a `Temporal` that knows the calendar.
  */
 export function isCalendarSystemAvailable(calendar: CalendarSystem): boolean {
   if (isGregorianAligned(calendar)) {
     return true;
   }
-  const temporal = getTemporal();
-  if (temporal == null) {
-    return false;
-  }
-  let known = supportedCalendars.get(temporal);
-  if (known == null) {
-    known = new Map();
-    supportedCalendars.set(temporal, known);
-  }
-  let isSupported = known.get(calendar);
+  let isSupported = supportedCalendars.get(calendar);
   if (isSupported == null) {
     try {
-      new temporal.PlainDate(2000, 1, 1, calendar);
+      new Temporal.PlainDate(2000, 1, 1, calendar);
       isSupported = true;
     } catch {
       isSupported = false;
     }
-    known.set(calendar, isSupported);
+    supportedCalendars.set(calendar, isSupported);
   }
   return isSupported;
 }
 
+/** A Gregorian date in a calendar (a `Temporal.PlainDate` with that calendar). */
 function inCalendar(
   calendar: CalendarSystem,
   pd: PlainDate,
-): TemporalPlainDate {
-  const temporal = getTemporal();
-  if (temporal == null) {
-    throw new Error(`The "${calendar}" calendar needs Temporal.`);
-  }
-  return new temporal.PlainDate(pd.year, pd.month, pd.day, calendar);
+): Temporal.PlainDate {
+  return plainDateToTemporal(pd).withCalendar(calendar);
 }
 
-function toGregorian(date: TemporalPlainDate): PlainDate {
-  const iso = date.withCalendar('iso8601');
-  return {year: iso.year, month: iso.month, day: iso.day};
+function toGregorian(date: Temporal.PlainDate): PlainDate {
+  return plainDateFromTemporal(date);
 }
 
 /** A month of a calendar, located by its first and last Gregorian days. */
@@ -205,11 +151,7 @@ function makeMonth(start: PlainDate, length: number): CalendarMonth {
   return {start, end: plainDateAddDays(start, length - 1), length};
 }
 
-function gregorianMonth(year: number, month: number): CalendarMonth {
-  return makeMonth({year, month, day: 1}, getDaysInMonth(year, month));
-}
-
-function temporalMonth(firstDay: TemporalPlainDate): CalendarMonth {
+function temporalMonth(firstDay: Temporal.PlainDate): CalendarMonth {
   return makeMonth(toGregorian(firstDay), firstDay.daysInMonth);
 }
 
@@ -218,7 +160,7 @@ export function calendarDayOfMonth(
   calendar: CalendarSystem,
   pd: PlainDate,
 ): number {
-  return isGregorianAligned(calendar) ? pd.day : inCalendar(calendar, pd).day;
+  return inCalendar(calendar, pd).day;
 }
 
 /** The calendar month that contains a Gregorian date. */
@@ -226,9 +168,6 @@ export function calendarMonthOf(
   calendar: CalendarSystem,
   pd: PlainDate,
 ): CalendarMonth {
-  if (isGregorianAligned(calendar)) {
-    return gregorianMonth(pd.year, pd.month);
-  }
   return temporalMonth(inCalendar(calendar, pd).with({day: 1}));
 }
 
@@ -241,24 +180,15 @@ export interface CalendarYearMonth {
   readonly month: number;
 }
 
-// Temporal counts the years of these Gregorian-aligned calendars from another
-// epoch: 2026 is 2569 in `buddhist` and 115 in `roc`.
-const GREGORIAN_YEAR_OFFSETS: Partial<Record<CalendarSystem, number>> = {
-  buddhist: 543,
-  roc: -1911,
-};
-
-/** The year and month numbers of a calendar month. */
+/**
+ * The year and month numbers of a calendar month, as Temporal counts them: the
+ * Gregorian-aligned calendars count years from their own epoch (2026 is 2569 in
+ * `buddhist` and 115 in `roc`; `japanese` counts Gregorian years).
+ */
 export function calendarYearMonthOf(
   calendar: CalendarSystem,
   month: CalendarMonth,
 ): CalendarYearMonth {
-  if (isGregorianAligned(calendar)) {
-    return {
-      year: month.start.year + (GREGORIAN_YEAR_OFFSETS[calendar] ?? 0),
-      month: month.start.month,
-    };
-  }
   const {year, month: monthOfYear} = inCalendar(calendar, month.start);
   return {year, month: monthOfYear};
 }
@@ -271,12 +201,6 @@ export function calendarMonthFromYearMonth(
   calendar: CalendarSystem,
   {year, month}: CalendarYearMonth,
 ): CalendarMonth {
-  if (isGregorianAligned(calendar)) {
-    return gregorianMonth(
-      year - (GREGORIAN_YEAR_OFFSETS[calendar] ?? 0),
-      month,
-    );
-  }
   // `with` replaces the year and month of any date in the calendar.
   return temporalMonth(
     inCalendar(calendar, {year: 2000, month: 1, day: 1}).with({
@@ -296,10 +220,6 @@ export function calendarAddMonths(
   if (n === 0) {
     return month;
   }
-  if (isGregorianAligned(calendar)) {
-    const {year, month: monthOfYear} = plainDateAddMonths(month.start, n);
-    return gregorianMonth(year, monthOfYear);
-  }
   return temporalMonth(inCalendar(calendar, month.start).add({months: n}));
 }
 
@@ -312,9 +232,6 @@ export function calendarShiftMonths(
   pd: PlainDate,
   n: number,
 ): PlainDate {
-  if (isGregorianAligned(calendar)) {
-    return plainDateAddMonths(pd, n);
-  }
   return toGregorian(inCalendar(calendar, pd).add({months: n}));
 }
 
@@ -329,9 +246,6 @@ export function calendarShiftYears(
   pd: PlainDate,
   n: number,
 ): PlainDate {
-  if (isGregorianAligned(calendar)) {
-    return plainDateAddMonths(pd, n * 12);
-  }
   return toGregorian(inCalendar(calendar, pd).add({years: n}));
 }
 
@@ -540,7 +454,7 @@ function withTemporalDay(
  */
 export function formatCalendarInstant(
   calendar: CalendarSystem,
-  instant: Date,
+  instant: ExactTime,
   options: Intl.DateTimeFormatOptions,
   locale: Locale,
   timeZone?: string,
@@ -555,8 +469,8 @@ export function formatCalendarInstant(
  */
 export function formatCalendarInstantRange(
   calendar: CalendarSystem,
-  start: Date,
-  end: Date,
+  start: ExactTime,
+  end: ExactTime,
   options: Intl.DateTimeFormatOptions,
   locale: Locale,
   timeZone?: string,
@@ -565,14 +479,15 @@ export function formatCalendarInstantRange(
     instantLabel(calendar, instant, options, locale, timeZone),
   );
   const {format} = ends[0];
+  const [startMs, endMs] = [epochMillisecondsOf(start), epochMillisecondsOf(end)];
   if (ends.every(({isIntl}) => isIntl)) {
-    return format.formatRange(start, end);
+    return format.formatRange(startMs, endMs);
   }
   // Intl writes a range of different years as two full dates around its
   // separator, which gives the separator to put between the two full ends.
-  const far = new Date(start.getTime() + 400 * 86_400_000);
-  const both = format.formatRange(start, far);
-  const [from, to] = [format.format(start), format.format(far)];
+  const far = toInstant(start).add({hours: 400 * 24}).epochMilliseconds;
+  const both = format.formatRange(startMs, far);
+  const [from, to] = [format.format(startMs), format.format(far)];
   const separator =
     both.startsWith(from) && both.endsWith(to)
       ? both.slice(from.length, both.length - to.length)
@@ -583,7 +498,7 @@ export function formatCalendarInstantRange(
 
 function instantLabel(
   calendar: CalendarSystem,
-  instant: Date,
+  instant: ExactTime,
   options: Intl.DateTimeFormatOptions,
   locale: Locale,
   timeZone: string | undefined,
@@ -593,17 +508,19 @@ function instantLabel(
     ...(timeZone === undefined ? {} : {timeZone}),
     calendar: labelCalendar(calendar),
   });
-  const parts = format.formatToParts(instant);
+  // Intl formats the epoch milliseconds (see lib/temporal.ts).
+  const epochMs = epochMillisecondsOf(instant);
+  const parts = format.formatToParts(epochMs);
   const day =
     timeZone === undefined
-      ? plainDateFromDate(instant)
-      : plainDateFromInstant(instant.getTime(), timeZone);
+      ? plainDateFromTemporal(zonedOf(instant).toPlainDate())
+      : plainDateFromInstant(instant, timeZone);
   const fixed = withTemporalDay(calendar, day, parts, options, locale);
   const isIntl = fixed === parts;
   return {
     format,
     isIntl,
-    text: isIntl ? format.format(instant) : joinParts(fixed),
+    text: isIntl ? format.format(epochMs) : joinParts(fixed),
   };
 }
 
@@ -626,21 +543,17 @@ export interface CalendarDateFields {
 }
 
 /**
- * The Gregorian date for fields written in a calendar that needs Temporal,
- * or null when the calendar does not have that date. Temporal validates the
- * fields and never adjusts them: 30 Esfand in a common Persian year is null.
+ * The Gregorian date for fields written in a calendar, or null when the
+ * calendar does not have that date. Temporal validates the fields and never
+ * adjusts them: 30 Esfand in a common Persian year is null.
  */
 export function calendarDateFromFields(
   calendar: CalendarSystem,
   fields: CalendarDateFields,
 ): PlainDate | null {
-  const temporal = getTemporal();
-  if (temporal == null) {
-    throw new Error(`The "${calendar}" calendar needs Temporal.`);
-  }
   try {
     return toGregorian(
-      temporal.PlainDate.from({...fields, calendar}, {overflow: 'reject'}),
+      Temporal.PlainDate.from({...fields, calendar}, {overflow: 'reject'}),
     );
   } catch (error) {
     if (error instanceof RangeError || error instanceof TypeError) {
@@ -655,9 +568,7 @@ export function calendarMonthsInYear(
   calendar: CalendarSystem,
   pd: PlainDate,
 ): number {
-  return isGregorianAligned(calendar)
-    ? 12
-    : inCalendar(calendar, pd).monthsInYear;
+  return inCalendar(calendar, pd).monthsInYear;
 }
 
 /**
@@ -669,12 +580,6 @@ export function calendarMonthsBetween(
   from: CalendarMonth,
   to: CalendarMonth,
 ): number {
-  if (isGregorianAligned(calendar)) {
-    return (
-      (to.start.year - from.start.year) * 12 +
-      (to.start.month - from.start.month)
-    );
-  }
   return inCalendar(calendar, from.start).until(
     inCalendar(calendar, to.start),
     {largestUnit: 'months'},
@@ -692,7 +597,7 @@ export function calendarMonthOfYear(
   month: number,
 ): CalendarMonth {
   return isGregorianAligned(calendar)
-    ? gregorianMonth(year, month)
+    ? calendarMonthOf(calendar, plainDateFromTemporal(Temporal.PlainDate.from({year, month, day: 1})))
     : calendarMonthFromYearMonth(calendar, {year, month});
 }
 
@@ -701,12 +606,10 @@ export function calendarMonthsInCalendarYear(
   calendar: CalendarSystem,
   year: number,
 ): number {
-  return isGregorianAligned(calendar)
-    ? 12
-    : calendarMonthsInYear(
-        calendar,
-        calendarMonthOfYear(calendar, year, 1).start,
-      );
+  return calendarMonthsInYear(
+    calendar,
+    calendarMonthOfYear(calendar, year, 1).start,
+  );
 }
 
 /**

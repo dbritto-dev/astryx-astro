@@ -3,6 +3,11 @@
 // types and formatting utilities only (the React component is ported separately).
 // `effectiveTimestampFormat` lifts the inline format-resolution expression of the
 // component's render into a function; the other helpers are verbatim and exported.
+// Port additions: `parseInstant` reads a value as a Temporal.Instant (and takes Temporal
+// values), the distance is a Temporal.Duration.
+
+import {Temporal, temporalKind} from '../temporal';
+import {secondsBetween, toInstant, type ExactTime} from './instant';
 
 // =============================================================================
 // Types
@@ -33,13 +38,63 @@ export const DAY = 86400;
 /** Default auto threshold: 7 days in seconds */
 export const DEFAULT_AUTO_THRESHOLD = 7 * DAY;
 
-export function parseValue(value: string | number): Date {
-  if (typeof value === 'number') {
-    // Heuristic: if the number is less than 1e12, treat as seconds; otherwise ms.
-    // Unix timestamps in seconds are < 1e12 until ~2286.
-    return new Date(value < 1e12 ? value * 1000 : value);
+/**
+ * A Timestamp `value`: Unix seconds or milliseconds, an ISO 8601 string, or (port addition)
+ * a `Temporal.Instant` / `Temporal.ZonedDateTime` (its instant).
+ */
+export type TimestampValue = string | number | Temporal.Instant | Temporal.ZonedDateTime;
+
+/**
+ * The value as a `Date`, Astryx's own return type (an invalid Date when it does not parse).
+ * The components use {@link parseInstant}.
+ */
+export function parseValue(value: TimestampValue): Date {
+  const instant = parseInstant(value);
+  return new Date(instant === null ? NaN : instant.epochMilliseconds);
+}
+
+/**
+ * The value as a `Temporal.Instant`, or null when it names no instant. A number below 1e12 is
+ * Unix seconds, else milliseconds (Unix timestamps in seconds are < 1e12 until ~2286); a
+ * fraction of a millisecond is dropped, as `Date` drops it. A string is read as an ISO 8601
+ * instant (`Temporal.Instant.from`: an offset or `Z` is required), else by `Date`'s parser,
+ * which is the one Astryx reads every string with: it also takes a local or date-only ISO
+ * string, and the engine's other shapes.
+ */
+export function parseInstant(value: TimestampValue): Temporal.Instant | null {
+  const kind = temporalKind(value);
+  if (kind === 'Instant' || kind === 'ZonedDateTime') {
+    return toInstant(value as Temporal.Instant | Temporal.ZonedDateTime);
   }
-  return new Date(value);
+  if (typeof value === 'number') {
+    const ms = value < 1e12 ? value * 1000 : value;
+    return instantOrNull(ms);
+  }
+  if (typeof value !== 'string') {
+    return null;
+  }
+  try {
+    return Temporal.Instant.from(value);
+  } catch {
+    // Not an ISO 8601 instant: `Date` is the reader Astryx defines a string value by.
+    return instantOrNull(Date.parse(value));
+  }
+}
+
+function instantOrNull(ms: number): Temporal.Instant | null {
+  if (!Number.isFinite(ms)) {
+    return null;
+  }
+  try {
+    return Temporal.Instant.fromEpochMilliseconds(Math.trunc(ms));
+  } catch {
+    return null;
+  }
+}
+
+/** The ISO string `Date#toISOString` writes (milliseconds, `Z`) for an instant. */
+export function instantToISOString(instant: Temporal.Instant): string {
+  return instant.toString({fractionalSecondDigits: 3, roundingMode: 'floor'});
 }
 
 /** Returns the interval (in ms) at which a relative timestamp should update. */
@@ -87,14 +142,13 @@ export function isRelativeFormat(
  */
 export function effectiveTimestampFormat(
   format: TimestampFormat,
-  date: Date,
-  now: Date | null,
+  date: ExactTime,
+  now: ExactTime | null,
   autoThreshold: number = DEFAULT_AUTO_THRESHOLD,
 ): TimestampFormat {
   const needsClock = !isAbsoluteFormat(format);
   const isClockPending = needsClock && now === null;
-  const diffSeconds =
-    now === null ? 0 : Math.round((now.getTime() - date.getTime()) / 1000);
+  const diffSeconds = now === null ? 0 : secondsBetween(date, now);
   return isClockPending
     ? 'date_time'
     : format === 'auto'

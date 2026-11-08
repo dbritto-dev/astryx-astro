@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/timeFormat.ts (locale type import path adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/timeFormat.ts (locale type import path adjusted;
+// the probe and display times are Temporal.PlainTime values that Intl formats by epoch milliseconds).
 
 /**
  * @file timeFormat.ts
@@ -21,8 +22,9 @@
  */
 
 import type {Locale} from './locale';
-import {parseISOTime, parseTimeInput, type ISOTimeString} from './timeParser';
+import {parseTimeInput, toPlainTime, type ISOTimeString} from './timeParser';
 import {INVISIBLE_CHARS, toAsciiDigits} from './unicodeDigits';
+import {Temporal} from '../temporal';
 
 export type HourFormat = '12h' | '24h';
 
@@ -59,8 +61,18 @@ const SPACES = /[\u00A0\u2007\u202F]/g;
 // ASCII here), whitespace, or nothing.
 const WORD_BOUNDARY = /^[\d\s]?$/;
 
-function utcDate(hour: number, minute: number, second: number): Date {
-  return new Date(Date.UTC(2000, 0, 1, hour, minute, second));
+// The day the formatters below write their times on, in UTC (a time of day has
+// no date; Intl needs an instant, and its epoch milliseconds keep Intl's own
+// pattern, see lib/temporal.ts).
+const REFERENCE_DAY = new Temporal.PlainDate(2000, 1, 1);
+
+/** Epoch milliseconds of a wall time on the reference day in UTC. */
+function utcTime(time: Temporal.PlainTime): number {
+  return REFERENCE_DAY.toZonedDateTime({timeZone: 'UTC', plainTime: time}).epochMilliseconds;
+}
+
+function utcDate(hour: number, minute: number, second: number): number {
+  return utcTime(new Temporal.PlainTime(hour, minute, second));
 }
 
 function timeFormatter(
@@ -231,7 +243,7 @@ export function formatLocaleTime(
   if (!time) {
     return '';
   }
-  const parsed = parseISOTime(time);
+  const parsed = toPlainTime(time);
   if (!parsed) {
     return '';
   }
@@ -240,7 +252,7 @@ export function formatLocaleTime(
       ? 'en'
       : locale;
   return timeFormatter(formatLocale, hourFormat, includeSeconds)
-    .format(utcDate(parsed.hour, parsed.minute, parsed.second))
+    .format(utcTime(parsed))
     .replace(SPACES, ' ');
 }
 

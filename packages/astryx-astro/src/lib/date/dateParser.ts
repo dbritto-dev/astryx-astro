@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/dateParser.ts (locale type import path adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/dateParser.ts (locale type import path adjusted;
+// today's year and the field order come from Temporal and lib/date, not Date).
 
 /**
  * @file dateParser.ts
@@ -12,8 +13,14 @@
  * - /packages/core/src/utils/index.ts
  */
 
-import {type PlainDate, plainDateCreate, plainDateFromDate} from './plainDate';
+import {
+  type PlainDate,
+  plainDateCreate,
+  plainDateFormatToParts,
+  plainDateFromDate,
+} from './plainDate';
 import type {Locale} from './locale';
+import {Temporal} from '../temporal';
 
 export {
   plainDateFromISO as parseISO,
@@ -25,9 +32,11 @@ export {
  * US and a few others use month-first (MM/DD/YYYY).
  */
 export function isLocaleDayFirst(locale: Locale = 'en'): boolean {
-  const parts = new Intl.DateTimeFormat(locale, {
-    calendar: 'gregory',
-  }).formatToParts(new Date(2000, 0, 15));
+  const parts = plainDateFormatToParts(
+    {year: 2000, month: 1, day: 15},
+    {calendar: 'gregory'},
+    locale,
+  );
   const dayIndex = parts.findIndex(p => p.type === 'day');
   const monthIndex = parts.findIndex(p => p.type === 'month');
   return dayIndex < monthIndex;
@@ -58,7 +67,7 @@ export function parseDateInput(
     return null;
   }
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = Temporal.Now.plainDateISO().year;
 
   // 1. Try ISO format first (YYYY-MM-DD) - always unambiguous
   const isoMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -156,6 +165,9 @@ export function parseDateInput(
     return null;
   }
 
+  // Temporal has no free-form parser, so this fallback is the one place that
+  // reads text with `Date`: Astryx accepts whatever the engine's Date parser
+  // reads ("Tue Mar 05 2024", "2024/03/05").
   const parsed = new Date(trimmed);
   if (!isNaN(parsed.getTime())) {
     const fromDate = plainDateFromDate(parsed);

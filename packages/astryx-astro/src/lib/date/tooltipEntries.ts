@@ -1,9 +1,10 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/Timestamp/tooltipEntries.ts (import paths adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/Timestamp/tooltipEntries.ts (import paths adjusted;
+// a zone must be one both Intl and Temporal accept, since the lines use both).
 
 /**
  * @file tooltipEntries.ts
- * @input A Date, the consumer's tooltip entry list, a locale and a calendar
+ * @input An exact time, the consumer's tooltip entry list, a locale and a calendar
  * @output Pure formatting of one tooltip line per entry, plus the entry types
  * @position Leaf module; owns which zone each tooltip line names and whether
  *   it needs a zone abbreviation, then defers to formatInstant to render it
@@ -27,6 +28,8 @@ import {formatInstant} from './formatInstant';
 import type {InstantFormat} from './formatInstant';
 import type {Locale} from './locale';
 import type {CalendarSystem} from './calendarSystem';
+import {Temporal} from '../temporal';
+import type {ExactTime} from './instant';
 
 // =============================================================================
 // Types
@@ -131,11 +134,14 @@ function resolveTimezoneID(timezoneID: string | undefined): string | undefined {
   // An unrecognized identifier makes every Intl.DateTimeFormat constructor
   // throw a RangeError. Rendering a timestamp must never take down the tree —
   // degrade to the viewer's zone and say so, mirroring how an unparseable
-  // `value` is handled in Timestamp.tsx.
+  // `value` is handled in Timestamp.tsx. The `system_*` lines read the zone
+  // through Temporal, so it must accept it too (Chrome's Intl takes "Factory",
+  // Temporal does not).
   try {
     // Locale does not affect time-zone identifier validity; pin one so this
     // validation path stays explicit and deterministic.
     new Intl.DateTimeFormat('en-US', {timeZone: timezoneID});
+    new Temporal.ZonedDateTime(0n, timezoneID);
   } catch {
     if (!warnedTimezoneIDs.has(timezoneID)) {
       warnedTimezoneIDs.add(timezoneID);
@@ -206,7 +212,7 @@ function shouldShowZoneName(
  * host zone, locale, and calendar.
  */
 export function formatTooltipLines(
-  date: Date,
+  date: ExactTime,
   entries: ReadonlyArray<TimestampTooltipEntry>,
   locale: Locale,
   calendar: CalendarSystem = 'gregory',

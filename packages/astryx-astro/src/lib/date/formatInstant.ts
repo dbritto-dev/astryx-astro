@@ -1,9 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/Timestamp/formatInstant.ts (import paths adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/Timestamp/formatInstant.ts (import paths adjusted;
+// the instant is any ExactTime, read through Temporal; Intl formats its epoch milliseconds).
 
 /**
  * @file formatInstant.ts
- * @input A Date, one absolute format name, an optional time zone and calendar
+ * @input An exact time (Date, epoch ms, Temporal.Instant or ZonedDateTime), one
+ *   absolute format name, an optional time zone and calendar
  * @output That instant rendered as a string
  * @position Leaf shared by Timestamp's visible text and each of its tooltip
  *   lines; owns every absolute format Timestamp can produce
@@ -21,8 +23,8 @@
  * rendering is shared, not the decision.
  *
  * Omitting `timeZone` means the viewer's own zone. That path hands `Intl` no
- * `timeZone` and keeps `system_*` on plain `Date` getters, so it produces
- * exactly what it produced before this module existed.
+ * `timeZone` and reads `system_*` from Temporal in the host's zone, so it
+ * produces exactly what it produced before this module existed.
  *
  * SYNC: When modified, update these files to stay in sync:
  * - /packages/core/src/Timestamp/Timestamp.tsx
@@ -31,6 +33,7 @@
  */
 
 import {SHARED_DATE_FORMAT_OPTIONS, getWallClock} from './plainDate';
+import {epochMillisecondsOf, toInstant, type ExactTime} from './instant';
 import {
   formatCalendarInstant,
   type CalendarSystem,
@@ -145,7 +148,7 @@ function pad(n: number): string {
  * locale (and, when no `timeZone` is given, host zone).
  */
 export function formatInstant(
-  date: Date,
+  date: ExactTime,
   format: InstantFormat,
   locale: Locale,
   {
@@ -209,7 +212,7 @@ export function formatInstant(
         ...TIME_OPTIONS,
         ...zoneName,
         ...zone,
-      }).format(date);
+      }).format(epochMillisecondsOf(date));
 
     case 'system_date': {
       const w = getWallClock(date, timeZone);
@@ -230,6 +233,9 @@ export function formatInstant(
       // Unix time in whole seconds since the epoch. The epoch is an absolute
       // instant, so this is zone-independent — `timeZone` is intentionally
       // ignored (a wall-clock zone can't change how many seconds have elapsed).
-      return String(Math.floor(date.getTime() / 1000));
+      return String(
+        toInstant(date).round({smallestUnit: 'second', roundingMode: 'floor'})
+          .epochMilliseconds / 1000,
+      );
   }
 }
