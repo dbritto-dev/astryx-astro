@@ -299,8 +299,8 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
 ## Dialogs, drawers, toasts
 
 - `attachDialog({id?, triggerId?})` (Dialog/attach.ts) → `{trigger, close, layer}`; open/close
-  work without JS via invoker commands (`commandfor`/`command="show-modal"`), with a delegated
-  fallback. `attachDrawer({id?, hasScrim})` the same (`toggle-popover` without scrim).
+  work without JS via invoker commands (`commandfor`/`command="show-modal"`; Baseline, no
+  fallback). `attachDrawer({id?, hasScrim})` the same (`toggle-popover` without scrim).
 - Hosts `<ax-dialog>`, `<ax-alert-dialog>`, `<ax-drawer>`: `show({source?})`, `hide()`, `open()`,
   `close()`, `toggle()`, `isOpen`, `data-ax-open`, `astryx-open-change` {isOpen, reason};
   AlertDialog adds `astryx-action` and `actionLoading`.

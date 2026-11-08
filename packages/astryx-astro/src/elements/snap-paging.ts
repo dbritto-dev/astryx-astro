@@ -9,8 +9,8 @@
  * (each child's start edge, clamped to the travel so the last children can share one page,
  * deduplicated to half a pixel → `pageCount`), `index`, `pageCount`, `isSettling`,
  * `pageOffset(i)`, `nearestPage(px)`, `goTo(i, {animated})`, the change reasons and the
- * settle report. Reduced motion (media query or `[data-astryx-reduced-motion]`): `goTo` lands
- * at once.
+ * settle report (the `scrollend` event). Reduced motion (media query or
+ * `[data-astryx-reduced-motion]`): `goTo` lands at once.
  * Not ported (UIKit physics on the gesture system): the pan recognizer with its rubber band
  * and measured release rule (pageForRelease), the settle catcher, `loop`, mouse-drag paging
  * and `shouldBeginPan`. Snap mandatory + `scroll-snap-stop: always` give one page per swipe.
@@ -22,7 +22,6 @@
  */
 export type PagerChangeReason = 'drag' | 'goTo';
 
-const SETTLE_FALLBACK_MS = 150;
 
 function reducesMotion(el: Element): boolean {
   return matchMedia('(prefers-reduced-motion: reduce)').matches || el.closest('[data-astryx-reduced-motion]') != null;
@@ -34,7 +33,6 @@ export class SnapPagingElement extends HTMLElement {
   #settled = 0;
   #isSettling = false;
   #frame = 0;
-  #settleTimer: ReturnType<typeof setTimeout> | null = null;
   #resize: ResizeObserver | null = null;
   #mutation: MutationObserver | null = null;
   #cleanup: (() => void) | null = null;
@@ -97,7 +95,6 @@ export class SnapPagingElement extends HTMLElement {
     }
     this.#isSettling = true;
     this.scrollTo({left: this.#isRtl() ? -offset : offset, behavior: animated ? 'smooth' : 'instant'});
-    this.#armSettleFallback();
   }
 
   next(options?: {animated?: boolean}): void {
@@ -125,7 +122,6 @@ export class SnapPagingElement extends HTMLElement {
           if (nearest !== this.#target) this.#setTarget(nearest, 'drag');
         }
       });
-      this.#armSettleFallback();
     };
     const onScrollEnd = () => this.#settle();
     this.addEventListener('scroll', onScroll, {passive: true});
@@ -147,7 +143,6 @@ export class SnapPagingElement extends HTMLElement {
     this.#resize?.disconnect();
     this.#mutation?.disconnect();
     if (this.#frame) cancelAnimationFrame(this.#frame);
-    if (this.#settleTimer) clearTimeout(this.#settleTimer);
     this.#frame = 0;
   }
 
@@ -157,16 +152,7 @@ export class SnapPagingElement extends HTMLElement {
     this.dispatchEvent(new CustomEvent('astryx-index-change', {detail: {index, reason}, bubbles: true, composed: true}));
   }
 
-  /** Engines without `scrollend` settle after the scroll goes quiet. */
-  #armSettleFallback(): void {
-    if ('onscrollend' in window) return;
-    if (this.#settleTimer) clearTimeout(this.#settleTimer);
-    this.#settleTimer = setTimeout(() => this.#settle(), SETTLE_FALLBACK_MS);
-  }
-
   #settle(): void {
-    if (this.#settleTimer) clearTimeout(this.#settleTimer);
-    this.#settleTimer = null;
     this.#isSettling = false;
     const index = this.nearestPage(this.position);
     if (index !== this.#target) this.#setTarget(index, 'drag');

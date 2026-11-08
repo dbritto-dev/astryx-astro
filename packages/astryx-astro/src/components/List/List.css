@@ -39,11 +39,8 @@
 
   /* numberColumns: subgridded numbered rows share one intrinsic marker column. */
   .astryx-list[data-list-style="decimal"] {
-    display: flex;
+    display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
-  }
-  @supports (grid-template-columns: subgrid) {
-    .astryx-list[data-list-style="decimal"] { display: grid; }
   }
 
   .astryx-list[data-ax-dividers] { gap: 0; }
@@ -70,12 +67,9 @@
 
   /* ── Rows (ListItem xstyle on Item) ───────────────────────────────────── */
   .astryx-list-item.astryx-item[data-ax-numbered] {
-    display: flex;
+    display: grid;
     grid-template-columns: subgrid;
     grid-column: 1 / -1;
-  }
-  @supports (grid-template-columns: subgrid) {
-    .astryx-list-item.astryx-item[data-ax-numbered] { display: grid; }
   }
 
   .astryx-list-item.astryx-item[data-ax-counter] { counter-increment: astryx-list; }

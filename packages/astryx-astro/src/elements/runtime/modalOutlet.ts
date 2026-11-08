@@ -58,12 +58,7 @@ export function withdrawModalOutlet(dialog: HTMLDialogElement): void {
 
 /** The latest open modal outlet, or null. Outlets that left the document are skipped. */
 export function getActiveModalOutlet(): HTMLDialogElement | null {
-  const {outlets} = registry();
-  for (let i = outlets.length - 1; i >= 0; i--) {
-    const dialog = outlets[i];
-    if (dialog.isConnected && dialog.open) return dialog;
-  }
-  return null;
+  return registry().outlets.findLast((dialog) => dialog.isConnected && dialog.open) ?? null;
 }
 
 /** Call `listener` whenever the latest outlet may have changed or a surface entered the top layer. */

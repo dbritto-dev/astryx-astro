@@ -8,16 +8,15 @@
  *   `astryx-collapse-change` (bubbles) `{isCollapsed}` from the `<pre>`.
  * - Ranges (`highlightMode="ranges"`): the tokens rendered as JSON
  *   (`script[data-ax-code-tokens]`) are registered with the CSS Custom Highlight API
- *   (lib/codeblock applyHighlightRangesChunked) over the bare line text; without the API, or
- *   in Safari (whose ::highlight() painting in code blocks is unreliable), the lines are
- *   rebuilt as `.astryx-token-*` spans instead, as Astryx falls back.
+ *   (lib/codeblock applyHighlightRangesChunked) over the bare line text; in WebKit (whose
+ *   ::highlight() painting in code blocks is unreliable, `isWebKitRenderer()` in
+ *   elements/runtime/platform.ts) the lines are rebuilt as `.astryx-token-*` spans instead,
+ *   as Astryx falls back.
  */
 import {defineBehavior} from '../elements/behavior';
+import {isWebKitRenderer} from '../elements/runtime/platform';
 import {applyHighlightRangesChunked} from '../lib/codeblock/highlightRanges';
 import type {TokenLine} from '../lib/codeblock/tokenizer';
-
-const hasHighlightAPI = () => typeof CSS !== 'undefined' && 'highlights' in CSS && typeof Highlight !== 'undefined';
-const isSafari = () => typeof navigator !== 'undefined' && navigator.userAgent.includes('AppleWebKit') && !navigator.userAgent.includes('Chrome');
 
 function paintSpans(code: HTMLElement, tokenLines: TokenLine[]) {
   const doc = code.ownerDocument;
@@ -83,7 +82,7 @@ defineBehavior('code-block', (pre) => {
       tokenLines = [];
     }
     if (tokenLines.length > 0) {
-      if (hasHighlightAPI() && !isSafari()) {
+      if (!isWebKitRenderer()) {
         code.setAttribute('data-ax-painted', 'ranges');
         const cleanup = applyHighlightRangesChunked(code, tokenLines);
         cleanups.push(() => {

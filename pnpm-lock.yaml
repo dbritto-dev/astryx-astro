@@ -73,6 +73,9 @@ importers:
       astro:
         specifier: ^7.4.7
         version: 7.4.7(jiti@2.7.0)(yaml@2.9.1)
+      web-features:
+        specifier: 3.44.0
+        version: 3.44.0
 
 packages:
 
@@ -2231,6 +2234,9 @@ packages:
 
   vscode-uri@3.2.0:
     resolution: {integrity: sha512-m2gXo3bn0G1kT9InzMf07fTbqMbGtyckj3bH5ktLO+1Ssv+yiATZ4dhwaQv9UZWxJh6E9IFGnQyjgWVDWVBDrg==}
+
+  web-features@3.44.0:
+    resolution: {integrity: sha512-K/+YJI7uVE/b4G8SU67/F/4j81/ajJ6MfBCZyuQaqyuPlVXF8cd6dLqBznXIWJI9nwnvuY2dapKK08OHzTjYww==}
 
   wrap-ansi@9.0.2:
     resolution: {integrity: sha512-42AtmgqjV+X1VpdOfyTGOYRi0/zsoLqtXQckTmqTeybT+BDIbM/Guxo7x3pE2vtpr1ok6xRqM9OpBe+Jyoqyww==}
@@ -4426,6 +4432,8 @@ snapshots:
   vscode-nls@5.2.0: {}
 
   vscode-uri@3.2.0: {}
+
+  web-features@3.44.0: {}
 
   wrap-ansi@9.0.2:
     dependencies:

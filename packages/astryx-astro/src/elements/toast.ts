@@ -266,11 +266,11 @@ const shared: ToastState = globalSingleton('toast', () => ({
 const {liveToasts, viewports, defaultQueue} = shared;
 
 function watchTheme() {
-  if (shared.themeWatch || typeof MutationObserver === 'undefined') return;
+  if (shared.themeWatch) return;
   shared.themeWatch = true;
   const remeasure = () => { for (const t of liveToasts) t.measureMedia(); };
   new MutationObserver(remeasure).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme', 'data-astryx-theme', 'class', 'style']});
-  matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', remeasure);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', remeasure);
 }
 
 // ── <ax-toast> ─────────────────────────────────────────────────────────────────
@@ -387,7 +387,7 @@ export class ToastElement extends Base {
   #start() {
     if (!this.isAutoHide || this.#pause.size > 0 || this.#dismissed || !this.isConnected) return;
     this.#clear();
-    this.#startedAt = Date.now();
+    this.#startedAt = performance.now();
     this.#timer = setTimeout(() => this.dismiss('auto'), this.#remaining);
   }
 
@@ -397,7 +397,7 @@ export class ToastElement extends Base {
     if (!wasRunning) return;
     this.#clear();
     if (this.#startedAt != null) {
-      this.#remaining = Math.max(this.#remaining - (Date.now() - this.#startedAt), MIN_REMAINING_MS);
+      this.#remaining = Math.max(this.#remaining - (performance.now() - this.#startedAt), MIN_REMAINING_MS);
       this.#startedAt = null;
     }
   }
@@ -620,13 +620,7 @@ export class ToastViewportElement extends Base {
       }
       if (hadFocus) (active as HTMLElement).focus({preventScroll: true});
     }
-    if (typeof this.showPopover !== 'function') return;
-    let showing = false;
-    try {
-      showing = this.matches(':popover-open');
-    } catch {
-      /* unsupported */
-    }
+    let showing = this.matches(':popover-open');
     if (showing && change === 'entry') {
       // A non-modal surface entered above: leave and re-enter the top layer in place.
       const active = doc.activeElement;

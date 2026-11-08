@@ -155,7 +155,7 @@ export function createCombobox(config: ComboboxConfig): Combobox {
       option.toggleAttribute(KEYBOARD, ring);
       if (source !== 'pointer' && config.isOpen()) {
         const before = listbox.scrollTop;
-        option.scrollIntoView?.({block: 'nearest'});
+        option.scrollIntoView({block: 'nearest'});
         // Scrolling the list (or its scroll parent) moves rows under the pointer: hold.
         if (source === 'keyboard' || listbox.scrollTop !== before) isHeld = true;
       }
@@ -487,13 +487,13 @@ export class ComboboxLayerElement extends LayerElement {
     return super.show(options);
   }
 
-  protected resolveAnchor(): HTMLElement | null {
+  protected resolveAnchor(invoker: HTMLElement | null = null): HTMLElement | null {
     // The first hook of every open (the native invoker's too): choose the surface here.
     if (this.#sheet) {
       this.#sheet.latch();
       if (this.#sheet.isSheet) return null;
     }
-    return super.resolveAnchor();
+    return super.resolveAnchor(invoker);
   }
 
   protected didOpen(): void {
@@ -555,9 +555,7 @@ export function keepLayerOpenFor(root: HTMLElement, layer: () => HTMLElement | n
     const control = isElement(event.target) ? event.target.closest<HTMLElement>('button') : null;
     const target = layer();
     if (!marked || !control || !marked.contains(control) || !target || !root.contains(control) || control.hasAttribute('popovertarget')) return;
-    let open = false;
-    try { open = target.matches(':popover-open'); } catch { /* no popover API */ }
-    if (!open || !target.id) return;
+    if (!target.matches(':popover-open') || !target.id) return;
     control.setAttribute('popovertarget', target.id);
     control.setAttribute(TEMP, '');
     const doc = control.ownerDocument;

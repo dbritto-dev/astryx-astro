@@ -97,14 +97,12 @@ const TAG = 'ax-markdown-stream';
 /** Client document id counter, page-wide (shared by every copy of this module). */
 const clientDocs = globalSingleton('markdown-stream-docs', () => ({count: 0}));
 
-const segmenter = typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity: 'grapheme'}) : null;
+const segmenter = new Intl.Segmenter(undefined, {granularity: 'grapheme'});
 
 /** useStreamingText snapToGraphemeBoundary. */
 export function snapToGraphemeBoundary(text: string, offset: number): number {
   if (offset <= 0 || offset >= text.length) return offset;
-  if (segmenter) return segmenter.segment(text).containing(offset)?.index ?? offset;
-  const code = text.charCodeAt(offset);
-  return code >= 0xdc00 && code <= 0xdfff ? offset - 1 : offset;
+  return segmenter.segment(text).containing(offset)?.index ?? offset;
 }
 
 export class MarkdownStreamElement extends HTMLElement {

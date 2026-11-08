@@ -25,8 +25,7 @@
  *   </ax-dialog>
  * Triggers are invokers (`commandfor="D" command="show-modal"`, see components/Dialog/attach.ts):
  * zero JS opens, closes and Escapes natively; with this module the `command` event is taken
- * over so every open and close runs one lifecycle. Engines without invoker commands get the
- * same behaviour from one delegated click listener.
+ * over so every open and close runs one lifecycle.
  *
  * Attributes read: `data-ax-purpose` (default info), `data-ax-open` ("true" opens on connect,
  * settled, with no entry motion; set "true"/"false" later to show/hide; reflected).
@@ -41,7 +40,7 @@ import {outsideDismissalCount, registerLayer, shouldDismissOnCloseRequest} from 
 import {focusForLastInput, returnFocusForLastInput} from './runtime/modality';
 import {isFocusLost, tabbables} from './runtime/dom';
 import {notifyTopLayerEntry, supplyModalOutlet} from './runtime/modalOutlet';
-import {brandClass, globalSingleton} from './runtime/global';
+import {brandClass} from './runtime/global';
 
 export type DialogPurpose = 'required' | 'form' | 'info';
 export type DialogOpenChangeReason = 'escape' | 'outside' | 'api' | 'toggle';
@@ -66,13 +65,7 @@ export function defineHost(tag: string, ctor: CustomElementConstructor): void {
   customElements.define(tag, ctor);
 }
 
-function isPopoverShowing(el: Element): boolean {
-  try {
-    return el.matches(':popover-open');
-  } catch {
-    return false;
-  }
-}
+const isPopoverShowing = (el: Element): boolean => el.matches(':popover-open');
 
 /** Open `popover="auto"` layers outside `host` (a press on the backdrop that closes one is theirs). */
 function showingAutoPopovers(host: HTMLElement): Element[] {
@@ -544,25 +537,3 @@ export class DialogElement extends ModalHostElement {
 // Drawer, MobileNav and BottomSheet extend it from their own modules (maybe another copy).
 brandClass(ModalHostElement, 'modal-host-element');
 defineHost('ax-dialog', DialogElement);
-
-// ── Invoker commands where the engine has none (one delegated listener per page) ──
-const commands = globalSingleton('dialog-commands', () => ({listening: false}));
-const hasInvokers = typeof HTMLButtonElement !== 'undefined' && 'commandForElement' in HTMLButtonElement.prototype;
-if (typeof document !== 'undefined' && !hasInvokers && !commands.listening) {
-  commands.listening = true;
-  document.addEventListener('click', (event) => {
-    const button = (event.target as Element | null)?.closest?.<HTMLButtonElement>('button[commandfor][command]');
-    if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
-    const target = button.ownerDocument.getElementById(button.getAttribute('commandfor') ?? '');
-    const host = target?.parentElement;
-    if (!(target instanceof HTMLDialogElement) || !(host instanceof ModalHostElement)) return;
-    const command = button.getAttribute('command') ?? '';
-    // Re-dispatch as the engine would, so one code path (the host's command listener) acts.
-    const commandEvent = new Event('command', {cancelable: true}) as Event & {command: string; source: Element};
-    Object.defineProperties(commandEvent, {command: {value: command}, source: {value: button}});
-    target.dispatchEvent(commandEvent);
-    if (!commandEvent.defaultPrevented && command === 'request-close' && target.open) {
-      target.dispatchEvent(new Event('cancel', {cancelable: true}));
-    }
-  });
-}

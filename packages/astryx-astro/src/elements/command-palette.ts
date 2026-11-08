@@ -257,9 +257,7 @@ export class CommandPaletteElement extends Base {
     }
     const controller = new AbortController();
     this.#controller = controller;
-    let resolve!: (items: CommandPaletteItemData[]) => void;
-    let reject!: (error?: unknown) => void;
-    const answer = new Promise<CommandPaletteItemData[]>((res, rej) => { resolve = res; reject = rej; });
+    const {promise: answer, resolve, reject} = Promise.withResolvers<CommandPaletteItemData[]>();
     const detail: TypeaheadQueryDetail = {
       query,
       kind,

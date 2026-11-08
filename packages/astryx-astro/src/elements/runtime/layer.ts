@@ -16,7 +16,8 @@
  * Attributes read:
  *   id                       required (the anchor name and ARIA ids derive from it)
  *   popover                  auto | manual | hint (default manual)
- *   data-ax-anchor="<id>"    the element to anchor to (else the `[popovertarget=<id>]` invoker)
+ *   data-ax-anchor="<id>"    the element to anchor to (else the invoker that opened it, from
+ *                            the toggle event's `source`, else the first `[popovertarget=<id>]`)
  *   data-ax-escape           close | block | none (default: close for popover=auto, else none)
  *   data-ax-open="true"      open on connect; set "true"/"false" later to show/hide. The element
  *                            reflects its state into it.
@@ -60,11 +61,7 @@ export class LayerElement extends Base {
   #wired = false;
 
   get isOpen(): boolean {
-    try {
-      return this.matches(':popover-open');
-    } catch {
-      return this.style.display === 'block';
-    }
+    return this.matches(':popover-open');
   }
 
   connectedCallback(): void {
@@ -100,13 +97,18 @@ export class LayerElement extends Base {
 
   // ── Overridable policy ────────────────────────────────────────────────────
 
-  /** The element to anchor to when none was passed to `show()`. */
-  protected resolveAnchor(): HTMLElement | null {
+  /**
+   * The element to anchor to when none was passed to `show()`: `data-ax-anchor`, else
+   * `invoker` (the control whose `popovertarget` / `commandfor` opened the layer), else the
+   * first `[popovertarget=<id>]` in the document.
+   */
+  protected resolveAnchor(invoker: HTMLElement | null = null): HTMLElement | null {
     const id = this.getAttribute('data-ax-anchor');
     if (id) {
       const el = this.ownerDocument.getElementById(id);
       if (el) return el;
     }
+    if (invoker) return invoker;
     return this.id ? this.ownerDocument.querySelector<HTMLElement>(`[popovertarget="${CSS.escape(this.id)}"]`) : null;
   }
 
@@ -165,21 +167,14 @@ export class LayerElement extends Base {
     this.#pendingAnchor = options.anchor ?? null;
     this.#reason = options.reason ?? 'api';
     const source = options.source ?? options.anchor ?? null;
-    if (typeof this.showPopover === 'function') {
-      try {
-        // `source` makes the trigger the invoker: popover nesting and focus order follow it.
-        if (source instanceof HTMLElement) (this.showPopover as (o?: {source?: HTMLElement}) => void)({source});
-        else this.showPopover();
-      } catch (error) {
-        this.#pendingAnchor = null;
-        if ((error as {name?: string})?.name === 'InvalidStateError') return false;
-        throw error;
-      }
-    } else {
-      // No Popover API: plain visibility, no top layer.
-      this.#beforeOpen();
-      this.style.display = 'block';
-      this.#afterOpen();
+    try {
+      // `source` makes the trigger the invoker: popover nesting and focus order follow it.
+      if (source instanceof HTMLElement) (this.showPopover as (o?: {source?: HTMLElement}) => void)({source});
+      else this.showPopover();
+    } catch (error) {
+      this.#pendingAnchor = null;
+      if ((error as {name?: string})?.name === 'InvalidStateError') return false;
+      throw error;
     }
     this.#pendingAnchor = null;
     // Shown within this call: settle now, before anything paints.
@@ -193,12 +188,7 @@ export class LayerElement extends Base {
     this.#reason = reason;
     this.#ownHide = true;
     try {
-      if (typeof this.hidePopover === 'function') this.hidePopover();
-      else {
-        this.#beforeClose();
-        this.style.display = 'none';
-        this.#afterClose();
-      }
+      this.hidePopover();
     } finally {
       this.#ownHide = false;
     }
@@ -235,7 +225,7 @@ export class LayerElement extends Base {
     if (event.target !== this) return;
     const toggle = event as ToggleEvent;
     if (event.type === 'beforetoggle') {
-      if (toggle.newState === 'open') this.#beforeOpen();
+      if (toggle.newState === 'open') this.#beforeOpen(this.#invokerOf(toggle));
       else this.#beforeClose();
     } else if (event.type === 'toggle') {
       if (toggle.newState === 'open') this.#afterOpen();
@@ -243,9 +233,15 @@ export class LayerElement extends Base {
     }
   }
 
-  #beforeOpen() {
+  /** The invoker a native show reports (ToggleEvent.source), when it is outside the layer. */
+  #invokerOf(event: ToggleEvent): HTMLElement | null {
+    const source = (event as ToggleEvent & {source?: Element | null}).source;
+    return source instanceof HTMLElement && !this.contains(source) ? source : null;
+  }
+
+  #beforeOpen(invoker: HTMLElement | null) {
     const doc = this.ownerDocument;
-    const anchor = this.#pendingAnchor ?? this.resolveAnchor();
+    const anchor = this.#pendingAnchor ?? this.resolveAnchor(invoker);
     this.anchor = anchor;
     const active = doc.activeElement;
     this.#opener = active instanceof HTMLElement && active !== doc.body && !this.contains(active) ? active : null;

@@ -109,12 +109,7 @@ function createPortableConfig(
 const PERMALINK_VALIDATION_BASE = 'https://astryx.invalid/';
 
 function isParsablePermalinkBaseUrl(url: string): boolean {
-  try {
-    new URL(url, PERMALINK_VALIDATION_BASE);
-    return true;
-  } catch {
-    return false;
-  }
+  return URL.canParse(url, PERMALINK_VALIDATION_BASE);
 }
 
 function readPortableConfig(

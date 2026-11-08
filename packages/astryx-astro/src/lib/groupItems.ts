@@ -66,29 +66,14 @@ export function groupItems<T extends SearchableItem>(
     return [{heading: null, items}];
   }
 
-  const groupOrder: string[] = [];
-  const groups = new Map<string, T[]>();
-  const ungrouped: T[] = [];
-
-  for (const item of items) {
-    const group = getItemGroup(item);
-    if (group != null) {
-      if (!groups.has(group)) {
-        groupOrder.push(group);
-        groups.set(group, []);
-      }
-      groups.get(group)?.push(item);
-    } else {
-      ungrouped.push(item);
-    }
+  // Groups keep the order of their first item; `null` collects the ungrouped items.
+  const groups = Map.groupBy(items, item => getItemGroup(item) ?? null);
+  const namedGroups: ItemGroup<T>[] = [];
+  for (const [heading, groupItems] of groups) {
+    if (heading != null) namedGroups.push({heading, items: groupItems});
   }
-
-  const namedGroups: ItemGroup<T>[] = groupOrder.map(heading => ({
-    heading,
-    items: groups.get(heading) ?? [],
-  }));
-  const ungroupedGroup: ItemGroup<T>[] =
-    ungrouped.length > 0 ? [{heading: null, items: ungrouped}] : [];
+  const ungrouped = groups.get(null);
+  const ungroupedGroup: ItemGroup<T>[] = ungrouped ? [{heading: null, items: ungrouped}] : [];
 
   return ungroupedFirst
     ? [...ungroupedGroup, ...namedGroups]

@@ -78,7 +78,6 @@
     --_astryx-layer-clearance: initial;
     --_astryx-layer-try-fallbacks: initial;
     --_astryx-layer-clear-fallbacks: initial;
-    --_ax-anchor-width: initial;
     /* layerViewportInset: one gutter definition (spec:AST-059 FR1) */
     --_ax-gutter-block: calc(max(var(--spacing-4), env(safe-area-inset-top, 0px), env(safe-area-inset-bottom, 0px)) + max(var(--astryx-layer-inset-block-start, 0px), var(--astryx-layer-inset-block-end, 0px)));
     --_ax-gutter-inline: calc(max(var(--spacing-4), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px)) + max(var(--astryx-layer-inset-inline-start, 0px), var(--astryx-layer-inset-inline-end, 0px)));
@@ -148,9 +147,6 @@
   :where(.ax-layer)[data-astryx-keep-clear][data-placement="below"] { --_astryx-layer-clear-fallbacks: --astryx-layer-beside-end, --astryx-layer-beside-start, flip-block, --astryx-layer-fit-below, --astryx-layer-fit-above; }
   :where(.ax-layer)[data-astryx-keep-clear][data-astryx-clears-anchor] { --_astryx-layer-try-fallbacks: var(--_astryx-layer-clear-fallbacks); }
   :where(.ax-layer)[data-astryx-layer-scrolls] { overflow-y: auto; overscroll-behavior-block: contain; }
-
-  /* ── Rect fallback (no CSS anchor positioning): anchor.ts writes top/left itself ── */
-  .ax-layer[data-astryx-rect] { inset: auto; position-area: none; }
 
   /* ── Slides (layerSlideRules.ts): the whole alignment axis on the landing side, gutter on
    *    both alignment edges, clearance toward the anchor. ── */
@@ -242,8 +238,7 @@
     transition-property: opacity, translate, scale, display, overlay;
     transition-behavior: allow-discrete;
   }
-  /* Closed (and exiting). Written with :popover-open so an engine without the Popover API,
-   * which shows layers by display alone, drops the rule instead of keeping them transparent. */
+  /* Closed (and exiting). */
   :where(.ax-layer-motion):not(:popover-open) {
     opacity: 0;
     transition-duration: var(--duration-exit);

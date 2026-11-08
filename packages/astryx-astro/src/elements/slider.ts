@@ -17,9 +17,9 @@
  * `astryx-change-end` `{value}` when a drag ends and after each handled key.
  */
 import './runtime/disabledInteraction';
-import {settleLayer} from './runtime/anchor';
 import {isRtl} from './runtime/dom';
 import {getModality} from './runtime/modality';
+import {isApplePlatform} from './runtime/platform';
 import {emit, onFormReset} from './field';
 import {clamp, constrainRange, getPercent, snapToStep, travelFraction} from '../components/Slider/sliderMath';
 
@@ -36,7 +36,7 @@ interface Drag {
   coincidentOrigin: boolean;
 }
 
-const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+/** utils/primaryClick.ts: a Ctrl+click on a Mac is a secondary click. */
 const isPrimaryClick = (event: PointerEvent) => event.button === 0 && !(event.ctrlKey && isApplePlatform());
 const TAP_SLOP = 10;
 
@@ -216,9 +216,7 @@ export class SliderElement extends HTMLElement {
     const thumb = thumbs[thumbIndex];
     thumb?.focus();
     thumb?.removeAttribute('data-ax-keyboard-focus');
-    if (typeof control.setPointerCapture === 'function') {
-      try { control.setPointerCapture(event.pointerId); } catch { /* the pointer is gone */ }
-    }
+    try { control.setPointerCapture(event.pointerId); } catch { /* the pointer is gone */ }
   }
 
   #onPointerMove(event: PointerEvent) {
@@ -261,7 +259,7 @@ export class SliderElement extends HTMLElement {
     if (tap && event.pointerId === tap.pointerId) {
       this.#tap = null;
       if (this.isDisabled) return;
-      const mark = this.ownerDocument.elementFromPoint?.(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mark-value]');
+      const mark = this.ownerDocument.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-mark-value]');
       const value = mark && this.#control?.contains(mark) ? Number(mark.dataset.markValue) : this.#valueAt(event.clientX, event.clientY);
       const index = this.#closestThumb(value);
       this.#update(index, value);
@@ -288,7 +286,7 @@ export class SliderElement extends HTMLElement {
     if (!drag || drag.pointerId !== pointerId) return;
     this.#drag = null;
     const control = this.#control;
-    if (control?.hasPointerCapture?.(pointerId)) {
+    if (control?.hasPointerCapture(pointerId)) {
       try { control.releasePointerCapture(pointerId); } catch { /* already released */ }
     }
     this.#press(null);
@@ -376,7 +374,6 @@ export class SliderElement extends HTMLElement {
       const tip = this.#tooltipOf(thumb);
       const content = tip?.querySelector('.ax-tooltip-content');
       if (content && content.textContent !== this.#format(v)) content.textContent = this.#format(v);
-      if (tip?.hasAttribute('data-astryx-rect') && tip.matches(':popover-open')) settleLayer(tip);
     });
     const fillStart = this.isRange ? percent(values[0]) / 100 : 0;
     const fillEnd = percent(values[this.isRange ? 1 : 0]) / 100;

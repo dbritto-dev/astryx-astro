@@ -85,25 +85,20 @@
     inset-inline-end: 0;
     pointer-events: none;
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     height: 100px;
     mask-image: linear-gradient(to bottom, transparent, black 36px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 36px);
   }
   .ax-chat-layout-blur[data-ax-density="compact"] {
     height: 80px;
     mask-image: linear-gradient(to bottom, transparent, black 24px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 24px);
   }
   .ax-chat-layout-blur[data-ax-density="balanced"] {
     height: 100px;
     mask-image: linear-gradient(to bottom, transparent, black 36px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 36px);
   }
   .ax-chat-layout-blur[data-ax-density="spacious"] {
     height: 120px;
     mask-image: linear-gradient(to bottom, transparent, black 48px);
-    -webkit-mask-image: linear-gradient(to bottom, transparent, black 48px);
   }
 
   .ax-chat-layout-dock {

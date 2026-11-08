@@ -135,7 +135,7 @@ export class CheckboxListElement extends HTMLElement {
     this.#cleanup.push(() => this.removeEventListener('change', onChange));
 
     // requiredGroup.observe: options that move register no box again.
-    if (this.hasAttribute('data-ax-required') && typeof MutationObserver !== 'undefined') {
+    if (this.hasAttribute('data-ax-required')) {
       const observer = new MutationObserver(() => this.#scheduleRequired());
       observer.observe(this, {childList: true, subtree: true});
       this.#cleanup.push(() => observer.disconnect());

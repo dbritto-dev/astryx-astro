@@ -16,7 +16,6 @@ import {registerTableBehavior, type AxTable} from '../table';
 
 const KEYBOARD_STEP = 10;
 const KEYBOARD_LARGE_STEP = 50;
-const SCROLL_SETTLE_MS = 120;
 
 interface Snapshot {
   key: string;
@@ -223,7 +222,7 @@ registerTableBehavior('resize', (table: AxTable) => {
   // The handles reach from the header to the last row.
   const tableEl = table.table;
   let ro: ResizeObserver | null = null;
-  if (tableEl && typeof ResizeObserver !== 'undefined') {
+  if (tableEl) {
     ro = new ResizeObserver(() => {
       const rect = tableEl.getBoundingClientRect();
       tableEl.style.setProperty('--table-resize-height', `${rect.height}px`);
@@ -236,18 +235,11 @@ registerTableBehavior('resize', (table: AxTable) => {
     ro.observe(tableEl);
   }
 
-  // Scroll gate (FR10): columns moving under a still pointer are not a hover.
-  let settle: ReturnType<typeof setTimeout> | null = null;
-  const supportsScrollEnd = 'onscrollend' in table;
+  // Scroll gate (FR10): columns moving under a still pointer are not a hover, until scrollend.
   const clearGate = () => table.style.removeProperty('--resize-hint-gate');
-  const onScroll = () => {
-    table.style.setProperty('--resize-hint-gate', 'transparent');
-    if (supportsScrollEnd) return;
-    if (settle != null) clearTimeout(settle);
-    settle = setTimeout(clearGate, SCROLL_SETTLE_MS);
-  };
+  const onScroll = () => table.style.setProperty('--resize-hint-gate', 'transparent');
   table.addEventListener('scroll', onScroll, {passive: true});
-  if (supportsScrollEnd) table.addEventListener('scrollend', clearGate, {passive: true});
+  table.addEventListener('scrollend', clearGate, {passive: true});
 
   table.addEventListener('pointerdown', onPointerDown);
   table.addEventListener('keydown', onKeyDown);
@@ -270,7 +262,6 @@ registerTableBehavior('resize', (table: AxTable) => {
     ro?.disconnect();
     table.removeEventListener('scroll', onScroll);
     table.removeEventListener('scrollend', clearGate);
-    if (settle != null) clearTimeout(settle);
     clearGate();
     table.removeEventListener('pointerdown', onPointerDown);
     table.removeEventListener('keydown', onKeyDown);

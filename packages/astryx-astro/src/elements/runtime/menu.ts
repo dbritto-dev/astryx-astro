@@ -228,7 +228,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
   let closedAt = 0;
   let hoverOpenedAt = 0;
 
-  const hasHover = () => typeof matchMedia === 'function' && matchMedia('(hover: hover)').matches;
+  const hasHover = () => matchMedia('(hover: hover)').matches;
 
   const clear = () => {
     if (showTimer) clearTimeout(showTimer);
@@ -239,7 +239,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
   };
 
   const confirmHoverOpen = () => {
-    const confirming = clickGuardMs > 0 && hoverOpenedAt > 0 && Date.now() - hoverOpenedAt < clickGuardMs;
+    const confirming = clickGuardMs > 0 && hoverOpenedAt > 0 && performance.now() - hoverOpenedAt < clickGuardMs;
     if (!confirming) return false;
     hoverMode = false;
     hoverOpenedAt = 0;
@@ -301,7 +301,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
   return {
     triggerEnter() {
       if (!options.isEnabled() || !hasHover()) return;
-      if (closedAt > 0 && Date.now() - closedAt < REOPEN_SUPPRESS_MS) return;
+      if (closedAt > 0 && performance.now() - closedAt < REOPEN_SUPPRESS_MS) return;
       // Re-entering an open menu's trigger never re-arms the click guard.
       if (options.isOpen()) { clear(); return; }
       hoverMode = true;
@@ -309,7 +309,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
       const openByHover = () => {
         showTimer = null;
         if (!options.isEnabled()) return;
-        hoverOpenedAt = Date.now();
+        hoverOpenedAt = performance.now();
         options.show({skipAutoFocus: true});
       };
       if (showDelay > 0) showTimer = setTimeout(openByHover, showDelay);
@@ -342,7 +342,7 @@ export function createMenuHover(options: MenuHoverOptions): MenuHover {
       clear();
       hoverMode = false;
       hoverOpenedAt = 0;
-      closedAt = Date.now();
+      closedAt = performance.now();
     },
     clear,
   };
@@ -735,13 +735,13 @@ export class MenuElement extends LayerElement {
 
   // ── LayerElement policy ──────────────────────────────────────────────────
 
-  protected resolveAnchor(): HTMLElement | null {
+  protected resolveAnchor(invoker: HTMLElement | null = null): HTMLElement | null {
     // The first hook of every open (the native invoker's too): choose the surface here.
     if (this.#sheet) {
       this.#sheet.latch();
       if (this.#sheet.isSheet) return null;
     }
-    return super.resolveAnchor();
+    return super.resolveAnchor(invoker);
   }
 
   protected escapeBehavior(): LayerEscapeBehavior | null {
@@ -1135,8 +1135,8 @@ export class MenuElement extends LayerElement {
     const view = this.ownerDocument.defaultView ?? window;
     let frame = 0;
     const schedule = () => { if (!frame) frame = view.requestAnimationFrame(() => { frame = 0; this.#measureOverflow(); }); };
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-    ro?.observe(menu);
+    const ro = new ResizeObserver(schedule);
+    ro.observe(menu);
     const mo = new MutationObserver(schedule);
     mo.observe(menu, {childList: true, characterData: true, subtree: true});
     view.addEventListener('resize', schedule);

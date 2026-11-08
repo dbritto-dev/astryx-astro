@@ -202,7 +202,7 @@ function update(entry: Entry): void {
 
 function actorFor(doc: Document): Element | null {
   const press = state().lastPress.get(doc);
-  if (press && press.target.isConnected && Date.now() - press.at <= PRESS_ACTOR_WINDOW_MS) return press.target;
+  if (press && press.target.isConnected && performance.now() - press.at <= PRESS_ACTOR_WINDOW_MS) return press.target;
   return doc.activeElement;
 }
 
@@ -219,7 +219,7 @@ function noteFlip(entry: Entry, flip: 'opened' | 'closed'): void {
 
 /** A sheet records the presses that land in it (its own dialog listener, not the document's). */
 export function noteSheetPress(dialog: HTMLDialogElement, target: EventTarget | null): void {
-  if (target instanceof Element) state().lastPress.set(dialog.ownerDocument, {target, at: Date.now()});
+  if (target instanceof Element) state().lastPress.set(dialog.ownerDocument, {target, at: performance.now()});
 }
 
 /**
@@ -402,7 +402,7 @@ function detectReplace(batch: Batch): {replaced: Entry; replacer: Entry} | null 
 function restingTopOf(panel: HTMLElement): number {
   const top = panel.getBoundingClientRect().top;
   const {transform} = getComputedStyle(panel);
-  if (!transform || transform === 'none' || typeof DOMMatrixReadOnly !== 'function') return top;
+  if (!transform || transform === 'none') return top;
   return top - new DOMMatrixReadOnly(transform).m42;
 }
 
@@ -462,23 +462,13 @@ function finishReplace(replaced: Entry): void {
 /** Whether a sheet's dialog is presented (modal `open`, or a manual popover). */
 export function isPresented(dialog: HTMLDialogElement | null): boolean {
   if (!dialog) return false;
-  if (dialog.open) return true;
-  try {
-    return dialog.matches(':popover-open');
-  } catch {
-    return false;
-  }
+  return dialog.open || dialog.matches(':popover-open');
 }
 
 /** Leave the native host, whichever one presents the sheet. */
 export function hideSheetHost(dialog: HTMLDialogElement): void {
-  if (dialog.hasAttribute('popover') && typeof dialog.hidePopover === 'function') {
-    try {
-      dialog.hidePopover();
-    } catch {
-      /* shown with show() (no Popover API) */
-    }
-  }
+  // Hiding a popover that is not showing is a no-op.
+  if (dialog.hasAttribute('popover')) dialog.hidePopover();
   if (dialog.open) dialog.close();
 }
 

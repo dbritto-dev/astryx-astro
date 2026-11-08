@@ -52,17 +52,16 @@ function write(doc: Document, store: Store, next: InteractionModality) {
 }
 
 function listen(doc: Document, store: Store) {
-  const view = doc.defaultView;
-  const now = () => view?.performance.now() ?? Date.now();
+  // Press times are event timestamps (the document's monotonic clock), compared at the click.
   doc.addEventListener('pointerdown', (event) => {
     store.pointerType = event.pointerType || null;
-    store.pressedAt = now();
+    store.pressedAt = event.timeStamp;
     write(doc, store, 'pointer');
   }, {capture: true, passive: true});
   doc.addEventListener('keydown', (event) => {
     // Modifier chords are not navigation: Shift held before a click must not make it "keyboard".
     if (event.metaKey || event.altKey || event.ctrlKey) return;
-    store.pressedAt = now();
+    store.pressedAt = event.timeStamp;
     write(doc, store, 'keyboard');
   }, {capture: true, passive: true});
   doc.addEventListener('click', (event) => {
@@ -70,7 +69,7 @@ function listen(doc: Document, store: Store) {
     // A click with no detail, no pointer type and no key or pointer press in the last
     // moment came from assistive technology.
     // A script's own `.click()` is untrusted and says nothing about the user.
-    if (event.isTrusted && event.detail === 0 && !pointerType && now() - store.pressedAt > 1000) write(doc, store, 'virtual');
+    if (event.isTrusted && event.detail === 0 && !pointerType && event.timeStamp - store.pressedAt > 1000) write(doc, store, 'virtual');
   }, {capture: true, passive: true});
   const mark = () => { if (!doc.documentElement.hasAttribute(ATTRIBUTE)) doc.documentElement.setAttribute(ATTRIBUTE, store.modality); };
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', mark, {once: true});

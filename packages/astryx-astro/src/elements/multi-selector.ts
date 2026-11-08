@@ -297,7 +297,7 @@ export class MultiSelectorElement extends ListboxSelectElement {
         while (i < children.length && sortable(children[i])) run.push(children[i++] as HTMLElement);
         const anchor = run[run.length - 1].nextSibling;
         const order = (el: HTMLElement) => Number(el.getAttribute('data-ax-order'));
-        const sorted = [...run].sort((a, b) => {
+        const sorted = run.toSorted((a, b) => {
           if (selectedFirst) {
             const sa = selected.has(a.getAttribute('data-value') ?? '') ? 0 : 1;
             const sb = selected.has(b.getAttribute('data-value') ?? '') ? 0 : 1;

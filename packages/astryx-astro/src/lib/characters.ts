@@ -16,24 +16,14 @@
  */
 
 /**
- * Reuse a single segmenter when the runtime supports Intl.Segmenter.
- * `grapheme` is the Intl granularity name for a user-perceived character.
+ * One shared segmenter. `grapheme` is the Intl granularity name for a
+ * user-perceived character.
  */
-const characterSegmenter =
-  typeof Intl.Segmenter === 'function'
-    ? new Intl.Segmenter(undefined, {granularity: 'grapheme'})
-    : null;
+const characterSegmenter = new Intl.Segmenter(undefined, {granularity: 'grapheme'});
 
-/**
- * Split a string into user-perceived characters. The code-point fallback
- * keeps surrogate pairs intact but may split joined emoji sequences and flag
- * pairs on runtimes without Intl.Segmenter.
- */
+/** Split a string into user-perceived characters. */
 function splitCharacters(str: string): string[] {
-  if (characterSegmenter) {
-    return [...characterSegmenter.segment(str)].map(s => s.segment);
-  }
-  return [...str];
+  return [...characterSegmenter.segment(str)].map(s => s.segment);
 }
 
 /**
@@ -54,12 +44,8 @@ export function characterCount(str: string): number {
  * character, so cost does not scale with the length of the string.
  */
 export function firstCharacter(str: string): string {
-  if (characterSegmenter) {
-    const first = characterSegmenter.segment(str)[Symbol.iterator]().next();
-    return first.done ? '' : first.value.segment;
-  }
-  const codePoint = str.codePointAt(0);
-  return codePoint == null ? '' : String.fromCodePoint(codePoint);
+  const first = characterSegmenter.segment(str)[Symbol.iterator]().next();
+  return first.done ? '' : first.value.segment;
 }
 
 /**

@@ -301,27 +301,15 @@ export function applyHighlightRangesChunked(
     wrapper.addEventListener('contentvisibilityautostatechange', handler);
     listeners.set(wrapper, handler);
 
-    // Apply immediately to chunks that are currently visible.
-    // A chunk with content-visibility: auto that is onscreen will have
-    // its content rendered — check via checkVisibility if available,
-    // otherwise apply eagerly for the first screen's worth.
-    const el = wrapper as HTMLElement & {
-      checkVisibility?: (opts?: CheckVisibilityOptions) => boolean;
-    };
-    if (typeof el.checkVisibility === 'function') {
-      if (
-        el.checkVisibility({
-          checkVisibilityCSS: true,
-          contentVisibilityAuto: true,
-        })
-      ) {
-        applyChunk(wrapper, i);
-      }
-    } else {
-      // Fallback: apply first few chunks synchronously (likely visible)
-      if (i < 5) {
-        applyChunk(wrapper, i);
-      }
+    // Apply immediately to chunks that are currently visible: a chunk with
+    // content-visibility: auto that is onscreen has its content rendered.
+    if (
+      wrapper.checkVisibility({
+        checkVisibilityCSS: true,
+        contentVisibilityAuto: true,
+      })
+    ) {
+      applyChunk(wrapper, i);
     }
   }
 

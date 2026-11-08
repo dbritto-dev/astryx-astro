@@ -14,8 +14,8 @@
  * item is the last heading whose top has passed its activation line — the scroll root's top
  * + `offset` + the heading's own `scroll-margin-top`, exactly where navigating to it lands
  * it; the first item at the top, the last at the bottom. The active link gets
- * `aria-current="location"`, and the indicator follows it through CSS anchor positioning
- * (rect fallback where unsupported). The scroll root is `scrollContainer` (a selector), else
+ * `aria-current="location"`, and the indicator follows it through CSS anchor positioning.
+ * The scroll root is `scrollContainer` (a selector), else
  * the nearest scrollable ancestor, else the viewport.
  * Navigation (click, or Space on a link; Enter is the native click): modified clicks and
  * targets missing from the DOM are left to the browser. Otherwise the jump is ours: smooth

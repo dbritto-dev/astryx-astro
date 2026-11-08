@@ -29,6 +29,7 @@ other modules test with `instanceof` are branded with `brandClass()`.
 | `disabledInteraction.ts` | utils/disabledInteraction.ts (AST-085) |
 | `dom.ts` | utils/ime.ts, hooks/focusableSelector.ts, utils/isFocusDetached.ts |
 | `global.ts` | — (port infrastructure: page-wide singletons, cross-copy `instanceof`) |
+| `platform.ts` | utils/isApplePlatform.ts, CodeBlock.tsx `isSafari`, useChatDictation.ts `isIOS`: the only user-agent / platform reads (docs/platform.md) |
 | `menu.ts` | DropdownMenu/menuItemRoles.ts, menuItemHover.ts, menuRegionStops.ts, useMenuOverflow.ts, hooks/useMenuHover.ts, hooks/useLongPress.ts; the menu paths of DropdownMenu.tsx, DropdownMenuSubMenu.tsx, ContextMenu.tsx |
 
 ---
@@ -130,13 +131,12 @@ renders a layer). A layer element:
 | Export | Writes |
 |---|---|
 | `anchorLayer(layer, anchor)` — call synchronously before the layer shows | `anchor-name` (composed list, inline) on the anchor; `position-anchor` on the layer; `data-astryx-anchor-hidden` (FR5) |
-| `settleLayer(layer)` — once shown (same task as `showPopover()`, or rAF for a native show: runs before that frame paints) | rect mode: `top`/`left`/`margin:0`, `--_ax-anchor-width`, `data-astryx-rect-side`; keep-clear: `data-astryx-clears-anchor`, `data-astryx-layer-scrolls` |
+| `settleLayer(layer)` — once shown (same task as `showPopover()`, or rAF for a native show: runs before that frame paints) | `data-astryx-anchor-hidden` while the anchor is out of view; keep-clear: `data-astryx-clears-anchor`, `data-astryx-layer-scrolls` |
 | `releaseLayer(layer)` — after it hid | removes the anchor name when the exit transition ends |
-| `supportsAnchorPositioning()`, `anchorNameFor(layer)`, `addAnchorName`/`removeAnchorName`/`readAnchorNames`, `keepAnchorClear`, `positionWithRects`, `anchorOf(layer)` | |
+| `anchorNameFor(layer)`, `addAnchorName`/`removeAnchorName`/`readAnchorNames`, `keepAnchorClear`, `anchorOf(layer)` | |
 
-No anchor positioning (or `<html data-astryx-anchor-fallback>`, used by the tests): the layer
-gets `data-astryx-rect` and a rect positioner places it (side → opposite side → mirrored
-alignment → slide inside the gutters) and follows scroll/resize while open.
+There is no JS positioner: the anchor positioning this relies on is Baseline
+(`docs/platform.md`), as Astryx assumes.
 
 ## layer.ts — `LayerElement` and `<ax-layer>`
 

@@ -14,7 +14,6 @@
     box-sizing: border-box;
     max-inline-size: 100%;
     max-block-size: 100%;
-    -webkit-overflow-scrolling: touch;
     scrollbar-color: var(--color-neutral) transparent;
     scrollbar-width: auto;
     scrollbar-gutter: auto;

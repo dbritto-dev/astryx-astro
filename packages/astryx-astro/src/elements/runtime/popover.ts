@@ -108,11 +108,11 @@ export class PopoverElement extends LayerElement {
     return super.show(options);
   }
 
-  protected resolveAnchor(): HTMLElement | null {
+  protected resolveAnchor(invoker: HTMLElement | null = null): HTMLElement | null {
     // The first hook of every open (a native invoker's too): choose the surface here.
     this.#sheet.latch();
     if (this.#sheet.isSheet) return null;
-    return super.resolveAnchor() ?? this.triggers()[0] ?? null;
+    return super.resolveAnchor(invoker) ?? this.triggers()[0] ?? null;
   }
 
   protected escapeBehavior(): LayerEscapeBehavior | null {
@@ -264,8 +264,8 @@ export class PopoverElement extends LayerElement {
     };
     const schedule = () => { if (!frame) frame = view.requestAnimationFrame(measure); };
     measure();
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-    ro?.observe(surface);
+    const ro = new ResizeObserver(schedule);
+    ro.observe(surface);
     const mo = new MutationObserver(schedule);
     mo.observe(surface, {childList: true, characterData: true, subtree: true});
     view.addEventListener('resize', schedule);

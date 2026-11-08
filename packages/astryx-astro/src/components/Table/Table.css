@@ -31,7 +31,6 @@
   /* ── Scroll wrapper (Table.tsx scrollWrapperStyles; contract 14 bleed) ─── */
   .astryx-table-scroll-wrapper {
     display: block;
-    -webkit-overflow-scrolling: touch;
     margin-inline-start: calc(-1 * var(--container-padding-inline-start, 0px));
     margin-inline-end: calc(-1 * var(--container-padding-inline-end, 0px));
     width: calc(100% + var(--container-padding-inline-start, 0px) + var(--container-padding-inline-end, 0px));

@@ -40,7 +40,7 @@ const STOP = `${TAB},${MENU_TRIGGER}`;
 const SCROLL_PAGE_RATIO = 0.8;
 const TOLERANCE = 1;
 
-const isRendered = (el: HTMLElement) => typeof el.checkVisibility !== 'function' || el.checkVisibility();
+const isRendered = (el: HTMLElement) => el.checkVisibility();
 
 export class TabListElement extends HTMLElement {
   #value = '';
@@ -259,22 +259,21 @@ export class TabListElement extends HTMLElement {
     if (!strip) return;
     const measure = () => { if (isRendered(strip)) this.#measure(); };
     const observed = new Set<Element>();
-    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver((entries) => {
+    const ro = new ResizeObserver((entries) => {
       measure();
       // A strip that fitted at one width can hide the selected tab at a narrower one.
       if (entries.some((entry) => entry.target === this)) this.#reveal();
     });
     const follow = () => {
-      if (!ro) return;
       const children = new Set(strip.children);
       for (const child of observed) if (!children.has(child)) { ro.unobserve(child); observed.delete(child); }
       for (const child of children) if (!observed.has(child)) { ro.observe(child); observed.add(child); }
     };
-    ro?.observe(this);
-    ro?.observe(strip);
+    ro.observe(this);
+    ro.observe(strip);
     follow();
-    const mo = typeof MutationObserver === 'undefined' ? null : new MutationObserver(() => { follow(); measure(); });
-    mo?.observe(strip, {childList: true, attributes: true, attributeFilter: ['class', 'style']});
+    const mo = new MutationObserver(() => { follow(); measure(); });
+    mo.observe(strip, {childList: true, attributes: true, attributeFilter: ['class', 'style']});
     // A scroll is measured hidden or not: script scrolled it, so its layout is current.
     const onScroll = () => this.#measure();
     strip.addEventListener('scroll', onScroll, {passive: true});

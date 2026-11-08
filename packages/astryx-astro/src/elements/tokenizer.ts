@@ -51,10 +51,8 @@ const CREATE_PREFIX = '__xds_create__';
 const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 
 function graphemes(text: string): number {
-  const Segmenter = (Intl as {Segmenter?: new (l?: string, o?: {granularity: string}) => {segment(t: string): Iterable<unknown>}}).Segmenter;
-  if (!Segmenter) return [...text].length;
   let n = 0;
-  for (const _ of new Segmenter(undefined, {granularity: 'grapheme'}).segment(text)) n++;
+  for (const _ of new Intl.Segmenter(undefined, {granularity: 'grapheme'}).segment(text)) n++;
   return n;
 }
 
@@ -718,9 +716,7 @@ export class TokenizerElement extends Base {
     }
     const controller = new AbortController();
     this.#controller = controller;
-    let resolve!: (items: TokenizerItem[]) => void;
-    let reject!: (error?: unknown) => void;
-    const answer = new Promise<TokenizerItem[]>((res, rej) => { resolve = res; reject = rej; });
+    const {promise: answer, resolve, reject} = Promise.withResolvers<TokenizerItem[]>();
     const detail: TypeaheadQueryDetail = {
       query,
       kind,
@@ -915,7 +911,7 @@ export class TokenizerElement extends Base {
     const useStatic = this.#shownFromStatic && sourceItems.every((item) => staticRows.has(item.id));
     const visible = new Set(sourceItems.map((i) => i.id));
     for (const [id, row] of staticRows) row.hidden = !(useStatic && visible.has(id));
-    const used = new Set<string>([...staticRows.values()].map((r) => r.id));
+    const used = new Set<string>(staticRows.values().map((r) => r.id));
     const doc = this.ownerDocument;
     const tpl = this.#layer?.querySelector<HTMLTemplateElement>(':scope > template[data-ax-option-template]');
     const buildRow = (item: TokenizerItem, isEntry: boolean) => {

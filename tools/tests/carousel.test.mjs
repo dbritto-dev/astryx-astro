@@ -5,7 +5,7 @@
  * (pills half outside the clipped root), edge state (start hidden/disabled at rest, end at the
  * end), button scrolling, focus hand-off to the scroller when the focused button's edge runs
  * out, keyboard panning on the focused scroller, Shift+wheel, hasLoop wrap-around, the
- * CarouselHandle API, content that fits, RTL, and the rect fallback placement.
+ * CarouselHandle API, content that fits and RTL.
  *   node tools/tests/carousel.test.mjs
  */
 import {setup, sleep} from './_harness.mjs';
@@ -143,16 +143,5 @@ check('RTL: the end pill sits on the left edge', rtlPill);
 await page.click('#car-rtl .ax-carousel-pill[data-side="end"] button');
 await sleep(150);
 check('RTL: Scroll toward the end moves to negative scrollLeft', (await state('car-rtl')).scrollLeft < -100, JSON.stringify(await state('car-rtl')));
-
-console.log('Rect fallback');
-await open('carousel', {rect: true});
-await sleep(200);
-const rect = await page.evaluate(() => {
-  const root = document.getElementById('car-default').getBoundingClientRect();
-  const layer = document.querySelector('#car-default .ax-carousel-buttons');
-  const l = layer.getBoundingClientRect();
-  return {rect: layer.hasAttribute('data-astryx-rect'), cover: Math.abs(l.left - root.left) < 1 && Math.abs(l.width - root.width) < 1 && Math.abs(l.top - root.top) < 1};
-});
-check('without anchor positioning the layer still covers the carousel', rect.rect && rect.cover, JSON.stringify(rect));
 
 await done();

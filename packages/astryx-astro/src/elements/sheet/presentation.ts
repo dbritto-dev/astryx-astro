@@ -87,7 +87,7 @@ export function adaptiveQuery(presentation: string | null | undefined): string |
 
 /** Whether `view` is a compact screen with a coarse primary pointer now. */
 export function isCompactTouch(view: Window | null | undefined = typeof window === 'undefined' ? null : window): boolean {
-  return typeof view?.matchMedia === 'function' && view.matchMedia(COMPACT_TOUCH_QUERY).matches;
+  return view?.matchMedia(COMPACT_TOUCH_QUERY).matches ?? false;
 }
 
 /** Resolve a presentation now. Only the adaptive values read their query. */
@@ -96,7 +96,7 @@ export function resolvePresentation(presentation: string | null | undefined, vie
   if (presentation === 'adaptive') return isCompactTouch(view) ? 'bottom-sheet' : 'popover';
   if (presentation === 'adaptive-bottom-sheet') {
     const v = view === undefined ? (typeof window === 'undefined' ? null : window) : view;
-    return typeof v?.matchMedia === 'function' && v.matchMedia(COARSE_POINTER_QUERY).matches ? 'bottom-sheet' : 'popover';
+    return v?.matchMedia(COARSE_POINTER_QUERY).matches ? 'bottom-sheet' : 'popover';
   }
   return 'popover';
 }
@@ -111,7 +111,7 @@ export function watchCompactTouch(view: Window | null | undefined, listener: (is
 
 /** `watchCompactTouch` for any query (an adaptive presentation's `adaptiveQuery()`). */
 export function watchQuery(view: Window | null | undefined, query: string, listener: (matches: boolean) => void): () => void {
-  if (typeof view?.matchMedia !== 'function') return () => {};
+  if (!view) return () => {};
   const list = view.matchMedia(query);
   const onChange = () => listener(list.matches);
   list.addEventListener('change', onChange);

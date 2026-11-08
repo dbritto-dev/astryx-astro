@@ -169,9 +169,7 @@ export class SideNavElement extends Base {
     // Layers of the presentation that just left: rail flyouts on expand, expanded menus on collapse.
     const leaving = next ? '[data-ax-rail="split"] > .ax-side-nav-expanded-part [popover]' : '.ax-side-nav-rail-part [popover]';
     for (const layer of nav.querySelectorAll<HTMLElement & {hide?: (reason?: string) => void}>(leaving)) {
-      let open = false;
-      try { open = layer.matches(':popover-open'); } catch { open = false; }
-      if (open) layer.hide?.('api');
+      if (layer.matches(':popover-open')) layer.hide?.('api');
     }
     if (hadFocus && !isShown(active!)) this.#moveFocus(nav, fromRow, wasOnToggle);
     if (persist) save(this.getAttribute('data-ax-save-id'), next);

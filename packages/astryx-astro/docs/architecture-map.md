@@ -347,7 +347,7 @@ Deferrals and caveats:
 3. Return focus with `preventScroll:true`, showing the ring per the last modality.
 4. Mark every layer root with `data-astryx-layer-root` and reset the container padding vars there. The attribute is the `@scope … to (…)` lower boundary that stops size and group cascades.
 
-**Browser support notes** (verify at implementation time):
+**Browser support notes** (planning-time notes; the policy now lives in `docs/platform.md`):
 - Baseline: Popover API, `@starting-style`, allow-discrete transitions, `:has()`, `light-dark()`.
 - Anchor positioning: Chromium 125+ and Safari 26+. Firefox support is recent, so confirm it.
 - Chromium-first: `popover=hint`, `interestfor`, `base-select`, `interpolate-size`, `scroll-state()`.

@@ -161,9 +161,8 @@ export function useTableSelectionState<T extends Record<string, unknown>>(config
   const getId = (item: T): string => (typeof idKey === 'function' ? idKey(item) : String(item[idKey]));
   const actionable = (item: T) => getIsItemSelectable(item) && getIsItemEnabled(item);
   const selectableIDs = new Set(data.filter(actionable).map(getId));
-  const allSelectableIDs = new Set([...selectedKeys, ...selectableIDs]);
 
-  const getIsAllSelected = () => selectableIDs.size > 0 && allSelectableIDs.size === selectedKeys.size;
+  const getIsAllSelected = () => selectableIDs.size > 0 && selectableIDs.isSubsetOf(selectedKeys);
   const getIsIndeterminate = () => {
     const count = data.filter((item) => actionable(item) && selectedKeys.has(getId(item))).length;
     return count > 0 && count < selectableIDs.size;

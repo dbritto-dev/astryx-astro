@@ -1,5 +1,5 @@
 /**
- * Anchoring a layer to its trigger: CSS anchor positioning with a rect fallback.
+ * Anchoring a layer to its trigger with CSS anchor positioning.
  *
  * Port of @astryxdesign/core Layer/useLayer.tsx (anchor-name lifetime, anchor-in-view FR5,
  * keepAnchorClear / failsAnchor / placeAfresh / observeMove / observeAnchorClearance for
@@ -16,12 +16,8 @@
  *                                 before that frame's style/paint, so nothing paints twice)
  *   releaseLayer(layer)           after it hid; the name goes when the exit animation ends
  *
- * Without CSS anchor positioning (`CSS.supports('anchor-name: --a')` false, or
- * `<html data-astryx-anchor-fallback>` to force it) the layer gets `data-astryx-rect` and a
- * small rect positioner places it with `position: fixed` top/left: preferred side, flip to the
- * opposite side, mirrored alignment, then a slide into the viewport minus the gutters. It
- * follows scroll/resize while open. No dependency (the @oddbird polyfill is ~30 KB and parses
- * every stylesheet; layers only need the three cases Astryx's fallbacks cover).
+ * The parts of CSS anchor positioning used here are Baseline (docs/platform.md), so, as in
+ * Astryx, there is no JS positioner.
  */
 import {ensureId, identFrom} from './dom';
 import {globalSingleton} from './global';
@@ -32,28 +28,11 @@ export type LayerAlignment = 'start' | 'center' | 'end';
 const CLEARS_ANCHOR = 'data-astryx-clears-anchor';
 const SCROLLS = 'data-astryx-layer-scrolls';
 const ANCHOR_HIDDEN = 'data-astryx-anchor-hidden';
-const RECT = 'data-astryx-rect';
 const KEEP_CLEAR = 'data-astryx-keep-clear';
-const FORCE_RECT = 'data-astryx-anchor-fallback';
-
-let supported: boolean | null = null;
-
-/** Whether CSS anchor positioning is used (feature-detected once; `<html data-astryx-anchor-fallback>` forces the rect path). */
-export function supportsAnchorPositioning(): boolean {
-  if (typeof document === 'undefined') return false;
-  if (document.documentElement.hasAttribute(FORCE_RECT)) return false;
-  if (supported == null) {
-    supported = typeof CSS !== 'undefined' && typeof CSS.supports === 'function' &&
-      CSS.supports('anchor-name: --a') && CSS.supports('position-area: block-end');
-  }
-  return supported;
-}
 
 // ── anchor-name lists (anchorName.ts): several layers may share one trigger ──
-type StyleRecord = CSSStyleDeclaration & Record<string, string>;
-
 export function readAnchorNames(el: HTMLElement): string[] {
-  return ((el.style as StyleRecord).anchorName ?? el.style.getPropertyValue('anchor-name') ?? '')
+  return el.style.getPropertyValue('anchor-name')
     .split(',').map((n) => n.trim()).filter((n) => n && n !== 'none');
 }
 
@@ -79,7 +58,6 @@ export function anchorNameFor(layer: HTMLElement): string {
 interface State {
   anchor: HTMLElement;
   name: string;
-  mode: 'anchor' | 'rect';
   cleanups: Array<() => void>;
   exit: object | null;
 }
@@ -113,38 +91,25 @@ export function anchorLayer(layer: HTMLElement, anchor: HTMLElement): void {
     previous.exit = null;
     if (previous.anchor !== anchor) removeAnchorName(previous.anchor, previous.name);
   }
-  const mode = supportsAnchorPositioning() ? 'anchor' : 'rect';
   const name = anchorNameFor(layer);
-  states.set(layer, {anchor, name, mode, cleanups: [], exit: null});
+  states.set(layer, {anchor, name, cleanups: [], exit: null});
   layer.removeAttribute(CLEARS_ANCHOR);
   layer.removeAttribute(SCROLLS);
-  if (mode === 'anchor') {
-    layer.removeAttribute(RECT);
-    addAnchorName(anchor, name);
-    layer.style.setProperty('position-anchor', name);
-    // FR5, read before the first frame: an aligned layer whose anchor is out of view holds.
-    layer.toggleAttribute(ANCHOR_HIDDEN, !isInView(anchor));
-  } else {
-    layer.setAttribute(RECT, '');
-    layer.style.removeProperty('position-anchor');
-    layer.removeAttribute(ANCHOR_HIDDEN);
-  }
+  addAnchorName(anchor, name);
+  layer.style.setProperty('position-anchor', name);
+  // FR5, read before the first frame: an aligned layer whose anchor is out of view holds.
+  layer.toggleAttribute(ANCHOR_HIDDEN, !isInView(anchor));
 }
 
 /**
- * Once the layer is shown: place it (rect mode) or check that a keep-clear layer does not
- * cover its anchor (anchor mode), then follow geometry changes while it stays open.
+ * Once the layer is shown: follow its anchor's visibility and check that a keep-clear layer
+ * does not cover its anchor, then follow geometry changes while it stays open.
  */
 export function settleLayer(layer: HTMLElement): void {
   const state = states.get(layer);
   if (!state || state.exit) return;
   if (!isShown(layer)) return;
   stopObservers(state);
-  if (state.mode === 'rect') {
-    positionWithRects(layer, state.anchor);
-    state.cleanups.push(followRects(layer, state));
-    return;
-  }
   state.cleanups.push(observeAnchorVisibility(layer, state.anchor));
   if (layer.hasAttribute(KEEP_CLEAR)) {
     keepAnchorClear(layer, state.anchor);
@@ -169,24 +134,17 @@ export function releaseLayer(layer: HTMLElement): void {
   };
   // Flush style so the exit transitions exist before they are read.
   void getComputedStyle(layer).opacity;
-  const running = typeof layer.getAnimations === 'function'
-    ? layer.getAnimations({subtree: true}).filter((a) => a.playState === 'running' && a.effect?.getComputedTiming().endTime !== Infinity)
-    : [];
+  const running = layer.getAnimations({subtree: true}).filter((a) => a.playState === 'running' && a.effect?.getComputedTiming().endTime !== Infinity);
   if (running.length === 0) done();
   else void Promise.all(running.map((a) => a.finished.catch(() => undefined))).then(done);
 }
 
 function isShown(layer: HTMLElement): boolean {
-  try {
-    return layer.matches(':popover-open');
-  } catch {
-    return layer.style.display !== 'none';
-  }
+  return layer.matches(':popover-open');
 }
 
 // ── FR5: anchor visibility while open ───────────────────────────────────────
 function observeAnchorVisibility(layer: HTMLElement, anchor: HTMLElement): () => void {
-  if (typeof IntersectionObserver === 'undefined') return () => {};
   const io = new IntersectionObserver((entries) => {
     const latest = entries[entries.length - 1];
     if (latest) layer.toggleAttribute(ANCHOR_HIDDEN, !latest.isIntersecting);
@@ -259,7 +217,6 @@ export function keepAnchorClear(layer: HTMLElement, anchor: HTMLElement): void {
  */
 function observeMove(element: HTMLElement, onMove: () => void): () => void {
   const doc = element.ownerDocument;
-  if (typeof IntersectionObserver === 'undefined') return () => {};
   let observer: IntersectionObserver | null = null;
   let visibility: IntersectionObserver | null = null;
   const stop = () => {
@@ -316,13 +273,10 @@ function observeMove(element: HTMLElement, onMove: () => void): () => void {
 function observeAnchorClearance(layer: HTMLElement, anchor: HTMLElement, isCurrent: () => boolean): () => void {
   const view = layer.ownerDocument.defaultView ?? window;
   const reread = () => { if (isCurrent()) keepAnchorClear(layer, anchor); };
-  let ro: ResizeObserver | null = null;
-  if (typeof ResizeObserver !== 'undefined') {
-    ro = new ResizeObserver(reread);
-    ro.observe(layer);
-    for (const child of layer.children) ro.observe(child);
-    ro.observe(anchor);
-  }
+  const ro = new ResizeObserver(reread);
+  ro.observe(layer);
+  for (const child of layer.children) ro.observe(child);
+  ro.observe(anchor);
   let frame: number | null = null;
   const stopMove = observeMove(anchor, () => {
     if (frame !== null) return;
@@ -330,113 +284,9 @@ function observeAnchorClearance(layer: HTMLElement, anchor: HTMLElement, isCurre
   });
   view.addEventListener('resize', reread);
   return () => {
-    ro?.disconnect();
+    ro.disconnect();
     stopMove();
     if (frame !== null) view.cancelAnimationFrame(frame);
     view.removeEventListener('resize', reread);
-  };
-}
-
-// ── Rect fallback ───────────────────────────────────────────────────────────
-type Side = 'top' | 'bottom' | 'left' | 'right';
-
-/** Place a `data-astryx-rect` layer beside its anchor with flip and slide. */
-export function positionWithRects(layer: HTMLElement, anchor: HTMLElement): void {
-  const placement = layer.dataset.placement as LayerPlacement | undefined;
-  if (!placement) return;
-  const alignment = (layer.dataset.align as LayerAlignment | undefined) ?? 'center';
-  const view = layer.ownerDocument.defaultView ?? window;
-  const root = layer.ownerDocument.documentElement;
-  // The stylesheet's placement margins carry the clearance (anchor side) and the gutters (far
-  // sides): read them, then lay the box out flush and place it with those values.
-  layer.style.removeProperty('margin');
-  layer.style.removeProperty('max-block-size');
-  const cs = view.getComputedStyle(layer);
-  const rtl = cs.direction === 'rtl';
-  const m = {top: parseFloat(cs.marginTop) || 0, right: parseFloat(cs.marginRight) || 0, bottom: parseFloat(cs.marginBottom) || 0, left: parseFloat(cs.marginLeft) || 0};
-  const side: Side = placement === 'above' ? 'top' : placement === 'below' ? 'bottom' : (placement === 'start') !== rtl ? 'left' : 'right';
-  const vertical = side === 'top' || side === 'bottom';
-  const clearance = {top: m.bottom, bottom: m.top, left: m.right, right: m.left}[side];
-  const gutterMain = m[side];
-  const gutterCross = vertical ? Math.max(m.left, m.right) : Math.max(m.top, m.bottom);
-  layer.style.margin = '0';
-  layer.style.setProperty('--_ax-anchor-width', `${anchor.getBoundingClientRect().width}px`);
-  const a = anchor.getBoundingClientRect();
-  let w = layer.offsetWidth;
-  let h = layer.offsetHeight;
-  const vw = root.clientWidth;
-  const vh = root.clientHeight;
-
-  const mainFor = (s: Side) => (s === 'top' ? a.top - clearance - h : s === 'bottom' ? a.bottom + clearance : s === 'left' ? a.left - clearance - w : a.right + clearance);
-  const fits = (s: Side) => {
-    const v = mainFor(s);
-    return s === 'top' ? v >= gutterMain : s === 'bottom' ? v + h <= vh - gutterMain : s === 'left' ? v >= gutterMain : v + w <= vw - gutterMain;
-  };
-  const room = (s: Side) => (s === 'top' ? a.top - clearance - gutterMain : s === 'bottom' ? vh - a.bottom - clearance - gutterMain : s === 'left' ? a.left - clearance - gutterMain : vw - a.right - clearance - gutterMain);
-  const opposite: Record<Side, Side> = {top: 'bottom', bottom: 'top', left: 'right', right: 'left'};
-  let chosen: Side = side;
-  if (!fits(side)) {
-    if (fits(opposite[side])) chosen = opposite[side];
-    else {
-      chosen = room(opposite[side]) > room(side) ? opposite[side] : side;
-      // Taller than the room on both block sides: size to the roomier side and scroll (FR3).
-      if (vertical) {
-        const cap = Math.max(0, room(chosen));
-        layer.style.setProperty('max-block-size', `${cap}px`);
-        h = layer.offsetHeight;
-        layer.toggleAttribute(SCROLLS, layer.scrollHeight > layer.clientHeight + 1);
-      }
-    }
-  }
-  w = layer.offsetWidth;
-  // Alignment along the cross axis; start/end are logical (inline for above/below).
-  const crossFor = (align: LayerAlignment) => {
-    if (vertical) {
-      if (align === 'center') return a.left + a.width / 2 - w / 2;
-      const startEdge = (align === 'start') !== rtl;
-      return startEdge ? a.left : a.right - w;
-    }
-    if (align === 'center') return a.top + a.height / 2 - h / 2;
-    return align === 'start' ? a.top : a.bottom - h;
-  };
-  const size = vertical ? w : h;
-  const limit = vertical ? vw : vh;
-  const crossFits = (v: number) => v >= gutterCross && v + size <= limit - gutterCross;
-  let cross = crossFor(alignment);
-  if (!crossFits(cross) && alignment !== 'center') {
-    const mirrored = crossFor(alignment === 'start' ? 'end' : 'start');
-    if (crossFits(mirrored)) cross = mirrored;
-  }
-  // Slide: keep the box (and its gutters) inside the viewport.
-  cross = Math.min(Math.max(cross, gutterCross), Math.max(gutterCross, limit - gutterCross - size));
-  const main = mainFor(chosen);
-  layer.style.setProperty('top', `${Math.round(vertical ? main : cross)}px`);
-  layer.style.setProperty('left', `${Math.round(vertical ? cross : main)}px`);
-  layer.dataset.astryxRectSide = chosen;
-}
-
-function followRects(layer: HTMLElement, state: State): () => void {
-  const view = layer.ownerDocument.defaultView ?? window;
-  let frame: number | null = null;
-  const schedule = () => {
-    if (frame !== null) return;
-    frame = view.requestAnimationFrame(() => {
-      frame = null;
-      if (states.get(layer) === state && isShown(layer)) positionWithRects(layer, state.anchor);
-    });
-  };
-  view.addEventListener('scroll', schedule, {capture: true, passive: true});
-  view.addEventListener('resize', schedule);
-  let ro: ResizeObserver | null = null;
-  if (typeof ResizeObserver !== 'undefined') {
-    ro = new ResizeObserver(schedule);
-    ro.observe(layer);
-    ro.observe(state.anchor);
-  }
-  return () => {
-    view.removeEventListener('scroll', schedule, {capture: true});
-    view.removeEventListener('resize', schedule);
-    ro?.disconnect();
-    if (frame !== null) view.cancelAnimationFrame(frame);
   };
 }
