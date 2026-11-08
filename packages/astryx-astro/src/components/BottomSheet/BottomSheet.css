@@ -263,7 +263,6 @@
     z-index: 2;
     pointer-events: none;
     mask-image: linear-gradient(transparent, transparent);
-    -webkit-mask-image: linear-gradient(transparent, transparent);
   }
 
   /* BottomSheetSwitcher's element adds no box. */

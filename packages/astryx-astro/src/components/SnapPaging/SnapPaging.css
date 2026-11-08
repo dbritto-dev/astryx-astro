@@ -17,7 +17,6 @@
     overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
-  .ax-snap-paging::-webkit-scrollbar { display: none; }
 
   .ax-snap-paging-track {
     display: flex;
