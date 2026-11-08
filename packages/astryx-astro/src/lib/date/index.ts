@@ -19,3 +19,4 @@ export * from './formatInstant';
 export * from './formatRelativeTime';
 export * from './tooltipEntries';
 export * from './timestamp';
+export * from './values';

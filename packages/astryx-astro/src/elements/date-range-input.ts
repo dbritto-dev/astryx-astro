@@ -17,7 +17,7 @@ import './runtime/disabledInteraction';
 import './picker-popover';
 import './calendar';
 import {emit, onFormReset} from './field';
-import {formatRangeDisplay, isRangeEqual, toRange, type DateRange} from '../components/DateRangeInput/rangeModel';
+import {formatRangeDisplay, isRangeEqual, toRange, type DateRange, type DateRangeValue} from '../components/DateRangeInput/rangeModel';
 import {getInitialFocusDate, resolveShownCalendar} from '../components/Calendar/calendarModel';
 import {plainDateToISO, plainDateToday, type CalendarSystem, type ISODateString} from '../lib/date';
 import type {AxCalendar} from './calendar';
@@ -56,7 +56,8 @@ export class DateRangeInputElement extends HTMLElement {
   get value(): DateRange | null {
     return this.#value ? {...this.#value} : null;
   }
-  set value(next: DateRange | null | undefined) {
+  /** Set with ISO dates or `Temporal.PlainDate`s; reads back ISO strings. */
+  set value(next: DateRangeValue | null | undefined) {
     this.#setValue(toRange(next));
   }
 

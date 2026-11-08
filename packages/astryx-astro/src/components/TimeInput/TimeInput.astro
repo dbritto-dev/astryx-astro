@@ -32,6 +32,10 @@
  * `<input type="time">` surface on coarse pointers (NativeTimeSegment) and the bottom-sheet
  * time wheels (TouchTimeField). `changeAction` / `onChange`: use the event. Astryx has no time
  * list for TimeInput (DateTimeInput's `timeOptionInterval` has one).
+ * Temporal (port addition): `value`, `min` and `max` also take a `Temporal.PlainTime` (written
+ * `HH:MM`, or `HH:MM:SS` when it has seconds), and so does the element's `value`;
+ * `astryx-change` reports the ISO string. Parsing checks, comparisons, clamping and stepping
+ * run on Temporal.PlainTime (lib/date timeParser).
  *
  * @example
  * <TimeInput label="Start time" value="14:30" hasClear />
@@ -57,7 +61,7 @@ import {
   type InputSize,
   type InputStatus,
 } from '../Field/fieldProps';
-import {formatLocaleTime, parseISOTime, resolveHourFormat, type ISOTimeString} from '../../lib/date';
+import {formatLocaleTime, isoTimeOf, parseISOTime, resolveHourFormat, type ISOTimeString, type TimeValue} from '../../lib/date';
 import type {TimeFieldConfig} from './timeField';
 import '../Field/Field.css';
 import '../VisuallyHidden/VisuallyHidden.css';
@@ -72,16 +76,16 @@ export type TimeInputPresentation = 'text-input' | 'popover' | 'bottom-sheet' | 
 export type TimeInputNativePicker = 'touch' | 'always' | 'never';
 
 export interface Props extends FieldComposedProps {
-  /** Selected time (`HH:MM` or `HH:MM:SS`). The element owns it afterwards. */
-  value?: ISOTimeString | string | null;
+  /** Selected time (`HH:MM` or `HH:MM:SS`, or a `Temporal.PlainTime`). The element owns it afterwards. */
+  value?: TimeValue | null;
   /** Why the input is disabled (tooltip on hover/focus; also describes the input). */
   disabledMessage?: string;
   /** Busy: aria-busy + spinner. @default false */
   isLoading?: boolean;
-  /** Minimum time (ISO); typed and stepped times outside are rejected. */
-  min?: ISOTimeString | string;
-  /** Maximum time (ISO). */
-  max?: ISOTimeString | string;
+  /** Minimum time (ISO or `Temporal.PlainTime`); typed and stepped times outside are rejected. */
+  min?: TimeValue;
+  /** Maximum time (ISO or `Temporal.PlainTime`). */
+  max?: TimeValue;
   /** Include seconds in the display and parsing. @default false */
   hasSeconds?: boolean;
   /** Clear button while a time is set. @default false */
@@ -106,11 +110,11 @@ export interface Props extends FieldComposedProps {
 }
 
 const {
-  value: valueProp,
+  value: valuePropValue,
   disabledMessage,
   isLoading = false,
-  min,
-  max,
+  min: minProp,
+  max: maxProp,
   hasSeconds = false,
   hasClear = false,
   hasAutoFocus = false,
@@ -125,6 +129,10 @@ const {
   slot: _slot, ...props
 } = Astro.props as typeof Astro.props & {slot?: string};
 
+// A Temporal.PlainTime becomes `HH:MM` (`HH:MM:SS` with seconds); strings pass as given.
+const valueProp = isoTimeOf(valuePropValue);
+const min = isoTimeOf(minProp);
+const max = isoTimeOf(maxProp);
 const r = routeFieldProps('TimeInput', props as Props & Record<string, unknown>, {groupable: true});
 const {isDisabled, status, statusVariant} = r;
 const t = translator(Astro, r.locale);

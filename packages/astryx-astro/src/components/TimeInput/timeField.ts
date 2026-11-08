@@ -6,8 +6,10 @@
  * The typed time field, framework-free: the pending text while typing, its validity, the
  * placeholder hint, arrow-key stepping (by whole minutes, wrapping midnight, rejected outside
  * min/max) and blur commits. Shared by `<ax-time-input>` and `<ax-date-time-input>`'s time
- * segment. Every Intl call takes the field's locale (lib/date timeFormat).
+ * segment. Every Intl call takes the field's locale (lib/date timeFormat); times are
+ * Temporal.PlainTime values underneath (lib/date timeParser).
  */
+import {Temporal} from '../../lib/temporal';
 import {
   adjustTime,
   formatISOTime,
@@ -31,10 +33,9 @@ export interface TimeFieldConfig {
   invalid: string;
 }
 
-/** The time the arrows start from when there is none: now (the browser's clock). */
+/** The time the arrows start from when there is none: now (the browser's clock, its zone). */
 export function nowTime(hasSeconds: boolean): ISOTimeString {
-  const now = new Date();
-  return formatISOTime({hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds()}, hasSeconds);
+  return formatISOTime(Temporal.Now.plainTimeISO(), hasSeconds);
 }
 
 export class TimeField {

@@ -14,8 +14,9 @@
  * Disabled / busy state is read from the input (`aria-disabled`) each time, so an InputGroup's
  * disabled stamp needs nothing extra.
  *
- * API: `value`, `isOpen`, `open()`, `close()`, `clear()`, `focus()`, `dateConstraints`,
- * `formatValue`. Event: `astryx-change` `{value: ISODateString | undefined}` (cancelable).
+ * API: `value` (set: ISO or `Temporal.PlainDate`), `isOpen`, `open()`, `close()`, `clear()`,
+ * `focus()`, `dateConstraints`, `formatValue`. Event: `astryx-change`
+ * `{value: ISODateString | undefined}` (cancelable). Date math is Temporal (lib/date).
  */
 import './runtime/disabledInteraction';
 import './picker-popover';
@@ -26,7 +27,7 @@ import {emit, onFormReset} from './field';
 import {TypedDate, TypedDateField, type TypedDateConfig} from '../components/DateInput/typedDate';
 import {FieldStatusView} from '../components/DateInput/statusView';
 import {getInitialFocusDate, resolveShownCalendar} from '../components/Calendar/calendarModel';
-import {plainDateToISO, plainDateToday, type ISODateString} from '../lib/date';
+import {isoDateOf, plainDateToISO, plainDateToday, type DateValue, type ISODateString} from '../lib/date';
 import type {AxCalendar} from './calendar';
 import type {PickerPopoverElement} from './picker-popover';
 
@@ -38,7 +39,10 @@ interface DateInputConfig {
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const toValue = (v: unknown): ISODateString | undefined => (typeof v === 'string' && ISO_DATE.test(v) ? (v as ISODateString) : undefined);
+const toValue = (v: unknown): ISODateString | undefined => {
+  const iso = isoDateOf(v as DateValue | null | undefined);
+  return typeof iso === 'string' && ISO_DATE.test(iso) ? iso : undefined;
+};
 
 export class DateInputElement extends HTMLElement {
   #config: DateInputConfig | null = null;
@@ -63,7 +67,7 @@ export class DateInputElement extends HTMLElement {
   get value(): ISODateString | undefined {
     return this.#value;
   }
-  set value(next: ISODateString | undefined | null) {
+  set value(next: DateValue | undefined | null) {
     this.#setValue(toValue(next));
   }
 

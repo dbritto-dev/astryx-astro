@@ -4,7 +4,9 @@
 /**
  * Calendar's pure logic, shared by the server render (Calendar.astro) and the client element
  * (src/elements/calendar.ts), so both write the same markup from one function
- * (`renderMonthsHtml`). Framework-free: `Intl` with an explicit locale and lib/date only.
+ * (`renderMonthsHtml`). Framework-free: `Intl` with an explicit locale and lib/date only; the
+ * date math is Temporal (lib/temporal.ts), native or the `/full` polyfill on both sides, so
+ * every calendar system renders the same markup on the server and in the browser.
  *
  * Ports:
  *   Calendar/getWeekdayHeaderNames.ts            → getWeekdayHeaders (verbatim)
@@ -43,7 +45,6 @@ import {
   formatCalendarDate,
   formatCalendarMonthLabel,
   isCalendarSystem,
-  isCalendarSystemAvailable,
   isInCalendarMonth,
   type CalendarMonth,
   type CalendarSystem,
@@ -65,21 +66,14 @@ export type NavigationUnit = 'days' | 'months' | 'years';
 // i18n/useCalendarSystem.ts
 // =============================================================================
 
-/** The calendar a caller names: unknown, or not showable by this runtime → `gregory` (warns once). */
+/**
+ * The calendar a caller names: unknown → `gregory` (warns once). Every known calendar can show:
+ * lib/temporal.ts is native Temporal or the `/full` polyfill, both with all of them, so the
+ * port has no "this runtime lacks Temporal" fallback.
+ */
 export function resolveShownCalendar(calendar: string, source: string): CalendarSystem {
-  let id: CalendarSystem;
-  if (isCalendarSystem(calendar)) id = calendar;
-  else {
-    warnOnce(`calendar-unsupported:${calendar}`, source, `The calendar "${calendar}" is not supported; showing Gregorian dates.`);
-    id = 'gregory';
-  }
-  if (isCalendarSystemAvailable(id)) return id;
-  warnOnce(
-    `calendar-unavailable:${id}`,
-    source,
-    `The "${id}" calendar needs a Temporal that supports it, and this runtime has none; showing Gregorian dates. ` +
-      "Load a Temporal polyfill with every calendar, such as 'temporal-polyfill/full/global', on the server and in the browser.",
-  );
+  if (isCalendarSystem(calendar)) return calendar;
+  warnOnce(`calendar-unsupported:${calendar}`, source, `The calendar "${calendar}" is not supported; showing Gregorian dates.`);
   return 'gregory';
 }
 
@@ -386,7 +380,10 @@ export interface ConstraintOptions {
   maxRangeSpan?: number;
   minRangeSpan?: number;
   rangeAnchor?: PlainDate | null;
-  /** Custom constraints: the date is disabled if ANY returns false (receives a native Date). */
+  /**
+   * Custom constraints: the date is disabled if ANY returns false. Astryx's API hands each one
+   * the day's local midnight as a `Date` (`plainDateToDate`), so `Date` stays at this boundary.
+   */
   dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
   /** The server-evaluated constraint mask (see ConstraintMask). */
   mask?: ConstraintMask;
