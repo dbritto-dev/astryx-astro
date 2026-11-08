@@ -620,13 +620,7 @@ export class ToastViewportElement extends Base {
       }
       if (hadFocus) (active as HTMLElement).focus({preventScroll: true});
     }
-    if (typeof this.showPopover !== 'function') return;
-    let showing = false;
-    try {
-      showing = this.matches(':popover-open');
-    } catch {
-      /* unsupported */
-    }
+    let showing = this.matches(':popover-open');
     if (showing && change === 'entry') {
       // A non-modal surface entered above: leave and re-enter the top layer in place.
       const active = doc.activeElement;

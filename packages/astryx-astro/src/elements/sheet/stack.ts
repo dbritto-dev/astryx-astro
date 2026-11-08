@@ -462,23 +462,13 @@ function finishReplace(replaced: Entry): void {
 /** Whether a sheet's dialog is presented (modal `open`, or a manual popover). */
 export function isPresented(dialog: HTMLDialogElement | null): boolean {
   if (!dialog) return false;
-  if (dialog.open) return true;
-  try {
-    return dialog.matches(':popover-open');
-  } catch {
-    return false;
-  }
+  return dialog.open || dialog.matches(':popover-open');
 }
 
 /** Leave the native host, whichever one presents the sheet. */
 export function hideSheetHost(dialog: HTMLDialogElement): void {
-  if (dialog.hasAttribute('popover') && typeof dialog.hidePopover === 'function') {
-    try {
-      dialog.hidePopover();
-    } catch {
-      /* shown with show() (no Popover API) */
-    }
-  }
+  // Hiding a popover that is not showing is a no-op.
+  if (dialog.hasAttribute('popover')) dialog.hidePopover();
   if (dialog.open) dialog.close();
 }
 

@@ -25,13 +25,7 @@ import {ModalHostElement, defineHost} from './dialog';
 const EXIT_BACKSTOP_BUFFER_MS = 50;
 const EXIT_FALLBACK_MS = 250;
 
-function isPopoverShowing(el: Element): boolean {
-  try {
-    return el.matches(':popover-open');
-  } catch {
-    return false;
-  }
-}
+const isPopoverShowing = (el: Element): boolean => el.matches(':popover-open');
 
 function parseTimes(value: string): Array<number | null> {
   return value.split(',').map((part) => {
@@ -67,12 +61,11 @@ export class DrawerElement extends ModalHostElement {
 
   protected showHost(dialog: HTMLDialogElement): void {
     if (this.isModal) dialog.showModal();
-    else if (typeof dialog.showPopover === 'function') dialog.showPopover();
-    else dialog.show();
+    else dialog.showPopover();
   }
 
   protected hideHost(dialog: HTMLDialogElement): void {
-    if (!this.isModal && typeof dialog.hidePopover === 'function') {
+    if (!this.isModal) {
       if (isPopoverShowing(dialog)) dialog.hidePopover();
       this.#owesClose = true;
       return;

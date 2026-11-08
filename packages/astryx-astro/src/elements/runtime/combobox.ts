@@ -555,9 +555,7 @@ export function keepLayerOpenFor(root: HTMLElement, layer: () => HTMLElement | n
     const control = isElement(event.target) ? event.target.closest<HTMLElement>('button') : null;
     const target = layer();
     if (!marked || !control || !marked.contains(control) || !target || !root.contains(control) || control.hasAttribute('popovertarget')) return;
-    let open = false;
-    try { open = target.matches(':popover-open'); } catch { /* no popover API */ }
-    if (!open || !target.id) return;
+    if (!target.matches(':popover-open') || !target.id) return;
     control.setAttribute('popovertarget', target.id);
     control.setAttribute(TEMP, '');
     const doc = control.ownerDocument;

@@ -60,11 +60,7 @@ export class LayerElement extends Base {
   #wired = false;
 
   get isOpen(): boolean {
-    try {
-      return this.matches(':popover-open');
-    } catch {
-      return this.style.display === 'block';
-    }
+    return this.matches(':popover-open');
   }
 
   connectedCallback(): void {
@@ -165,21 +161,14 @@ export class LayerElement extends Base {
     this.#pendingAnchor = options.anchor ?? null;
     this.#reason = options.reason ?? 'api';
     const source = options.source ?? options.anchor ?? null;
-    if (typeof this.showPopover === 'function') {
-      try {
-        // `source` makes the trigger the invoker: popover nesting and focus order follow it.
-        if (source instanceof HTMLElement) (this.showPopover as (o?: {source?: HTMLElement}) => void)({source});
-        else this.showPopover();
-      } catch (error) {
-        this.#pendingAnchor = null;
-        if ((error as {name?: string})?.name === 'InvalidStateError') return false;
-        throw error;
-      }
-    } else {
-      // No Popover API: plain visibility, no top layer.
-      this.#beforeOpen();
-      this.style.display = 'block';
-      this.#afterOpen();
+    try {
+      // `source` makes the trigger the invoker: popover nesting and focus order follow it.
+      if (source instanceof HTMLElement) (this.showPopover as (o?: {source?: HTMLElement}) => void)({source});
+      else this.showPopover();
+    } catch (error) {
+      this.#pendingAnchor = null;
+      if ((error as {name?: string})?.name === 'InvalidStateError') return false;
+      throw error;
     }
     this.#pendingAnchor = null;
     // Shown within this call: settle now, before anything paints.
@@ -193,12 +182,7 @@ export class LayerElement extends Base {
     this.#reason = reason;
     this.#ownHide = true;
     try {
-      if (typeof this.hidePopover === 'function') this.hidePopover();
-      else {
-        this.#beforeClose();
-        this.style.display = 'none';
-        this.#afterClose();
-      }
+      this.hidePopover();
     } finally {
       this.#ownHide = false;
     }

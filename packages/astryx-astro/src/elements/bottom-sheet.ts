@@ -154,14 +154,14 @@ export class BottomSheetElement extends ModalHostElement implements SheetStackHo
 
   protected showHost(dialog: HTMLDialogElement): void {
     if (this.isModal) dialog.showModal();
-    else if (typeof dialog.showPopover === 'function' && dialog.hasAttribute('popover')) dialog.showPopover();
+    else if (dialog.hasAttribute('popover')) dialog.showPopover();
     else dialog.show();
   }
 
   protected hideHost(dialog: HTMLDialogElement): void {
     const keep = this.#keepFocusOnClose;
     this.#keepFocusOnClose = false;
-    if (!this.isModal && dialog.hasAttribute('popover') && typeof dialog.hidePopover === 'function') this.#owesClose = true;
+    if (!this.isModal && dialog.hasAttribute('popover')) this.#owesClose = true;
     if (keep) closeDialogKeepingFocus(dialog);
     else hideSheetHost(dialog);
   }
