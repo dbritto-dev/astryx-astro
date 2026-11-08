@@ -3,6 +3,7 @@
  * Table/columnUtils.ts (0.7.9). Pure; runs in frontmatter and in the browser.
  */
 import {firstCharacter} from '../../lib/characters';
+import {temporalKind} from '../../lib/temporalKind';
 import type {PixelWidth, ProportionalWidth, TableColumn} from './types';
 
 /** Default minimum width (px) for explicit proportional columns. */
@@ -133,7 +134,10 @@ export function capitalize(str: string): string {
 /** Default cell text for a value (Astryx defaultCellRenderer). */
 export function defaultCellText(value: unknown): string {
   if (value == null) return '';
+  // `Date` is Astryx's own cell type: read here, never built.
   if (value instanceof Date) return value.toISOString();
+  // Port addition: a Temporal value shows its ISO string (recognized by brand, no Temporal loaded).
+  if (temporalKind(value) !== null) return String(value);
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value);
   }

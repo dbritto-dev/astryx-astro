@@ -53,6 +53,9 @@ export function tableValueToFilterValue(value: TableFilterValue, opValue: Operat
     case 'enum_list':
       return Array.isArray(value) ? {type: 'enum_list', value} : undefined;
     case 'date_absolute':
+      // `Date` parses the filter's date string (the ISO day a DateInput reports, at UTC
+      // midnight, or any string Astryx's Date reading takes) because this module ships to every
+      // filterable table, which must not load Temporal (lib/temporal.ts) without a date column.
       return typeof value === 'string' ? {type: 'date_absolute', unixSeconds: Math.floor(new Date(value).getTime() / 1000)} : undefined;
     case 'time':
       return typeof value === 'string' ? {type: 'time', value} : undefined;

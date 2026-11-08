@@ -49,3 +49,14 @@ export function compareTemporal(a: unknown, b: unknown): number | null {
   const compare = (a as {constructor?: {compare?: (x: unknown, y: unknown) => number}}).constructor?.compare;
   return typeof compare === 'function' ? compare(a, b) : null;
 }
+
+/**
+ * The epoch milliseconds a date filter compares a `Temporal.PlainDate` by: its UTC midnight,
+ * the instant a date-only filter value names (Astryx reads `YYYY-MM-DD` as UTC midnight).
+ * Null for anything else. Uses the value's own methods, so Temporal is not loaded here.
+ */
+export function plainDateUtcMilliseconds(value: unknown): number | null {
+  return temporalKind(value) === 'PlainDate'
+    ? (value as {toZonedDateTime(zone: string): {epochMilliseconds: number}}).toZonedDateTime('UTC').epochMilliseconds
+    : null;
+}

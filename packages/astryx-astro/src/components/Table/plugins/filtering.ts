@@ -29,7 +29,9 @@ import {comp, nodeText} from '../node';
 import {proportional} from '../columnUtils';
 import {withFeature} from '../pipeline';
 import FilterSlot from '../_FilterSlot.astro';
-import {createPowerSearchConfig, type PowerSearchConfig, type PowerSearchFilter} from '../../PowerSearch/powerSearchModel';
+import {createPowerSearchConfig} from '../../PowerSearch/powerSearchFilters';
+import {exactTimeMilliseconds, plainDateUtcMilliseconds} from '../../../lib/temporalKind';
+import type {PowerSearchConfig, PowerSearchFilter} from '../../PowerSearch/powerSearchModel';
 import {resolveFilterField, toSearchFilters, type TableFilterState, type TableFilterValue, type TableFilterVariant} from './filterModel';
 import type {TableColumn, TableFilterFieldRef, TablePlugin} from '../types';
 
@@ -86,9 +88,16 @@ function headerString<T extends Record<string, unknown>>(column: TableColumn<T>)
   return text || column.key;
 }
 
-/** A row value as the client matcher reads it (Dates as unix seconds, as applyFilters compares them). */
+/**
+ * A row value as the client matcher reads it: dates as unix seconds, as applyFilters compares
+ * them — a `Date`, and (port addition) a `Temporal.Instant` / `ZonedDateTime`, or a
+ * `Temporal.PlainDate` at its UTC midnight (lib/temporalKind.ts: no Temporal loaded).
+ */
 function clientValue(value: unknown): unknown {
+  // `Date` is Astryx's own row type: read here, never built.
   if (value instanceof Date) return Math.floor(value.getTime() / 1000);
+  const ms = exactTimeMilliseconds(value) ?? plainDateUtcMilliseconds(value);
+  if (ms !== null) return Math.floor(ms / 1000);
   if (value == null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value)) return value.map(clientValue);
   return null;
