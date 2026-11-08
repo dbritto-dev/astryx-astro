@@ -41,12 +41,10 @@
   }
 
   /* The time list's layer is at least as wide as the time segment (styles.timeListbox
-   * minWidth: anchor-size(width), applied where anchor-size() is valid). */
+   * minWidth: anchor-size(width)). */
   .ax-date-time-input-list-layer {
-    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
     min-width: min(anchor-size(width), var(--_ax-max-inline-size));
   }
-  .ax-date-time-input-list-layer[data-astryx-rect] { min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size)); }
 
   /* styles.timeListbox */
   .ax-date-time-input-listbox {

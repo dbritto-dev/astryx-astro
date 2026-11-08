@@ -28,7 +28,6 @@
     width: anchor-size(width);
     min-width: min(400px, var(--_ax-max-inline-size, calc(100vw - 2 * var(--spacing-4))));
   }
-  .ax-layer.ax-power-search-layer[data-astryx-rect] { width: var(--_ax-anchor-width, auto); }
   .ax-power-search-surface { width: 100%; }
 
   /* ── The editor (PowerSearchEditPopover styles) ───────────────────────── */

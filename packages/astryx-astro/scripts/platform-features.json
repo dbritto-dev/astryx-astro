@@ -459,6 +459,12 @@
       "degrades": "Safari needs the `-webkit-` prefix, written beside it where selection must stay off (Slider, ContextMenu); elsewhere the text stays selectable there."
     },
     {
+      "id": "temporal",
+      "use": "enhancement",
+      "where": "The whole date/time stack through `lib/temporal.ts`: `lib/date`, Calendar, DateInput, DateRangeInput, DateTimeInput, TimeInput, Timestamp, Timer, PowerSearch and Table date values",
+      "degrades": "Polyfilled, same behaviour: `lib/temporal.ts` imports `temporal-polyfill/full` (pinned 1.0.6, about 23 KB gzipped, all 16 calendar systems) on demand where `globalThis.Temporal` is missing (Safari, and Node during server rendering), without installing a global. Only pages with date components fetch it. Known difference: native ICU4X and the polyfill's Intl-based data put a few Chinese and Dangi month starts a day apart."
+    },
+    {
       "id": "scheduler",
       "use": "enhancement",
       "where": "CodeBlock async tokenizing yields with `scheduler.yield()` (`lib/codeblock/tokenizer.ts`)",

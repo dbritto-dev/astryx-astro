@@ -13,8 +13,8 @@ tooltips, comboboxes, tables …) load only their own script.
   `astryx theme build`. Components render the same `astryx-*` classes and `data-*` hooks, so
   the generated theme CSS applies unchanged.
 - **Same strings**: Astryx's ICU locale catalogs (30 locales), translated on the server.
-- **Platform first**: `popover`, `<dialog>`, CSS anchor positioning, `:has()`, `@scope`,
-  `@starting-style`.
+- **Modern platform**: `popover`, `<dialog>`, invoker commands, CSS anchor positioning, `:has()`,
+  `@scope`, `@starting-style`, and Temporal for every date and time.
 
 > Not affiliated with or endorsed by Meta. Astryx is MIT-licensed; see
 > [`NOTICE`](NOTICE).
@@ -80,6 +80,40 @@ import Text from 'astryx-astro/components/Text/Text.astro';
 - **Events:** `el.addEventListener('astryx-change', (e) => e.detail.value)`. Each component's
   JSDoc and the docs site list its events and element API.
 
+## Browser support
+
+The bar is **Baseline newly available**: the current Chrome, Edge, Firefox and Safari. Features
+at that level (popover, `<dialog>`, CSS anchor positioning, invoker commands, `@scope`,
+`@starting-style`, `scrollend` …) are used without fallbacks. Newer ones (`popover="hint"`,
+`closedby`, `hidden="until-found"`, `interpolate-size` …) are progressive enhancements. Every
+feature with its [web-features](https://github.com/web-platform-dx/web-features) status, and
+how each enhancement degrades, is listed in [`docs/platform.md`](docs/platform.md);
+`pnpm -F astryx-astro check:baseline` verifies the list.
+
+Dates and times use **Temporal**. Where it is missing (Safari today, and Node during server
+rendering), [`temporal-polyfill`](https://github.com/fullcalendar/temporal-polyfill) (MIT,
+about 23 KB gzipped, all 16 calendar systems) is imported on demand: only pages with date
+components fetch it, and it installs no global. Date props take ISO strings as in Astryx, or
+the matching Temporal value; events still carry Astryx's ISO strings.
+
+```astro
+---
+import {Temporal} from 'astryx-astro/lib/temporal'; // native where available, else the polyfill
+import DateInput from 'astryx-astro/components/DateInput/DateInput.astro';
+import Timestamp from 'astryx-astro/components/Timestamp/Timestamp.astro';
+---
+<DateInput label="Start" value={Temporal.PlainDate.from('2026-11-08')} />
+<Timestamp value={Temporal.Now.instant()} format="relative" />
+```
+
+| Component | Also accepts |
+|---|---|
+| Calendar, DateInput, DateRangeInput | `Temporal.PlainDate` (values, bounds, presets) |
+| TimeInput | `Temporal.PlainTime` |
+| DateTimeInput | `Temporal.PlainDateTime`, `Temporal.ZonedDateTime` |
+| Timestamp, Timer | `Temporal.Instant`, `Temporal.ZonedDateTime` |
+| Table, PowerSearch | Temporal values in rows and cells |
+
 ## Status
 
 All 110 Astryx 0.7.9 components are ported; every one passes the theme-hook conformance
@@ -87,5 +121,10 @@ check and the browser suite covers their behaviour. Desktop, keyboard and screen
 behaviour target parity. Astryx's UIKit-style touch extras are deferred and listed in each
 component's header comment: the coarse-pointer press controller, press-and-slide across action
 groups, press-drag-release menus, swipe actions and wheel pickers. Plain touch use works.
+
+One known engine difference: native Temporal (ICU4X) and the polyfill (the engine's `Intl` data)
+put a few Chinese and Dangi month starts a day apart (Chinese New Year 2027 is Feb 6 natively,
+Feb 7 polyfilled). The server renders with the polyfill, so in Chrome or Firefox a Chinese or
+Dangi calendar can shift by a day in those months after client-side navigation.
 
 Source, docs site and contribution guide: https://github.com/dbritto-dev/astryx-astro
