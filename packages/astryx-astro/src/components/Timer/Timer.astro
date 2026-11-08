@@ -10,6 +10,10 @@
  * in the server-resolved locale (`locale` prop → Astro.locals.astryxLocale →
  * Astro.currentLocale), passed to the element as `data-locale`; see timerFormat.ts.
  *
+ * `startTime` also takes a `Temporal.Instant` or `Temporal.ZonedDateTime` (port addition); the
+ * element still reads it as epoch milliseconds (`data-start-time`). Durations are Temporal
+ * (timerFormat.ts).
+ *
  * Typography follows Timestamp: a Text root (type supporting, color secondary by default)
  * carrying `astryx-timer`; `class`/`style` go on that root, other attributes on the <time>.
  * Not a live region: don't add aria-live unless a per-tick announcement is wanted.
@@ -18,6 +22,7 @@
  * <Timer />
  * <Timer format="clock" />
  * <Timer startTime={operationStartedAt} />
+ * <Timer startTime={Temporal.Instant.from(job.startedAt)} format="clock" />
  * <Text>Processing for <Timer type="inherit" color="inherit" /></Text>
  */
 import type {HTMLAttributes} from 'astro/types';
@@ -25,13 +30,15 @@ import Text, {type TextColor, type TextSize, type TextType, type TextWeight} fro
 import {cx, themeProps} from '../../lib/themeProps';
 import {resolveLocale} from '../../lib/i18n';
 import {digitsFor, getPresentation, resolveFormat, type TimerFormat} from './timerFormat';
+import {exactTimeMilliseconds} from '../../lib/temporalKind';
+import type {Temporal} from '../../lib/temporal';
 import './Timer.css';
 
 export type {TimerFormat} from './timerFormat';
 
 export interface Props extends Omit<HTMLAttributes<'time'>, 'datetime' | 'color'> {
-  /** Unix ms when the operation began; omit to count from the element's mount. */
-  startTime?: number;
+  /** Unix ms (or a `Temporal.Instant` / `ZonedDateTime`) when the operation began; omit to count from the element's mount. */
+  startTime?: number | Temporal.Instant | Temporal.ZonedDateTime;
   /** 'elapsed' compact units, or 'clock' (m:ss / h:mm:ss). @default 'elapsed' */
   format?: TimerFormat;
   /** Semantic text type (as Timestamp). @default 'supporting' */
@@ -46,7 +53,7 @@ export interface Props extends Omit<HTMLAttributes<'time'>, 'datetime' | 'color'
 }
 
 const {
-  startTime,
+  startTime: startTimeProp,
   format = 'elapsed',
   type = 'supporting',
   size,
@@ -59,6 +66,7 @@ const {
 } = Astro.props as typeof Astro.props & {slot?: string};
 
 const locale = resolveLocale(Astro, localeProp);
+const startTime = typeof startTimeProp === 'number' ? startTimeProp : exactTimeMilliseconds(startTimeProp);
 const resolvedFormat = resolveFormat(format);
 const initial = getPresentation(0, resolvedFormat, digitsFor(locale));
 const {themeClass} = themeProps('timer');

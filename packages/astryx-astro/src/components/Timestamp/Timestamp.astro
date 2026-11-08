@@ -30,10 +30,19 @@
  * InternationalizationProvider calendar). Rest props land on the `<time>` (as in Astryx);
  * `class`/`style` on the Text root. An unparseable value renders nothing (dev warning).
  *
+ * Temporal (port addition): `value` also takes a `Temporal.Instant` or a
+ * `Temporal.ZonedDateTime` (its instant; the text stays in the viewer's zone, as for every
+ * value — name zones with `tooltipEntries`). The value is read as a `Temporal.Instant`
+ * (lib/date `parseInstant`: ISO 8601 instants through `Temporal.Instant.from`, other strings
+ * through `Date`'s parser as Astryx does), the relative distance is a Temporal duration and the
+ * element reads the clock with `Temporal.Now`. `datetime` / `data-value` keep Astryx's
+ * `toISOString()` shape.
+ *
  * @example
  * <Timestamp value="2026-02-19T17:00:00Z" />
  * <Timestamp value={1740000000} format="date" />
  * <Timestamp value={iso} isLive tooltipEntries={[{label: 'Local'}, {timezoneID: 'UTC', label: 'UTC', isCopyable: true}]} />
+ * <Timestamp value={Temporal.Instant.from('2026-02-19T17:00:00Z')} format="date_time" />
  */
 import type {HTMLAttributes} from 'astro/types';
 import Text, {type TextColor, type TextSize, type TextType, type TextWeight} from '../Text/Text.astro';
@@ -49,20 +58,23 @@ import {
   formatInstant,
   formatTooltipLines,
   isAbsoluteFormat,
+  instantToISOString,
   isRelativeFormat,
-  parseValue,
+  parseInstant,
   type TimestampFormat,
+  type TimestampValue,
   type TimestampTooltipEntry,
   type TimestampTooltipLine,
 } from '../../lib/date';
 import {ARG_A, calendarFromLocals} from '../Calendar/calendarModel';
+import {Temporal} from '../../lib/temporal';
 import './Timestamp.css';
 
 export type {TimestampFormat, TimestampTooltipEntry};
 
 export interface Props extends Omit<HTMLAttributes<'time'>, 'datetime' | 'color'> {
-  /** The date/time: a Unix timestamp (seconds; ms above 1e12) or an ISO 8601 string. */
-  value: string | number;
+  /** The date/time: a Unix timestamp (seconds; ms above 1e12), an ISO 8601 string, or a `Temporal.Instant` / `Temporal.ZonedDateTime`. */
+  value: TimestampValue;
   /** @default 'auto' */
   format?: TimestampFormat;
   /** Seconds within which 'auto' is relative. @default 604800 (7 days) */
@@ -107,9 +119,12 @@ const {
 const locale = resolveLocale(Astro, localeProp);
 const t = translator(Astro, localeProp);
 const calendar = calendarFromLocals(undefined, Astro, 'Timestamp');
-const date = parseValue(value);
-const isValidDate = !Number.isNaN(date.getTime());
+const instant = parseInstant(value);
+const isValidDate = instant !== null;
 if (!isValidDate) devWarn('Timestamp', `could not parse value ${JSON.stringify(value)} as a date. Rendering nothing.`);
+// An unparseable value renders nothing; the epoch keeps the expressions below total.
+const date = instant ?? Temporal.Instant.fromEpochMilliseconds(0);
+const isoValue = instant === null ? '' : instantToISOString(instant);
 
 const needsClock = !isAbsoluteFormat(format);
 // The server never reads the clock: a clock-dependent format renders the full date and time.
@@ -152,7 +167,7 @@ const Root = 'ax-timestamp' as 'span';
     {...attrs}
     {...(attachedNow ? card!.trigger : {})}
     data-ax-card={card?.id}
-    data-value={date.toISOString()}
+    data-value={isoValue}
     data-ax-format={format}
     data-ax-auto-threshold={autoThreshold !== DEFAULT_AUTO_THRESHOLD ? String(autoThreshold) : undefined}
     data-ax-timezone-shown={isTimezoneShown ? '' : undefined}
@@ -165,7 +180,7 @@ const Root = 'ax-timestamp' as 'span';
     data-locale={locale}
   ><time
     {...rest}
-    datetime={date.toISOString()}
+    datetime={isoValue}
     class="ax-timestamp-time"
     tabindex={callerTabIndex ?? (attachedNow ? '0' : undefined)}
   >{displayText}</time></Text>

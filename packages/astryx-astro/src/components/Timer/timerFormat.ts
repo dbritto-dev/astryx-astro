@@ -10,7 +10,17 @@
  * Intl.NumberFormat in the resolved locale (no grouping, 2-digit padding where Astryx
  * pads), so locales with their own digits get them; Latin-digit locales read exactly as
  * Astryx. Unit letters and separators are Astryx's.
+ *
+ * Temporal: the elapsed time is a `Temporal.Duration` balanced to hours, minutes and seconds,
+ * and the `dateTime` is that duration's own ISO string (`Temporal.Duration#toString`, seconds
+ * only: "PT125S", as Astryx writes it). Intl.DurationFormat is not used: it never writes
+ * Astryx's shapes beyond one case — `digital` pads the leading field ("05:03" where Astryx
+ * writes "5:03") and follows the locale's separator (Finnish and Danish "1.05.03"), `narrow`
+ * leaves minutes unpadded ("1h 5m" for "1h 05m") — and Node 22 lacks it, so the server's
+ * first paint could not use it either. Parity beats novelty here.
  */
+import {Temporal} from '../../lib/temporal';
+
 export type TimerFormat = 'elapsed' | 'clock';
 
 export interface TimerPresentation {
@@ -59,27 +69,40 @@ export function getElapsedMilliseconds(now: number, startTime: number): number {
   return Math.max(0, now - startTime);
 }
 
+/** The elapsed time in whole seconds, as a Duration balanced to hours (a fraction of a second is dropped). */
+function elapsedDuration(elapsedMilliseconds: number): Temporal.Duration {
+  return Temporal.Duration.from({milliseconds: Math.floor(elapsedMilliseconds)}).round({
+    largestUnit: 'hours',
+    smallestUnit: 'seconds',
+    roundingMode: 'trunc',
+  });
+}
+
+/** A duration's ISO 8601 string in seconds only ("PT125S"), Astryx's `dateTime` shape. */
+function isoSeconds(duration: Temporal.Duration): string {
+  return Temporal.Duration.from({seconds: duration.total('seconds')}).toString();
+}
+
 export function getPresentation(elapsedMilliseconds: number, format: TimerFormat, d: Digits = digitsFor('en')): TimerPresentation {
-  const elapsedSeconds = Math.floor(elapsedMilliseconds / ONE_SECOND_MS);
+  const elapsed = elapsedDuration(elapsedMilliseconds);
+  const {hours, minutes, seconds} = elapsed;
   if (format === 'clock') {
-    const hours = Math.floor(elapsedSeconds / ONE_HOUR_SECONDS);
-    const minutes = Math.floor((elapsedSeconds % ONE_HOUR_SECONDS) / 60);
-    const seconds = elapsedSeconds % 60;
     return {
-      dateTime: `PT${elapsedSeconds}S`,
+      dateTime: isoSeconds(elapsed),
       text: hours > 0 ? `${d.n(hours)}:${d.p(minutes)}:${d.p(seconds)}` : `${d.n(minutes)}:${d.p(seconds)}`,
     };
   }
-  if (elapsedSeconds < 60) {
-    return {dateTime: `PT${elapsedSeconds}S`, text: `${d.n(elapsedSeconds)}s`};
+  if (hours === 0 && minutes === 0) {
+    return {dateTime: isoSeconds(elapsed), text: `${d.n(seconds)}s`};
   }
-  const totalMinutes = Math.floor(elapsedSeconds / 60);
-  if (totalMinutes < 60) {
-    return {dateTime: `PT${elapsedSeconds}S`, text: `${d.n(totalMinutes)}m ${d.p(elapsedSeconds % 60)}s`};
+  if (hours === 0) {
+    return {dateTime: isoSeconds(elapsed), text: `${d.n(minutes)}m ${d.p(seconds)}s`};
   }
+  // Past an hour the text drops the seconds, and so does the duration it names.
+  const shown = elapsed.round({largestUnit: 'hours', smallestUnit: 'minutes', roundingMode: 'trunc'});
   return {
-    dateTime: `PT${totalMinutes * 60}S`,
-    text: `${d.n(Math.floor(totalMinutes / 60))}h ${d.p(totalMinutes % 60)}m`,
+    dateTime: isoSeconds(shown),
+    text: `${d.n(shown.hours)}h ${d.p(shown.minutes)}m`,
   };
 }
 

@@ -9,7 +9,8 @@
  *   data-locale      the server-resolved locale for the digits (Intl.NumberFormat)
  * The next tick is scheduled for the moment the text changes (every second; every minute
  * for `elapsed` past an hour; a future start waits until it begins). Ticking stops while
- * disconnected and restarts on reconnect or when an attribute changes.
+ * disconnected and restarts on reconnect or when an attribute changes. The clock is
+ * `Temporal.Now.instant()`; the elapsed time a Temporal.Duration (timerFormat.ts).
  */
 import {
   digitsFor,
@@ -18,6 +19,9 @@ import {
   getPresentation,
   resolveFormat,
 } from '../components/Timer/timerFormat';
+import {Temporal} from '../lib/temporal';
+
+const now = () => Temporal.Now.instant().epochMilliseconds;
 
 class AxTimer extends HTMLElement {
   static observedAttributes = ['data-start-time', 'data-format', 'data-locale'];
@@ -28,7 +32,7 @@ class AxTimer extends HTMLElement {
   #dateTime: string | undefined;
 
   connectedCallback() {
-    this.#mountTime ??= Date.now();
+    this.#mountTime ??= now();
     this.#start();
   }
 
@@ -44,7 +48,7 @@ class AxTimer extends HTMLElement {
   get startTime(): number {
     const raw = this.getAttribute('data-start-time');
     const parsed = raw == null || raw === '' ? NaN : Number(raw);
-    return Number.isFinite(parsed) ? parsed : (this.#mountTime ?? Date.now());
+    return Number.isFinite(parsed) ? parsed : (this.#mountTime ?? now());
   }
 
   #stop() {
@@ -60,15 +64,15 @@ class AxTimer extends HTMLElement {
     const format = resolveFormat(this.getAttribute('data-format'));
     const digits = digitsFor(this.getAttribute('data-locale'));
     const tick = () => {
-      const now = Date.now();
-      const elapsed = getElapsedMilliseconds(now, startTime);
+      const current = now();
+      const elapsed = getElapsedMilliseconds(current, startTime);
       const {text, dateTime} = getPresentation(elapsed, format, digits);
       const node = this.querySelector('time');
       if (node) {
         if (text !== this.#text) { node.textContent = text; this.#text = text; }
         if (dateTime !== this.#dateTime) { node.dateTime = dateTime; this.#dateTime = dateTime; }
       }
-      this.#timeout = setTimeout(tick, getMillisecondsUntilNextChange(now, startTime, elapsed, format));
+      this.#timeout = setTimeout(tick, getMillisecondsUntilNextChange(current, startTime, elapsed, format));
     };
     tick();
   }
