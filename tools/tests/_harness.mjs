@@ -11,7 +11,7 @@ import {join, extname} from 'node:path';
 const root = new URL('../../apps/docs/dist/', import.meta.url).pathname;
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json'};
 
-export async function setup({width = 1100, height = 900, colorScheme = 'light', reducedMotion = 'reduce'} = {}) {
+export async function setup({width = 1100, height = 900, colorScheme = 'light', reducedMotion = 'reduce', temporal = process.env.AX_TEMPORAL ?? 'native'} = {}) {
   const server = createServer((req, res) => {
     let p = join(root, decodeURIComponent(req.url.split('?')[0]));
     if (existsSync(p) && statSync(p).isDirectory()) p = join(p, 'index.html');
@@ -29,6 +29,13 @@ export async function setup({width = 1100, height = 900, colorScheme = 'light', 
   page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('ERR_')) errors.push(m.text()); });
   await page.route('https://fonts.googleapis.com/**', (r) => r.abort());
   await page.route('https://fonts.gstatic.com/**', (r) => r.abort());
+  // Temporal polyfill mode (Safari's path): `temporal: 'polyfill'` (or AX_TEMPORAL=polyfill), or
+  // `#no-temporal` in a page URL, deletes globalThis.Temporal before the page's scripts run, so
+  // lib/temporal.ts loads temporal-polyfill instead of using Chrome's native Temporal.
+  await context.addInitScript((all) => {
+    if (all || location.hash.includes('no-temporal')) delete globalThis.Temporal;
+  }, temporal === 'polyfill');
+  if (temporal === 'polyfill') console.log('  (Temporal: polyfill)');
   let failures = 0;
   let passes = 0;
   const check = (name, ok, detail = '') => {

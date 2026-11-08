@@ -9,6 +9,14 @@
  *   node tools/tests/calendar.test.mjs
  */
 import {setup, sleep} from './_harness.mjs';
+import './lib-loader.mjs';
+
+// Node renders Calendar exactly as the server does: lib/temporal.ts on temporal-polyfill (Node
+// 22 has no Temporal) and Node's ICU. The page runs Chrome's Temporal (native, or the polyfill
+// with AX_TEMPORAL=polyfill) and Chrome's ICU.
+const model = await import(new URL('../../packages/astryx-astro/src/components/Calendar/calendarModel.ts', import.meta.url).href);
+const date = await import(new URL('../../packages/astryx-astro/src/lib/date/index.ts', import.meta.url).href);
+const polyfillMode = process.env.AX_TEMPORAL === 'polyfill';
 
 const {page, check, open, done} = await setup({height: 1000});
 await open('calendar');
@@ -51,13 +59,62 @@ check('selected cell aria-selected and "…, selected" name', markup.selectedCel
 check('adjacent-month days are aria-disabled', markup.outside === 'true');
 check('nav buttons named Previous/Next month', markup.navTargets.join() === 'prev:Previous month,next:Next month');
 
-const identical = await page.evaluate(() => ['cal-single', 'cal-range', 'cal-weeks', 'cal-buddhist', 'cal-es', 'cal-rtl', 'cal-bounds'].filter((id) => {
+check(`page Temporal: ${polyfillMode ? 'removed (polyfill)' : 'native'}`, (await page.evaluate(() => typeof globalThis.Temporal)) === (polyfillMode ? 'undefined' : 'object'));
+const SYSTEMS = ['cal-persian', 'cal-hebrew', 'cal-islamic', 'cal-japanese', 'cal-chinese', 'cal-ethiopic'];
+const identical = await page.evaluate((systems) => ['cal-single', 'cal-range', 'cal-weeks', 'cal-buddhist', 'cal-es', 'cal-rtl', 'cal-bounds', 'cal-temporal', ...systems].filter((id) => {
   const el = document.getElementById(id);
   const before = el.querySelector('.ax-calendar-months').innerHTML;
   el.value = el.value; // re-render in the browser with the shared render function
   return el.querySelector('.ax-calendar-months').innerHTML !== before;
-}));
-check('browser re-render reproduces the server markup exactly', identical.length === 0, identical.join());
+}), SYSTEMS);
+check('browser re-render reproduces the server markup exactly (calendar systems too)', identical.length === 0, identical.join());
+
+console.log('Server and browser agree on every calendar system, month by month');
+const systemLabels = await page.evaluate((systems) => systems.map((id) => document.querySelector(`#${id} .ax-calendar-month-label`).textContent), SYSTEMS);
+check('non-Gregorian calendars render on the server (no Gregorian fallback)', systemLabels.every((l, i) => !/^(January|February|March|April|May|June|July|August|September|October|November|December) \d/.test(l) && l !== '') && /^۱۴۰۵ /.test(systemLabels[0]), systemLabels.join(' | '));
+const lunisolarNotes = [];
+for (const id of SYSTEMS) {
+  const config = JSON.parse(await page.getAttribute(`#${id}`, 'data-ax-config'));
+  const isDisabled = model.createDateDisabled({min: config.min, max: config.max, maxRangeSpan: config.maxRangeSpan, minRangeSpan: config.minRangeSpan, mask: config.mask});
+  const value = await page.$eval(`#${id}`, (el) => el.value);
+  const today = date.plainDateToday();
+  let month = date.calendarMonthOf(config.calendar, date.plainDateFromISO('2026-01-15'));
+  const months = [];
+  for (let k = 0; k < 36; k++, month = date.calendarAddMonths(config.calendar, month, 1)) {
+    const mid = date.calendarMonthLabelDay(month); // the middle day (Pagume has 5 or 6)
+    const server = model.renderMonthsHtml(config, {focusDate: mid, value, rangeSelectionStart: null, hoveredDate: null, today}, isDisabled);
+    const client = await page.evaluate(({id, iso, server}) => {
+      const el = document.getElementById(id);
+      el.navigateTo(iso);
+      // Attribute order aside (the morph appends an attribute it adds), and the roving tab stop.
+      const canon = (node) => node.nodeType !== 1 ? node.textContent
+        : `<${node.localName}${[...node.attributes].filter((a) => a.name !== 'tabindex').map((a) => ` ${a.name}="${a.value}"`).sort().join('')}>${[...node.childNodes].map(canon).join('')}</>`;
+      const t = document.createElement('template');
+      t.innerHTML = server;
+      const first = el.querySelector('button[data-date]:not([data-ax-outside])')?.dataset.date;
+      return {same: [...t.content.childNodes].map(canon).join('') === [...el.querySelector('.ax-calendar-months').childNodes].map(canon).join(''), first};
+    }, {id, iso: date.plainDateToISO(mid), server});
+    months.push({start: date.plainDateToISO(month.start), clientStart: client.first, same: client.same});
+  }
+  // Native Temporal (V8: ICU4X) and the polyfill (Intl: ICU4C) place a few Chinese / Dangi
+  // month starts a day apart, which also moves the adjacent-month days of the grids beside
+  // them. That is the only difference allowed (native mode only), and it is reported.
+  const moved = months.map((m, k) => (m.start !== m.clientStart ? k : -1)).filter((k) => k >= 0);
+  const mismatches = months.filter((m) => !m.same);
+  const unexplained = months.filter((m, k) => !m.same && !moved.some((j) => Math.abs(j - k) <= 1));
+  if (moved.length) lunisolarNotes.push(`${id}: ${moved.map((k) => `${months[k].start} (browser ${months[k].clientStart})`).join(', ')}`);
+  check(`${config.calendar} (${config.locale}): 36 months match${moved.length ? ` but ${moved.length} month start(s) Temporal places elsewhere` : ''}`,
+    unexplained.length === 0 && (moved.length === 0 || (!polyfillMode && ['chinese', 'dangi'].includes(config.calendar))), JSON.stringify(mismatches));
+  await page.$eval(`#${id}`, (el, iso) => el.navigateTo(iso), value);
+}
+if (lunisolarNotes.length) console.log(`    note — month starts where native Temporal and the polyfill differ: ${lunisolarNotes.join('; ')}`);
+
+console.log('Temporal values');
+const temporal = await page.evaluate(() => {
+  const el = document.getElementById('cal-temporal');
+  return {value: el.value, min: JSON.parse(el.getAttribute('data-ax-config')).min, label: el.querySelector('.ax-calendar-month-label').textContent};
+});
+check('Temporal.PlainDate defaultValue/min/max render as ISO', temporal.value === '2026-12-24' && temporal.min === '2026-12-01' && temporal.label === 'December 2026', JSON.stringify(temporal));
 
 console.log('Keyboard map (single)');
 await page.focus(day('cal-single', '2026-03-10'));

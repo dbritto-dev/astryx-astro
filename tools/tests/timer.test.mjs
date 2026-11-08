@@ -53,6 +53,8 @@ const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 await page.route('https://fonts.googleapis.com/**', (r) => r.abort());
+// AX_TEMPORAL=polyfill: Safari's path, lib/temporal.ts loads temporal-polyfill (as _harness.mjs does).
+if (process.env.AX_TEMPORAL === 'polyfill') await page.addInitScript(() => { delete globalThis.Temporal; });
 await page.clock.install({time: new Date('2026-11-06T12:00:00Z')});
 await page.goto(`${base}/components/timer/`);
 await page.waitForLoadState('load');
