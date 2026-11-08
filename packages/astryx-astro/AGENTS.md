@@ -88,9 +88,10 @@ Generated Astryx themes style components through stable hooks, e.g.
 
 ## Behaviour (JavaScript)
 
-- Prefer the platform: `<dialog>`, the `popover` attribute, `<details>`, native form controls,
-  `:has()`, CSS anchor positioning with a JS fallback, `inert`, `focusgroup`-style roving
-  tabindex. Zero JS for components that are static in Astryx.
+- Prefer the platform: `<dialog>`, the `popover` attribute, invoker commands, `<details>`,
+  native form controls, `:has()`, CSS anchor positioning, `inert`, `focusgroup`-style roving
+  tabindex. Zero JS for components that are static in Astryx. What may be used without a
+  fallback is set by `docs/platform.md`.
 - Stateful widgets: a custom element `<ax-<name>>` defined in `src/elements/<name>.ts`, light
   DOM only (no shadow root), wrapping the server-rendered markup. Load it from the component
   with `<script>import '../../elements/<name>';</script>` (Astro bundles and de-duplicates).
@@ -145,7 +146,7 @@ Generated Astryx themes style components through stable hooks, e.g.
    trigger while open and `position-anchor` on the layer; static CSS keyed on
    `data-placement` / `data-align` supplies `position-area`, `position-try-fallbacks`, the
    viewport gutter (`max(var(--spacing-4), env(safe-area-inset-*))`) and `max-*-size` caps.
-   The runtime falls back to rect positioning where anchors are unsupported.
+   There is no JS positioner (the anchor positioning used is Baseline).
 3. One document Escape stack (topmost layer only, skip `defaultPrevented`, ignore IME), a
    press must start and end outside/on the backdrop to dismiss, focus returns with
    `preventScroll: true`.

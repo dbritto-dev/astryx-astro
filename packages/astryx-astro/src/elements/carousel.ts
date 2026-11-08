@@ -2,7 +2,8 @@
  * <ax-carousel> — the behaviour of Carousel (port of @astryxdesign/core Carousel/Carousel.tsx
  * handlers and effects, hooks/useScrollOverflow.ts, hooks/isRtlElement.ts). Light DOM: the
  * element is the carousel root; it measures its scroller (`.astryx-carousel-scroller`) and
- * drives the button layer (`.ax-carousel-buttons`, an `<ax-layer>` anchored to the root).
+ * drives the buttons in its button layer (`.ax-carousel-buttons`, an `<ax-layer>` anchored to
+ * the root).
  *
  * - Overflow state (tolerance 1px, RTL-safe via |scrollLeft|) from scroll, ResizeObserver on
  *   the scroller and each slide, and child mutations; written as `data-ax-overflow-start|end`
@@ -12,8 +13,6 @@
  *   scrolls horizontally. Reduced motion: instant scrolls.
  * - When the focused button's edge runs out it is disabled and focus moves to the scroller
  *   with preventScroll (FR2).
- * - Without CSS anchor positioning (the layer gets `data-astryx-rect`) the cover layer is
- *   placed over the root with rects and follows scroll and resize.
  * API: scrollNext(), scrollPrev(), scrollTo(index), canScrollNext(), canScrollPrev().
  */
 interface OverflowState {
@@ -31,14 +30,9 @@ export class AxCarousel extends HTMLElement {
   #cleanups: Array<() => void> = [];
   #observed = new Map<Element, true>();
   #ro: ResizeObserver | null = null;
-  #rectFrame = 0;
 
   get scroller(): HTMLElement | null {
     return this.querySelector<HTMLElement>(':scope > .astryx-carousel-scroller');
-  }
-
-  get #layer(): HTMLElement | null {
-    return this.querySelector<HTMLElement>(':scope > .ax-carousel-buttons');
   }
 
   get #loop(): boolean {
@@ -81,8 +75,6 @@ export class AxCarousel extends HTMLElement {
       this.#scrollBy(nav.dataset.side === 'start' ? -1 : 1);
     };
     this.addEventListener('click', onClick);
-    const onLayerToggle = () => this.#placeRectLayer();
-    this.#layer?.addEventListener('astryx-open-change', onLayerToggle);
     this.#cleanups.push(() => {
       this.#ro?.disconnect();
       this.#ro = null;
@@ -91,10 +83,7 @@ export class AxCarousel extends HTMLElement {
       scroller.removeEventListener('scroll', onScroll);
       scroller.removeEventListener('wheel', onWheel);
       this.removeEventListener('click', onClick);
-      this.#layer?.removeEventListener('astryx-open-change', onLayerToggle);
-      cancelAnimationFrame(this.#rectFrame);
     });
-    this.#followRectLayer();
     this.#measure(true);
   }
 
@@ -220,34 +209,6 @@ export class AxCarousel extends HTMLElement {
       // scroll area (FR2) instead of dropping it on <body>.
       if (was && !can && hadFocus) el.focus({preventScroll: true});
     }
-  }
-
-  /** Rect fallback (no CSS anchor positioning): cover the root with the button layer. */
-  #placeRectLayer() {
-    const layer = this.#layer;
-    if (!layer || !layer.hasAttribute('data-astryx-rect')) return;
-    const r = this.getBoundingClientRect();
-    Object.assign(layer.style, {top: `${r.top}px`, left: `${r.left}px`, width: `${r.width}px`, height: `${r.height}px`, margin: '0'});
-  }
-
-  #followRectLayer() {
-    const schedule = () => {
-      if (this.#rectFrame) return;
-      this.#rectFrame = requestAnimationFrame(() => {
-        this.#rectFrame = 0;
-        this.#placeRectLayer();
-      });
-    };
-    window.addEventListener('scroll', schedule, {capture: true, passive: true});
-    window.addEventListener('resize', schedule);
-    const ro = new ResizeObserver(schedule);
-    ro.observe(this);
-    this.#cleanups.push(() => {
-      window.removeEventListener('scroll', schedule, {capture: true});
-      window.removeEventListener('resize', schedule);
-      ro.disconnect();
-    });
-    schedule();
   }
 }
 

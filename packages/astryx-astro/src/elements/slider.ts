@@ -17,7 +17,6 @@
  * `astryx-change-end` `{value}` when a drag ends and after each handled key.
  */
 import './runtime/disabledInteraction';
-import {settleLayer} from './runtime/anchor';
 import {isRtl} from './runtime/dom';
 import {getModality} from './runtime/modality';
 import {emit, onFormReset} from './field';
@@ -376,7 +375,6 @@ export class SliderElement extends HTMLElement {
       const tip = this.#tooltipOf(thumb);
       const content = tip?.querySelector('.ax-tooltip-content');
       if (content && content.textContent !== this.#format(v)) content.textContent = this.#format(v);
-      if (tip?.hasAttribute('data-astryx-rect') && tip.matches(':popover-open')) settleLayer(tip);
     });
     const fillStart = this.isRange ? percent(values[0]) / 100 : 0;
     const fillEnd = percent(values[this.isRange ? 1 : 0]) / 100;

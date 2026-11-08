@@ -39,13 +39,9 @@
     max-block-size: min(var(--_ax-menu-max-height), var(--_ax-max-block-size));
   }
   /* Without a width the menu is at least as wide as its trigger, clamped by the viewport cap
-     (a CSS minimum beats a maximum). The rect fallback writes --_ax-anchor-width. */
+     (a CSS minimum beats a maximum). */
   .ax-dropdown-menu-layer:not([data-ax-width]) {
-    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
     min-width: min(anchor-size(width), var(--_ax-max-inline-size));
-  }
-  .ax-dropdown-menu-layer[data-astryx-rect]:not([data-ax-width]) {
-    min-width: min(var(--_ax-anchor-width, 0px), var(--_ax-max-inline-size));
   }
   .ax-dropdown-menu-layer[data-ax-width="min"] { min-width: var(--_ax-menu-width); }
   .ax-dropdown-menu-layer[data-ax-width="inline"] { inline-size: var(--_ax-menu-width); }

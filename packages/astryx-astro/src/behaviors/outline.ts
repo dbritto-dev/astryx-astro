@@ -8,7 +8,7 @@
  * ancestor of the nav, else the viewport. Listeners: the scroll root's `scroll` (passive,
  * rAF-throttled) and the window's `resize`; while a navigation is in flight, `scrollend`,
  * `wheel` and `touchmove` on the scroll root and a window `keydown` for manual scroll keys.
- * Without CSS anchor positioning the indicator is placed from the active link's box.
+ * The indicator follows the active link through CSS anchor positioning (Outline.css).
  *
  * Element API (on the nav): `activeId` (get/set; a controlled outline moves only through
  * it). Events (bubbling, composed): `astryx-active-id-change` {id}, `astryx-navigate-start`
@@ -66,15 +66,12 @@ function moveFocusTo(id: string) {
   }
 }
 
-const supportsAnchors = () => typeof CSS !== 'undefined' && CSS.supports('anchor-name: --a');
-
 defineBehavior('outline', (nav) => {
   const isControlled = nav.hasAttribute('data-ax-controlled');
   const offset = Number(nav.getAttribute('data-ax-offset') ?? 0) || 0;
   const hasScrollOnClick = !nav.hasAttribute('data-ax-no-scroll');
   const links = () => [...nav.querySelectorAll<HTMLAnchorElement>('a[data-ax-outline-id]')];
   const ids = () => links().map((a) => a.getAttribute('data-ax-outline-id')!);
-  const indicator = nav.querySelector<HTMLElement>(':scope > .astryx-outline-indicator');
   const getScrollRoot = (): HTMLElement | null => {
     const selector = nav.getAttribute('data-ax-scroll-container');
     if (selector) {
@@ -93,16 +90,6 @@ defineBehavior('outline', (nav) => {
 
   const emit = (type: string, id: string) => nav.dispatchEvent(new CustomEvent(type, {bubbles: true, composed: true, detail: {id}}));
 
-  const placeIndicator = () => {
-    if (!indicator || supportsAnchors()) return;
-    const link = links().find((a) => a.hasAttribute('data-active'));
-    if (!link) { indicator.style.height = '0px'; return; }
-    const navBox = nav.getBoundingClientRect();
-    const box = link.getBoundingClientRect();
-    indicator.style.top = `${box.top - navBox.top}px`;
-    indicator.style.height = `${box.height}px`;
-  };
-
   /** Paint `id` as the active item. */
   const paint = (id: string | undefined) => {
     active = id;
@@ -116,7 +103,6 @@ defineBehavior('outline', (nav) => {
         link.removeAttribute('data-active');
       }
     }
-    placeIndicator();
   };
 
   /** Uncontrolled change from scroll or an arrival: paint and notify. */
@@ -149,12 +135,7 @@ defineBehavior('outline', (nav) => {
       window.removeEventListener('resize', onScroll);
       if (frame !== 0) cancelAnimationFrame(frame);
     });
-  } else {
-    const onResize = () => placeIndicator();
-    window.addEventListener('resize', onResize, {passive: true});
-    cleanups.push(() => window.removeEventListener('resize', onResize));
   }
-  placeIndicator();
 
   // ── Navigation (the single path shared by click and Space) ───────────────
   const scrollTo = (id: string): boolean => {

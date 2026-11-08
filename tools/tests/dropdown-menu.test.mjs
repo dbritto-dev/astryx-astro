@@ -425,23 +425,23 @@ check('opening the menu hides the trigger tooltip', !(await isOpen(page, '#' + t
 await page.keyboard.press('Escape');
 await sleep(80);
 
-console.log('Rect fallback (no CSS anchor positioning)');
-await open('dropdown-menu', {rect: true});
+console.log('Geometry: the menu below its trigger, the flyout beside its row');
+await open('dropdown-menu');
 await page.focus(fileTrigger);
 await page.keyboard.press('Enter');
 await sleep(80);
 await page.keyboard.press('e');
 await page.keyboard.press('ArrowRight');
 await sleep(80);
-const rect = await page.evaluate(([t, l, f]) => {
+const geometry = await page.evaluate(([t, l, f]) => {
   const tr = document.querySelector(t).getBoundingClientRect();
   const lr = document.querySelector(l).getBoundingClientRect();
   const fr = document.querySelector(f).getBoundingClientRect();
   const row = document.getElementById('dm-export').getBoundingClientRect();
-  return {rect: document.querySelector(l).hasAttribute('data-astryx-rect'), below: lr.top >= tr.bottom && lr.top - tr.bottom < 12 && Math.abs(lr.left - tr.left) < 2, beside: fr.left >= row.right - 2 && Math.abs(fr.top - row.top) < 12};
+  return {below: lr.top >= tr.bottom && lr.top - tr.bottom < 12 && Math.abs(lr.left - tr.left) < 2, beside: fr.left >= row.right - 2 && Math.abs(fr.top - row.top) < 12};
 }, [fileTrigger, fileLayer, exportFly]);
-check('rect positioner places the menu below its trigger', rect.rect && rect.below, JSON.stringify(rect));
-check('…and the flyout beside its row', rect.beside, JSON.stringify(rect));
+check('the menu opens below its trigger', geometry.below, JSON.stringify(geometry));
+check('…and the flyout beside its row', geometry.beside, JSON.stringify(geometry));
 await page.keyboard.press('Escape');
 await page.keyboard.press('Escape');
 await sleep(60);

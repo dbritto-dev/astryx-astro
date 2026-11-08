@@ -35,17 +35,9 @@ export async function setup({width = 1100, height = 900, colorScheme = 'light', 
     if (ok) { passes++; console.log(`  ✓ ${name}`); }
     else { failures++; console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ''}`); }
   };
-  // `#rect` in the URL forces the rect fallback positioner (<html data-astryx-anchor-fallback>),
-  // set before the page's module scripts run.
-  await context.addInitScript(() => {
-    if (!location.hash.includes('rect')) return;
-    const set = () => document.documentElement.setAttribute('data-astryx-anchor-fallback', '');
-    if (document.documentElement) set();
-    else document.addEventListener('readystatechange', set, {once: true});
-  });
-  const open = async (slug, {rect = false} = {}) => {
+  const open = async (slug) => {
     await page.goto('about:blank');
-    await page.goto(`http://localhost:${port}/components/${slug}/${rect ? '#rect' : ''}`);
+    await page.goto(`http://localhost:${port}/components/${slug}/`);
     await page.waitForLoadState('load');
     await page.waitForTimeout(100);
   };

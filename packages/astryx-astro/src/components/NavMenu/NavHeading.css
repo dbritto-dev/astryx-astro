@@ -141,14 +141,12 @@
   .ax-heading-popover-heading:has(.astryx-nav-icon) { padding-inline-start: 0; }
   .ax-heading-chevron-flipped { transform: rotate(180deg); }
   .ax-heading-menu-layer[data-placement] {
-    min-width: calc(var(--_ax-anchor-width, 0px) + 16px);
     min-width: calc(anchor-size(width) + 16px);
     margin-block-start: calc(-1 * anchor-size(height) - 8px);
     margin-inline-start: -8px;
   }
   /* The collapsed rail's heading menu opens below the icon (styles.popover). */
   .ax-heading-flyout-layer[data-placement] {
-    min-width: var(--_ax-anchor-width, 0px);
     min-width: anchor-size(width);
     margin-block-start: var(--spacing-1);
     margin-inline-start: 0;

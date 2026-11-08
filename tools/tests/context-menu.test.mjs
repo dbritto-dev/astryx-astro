@@ -235,22 +235,4 @@ check('the inline trigger opens its menu', await isOpen(page, inline));
 await page.keyboard.press('Escape');
 await sleep(60);
 
-console.log('Rect fallback (no CSS anchor positioning)');
-await open('context-menu', {rect: true});
-const area2 = await page.locator('#cm-basic-area').boundingBox();
-await page.mouse.click(area2.x + 220, area2.y + 30, {button: 'right'});
-await sleep(100);
-const rectInfo = await page.evaluate((s) => {
-  const l = document.querySelector(s);
-  const r = l.querySelector('[role="menu"]').getBoundingClientRect();
-  return {rect: l.hasAttribute('data-astryx-rect'), x: r.left, y: r.top};
-}, basic);
-check('rect positioner opens it at the pointer', rectInfo.rect && Math.abs(rectInfo.x - (area2.x + 220)) <= 2 && Math.abs(rectInfo.y - (area2.y + 31)) <= 2, JSON.stringify(rectInfo));
-await page.mouse.click(area2.x + 400, area2.y + 60, {button: 'right'});
-await sleep(100);
-const moved2 = await page.evaluate((s) => document.querySelector(s).querySelector('[role="menu"]').getBoundingClientRect().left, basic);
-check('…and moves it on a second right-click', Math.abs(moved2 - (area2.x + 400)) <= 2, String(moved2));
-await page.keyboard.press('Escape');
-await sleep(60);
-
 await done();
