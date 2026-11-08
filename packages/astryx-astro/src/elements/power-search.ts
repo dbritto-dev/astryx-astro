@@ -57,6 +57,7 @@ import {
   type PowerSearchConfig,
   type PowerSearchFilter,
 } from '../components/PowerSearch/powerSearchModel';
+import {Temporal} from '../lib/temporal';
 
 export interface PowerSearchChangeDetail {
   filters: PowerSearchFilter[];
@@ -270,7 +271,7 @@ export class PowerSearchEditorElement extends Base {
           return;
         }
         const zone = resolveDateZone(tz, true);
-        const now = Date.now() / 1000;
+        const now = Temporal.Now.instant().epochMilliseconds / 1000;
         el.value = {
           start: unixSecondsToISODate(resolveDateTimeRangePart(value.value.start, now), zone),
           end: unixSecondsToISODate(resolveDateTimeRangePart(value.value.end, now), zone),

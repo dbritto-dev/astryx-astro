@@ -1,6 +1,7 @@
 ---
 import Timestamp from './Timestamp.astro';
 import Text from '../Text/Text.astro';
+import {Temporal} from '../../lib/temporal';
 
 // Relative values must be relative to the reader's clock: the demo writes data-value in the
 // browser from each <time>'s data-offset (ms before now), like the Timer demo.
@@ -38,6 +39,10 @@ const zones = [
     <span style={cell}><Timestamp id="ts-invalid" value="not a date" /><span style={caption}>invalid value renders nothing</span></span>
   </div>
   <div style={row}>
+    <span style={cell}><Timestamp id="ts-temporal-instant" value={Temporal.Instant.from(fixed)} format="date_time" isTimezoneShown /><span style={caption}>value: a Temporal.Instant</span></span>
+    <span style={cell}><Timestamp id="ts-temporal-zoned" value={Temporal.ZonedDateTime.from('2026-02-19T12:00:00-05:00[America/Bogota]')} format="date_long" tooltipEntries={[{timezoneID: 'America/Bogota', label: 'Bogotá', format: 'system_date_time'}]} /><span style={caption}>value: a Temporal.ZonedDateTime (its instant)</span></span>
+  </div>
+  <div style={row}>
     <span style={cell}><Timestamp value={fixed} format="date_long" type="body" color="primary" weight="semibold" /><span style={caption}>type body, primary, semibold</span></span>
     <span style={cell}><Timestamp value={fixed} format="time" color="accent" size="lg" /><span style={caption}>accent, lg</span></span>
     <span style={cell}><Text type="large">Due <Timestamp value={fixed} format="date" type="inherit" color="inherit" /></Text><span style={caption}>inherit surrounding text</span></span>
@@ -45,7 +50,10 @@ const zones = [
   <p style="margin:0;font-size:var(--font-size-sm)" id="ts-paragraph">Edited <Timestamp id="ts-inline" value={placeholder} format="relative" data-offset="5400000" /> by Ada — the card's list stays out of the paragraph.</p>
 </div>
 <script>
+  import {Temporal} from '../../lib/temporal';
+
   document.querySelectorAll<HTMLElement>('[data-test="timestamps"] time[data-offset]').forEach((time) => {
-    time.closest('ax-timestamp')?.setAttribute('data-value', new Date(Date.now() - Number(time.dataset.offset)).toISOString());
+    const value = Temporal.Now.instant().subtract({milliseconds: Number(time.dataset.offset)});
+    time.closest('ax-timestamp')?.setAttribute('data-value', value.toString());
   });
 </script>

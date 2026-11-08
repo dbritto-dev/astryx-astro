@@ -17,14 +17,17 @@ import {isImeKeyEvent} from './runtime/dom';
 import {announce} from './runtime/announce';
 import {emit, forwardContainerClick, onFormReset} from './field';
 import {TimeField, type TimeFieldConfig} from '../components/TimeInput/timeField';
-import {parseISOTime, type ISOTimeString} from '../lib/date';
+import {isoTimeOf, parseISOTime, type ISOTimeString, type TimeValue} from '../lib/date';
 
 interface TimeInputConfig extends TimeFieldConfig {
   min?: ISOTimeString;
   max?: ISOTimeString;
 }
 
-const toValue = (v: unknown): ISOTimeString | undefined => (typeof v === 'string' && parseISOTime(v) ? (v as ISOTimeString) : undefined);
+const toValue = (v: unknown): ISOTimeString | undefined => {
+  const time = isoTimeOf(v as TimeValue | null | undefined);
+  return typeof time === 'string' && parseISOTime(time) ? time : undefined;
+};
 
 export class TimeInputElement extends HTMLElement {
   #config: TimeInputConfig | null = null;
@@ -38,7 +41,8 @@ export class TimeInputElement extends HTMLElement {
   get value(): ISOTimeString | undefined {
     return this.#value;
   }
-  set value(next: ISOTimeString | string | undefined | null) {
+  /** Set with `HH:MM[:SS]` or a `Temporal.PlainTime`. */
+  set value(next: TimeValue | undefined | null) {
     this.#setValue(toValue(next));
   }
 

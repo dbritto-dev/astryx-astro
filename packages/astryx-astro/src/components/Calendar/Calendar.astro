@@ -41,8 +41,12 @@
  *    the opening months, clipped to min/max) and ship as a bitmask; set `el.dateConstraints`
  *    in the browser for rules that must hold beyond it.
  *  - `calendar` default is `Astro.locals.astryxCalendar` (the InternationalizationProvider
- *    calendar), else `gregory`; a calendar the server cannot show falls back to Gregorian on
- *    both sides, so the markup matches.
+ *    calendar), else `gregory`. Every calendar renders on the server too: Temporal is native or
+ *    the `/full` polyfill (lib/temporal.ts) on both sides.
+ *  - Temporal (port addition): `value`, `defaultValue`, `min`, `max` and `focusDate` also take
+ *    a `Temporal.PlainDate` (a range `{start, end}` of them); the element's `value` and
+ *    `navigateTo()` too. Events keep Astryx's ISO strings; `valueAsDate` and the
+ *    `dateConstraints` argument stay `Date`s, as in Astryx.
  *  - Today is the browser's day: the element re-renders on connect when it differs from the
  *    server's, and a view opened on today follows it.
  *  - Deferred (scope): the coarse-pointer press controller (usePressFeedback).
@@ -80,33 +84,39 @@ import {
   type DayOfWeekName,
   type ISODateString,
 } from './calendarModel';
-import {plainDateDiffDays, plainDateIsAfter, plainDateIsBefore, plainDateToday} from '../../lib/date';
+import {isoDateOf, plainDateDiffDays, plainDateIsAfter, plainDateIsBefore, plainDateToday, type DateValue} from '../../lib/date';
 import '../VisuallyHidden/VisuallyHidden.css';
 import './Calendar.css';
 
 export type {CalendarSystem, DateRange, DayOfWeek, DayOfWeekName, ISODateString};
 
+/** A date range of ISO dates or `Temporal.PlainDate`s (port addition: the Temporal form). */
+export interface DateValueRange {
+  start: DateValue;
+  end: DateValue;
+}
+
 export interface Props extends Omit<HTMLAttributes<'div'>, 'defaultValue'> {
   /** Selection mode. @default 'single' */
   mode?: 'single' | 'range';
-  /** Initially selected date (single) or range; null for none. The element owns it afterwards. */
-  value?: ISODateString | DateRange | null;
-  /** Initial selection (uncontrolled). */
-  defaultValue?: ISODateString | DateRange;
+  /** Initially selected date (single) or range; null for none: ISO or `Temporal.PlainDate`. The element owns it afterwards. */
+  value?: DateValue | DateValueRange | null;
+  /** Initial selection (uncontrolled): ISO or `Temporal.PlainDate`. */
+  defaultValue?: DateValue | DateValueRange;
   /** Number of months to display. @default 1 */
   numberOfMonths?: 1 | 2;
-  /** Minimum selectable date (ISO). */
-  min?: ISODateString;
-  /** Maximum selectable date (ISO). */
-  max?: ISODateString;
-  /** Custom constraints; a date is disabled if ANY returns false (server-evaluated, see header). */
+  /** Minimum selectable date (ISO or `Temporal.PlainDate`). */
+  min?: DateValue;
+  /** Maximum selectable date (ISO or `Temporal.PlainDate`). */
+  max?: DateValue;
+  /** Custom constraints; a date is disabled if ANY returns false (server-evaluated, see header). Receives the day's local midnight as a `Date`, as in Astryx. */
   dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
   /** Range mode: max days a range may span, both endpoints counted (7 = a 7-day window). */
   maxRangeSpan?: number;
   /** Range mode: min days a range must span, both endpoints counted (2 forbids one day). @default 1 */
   minRangeSpan?: number;
-  /** Visible month (ISO). Unset: the selected date, else today clamped into min/max. */
-  focusDate?: ISODateString;
+  /** Visible month (ISO or `Temporal.PlainDate`). Unset: the selected date, else today clamped into min/max. */
+  focusDate?: DateValue;
   /** Show days from adjacent months. @default true */
   hasOutsideDays?: boolean;
   /** Show ISO 8601 week numbers in a side column. @default false */
@@ -123,15 +133,15 @@ export interface Props extends Omit<HTMLAttributes<'div'>, 'defaultValue'> {
 
 const {
   mode = 'single',
-  value,
-  defaultValue,
+  value: valueProp,
+  defaultValue: defaultValueProp,
   numberOfMonths: numberOfMonthsProp = 1,
-  min,
-  max,
+  min: minProp,
+  max: maxProp,
   dateConstraints,
   maxRangeSpan,
   minRangeSpan,
-  focusDate: focusDateProp,
+  focusDate: focusDatePropValue,
   hasOutsideDays = true,
   hasWeekNumbers = false,
   hasVariableRowCount = false,
@@ -141,6 +151,16 @@ const {
   class: className,
   slot: _slot, ...rest
 } = Astro.props as typeof Astro.props & {slot?: string};
+
+// Temporal.PlainDate values become the ISO strings the model works with (strings pass as given).
+const rangeOf = (v: DateValueRange): DateRange => ({start: isoDateOf(v.start), end: isoDateOf(v.end)});
+const valueOf = <N extends null | undefined>(v: DateValue | DateValueRange | N): ISODateString | DateRange | N =>
+  v == null ? v : typeof v === 'object' && 'start' in v ? rangeOf(v) : isoDateOf(v);
+const value = valueOf(valueProp);
+const defaultValue = valueOf(defaultValueProp);
+const min = isoDateOf(minProp);
+const max = isoDateOf(maxProp);
+const focusDateProp = isoDateOf(focusDatePropValue);
 
 const locale = resolveLocale(Astro, localeProp);
 const t = translator(Astro, localeProp);

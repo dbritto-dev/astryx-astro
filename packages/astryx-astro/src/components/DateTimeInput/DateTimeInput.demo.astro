@@ -3,6 +3,7 @@ import DateTimeInput, {type DateTimeInputSize} from './DateTimeInput.astro';
 import FormLayout from '../FormLayout/FormLayout.astro';
 import Button from '../Button/Button.astro';
 import type {InputStatusType} from '../Field/fieldProps';
+import {Temporal} from '../../lib/temporal';
 
 const sizes: DateTimeInputSize[] = ['sm', 'md', 'lg'];
 const statuses: InputStatusType[] = ['error', 'warning', 'success'];
@@ -29,6 +30,22 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
       <DateTimeInput label="日時 (ja-JP)" locale="ja-JP" value="2026-03-21T14:30" data-test="ja" />
       <div dir="rtl" lang="ar-SA"><DateTimeInput label="الموعد (ar-SA)" locale="ar-SA" value="2026-03-21T14:30" data-test="ar" /></div>
       <DateTimeInput label="12-hour override" locale="en-GB" hourFormat="12h" value="2026-03-21T14:30" />
+      <DateTimeInput label="Hebrew calendar (he-IL)" locale="he-IL" calendar="hebrew" value="2026-03-21T14:30" data-test="hebrew" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Temporal values: a PlainDateTime value, ZonedDateTime bounds (their wall clock)</h3>
+    <div style={grid}>
+      <DateTimeInput
+        label="Kickoff"
+        value={Temporal.PlainDateTime.from('2026-03-23T10:00')}
+        min={Temporal.ZonedDateTime.from('2026-03-23T09:00[Europe/Berlin]')}
+        max={Temporal.ZonedDateTime.from('2026-03-27T18:00[Europe/Berlin]')}
+        timeOptionInterval={30}
+        description="Mar 23, 9 AM – Mar 27, 6 PM (Berlin wall clock)"
+        data-test="temporal"
+      />
     </div>
   </section>
 

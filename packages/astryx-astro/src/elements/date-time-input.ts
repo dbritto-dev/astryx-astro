@@ -32,7 +32,7 @@ import {
   type ISODateTimeString,
 } from '../components/DateTimeInput/dateTimeModel';
 import {getInitialFocusDate, resolveShownCalendar} from '../components/Calendar/calendarModel';
-import {adjustTime, isTimeInRange, plainDateToISO, plainDateToday, type ISODateString, type ISOTimeString} from '../lib/date';
+import {adjustTime, isoDateTimeOf, isTimeInRange, plainDateToISO, plainDateToday, type DateTimeValue, type ISODateString, type ISOTimeString} from '../lib/date';
 import type {AxCalendar} from './calendar';
 import type {PickerPopoverElement} from './picker-popover';
 
@@ -80,8 +80,9 @@ export class DateTimeInputElement extends HTMLElement {
   get value(): ISODateTimeString | undefined {
     return this.#value;
   }
-  set value(next: string | undefined | null) {
-    this.#setValue(normalizeDateTime(next));
+  /** Set with an ISO datetime, a `Temporal.PlainDateTime` or a `Temporal.ZonedDateTime` (its wall clock). */
+  set value(next: DateTimeValue | undefined | null) {
+    this.#setValue(normalizeDateTime(isoDateTimeOf(next)));
   }
 
   get isOpen(): boolean {

@@ -11,9 +11,13 @@
  * Reflects `data-ax-value` and `data-ax-focus-date`.
  *
  * API: `value`, `focusDate`, `rangeSelectionStart`, `navigateTo(iso)`, `focusDay(iso?)`,
- * `cancelRangeSelection()`, `dateConstraints`, `configure(partial)`.
- * Events (bubbling, composed): `astryx-change` (cancelable) — single `{value, valueAsDate}`,
- * range `{value: {start, end}}`; `astryx-focus-date-change` `{focusDate}`.
+ * `cancelRangeSelection()`, `dateConstraints`, `configure(partial)`. `value` and `navigateTo()`
+ * also take a `Temporal.PlainDate` (port addition).
+ * Events (bubbling, composed): `astryx-change` (cancelable) — single `{value, valueAsDate}`
+ * (`valueAsDate` is the day's local midnight as a `Date`, Astryx's onChange argument), range
+ * `{value: {start, end}}`; `astryx-focus-date-change` `{focusDate}`. Values are ISO strings.
+ *
+ * Date math is Temporal (lib/temporal.ts, through the model and lib/date).
  */
 import {announce} from './runtime/announce';
 import {createGridFocus, type GridFocus} from '../components/Calendar/gridFocus';
@@ -46,7 +50,7 @@ import {
   type NavigationUnit,
   type PlainDate,
 } from '../components/Calendar/calendarModel';
-import {plainDateToday} from '../lib/date';
+import {isoDateOf, plainDateToday, type DateValue} from '../lib/date';
 
 const DAY_BUTTON = 'button[data-date]';
 const ENABLED_DAY = 'button[data-date]:not([disabled]):not([aria-disabled="true"])';
@@ -103,7 +107,7 @@ export class AxCalendar extends HTMLElement {
     } catch {
       return;
     }
-    // The server already resolved the calendar; a browser that cannot show it shows Gregorian.
+    // The server already resolved the calendar (an unknown name becomes Gregorian).
     config.calendar = resolveShownCalendar(config.calendar, 'Calendar');
     this.#config = config;
     const serverToday = this.getAttribute('data-ax-today');
@@ -122,13 +126,16 @@ export class AxCalendar extends HTMLElement {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /** The selected date (single), range, or null. Setting it re-renders without an event. */
+  /**
+   * The selected date (single), range, or null, as ISO strings. Setting it (ISO or
+   * `Temporal.PlainDate`) re-renders without an event.
+   */
   get value(): CalendarValue {
     return this.#state?.value ?? null;
   }
-  set value(next: CalendarValue) {
+  set value(next: CalendarValue | DateValue | {start: DateValue; end: DateValue}) {
     if (!this.#state) return;
-    this.#state.value = next && typeof next === 'object' ? {start: next.start, end: next.end} : (next || null);
+    this.#state.value = next && typeof next === 'object' && 'start' in next ? {start: isoDateOf(next.start), end: isoDateOf(next.end)} : (isoDateOf(next as DateValue | null) || null);
     this.#render();
   }
 
@@ -137,7 +144,7 @@ export class AxCalendar extends HTMLElement {
     if (!this.#state || !this.#config) return null;
     return plainDateToISO(calendarMonthOf(this.#config.calendar, this.#state.focusDate).start);
   }
-  set focusDate(iso: ISODateString | null) {
+  set focusDate(iso: DateValue | null) {
     if (iso) this.navigateTo(iso);
   }
 
@@ -146,10 +153,10 @@ export class AxCalendar extends HTMLElement {
     return this.#state?.rangeSelectionStart ?? null;
   }
 
-  /** Show the month containing `iso` (Astryx handleRef.navigateTo). */
-  navigateTo(iso: ISODateString): void {
+  /** Show the month containing `iso` (ISO or `Temporal.PlainDate`; Astryx handleRef.navigateTo). */
+  navigateTo(iso: DateValue): void {
     if (!this.#state) return;
-    this.#state.focusDate = plainDateFromISO(iso);
+    this.#state.focusDate = plainDateFromISO(isoDateOf(iso));
     this.#render();
   }
 

@@ -21,6 +21,7 @@ import {comp} from '../node';
 import SortButton from '../_SortButton.astro';
 import SortTemplates from '../_SortTemplates.astro';
 import type {HeaderCellRenderProps, TableColumn, TableContextAction, TablePlugin, TablePluginContext} from '../types';
+import {compareTemporal, temporalKind} from '../../../lib/temporalKind';
 
 export type TableSortDirection = 'ascending' | 'descending';
 
@@ -81,7 +82,10 @@ export interface UseTableSortableStateResult<T extends Record<string, unknown>, 
 // =============================================================================
 
 function toSortableString(value: unknown): string {
+  // `Date` is Astryx's own cell type: read here, never built.
   if (value instanceof Date) return value.toISOString();
+  // Port addition: a Temporal value sorts by its ISO string (recognized by brand, no Temporal loaded).
+  if (temporalKind(value) !== null) return String(value);
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
   return '';
 }
@@ -93,6 +97,9 @@ function defaultCompare(aVal: unknown, bVal: unknown, collator: Intl.Collator): 
   if (aMissing) return 1;
   if (bMissing) return -1;
   if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
+  // Two Temporal values of one kind compare with their own `compare` (port addition).
+  const temporal = compareTemporal(aVal, bVal);
+  if (temporal !== null) return temporal;
   return collator.compare(toSortableString(aVal), toSortableString(bVal));
 }
 

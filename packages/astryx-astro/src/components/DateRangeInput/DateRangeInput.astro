@@ -35,6 +35,9 @@
  * Port notes: `dateConstraints` run on the server (Calendar's window; presets are checked on
  * the server too). Deferred (AGENTS.md scope): touch slide-across over the presets (contract
  * #6); `changeAction` / `onChange`: use the event.
+ * Temporal (port addition): `value`, a preset's `range` / `getRange()`, `min` and `max` also
+ * take `Temporal.PlainDate`s (`{start, end}` of them), and so does the element's `value`;
+ * `astryx-change` reports ISO strings. `dateConstraints` receive a `Date`, as in Astryx.
  *
  * @example
  * <DateRangeInput label="Reporting period" value={{start: '2026-03-01', end: '2026-03-07'}}
@@ -57,36 +60,36 @@ import {resolveLocale, translator} from '../../lib/i18n';
 import {uid} from '../../lib/uid';
 import {joinAriaIDs, routeFieldProps, statusIconPlan, type FieldComposedProps, type InputSize, type InputStatus} from '../Field/fieldProps';
 import {calendarFromLocals, createDateDisabled, type DayOfWeek, type DayOfWeekName} from '../Calendar/calendarModel';
-import {plainDateFromISO, type CalendarSystem, type ISODateString} from '../../lib/date';
-import {formatRangeDisplay, isRangeEqual, isRangeWithinSpan, toRange, type DateRange} from './rangeModel';
+import {isoDateOf, plainDateFromISO, type CalendarSystem, type DateValue} from '../../lib/date';
+import {formatRangeDisplay, isRangeEqual, isRangeWithinSpan, toRange, type DateRange, type DateRangeValue} from './rangeModel';
 import '../Field/Field.css';
 import '../VisuallyHidden/VisuallyHidden.css';
 import '../DateInput/DateInput.css';
 import './DateRangeInput.css';
 
-export type {DateRange};
+export type {DateRange, DateRangeValue};
 export type DateRangeInputSize = InputSize;
 export type DateRangeInputStatus = InputStatus;
 export interface DateRangePreset {
   label: string;
-  /** Astryx: computes the range (called on the server). */
-  getRange?: () => DateRange;
+  /** Astryx: computes the range (called on the server); ISO dates or `Temporal.PlainDate`s. */
+  getRange?: () => DateRangeValue;
   /** Port extension: the range itself. */
-  range?: DateRange;
+  range?: DateRangeValue;
 }
 
 export interface Props extends FieldComposedProps {
-  /** Selected range or null. The element owns it afterwards. */
-  value?: DateRange | null;
+  /** Selected range (`{start, end}` of ISO dates or `Temporal.PlainDate`s) or null. The element owns it afterwards. */
+  value?: DateRangeValue | null;
   /** Why the input is disabled (tooltip; also describes the trigger). */
   disabledMessage?: string;
   /** Busy: dims the field, aria-busy + spinner, opening blocked. @default false */
   isLoading?: boolean;
-  /** Minimum selectable date (ISO). */
-  min?: ISODateString;
-  /** Maximum selectable date (ISO). */
-  max?: ISODateString;
-  /** A date is disabled if ANY returns false (evaluated on the server). */
+  /** Minimum selectable date (ISO or `Temporal.PlainDate`). */
+  min?: DateValue;
+  /** Maximum selectable date (ISO or `Temporal.PlainDate`). */
+  max?: DateValue;
+  /** A date is disabled if ANY returns false (evaluated on the server); receives the day's local midnight as a `Date`, as in Astryx. */
   dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
   /** Max days a range may span, both endpoints counted (7 = a 7-day window). */
   maxRangeSpan?: number;
@@ -116,8 +119,8 @@ const {
   value: valueProp = null,
   disabledMessage,
   isLoading = false,
-  min,
-  max,
+  min: minProp,
+  max: maxProp,
   dateConstraints,
   maxRangeSpan,
   minRangeSpan,
@@ -135,6 +138,8 @@ const {
   slot: _slot, ...props
 } = Astro.props as typeof Astro.props & {slot?: string};
 
+const min = isoDateOf(minProp);
+const max = isoDateOf(maxProp);
 const r = routeFieldProps('DateRangeInput', props as Props & Record<string, unknown>);
 const {isDisabled, status, statusVariant} = r;
 const isEffectivelyDisabled = isDisabled || isLoading;

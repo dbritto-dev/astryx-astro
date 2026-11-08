@@ -13,6 +13,8 @@
  * The card's `<template>` is stamped into it once; its row values (and copy values / names)
  * are recomputed in the viewer's zone. With `data-ax-live` a relative phrase re-renders at
  * getLiveInterval() of its distance. Changing `data-value` / `data-ax-format` re-renders.
+ * The clock is `Temporal.Now.instant()` and the value a `Temporal.Instant` (lib/date
+ * `parseInstant`); their distance is a Temporal duration.
  */
 import {
   DEFAULT_AUTO_THRESHOLD,
@@ -22,13 +24,15 @@ import {
   formatTooltipLines,
   getLiveInterval,
   isRelativeFormat,
-  parseValue,
+  parseInstant,
+  secondsBetween,
   type CalendarSystem,
   type TimestampFormat,
   type TimestampTooltipEntry,
   type TimestampTooltipLine,
 } from '../lib/date';
 import {fillMessage, resolveShownCalendar} from '../components/Calendar/calendarModel';
+import {Temporal} from '../lib/temporal';
 
 type AbsoluteFormat = Exclude<TimestampFormat, 'relative' | 'relative_short' | 'auto'>;
 
@@ -67,9 +71,9 @@ export class AxTimestamp extends HTMLElement {
   #tick() {
     if (this.#timer !== undefined) clearTimeout(this.#timer);
     this.#timer = undefined;
-    const now = new Date();
-    const date = parseValue(this.getAttribute('data-value') ?? '');
-    if (Number.isNaN(date.getTime())) return;
+    const now = Temporal.Now.instant();
+    const date = parseInstant(this.getAttribute('data-value') ?? '');
+    if (date === null) return;
     const locale = this.getAttribute('data-locale') ?? 'en';
     const calendar: CalendarSystem = resolveShownCalendar(this.getAttribute('data-ax-calendar') ?? 'gregory', 'Timestamp');
     const format = (this.getAttribute('data-ax-format') ?? 'auto') as TimestampFormat;
@@ -124,7 +128,7 @@ export class AxTimestamp extends HTMLElement {
     }
 
     if (this.hasAttribute('data-ax-live') && relative) {
-      const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
+      const diffSeconds = secondsBetween(date, now);
       this.#timer = setTimeout(() => this.#tick(), getLiveInterval(diffSeconds));
     }
   }

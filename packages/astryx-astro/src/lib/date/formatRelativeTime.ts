@@ -1,9 +1,11 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/Timestamp/formatRelativeTime.ts (locale type import path adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/Timestamp/formatRelativeTime.ts (locale type import path adjusted;
+// the distance is a Temporal.Duration between the two instants).
 
 /**
  * @file formatRelativeTime.ts
- * @input A Date, reference Date, provider locale, and long or narrow style
+ * @input An exact time, the reference time (Date, epoch ms, Temporal.Instant or
+ *   ZonedDateTime), provider locale, and long or narrow style
  * @output A locale-correct relative time string
  * @position Pure locale-aware formatting boundary for Timestamp's relative modes
  *
@@ -14,6 +16,7 @@
  */
 
 import type {Locale} from './locale';
+import {secondsBetween, type ExactTime} from './instant';
 
 const MINUTE = 60;
 const HOUR = 3600;
@@ -51,12 +54,13 @@ function getFormatter(
  * plural rules, and word order to the platform's CLDR-backed formatter.
  */
 export function formatRelativeTime(
-  date: Date,
-  now: Date,
+  date: ExactTime,
+  now: ExactTime,
   locale: Locale,
   style: RelativeTimeStyle,
 ): string {
-  const diffSeconds = Math.round((now.getTime() - date.getTime()) / 1000);
+  // Whole seconds from `date` to `now` (Temporal.Instant#until), rounded as Astryx rounds.
+  const diffSeconds = secondsBetween(date, now);
   const absDiff = Math.abs(diffSeconds);
 
   // Treat values at (or a hair before/after) the present as "now". The wider

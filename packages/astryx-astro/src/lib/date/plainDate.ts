@@ -1,11 +1,14 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/plainDate.ts (locale type and characters import paths adjusted).
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/plainDate.ts (locale type and characters import paths adjusted;
+// the date arithmetic, zone conversion and ISO parsing rewritten on Temporal, same results).
 
 /**
  * @file plainDate.ts
  * @input ISO date strings, year/month/day numbers
  * @output Immutable PlainDate records and pure date arithmetic
- * @position Shared utility; replaces scattered Date usage across Calendar hooks
+ * @position Shared utility; replaces scattered Date usage across Calendar hooks.
+ *   Arithmetic, comparison, ISO weeks and zone conversion run on Temporal
+ *   (lib/temporal.ts); text comes from Intl, which formats epoch milliseconds.
  */
 
 import type {ISODateString, PlainDate} from './dateTypes';
@@ -17,8 +20,47 @@ import {
 } from './calendarSystem';
 import {firstCharacter} from '../characters';
 import {standaloneMonthCapitalLanguages} from './standaloneMonthCapitals.generated';
+import {Temporal, isTemporal} from '../temporal';
+import {hostTimeZone, zonedOf, type ExactTime} from './instant';
 
 export type {PlainDate} from './dateTypes';
+
+// =============================================================================
+// Temporal bridge (port addition)
+// =============================================================================
+
+/**
+ * The ISO `Temporal.PlainDate` of a PlainDate. Every function here takes either a
+ * `{year, month, day}` record (Gregorian / ISO fields, as Astryx's) or a `Temporal.PlainDate`;
+ * a Temporal date in another calendar counts as the ISO day it falls on. The record form
+ * throws a RangeError for a day the month lacks.
+ */
+export function plainDateToTemporal(pd: PlainDate): Temporal.PlainDate {
+  if (isTemporal(pd, 'PlainDate')) {
+    return pd.calendarId === 'iso8601' ? pd : pd.withCalendar('iso8601');
+  }
+  return new Temporal.PlainDate(pd.year, pd.month, pd.day);
+}
+
+/** The `{year, month, day}` record of a Temporal date (its ISO fields). */
+export function plainDateFromTemporal(date: Temporal.PlainDate): PlainDate {
+  const iso = date.calendarId === 'iso8601' ? date : date.withCalendar('iso8601');
+  return {year: iso.year, month: iso.month, day: iso.day};
+}
+
+/** Epoch milliseconds of the date's UTC midnight (what `Intl` formats a date-only PlainDate from). */
+function utcMidnight(pd: PlainDate): number {
+  return plainDateToTemporal(pd).toZonedDateTime('UTC').epochMilliseconds;
+}
+
+/** Epoch milliseconds of the date's start in the host's zone (local midnight, or the first instant after a gap). */
+function localMidnight(pd: PlainDate): number {
+  return plainDateToTemporal(pd).toZonedDateTime(hostTimeZone()).epochMilliseconds;
+}
+
+// =============================================================================
+// plainDate.ts
+// =============================================================================
 
 export function plainDateCreate(
   year: number,
@@ -40,108 +82,73 @@ export function plainDateCreate(
   return {year, month, day};
 }
 
+/**
+ * Reads an ISO 8601 calendar date with `Temporal.PlainDate.from` (a date-time or a calendar
+ * annotation reads as its ISO day), then applies Astryx's year ≥ 1 rule.
+ */
 export function plainDateFromISO(str: ISODateString): PlainDate {
-  const [year, month, day] = str.split('-').map(Number);
+  const {year, month, day} = plainDateFromTemporal(Temporal.PlainDate.from(str));
   return plainDateCreate(year, month, day);
 }
 
 export function plainDateToISO(pd: PlainDate): ISODateString {
-  const y = String(pd.year).padStart(4, '0');
-  const m = String(pd.month).padStart(2, '0');
-  const d = String(pd.day).padStart(2, '0');
-  return `${y}-${m}-${d}` as ISODateString;
-}
-
-export function plainDateToDate(pd: PlainDate): Date {
-  // Unlike the Date constructor, setFullYear keeps years 0-99 as given
-  // instead of reading them as 1900-1999.
-  const d = new Date(0, 0, 1);
-  d.setFullYear(pd.year, pd.month - 1, pd.day);
-  return d;
-}
-
-export function plainDateFromDate(d: Date): PlainDate {
-  return {
-    year: d.getFullYear(),
-    month: d.getMonth() + 1,
-    day: d.getDate(),
-  };
-}
-
-export function plainDateToday(): PlainDate {
-  return plainDateFromDate(new Date());
-}
-
-export function getDaysInMonth(year: number, month: number): number {
-  if (month === 2) {
-    const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-    return isLeap ? 29 : 28;
-  }
-  return [0, 31, 0, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
-}
-
-export function plainDateDayOfWeek(pd: PlainDate): number {
-  return plainDateToDate(pd).getDay();
-}
-
-export function plainDateAddMonths(pd: PlainDate, n: number): PlainDate {
-  // Pure month arithmetic with day clamping (Temporal.PlainDate.add
-  // semantics): Jan 31 + 1 month is Feb 28/29, not Mar 2/3. Date#setMonth
-  // would overflow the excess days into the following month instead.
-  const totalMonths = pd.year * 12 + (pd.month - 1) + n;
-  const year = Math.floor(totalMonths / 12);
-  const month = (((totalMonths % 12) + 12) % 12) + 1;
-  const day = Math.min(pd.day, getDaysInMonth(year, month));
-  return {year, month, day};
-}
-
-export function plainDateAddDays(pd: PlainDate, n: number): PlainDate {
-  const d = plainDateToDate(pd);
-  d.setDate(d.getDate() + n);
-  return plainDateFromDate(d);
+  return plainDateToTemporal(pd).toString({calendarName: 'never'}) as ISODateString;
 }
 
 /**
- * `Date.UTC` with years 0-99 kept as given; `Date.UTC` itself reads them as
- * 1900-1999.
+ * The date's local midnight as a `Date` (Astryx's API: `dateConstraints` callbacks and
+ * Calendar's `valueAsDate` receive one). Built from the Temporal start of day in the host's
+ * zone; years 0-99 stay as given.
  */
-function utcTime(
-  year: number,
-  monthIndex: number,
-  day: number,
-  hour = 0,
-  minute = 0,
-  second = 0,
-): number {
-  const d = new Date(0);
-  d.setUTCFullYear(year, monthIndex, day);
-  d.setUTCHours(hour, minute, second);
-  return d.getTime();
+export function plainDateToDate(pd: PlainDate): Date {
+  return new Date(localMidnight(pd));
+}
+
+/** The local calendar day of a `Date` (Astryx's API), read through Temporal in the host's zone. */
+export function plainDateFromDate(d: Date): PlainDate {
+  return plainDateFromTemporal(zonedOf(d).toPlainDate());
+}
+
+export function plainDateToday(): PlainDate {
+  return plainDateFromTemporal(Temporal.Now.plainDateISO());
+}
+
+export function getDaysInMonth(year: number, month: number): number {
+  return new Temporal.PlainDate(year, month, 1).daysInMonth;
+}
+
+/** Day of the week, 0 (Sunday) to 6 (Saturday); Temporal counts 1 (Monday) to 7 (Sunday). */
+export function plainDateDayOfWeek(pd: PlainDate): number {
+  return plainDateToTemporal(pd).dayOfWeek % 7;
+}
+
+export function plainDateAddMonths(pd: PlainDate, n: number): PlainDate {
+  // Temporal.PlainDate.add clamps the day: Jan 31 + 1 month is Feb 28/29, not Mar 2/3.
+  return plainDateFromTemporal(plainDateToTemporal(pd).add({months: n}));
+}
+
+export function plainDateAddDays(pd: PlainDate, n: number): PlainDate {
+  return plainDateFromTemporal(plainDateToTemporal(pd).add({days: n}));
 }
 
 /**
  * Whole calendar days from `a` to `b`, ignoring time of day. Positive when
- * `b` is after `a`, negative when before. Uses UTC midnight so DST shifts
- * never add or drop a day.
+ * `b` is after `a`, negative when before. Calendar dates have no time zone, so
+ * DST shifts never add or drop a day.
  */
 export function plainDateDiffDays(a: PlainDate, b: PlainDate): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const aUTC = utcTime(a.year, a.month - 1, a.day);
-  const bUTC = utcTime(b.year, b.month - 1, b.day);
-  return Math.round((bUTC - aUTC) / msPerDay);
+  return plainDateToTemporal(a).until(plainDateToTemporal(b)).days;
 }
 
 /**
- * The wall-clock fields an instant reads as in a given zone.
- *
- * A fixed `'en-US'` locale with `hourCycle: 'h23'` keeps the parts numeric and
- * stable whatever locale the viewer has, so callers can assemble machine
- * shapes (`YYYY-MM-DD`, `HH:mm:ss`) from them. Exported for Timestamp, whose
+ * The wall-clock fields an instant reads as in a given zone (Temporal's
+ * ZonedDateTime fields, ISO calendar), so callers can assemble machine shapes
+ * (`YYYY-MM-DD`, `HH:mm:ss`) from them. Exported for Timestamp, whose
  * `system_*` formats are built from these fields rather than through `Intl`
  * formatting.
  */
 export function getTimeZoneParts(
-  instant: number,
+  instant: ExactTime,
   timezoneID: string,
 ): {
   year: number;
@@ -151,31 +158,17 @@ export function getTimeZoneParts(
   minute: number;
   second: number;
 } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezoneID,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-    calendar: 'gregory',
-  }).formatToParts(new Date(instant));
+  return wallClockOf(zonedOf(instant, timezoneID));
+}
 
-  const lookup = Object.fromEntries(
-    parts
-      .filter(part => part.type !== 'literal')
-      .map(part => [part.type, Number(part.value)]),
-  );
-
+function wallClockOf(zoned: Temporal.ZonedDateTime): WallClock {
   return {
-    year: lookup.year,
-    month: lookup.month,
-    day: lookup.day,
-    hour: lookup.hour,
-    minute: lookup.minute,
-    second: lookup.second,
+    year: zoned.year,
+    month: zoned.month,
+    day: zoned.day,
+    hour: zoned.hour,
+    minute: zoned.minute,
+    second: zoned.second,
   };
 }
 
@@ -191,87 +184,49 @@ export interface WallClock {
 
 /**
  * Wall-clock fields for an instant, in the named zone or in the viewer's
- * zone (`undefined`, `null` or ""). The zone-less branch reads plain `Date`
- * getters, so the default rendering needs no `Intl` zone data. The explicit
- * return type keeps both branches on one shape.
+ * zone (`undefined`, `null` or ""). The explicit return type keeps both
+ * branches on one shape.
  */
 export function getWallClock(
-  date: Date,
+  date: ExactTime,
   timeZone: string | null | undefined,
 ): WallClock {
-  return !timeZone
-    ? {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1,
-        day: date.getDate(),
-        hour: date.getHours(),
-        minute: date.getMinutes(),
-        second: date.getSeconds(),
-      }
-    : getTimeZoneParts(date.getTime(), timeZone);
+  return wallClockOf(zonedOf(date, timeZone));
 }
 
-function getTimezoneOffsetMS(timezoneID: string, instant: number): number {
-  const parts = getTimeZoneParts(instant, timezoneID);
-  return (
-    utcTime(
-      parts.year,
-      parts.month - 1,
-      parts.day,
-      parts.hour,
-      parts.minute,
-      parts.second,
-    ) - instant
-  );
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
+/**
+ * The instant (epoch milliseconds) of a wall time on a date in a zone. Temporal's
+ * "compatible" disambiguation (AST-067): a wall time that happens twice
+ * resolves to its earlier occurrence, and one that never happens is read in
+ * the offset before the transition, which moves it forward by the length of
+ * the gap. An hour or minute past its range carries into the next field, as
+ * the wall time it names does (24:00 is the next midnight).
+ */
 export function plainDateToInstant(
   date: PlainDate,
   timezoneID: string,
   hour = 0,
   minute = 0,
 ): number {
-  // The wall time read as if it were UTC; subtracting an offset gives a
-  // candidate instant.
-  const wallTime = utcTime(date.year, date.month - 1, date.day, hour, minute);
-  // The offsets in effect a day either side cover any transition that can make
-  // this wall time skipped or repeated.
-  const offsetBefore = getTimezoneOffsetMS(timezoneID, wallTime - DAY_MS);
-  const offsetAfter = getTimezoneOffsetMS(timezoneID, wallTime + DAY_MS);
-  // Temporal's "compatible" disambiguation (AST-067): a wall time that happens
-  // twice resolves to its earlier occurrence, and one that never happens is
-  // read in the offset before the transition, which moves it forward by the
-  // length of the gap.
-  const candidates = [offsetBefore, offsetAfter]
-    .map(offset => wallTime - offset)
-    .filter(
-      (instant, index) =>
-        getTimezoneOffsetMS(timezoneID, instant) ===
-        (index === 0 ? offsetBefore : offsetAfter),
-    );
-  return candidates.length > 0
-    ? Math.min(...candidates)
-    : wallTime - offsetBefore;
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return NaN;
+  }
+  return plainDateToTemporal(date)
+    .toPlainDateTime()
+    .add({hours: hour, minutes: minute})
+    .toZonedDateTime(timezoneID, {disambiguation: 'compatible'}).epochMilliseconds;
 }
 
 export function plainDateFromInstant(
-  instant: number,
+  instant: ExactTime,
   timezoneID: string,
 ): PlainDate {
-  const parts = getTimeZoneParts(instant, timezoneID);
-  return plainDateCreate(parts.year, parts.month, parts.day);
+  const {year, month, day} = plainDateFromTemporal(zonedOf(instant, timezoneID).toPlainDate());
+  return plainDateCreate(year, month, day);
 }
 
 function compare(a: PlainDate, b: PlainDate): number {
-  if (a.year !== b.year) {
-    return a.year - b.year;
-  }
-  if (a.month !== b.month) {
-    return a.month - b.month;
-  }
-  return a.day - b.day;
+  return Temporal.PlainDate.compare(plainDateToTemporal(a), plainDateToTemporal(b));
 }
 
 export function plainDateIsBefore(a: PlainDate, b: PlainDate): boolean {
@@ -334,12 +289,13 @@ export function nearestAcceptedDate(
     (min == null || compare(date, min) >= 0) &&
     (max == null || compare(date, max) <= 0) &&
     !isDateDisabled(date);
+  const origin = plainDateToTemporal(clamped);
   for (let offset = 1; offset <= searchDays; offset += 1) {
-    const later = plainDateAddDays(clamped, offset);
+    const later = plainDateFromTemporal(origin.add({days: offset}));
     if (isAccepted(later)) {
       return later;
     }
-    const earlier = plainDateAddDays(clamped, -offset);
+    const earlier = plainDateFromTemporal(origin.subtract({days: offset}));
     if (isAccepted(earlier)) {
       return earlier;
     }
@@ -348,16 +304,16 @@ export function nearestAcceptedDate(
 }
 
 export function plainDateSetFirstOfMonth(pd: PlainDate): PlainDate {
-  return {year: pd.year, month: pd.month, day: 1};
+  return plainDateFromTemporal(plainDateToTemporal(pd).with({day: 1}));
 }
 
 export function plainDateSetStartOfWeek(
   pd: PlainDate,
   weekStartsOn: number,
 ): PlainDate {
-  const day = plainDateDayOfWeek(pd);
-  const delta = (day - weekStartsOn + 7) % 7;
-  return plainDateAddDays(pd, -delta);
+  const date = plainDateToTemporal(pd);
+  const delta = ((date.dayOfWeek % 7) - weekStartsOn + 7) % 7;
+  return plainDateFromTemporal(date.subtract({days: delta}));
 }
 
 export function plainDateSetEndOfWeekExclusive(
@@ -367,22 +323,9 @@ export function plainDateSetEndOfWeekExclusive(
   return plainDateAddDays(plainDateSetStartOfWeek(pd, weekStartsOn), 7);
 }
 
+/** The ISO 8601 week number (Temporal's `weekOfYear` in the ISO calendar). */
 export function plainDateGetWeekNumber(pd: PlainDate): number {
-  // ISO week number: ceil(day-of-year of the week's Thursday / 7). Computed
-  // entirely on UTC anchors — the same DST immunity plainDateDiffDays relies
-  // on — because mixing local-time instants leaks the host zone's DST offset
-  // into the day count. When Jan 1 is a Friday (so every Thursday's day-of-year
-  // is an exact multiple of 7), a one-hour offset from a zone whose DST ends
-  // after New Year rounds a whole week up: Sydney, Auckland and Santiago users
-  // saw week 15 for the week that is ISO week 14. utcTime keeps years 1-99
-  // as given, like the other Calendar date helpers.
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const utcMidnight = utcTime(pd.year, pd.month - 1, pd.day);
-  const dayNum = new Date(utcMidnight).getUTCDay() || 7;
-  const thursday = utcMidnight + (4 - dayNum) * msPerDay;
-  const yearStart = utcTime(new Date(thursday).getUTCFullYear(), 0, 1);
-  const dayOfYear = (thursday - yearStart) / msPerDay + 1;
-  return Math.ceil(dayOfYear / 7);
+  return plainDateToTemporal(pd).weekOfYear ?? 0;
 }
 
 // e.g. "Wednesday, May 21, 2026" (locale-dependent)
@@ -540,12 +483,12 @@ function plainDateFormatInput(
   pd: PlainDate,
   options: Intl.DateTimeFormatOptions,
   locale: Locale,
-): [Intl.DateTimeFormat, Date | number] {
+): [Intl.DateTimeFormat, number] {
   const calendar = options.calendar ?? 'gregory';
   if (options.timeZone != null) {
     return [
       dateTimeFormatFor(locale, {...options, calendar}),
-      plainDateToDate(pd),
+      localMidnight(pd),
     ];
   }
   if (TIME_OF_DAY_FIELDS.some(field => options[field] != null)) {
@@ -554,15 +497,16 @@ function plainDateFormatInput(
     // so this one is built for the call.
     return [
       new Intl.DateTimeFormat(locale, {...options, calendar}),
-      plainDateToDate(pd),
+      localMidnight(pd),
     ];
   }
   // Date fields alone: UTC midnight formatted in UTC, so neither the cached
-  // formatter nor the date depends on the host's zone, which can change while
-  // a page is open.
+  // formatter nor the instant depends on the host's zone, which can change while
+  // a page is open. Intl formats the instant's epoch milliseconds: a Temporal
+  // object would get another pattern (see lib/temporal.ts).
   return [
     dateTimeFormatFor(locale, {...options, calendar, timeZone: 'UTC'}),
-    utcTime(pd.year, pd.month - 1, pd.day),
+    utcMidnight(pd),
   ];
 }
 

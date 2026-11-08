@@ -5,12 +5,14 @@ import InputGroupText from '../InputGroup/InputGroupText.astro';
 import FormLayout from '../FormLayout/FormLayout.astro';
 import Button from '../Button/Button.astro';
 import type {InputStatusType} from '../Field/fieldProps';
+import {Temporal} from '../../lib/temporal';
 
 const sizes: DateInputSize[] = ['sm', 'md', 'lg'];
 const statuses: InputStatusType[] = ['error', 'warning', 'success'];
 const messages: Record<InputStatusType, string> = {error: 'Pick a date in March', warning: 'This is a holiday', success: 'Available'};
 const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-5);align-items:start';
 const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+// dateConstraints receive the day's local midnight as a Date (Astryx's API).
 const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
 ---
 <div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
@@ -40,6 +42,15 @@ const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
       <DateInput label="日付 (ja-JP)" locale="ja-JP" value="2026-03-21" format="date" data-test="ja" />
       <div dir="rtl" lang="ar-SA"><DateInput label="التاريخ (ar-SA)" locale="ar-SA" value="2026-03-21" format="date" data-test="ar" /></div>
       <DateInput label="Buddhist calendar (th-TH)" locale="th-TH" calendar="buddhist" value="2026-03-21" min="2020-01-01" max="2030-12-31" data-test="buddhist" />
+      <DateInput label="تاریخ (fa-IR, Persian calendar)" locale="fa-IR" calendar="persian" value="2026-03-21" data-test="persian" />
+      <DateInput label="Hijri (ar-SA, islamic-umalqura)" locale="ar-SA" calendar="islamic-umalqura" value="2026-03-21" format="date" data-test="umalqura" />
+    </div>
+  </section>
+
+  <section>
+    <h3 style={cap}>Temporal values</h3>
+    <div style={grid}>
+      <DateInput label="Temporal.PlainDate value" value={Temporal.PlainDate.from('2026-03-21')} min={Temporal.PlainDate.from('2026-03-01')} max={Temporal.PlainDate.from('2026-03-31')} description="value, min and max are Temporal.PlainDate" data-test="temporal" />
     </div>
   </section>
 

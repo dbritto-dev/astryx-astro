@@ -180,7 +180,8 @@ SizeContext), closing through `popovertarget` + `popovertargetaction="hide"`.
 - `uid(Astro, prefix)` (`lib/uid.ts`) — per-request id counter, the useId stand-in. Use it for
   every generated id.
 - `lib/date/` — PlainDate, calendar systems, date/time parsing + formatting, Unicode digits,
-  `formatInstant`, `formatRelativeTime`, `formatTooltipLines`, Timestamp helpers.
+  `formatInstant`, `formatRelativeTime`, `formatTooltipLines`, Timestamp helpers; on Temporal
+  from `lib/temporal.ts` (see "Dates and Temporal" below).
 - `lib/codeblock/` — tokenizer, grammars (incl. 9 opt-in languages), `highlightRanges`, token
   mapping (`TOKEN_TYPES`, `highlightName`, `tokenClassName`, `SYNTAX_TOKEN_DEFAULTS`,
   `highlightRuleCss()`). The CodeBlock porter writes the `::highlight(astryx-*)` and
@@ -340,6 +341,7 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   propagation so a surrounding popover stays open.
 - Server and client markup come from one function (`calendarModel.ts`).
 - `Astro.locals.astryxCalendar` is the request/subtree calendar system (also read by Timestamp).
+  Every calendar renders on the server (no Gregorian fallback any more; see "Dates and Temporal").
 
 ## Cleanup backlog (lead)
 
@@ -615,3 +617,41 @@ CodeBlock should import it and read the tokens; `<SyntaxTheme theme="dracula">` 
   focusInitialTarget), and DateInput's calendar toggle precedes its text field (as in Astryx),
   so `_FilterControl` (`isInPopover`) names the date field with `data-autofocus`, the
   caller-preferred target the popover runtime takes first.
+
+## Dates and Temporal (`lib/temporal.ts`)
+
+- `import {Temporal} from '../lib/temporal'` is the only way to Temporal: the native
+  `globalThis.Temporal` (Chrome/Edge 144+, Firefox 139+), else `temporal-polyfill/full`
+  (pinned 1.0.6, all calendars) loaded by a dynamic import behind top-level await (Safari, Node
+  on the server). Never installed globally. `isNativeTemporal`, `isTemporal(v, kind)`.
+- Importing it makes the importing script wait for Temporal, so only date code imports it:
+  lib/date, the date components and elements, Timer. Code every page of a kind ships (Table
+  plugins and `elements/table-features/*`, PowerSearch's row matcher `powerSearchFilters.ts`)
+  reads Temporal values by brand with `lib/temporalKind.ts` (`temporalKind`,
+  `exactTimeMilliseconds`, `compareTemporal`, `plainDateUtcMilliseconds`) instead.
+  `tools/tests/temporal-loading.test.mjs` fails if a page without date elements reaches the
+  lib/temporal chunk, or if Chrome ever requests the polyfill.
+- Never pass a Temporal object to `Intl.DateTimeFormat` / `toLocaleString`: native V8 and the
+  polyfill both choose other patterns for Temporal objects than for an instant (ja-JP
+  `{month: 'long'}` → "2026/3/21"). Format `epochMilliseconds` with the native formatter, as
+  lib/date does (byte-identical in both modes).
+- `Date` only at Astryx boundaries: `dateConstraints` callbacks and Calendar's `valueAsDate`
+  get a local-midnight `Date`; Timestamp's `parseValue` returns one; rows/cells may be `Date`s;
+  free-form text fallbacks (`parseDateInput`, `parseInstant`, the Table date filter string)
+  use `Date`'s parser; `powerSearchFilters.ts` reads the clock with `Date.now()` to stay
+  Temporal-free. Comment each new one.
+- Props take Temporal values too (port addition, `lib/date/values.ts`): `Temporal.PlainDate`
+  for Calendar / DateInput / DateRangeInput values and bounds, `PlainTime` for TimeInput,
+  `PlainDateTime` / `ZonedDateTime` (wall clock) for DateTimeInput, `Instant` /
+  `ZonedDateTime` for Timestamp `value` and Timer `startTime`; element `value` setters too.
+  Event `detail`s stay Astryx's ISO strings.
+- Tests: `AX_TEMPORAL=polyfill` (or `setup({temporal: 'polyfill'})`, or `#no-temporal` in a
+  URL) runs a harness test with Chrome's Temporal deleted; `temporal-polyfill-mode.test.mjs`
+  runs every date test that way; `lib-date-browser.test.mjs` runs the lib/date cases in Chrome.
+- Known engine difference: native V8 Temporal (ICU4X) and the polyfill (which reads Intl, ICU4C)
+  place a few Chinese / Dangi month starts a day apart (Chinese New Year 2027: Feb 6 native,
+  Feb 7 polyfill; Chinese months starting around 1999-01-17, 2012-08-17, 2018-11-07 and
+  2030-02-02 too, among dates sampled 1985–2045). The server renders with the
+  polyfill, so a Chinese calendar showing such a month re-renders differently in Chrome after
+  navigation; Astryx's `withTemporalDay` keeps labels on the grid's month either way.
+  `calendar.test.mjs` reports these and fails on any other server/browser difference.

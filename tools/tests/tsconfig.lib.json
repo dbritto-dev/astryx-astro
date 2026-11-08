@@ -20,6 +20,8 @@
     "../../packages/astryx-astro/src/lib/accessibleName.ts",
     "../../packages/astryx-astro/src/lib/groupItems.ts",
     "../../packages/astryx-astro/src/lib/searchableItem.ts",
-    "../../packages/astryx-astro/src/lib/devWarning.ts"
+    "../../packages/astryx-astro/src/lib/devWarning.ts",
+    "../../packages/astryx-astro/src/lib/temporal.ts",
+    "../../packages/astryx-astro/src/lib/temporalKind.ts"
   ]
 }

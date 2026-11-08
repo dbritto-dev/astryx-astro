@@ -1,6 +1,7 @@
 ---
 import Timer from './Timer.astro';
 import Text from '../Text/Text.astro';
+import {Temporal} from '../../lib/temporal';
 // Fixed offsets from build time would drift; the demo computes start times in the browser
 // (data-offset → data-start-time) so every format shows a meaningful reading.
 const row = 'display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--spacing-5)';
@@ -26,11 +27,16 @@ const cell = 'display:inline-flex;flex-direction:column;gap:var(--spacing-1);min
     <span style={cell}><Timer locale="hi-IN-u-nu-deva" format="clock" data-offset="3723000" data-case="locale-deva" /><span style={caption}>hi-IN, Devanagari digits</span></span>
     <span style={cell}><Timer locale="es-ES" format="clock" data-offset="61000" data-case="locale-es" /><span style={caption}>es-ES (Latin digits)</span></span>
   </div>
+  <div style={row}>
+    <span style={cell}><Timer startTime={Temporal.Instant.from('2026-01-01T00:00:00Z')} data-case="temporal" /><span style={caption}>startTime: a Temporal.Instant (since 2026-01-01)</span></span>
+  </div>
 </div>
 <script>
+  import {Temporal} from '../../lib/temporal';
+
   document.querySelectorAll<HTMLElement>('[data-test="timers"] [data-offset]').forEach((el) => {
     // The offset attribute sits on the <time>; its <ax-timer> root counts from the start.
     const timer = el.closest('ax-timer');
-    timer?.setAttribute('data-start-time', String(Date.now() - Number(el.dataset.offset)));
+    timer?.setAttribute('data-start-time', String(Temporal.Now.instant().epochMilliseconds - Number(el.dataset.offset)));
   });
 </script>

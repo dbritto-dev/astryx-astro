@@ -5,6 +5,7 @@
 // usePowerSearchConfig.ts (createPowerSearchConfig + applyFilters) and the relative-date options
 // of PowerSearchValueEditor.tsx. Runs on the server (PowerSearch.astro renders tokens, labels
 // and editors) and in the browser (elements/power-search.ts reformats them as filters change).
+// Dates: ./powerSearchDates.ts (Temporal); the row matcher: ./powerSearchFilters.ts (no Temporal).
 //
 // Astro adaptations: ReactNode icons are icon names; a `searchSource` on a string /
 // string_list / entity_list operator is a server-rendered `createStaticSource(...)` (or absent:
@@ -13,17 +14,11 @@
 import type {SearchableItem} from '../../lib/searchableItem';
 import type {StaticSearchSource} from '../Typeahead/createStaticSource';
 import {truncateCharacters} from '../../lib/characters';
-import {formatCalendarInstant, type CalendarSystem} from '../../lib/date/calendarSystem';
-import {
-  getWallClock,
-  plainDateFromDate,
-  plainDateFromInstant,
-  plainDateFromISO,
-  plainDateToDate,
-  plainDateToInstant,
-  plainDateToISO,
-} from '../../lib/date/plainDate';
+import type {CalendarSystem} from '../../lib/date/calendarSystem';
 import {groupItems} from '../../lib/groupItems';
+import {formatDateAbsolute} from './powerSearchDates';
+
+export {formatDateAbsolute};
 
 // ── Types (types.ts) ─────────────────────────────────────────────────────────
 
@@ -362,55 +357,17 @@ export function createPowerSearchSource(config: InternalConfig, maxTypedResults:
 }
 
 // ── Dates (powerSearchDateZone.ts, resolveDateTimeRangePart.ts) ─────────────
+// On Temporal in ./powerSearchDates.ts; the range parts with the row matcher in
+// ./powerSearchFilters.ts (which tables without date columns load, so it never loads Temporal).
 
-/** A calendar day is midnight in `timezoneID` (else UTC); a time of day shows in it (else the viewer's zone). */
-export function resolveDateZone(timezoneID: string | undefined, isDateOnly: boolean): string | undefined {
-  if (timezoneID) return timezoneID;
-  return isDateOnly ? 'UTC' : undefined;
-}
-
-const pad = (n: number, width = 2) => String(n).padStart(width, '0');
-
-export function unixSecondsToISODate(unixSeconds: number, zone: string | undefined): string {
-  const instant = unixSeconds * 1000;
-  return plainDateToISO(zone == null ? plainDateFromDate(new Date(instant)) : plainDateFromInstant(instant, zone));
-}
-
-export function isoDateToUnixSeconds(date: string, zone: string | undefined): number {
-  const plain = plainDateFromISO(date as never);
-  const instant = zone == null ? plainDateToDate(plain).getTime() : plainDateToInstant(plain, zone);
-  return Math.floor(instant / 1000);
-}
-
-export function unixSecondsToISODateTime(unixSeconds: number, zone: string | undefined): string {
-  const w = getWallClock(new Date(unixSeconds * 1000), zone);
-  return `${pad(w.year, 4)}-${pad(w.month)}-${pad(w.day)}T${pad(w.hour)}:${pad(w.minute)}`;
-}
-
-export function isoDateTimeToUnixSeconds(value: string, zone: string | undefined): number {
-  const [datePart, timePart = '00:00'] = value.split('T');
-  const [hour = 0, minute = 0] = timePart.split(':').map(Number);
-  const plain = plainDateFromISO(datePart as never);
-  let instant: number;
-  if (zone == null) {
-    const d = plainDateToDate(plain);
-    d.setHours(hour, minute, 0, 0);
-    instant = d.getTime();
-  } else {
-    instant = plainDateToInstant(plain, zone, hour, minute);
-  }
-  return Math.floor(instant / 1000);
-}
-
-const SECONDS_BY_UNIT = {second: 1, minute: 60, hour: 3600, day: 86400, week: 604800, month: 2592000, year: 31536000} as const;
-
-export function resolveDateTimeRangePart(part: DateTimeRangePart, nowSeconds = Date.now() / 1000): number {
-  switch (part.type) {
-    case 'NOW': return Math.floor(nowSeconds);
-    case 'ABSOLUTE': return part.unixSeconds;
-    case 'RELATIVE': return Math.floor(nowSeconds - part.backValue * SECONDS_BY_UNIT[part.unit]);
-  }
-}
+export {
+  isoDateTimeToUnixSeconds,
+  isoDateToUnixSeconds,
+  resolveDateZone,
+  unixSecondsToISODate,
+  unixSecondsToISODateTime,
+} from './powerSearchDates';
+export {resolveDateTimeRangePart} from './powerSearchFilters';
 
 // ── Formatting (formatFilterValue.ts, formatTokenValue.ts) ──────────────────
 
@@ -431,13 +388,6 @@ export interface FormatContext {
 
 export function formatSharedNumber(value: number, locale: string, options?: Pick<Intl.NumberFormatOptions, 'useGrouping' | 'maximumFractionDigits'>): string {
   try { return new Intl.NumberFormat(locale, options).format(value); } catch { return String(value); }
-}
-
-export function formatDateAbsolute(unixSeconds: number, locale: string, timezoneID: string | undefined, isDateOnly = true, calendar: CalendarSystem = 'gregory'): string {
-  const options: Intl.DateTimeFormatOptions = isDateOnly
-    ? {year: 'numeric', month: 'short', day: 'numeric'}
-    : {year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'};
-  return formatCalendarInstant(calendar, new Date(unixSeconds * 1000), options, locale as never, resolveDateZone(timezoneID, isDateOnly));
 }
 
 const enumLabel = (values: ReadonlyArray<EnumItem>, value: string) => values.find((v) => v.value === value)?.label ?? value;
@@ -596,123 +546,6 @@ export function editorSignature(field: PowerSearchField, op: PowerSearchOperator
 }
 
 // ── createPowerSearchConfig (usePowerSearchConfig.ts) ───────────────────────
+// In ./powerSearchFilters.ts, re-exported here.
 
-type FieldType = 'string' | 'number' | 'boolean' | 'date' | 'enum' | 'enum_list' | 'string_list';
-export interface FieldDefinition<K extends string = string, T extends FieldType = FieldType> {
-  readonly key: K;
-  readonly type: T;
-  readonly label?: string;
-  /** Required for 'enum' and 'enum_list'. */
-  readonly enumValues?: ReadonlyArray<EnumItem>;
-}
-
-const op = (key: string, i18n: string, value: OperatorValue): PowerSearchOperator => ({key, i18nKey: `@astryx.powersearch.operator.${i18n}`, value});
-
-function buildField(def: FieldDefinition): PowerSearchField {
-  const label = def.label ?? def.key;
-  const values = def.enumValues ?? [];
-  switch (def.type) {
-    case 'string': return {key: def.key, label, defaultOperator: 'contains', operators: [
-      op('contains', 'contains', {type: 'string'}), op('not_contains', 'notContains', {type: 'string'}),
-      op('starts_with', 'startsWith', {type: 'string'}), op('not_starts_with', 'notStartsWith', {type: 'string'}),
-      op('ends_with', 'endsWith', {type: 'string'}), op('not_ends_with', 'notEndsWith', {type: 'string'}),
-      op('is', 'is', {type: 'string'}), op('is_not', 'isNot', {type: 'string'}),
-    ]};
-    case 'number': return {key: def.key, label, defaultOperator: 'equals', operators: [
-      op('equals', 'equals', {type: 'float'}), op('not_equals', 'notEquals', {type: 'float'}),
-      op('greater_than', 'greaterThan', {type: 'float'}), op('less_than', 'lessThan', {type: 'float'}),
-      op('greater_than_or_equal', 'greaterThanOrEqual', {type: 'float'}), op('less_than_or_equal', 'lessThanOrEqual', {type: 'float'}),
-    ]};
-    case 'date': return {key: def.key, label, defaultOperator: 'after', operators: [
-      op('before', 'before', {type: 'date_absolute'}), op('after', 'after', {type: 'date_absolute'}), op('between', 'between', {type: 'date_range'}),
-    ]};
-    case 'boolean': return {key: def.key, label, defaultOperator: 'is_true', operators: [
-      op('is_true', 'isTrue', {type: 'empty'}), op('is_false', 'isFalse', {type: 'empty'}),
-    ]};
-    case 'enum': return {key: def.key, label, defaultOperator: 'is', operators: [
-      op('is', 'is', {type: 'enum', values}), op('is_not', 'isNot', {type: 'enum', values}),
-      op('is_any_of', 'isAnyOf', {type: 'enum_list', values}), op('is_none_of', 'isNoneOf', {type: 'enum_list', values}),
-    ]};
-    case 'enum_list': return {key: def.key, label, defaultOperator: 'is_any_of', operators: [
-      op('is_any_of', 'isAnyOf', {type: 'enum_list', values}), op('is_none_of', 'isNoneOf', {type: 'enum_list', values}),
-    ]};
-    case 'string_list': return {key: def.key, label, defaultOperator: 'is_any_of', operators: [
-      op('is_any_of', 'isAnyOf', {type: 'string_list'}), op('is_none_of', 'isNoneOf', {type: 'string_list'}),
-    ]};
-  }
-}
-
-const toUnixSeconds = (value: Date | number) => (value instanceof Date ? Math.floor(value.getTime() / 1000) : value);
-const toStringValues = (value: unknown): string[] | null =>
-  typeof value === 'string' ? [value] : Array.isArray(value) && value.every((v) => typeof v === 'string') ? value : null;
-
-const STRING_OPS: Record<string, (s: string, t: string) => boolean> = {
-  contains: (s, t) => s.includes(t), not_contains: (s, t) => !s.includes(t),
-  starts_with: (s, t) => s.startsWith(t), not_starts_with: (s, t) => !s.startsWith(t),
-  ends_with: (s, t) => s.endsWith(t), not_ends_with: (s, t) => !s.endsWith(t),
-  is: (s, t) => s === t, is_not: (s, t) => s !== t,
-};
-const NUMBER_OPS: Record<string, (n: number, t: number) => boolean> = {
-  equals: (n, t) => n === t, not_equals: (n, t) => n !== t, greater_than: (n, t) => n > t,
-  less_than: (n, t) => n < t, greater_than_or_equal: (n, t) => n >= t, less_than_or_equal: (n, t) => n <= t,
-};
-
-function matchesFilter(row: Record<string, unknown>, filter: PowerSearchFilter): boolean {
-  const fieldValue = row[filter.field];
-  const {operator, value} = filter;
-  switch (value.type) {
-    case 'empty':
-      if (operator === 'is_true') return Boolean(fieldValue) === true;
-      if (operator === 'is_false') return Boolean(fieldValue) === false;
-      return true;
-    case 'string':
-      if (typeof fieldValue !== 'string') return false;
-      return STRING_OPS[operator]?.(fieldValue.toLowerCase(), value.value.toLowerCase()) ?? true;
-    case 'integer':
-    case 'float':
-      if (typeof fieldValue !== 'number') return false;
-      return NUMBER_OPS[operator]?.(fieldValue, value.value) ?? true;
-    case 'date_absolute': {
-      if (!(fieldValue instanceof Date) && typeof fieldValue !== 'number') return false;
-      const ts = toUnixSeconds(fieldValue);
-      if (operator === 'before') return ts < value.unixSeconds;
-      if (operator === 'after') return ts > value.unixSeconds;
-      return true;
-    }
-    case 'date_range': {
-      if (!(fieldValue instanceof Date) && typeof fieldValue !== 'number') return false;
-      const ts = toUnixSeconds(fieldValue);
-      if (operator !== 'between') return true;
-      const now = Date.now() / 1000;
-      return ts >= resolveDateTimeRangePart(value.value.start, now) && ts <= resolveDateTimeRangePart(value.value.end, now);
-    }
-    case 'enum':
-      if (typeof fieldValue !== 'string') return false;
-      if (operator === 'is') return fieldValue === value.value;
-      if (operator === 'is_not') return fieldValue !== value.value;
-      return true;
-    case 'enum_list':
-    case 'string_list': {
-      const values = toStringValues(fieldValue);
-      if (values == null) return false;
-      if (operator === 'is_any_of') return values.some((v) => value.value.includes(v));
-      if (operator === 'is_none_of') return values.every((v) => !value.value.includes(v));
-      return true;
-    }
-    default:
-      return true;
-  }
-}
-
-/**
- * A PowerSearchConfig (with the default operators per field type) and an `applyFilters`
- * function for client- or server-side filtering. Usable anywhere (no hooks in Astro).
- */
-export function createPowerSearchConfig<D extends ReadonlyArray<FieldDefinition>>(definitions: D, configName?: string) {
-  const config: PowerSearchConfig = {name: configName ?? 'PowerSearchConfig', fields: definitions.map(buildField)};
-  function applyFilters<T extends Record<string, unknown>>(filters: ReadonlyArray<PowerSearchFilter>, data: ReadonlyArray<T>): T[] {
-    if (filters.length === 0) return [...data];
-    return data.filter((row) => filters.every((f) => matchesFilter(row, f)));
-  }
-  return {config, applyFilters};
-}
+export {createPowerSearchConfig, type FieldDefinition} from './powerSearchFilters';

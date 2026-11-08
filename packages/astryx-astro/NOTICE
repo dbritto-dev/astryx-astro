@@ -37,3 +37,10 @@ Primer team), Solarized Light (Ethan Schoonover) and One Light (GitHub / Atom te
 those themes is distributed under the MIT License (the same terms as reproduced above, with
 the respective authors as copyright holders); see @astryxdesign/core
 src/theme/syntax/THIRD_PARTY_LICENSES.md.
+
+Temporal for runtimes without a native one (today Safari, and Node on the server) comes from
+the `temporal-polyfill` dependency (https://github.com/fullcalendar/temporal-polyfill, its
+`/full` build), loaded by src/lib/temporal.ts only where `globalThis.Temporal` is missing:
+MIT License, Copyright (c) 2026 Adam Shaw (the same terms as reproduced above, with that
+copyright holder); so is its runtime dependency `temporal-utils`. Its type declarations come
+from `temporal-spec` (Apache License 2.0, Copyright 2026 Adam Shaw), which ships no code.

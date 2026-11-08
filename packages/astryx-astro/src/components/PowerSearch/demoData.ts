@@ -1,5 +1,12 @@
-/** Demo data for PowerSearch.demo.astro (shared by the server render and the demo script). */
+/**
+ * Demo data for PowerSearch.demo.astro (shared by the server render and the demo script).
+ * `created` is a Temporal.Instant (port addition: date fields match Instants and ZonedDateTimes
+ * as well as Astryx's Dates and Unix seconds).
+ */
 import type {FieldDefinition} from './powerSearchModel';
+import {Temporal} from '../../lib/temporal';
+
+const at = (iso: string) => Temporal.Instant.from(iso);
 
 export const ISSUE_FIELDS = [
   {key: 'title', type: 'string', label: 'Title'},
@@ -15,11 +22,11 @@ export const ISSUE_FIELDS = [
 ] as const satisfies ReadonlyArray<FieldDefinition>;
 
 export const ISSUES = [
-  {title: 'Dialog loses focus on close', status: 'open', labels: ['bug', 'ui'], estimate: 3, created: 1767225600, archived: false, team: 'core'},
-  {title: 'Tokenizer overflow count', status: 'open', labels: ['ui'], estimate: 2, created: 1768000000, archived: false, team: 'core'},
-  {title: 'Docs for PowerSearch', status: 'in_progress', labels: ['docs'], estimate: 5, created: 1769000000, archived: false, team: 'web'},
-  {title: 'Selector flickers in Safari', status: 'open', labels: ['bug'], estimate: 1, created: 1770000000, archived: false, team: 'core'},
-  {title: 'Speed up table sort', status: 'closed', labels: ['perf'], estimate: 8, created: 1760000000, archived: true, team: 'web'},
-  {title: 'Command palette hotkey', status: 'open', labels: ['ui'], estimate: 2, created: 1771000000, archived: false, team: 'web'},
-  {title: 'Calendar week numbers', status: 'closed', labels: ['ui', 'docs'], estimate: 3, created: 1765000000, archived: false, team: 'core'},
+  {title: 'Dialog loses focus on close', status: 'open', labels: ['bug', 'ui'], estimate: 3, created: at('2026-01-01T00:00:00Z'), archived: false, team: 'core'},
+  {title: 'Tokenizer overflow count', status: 'open', labels: ['ui'], estimate: 2, created: at('2026-01-09T23:06:40Z'), archived: false, team: 'core'},
+  {title: 'Docs for PowerSearch', status: 'in_progress', labels: ['docs'], estimate: 5, created: at('2026-01-21T12:53:20Z'), archived: false, team: 'web'},
+  {title: 'Selector flickers in Safari', status: 'open', labels: ['bug'], estimate: 1, created: at('2026-02-02T02:40:00Z'), archived: false, team: 'core'},
+  {title: 'Speed up table sort', status: 'closed', labels: ['perf'], estimate: 8, created: at('2025-10-09T08:53:20Z'), archived: true, team: 'web'},
+  {title: 'Command palette hotkey', status: 'open', labels: ['ui'], estimate: 2, created: at('2026-02-13T16:26:40Z'), archived: false, team: 'web'},
+  {title: 'Calendar week numbers', status: 'closed', labels: ['ui', 'docs'], estimate: 3, created: at('2025-12-06T05:46:40Z'), archived: false, team: 'core'},
 ];

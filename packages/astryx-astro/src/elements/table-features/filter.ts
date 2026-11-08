@@ -18,7 +18,10 @@
  * (useTableFilterState clearAll: empties the state, no event).
  */
 import {registerTableBehavior, type AxTable} from '../table';
-import {createPowerSearchConfig, type PowerSearchFilter} from '../../components/PowerSearch/powerSearchModel';
+// The matcher module, not powerSearchModel: it never loads Temporal (a table without date
+// columns must not wait on the polyfill).
+import {createPowerSearchConfig} from '../../components/PowerSearch/powerSearchFilters';
+import type {PowerSearchFilter} from '../../components/PowerSearch/powerSearchModel';
 import {parseNumberInput, resolveNumberInputCommit} from '../../components/NumberInput/numberParser';
 import {tableValueToFilterValue} from '../../components/Table/plugins/filterModel';
 

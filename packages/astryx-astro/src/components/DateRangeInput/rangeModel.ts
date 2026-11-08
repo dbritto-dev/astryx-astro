@@ -4,9 +4,10 @@
 
 /**
  * DateRangeInput's pure helpers, shared by the server render and `<ax-date-range-input>`.
- * Every Intl call takes the field's locale.
+ * Every Intl call takes the field's locale; the date math is Temporal (lib/date).
  */
 import {
+  isoDateOf,
   DATE_FORMAT_SHORT,
   DATE_FORMAT_SHORT_WITH_YEAR,
   calendarMonthOf,
@@ -17,10 +18,17 @@ import {
   plainDateToday,
   type CalendarSystem,
   type DateRange,
+  type DateValue,
   type PlainDate,
 } from '../../lib/date';
 
 export type {DateRange};
+
+/** A range of ISO dates or `Temporal.PlainDate`s (port addition: the Temporal form). */
+export interface DateRangeValue {
+  start: DateValue;
+  end: DateValue;
+}
 
 /** "Mar 3 – Mar 9" in the current year, "Dec 28, 2025 – Jan 3, 2026" otherwise ('' for none). */
 export function formatRangeDisplay(range: DateRange | null, locale: string, calendar: CalendarSystem, today: PlainDate = plainDateToday()): string {
@@ -54,10 +62,11 @@ export function isRangeWithinSpan(range: DateRange, maxRangeSpan: number | undef
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** A `{start, end}` of ISO dates, or null. */
+/** A `{start, end}` of ISO dates (from ISO strings or `Temporal.PlainDate`s), or null. */
 export function toRange(value: unknown): DateRange | null {
   if (!value || typeof value !== 'object') return null;
-  const {start, end} = value as {start?: unknown; end?: unknown};
+  const raw = value as {start?: unknown; end?: unknown};
+  const [start, end] = [raw.start, raw.end].map((v) => isoDateOf(v as DateValue));
   return typeof start === 'string' && typeof end === 'string' && ISO_DATE.test(start) && ISO_DATE.test(end)
     ? ({start, end} as DateRange)
     : null;

@@ -53,6 +53,10 @@
  *    scope): TouchDateField's own sheet content (swipe-paged months, month/year wheels, press
  *    feedback) — the sheet shows the same Calendar.
  *  - `changeAction` (server actions / optimistic value) and `onChange` callbacks: use the event.
+ *  - Temporal (port addition): `value`, `min` and `max` also take a `Temporal.PlainDate`, and
+ *    so does the element's `value`; `astryx-change` still reports the ISO string. Dates are
+ *    read, compared and written with Temporal (lib/temporal.ts); `dateConstraints` and a
+ *    `format` function keep Astryx's argument types (`Date`, ISO string).
  *
  * @example
  * <DateInput label="Event date" value="2026-03-21" />
@@ -86,7 +90,7 @@ import {
 import {calendarFromLocals, type DayOfWeek, type DayOfWeekName} from '../Calendar/calendarModel';
 import {constraintMask, providerCalendarOf, typedDateServerConfig} from './serverConfig';
 import {TypedDate} from './typedDate';
-import type {CalendarSystem, ISODateString} from '../../lib/date';
+import {isoDateOf, type CalendarSystem, type DateValue, type ISODateString} from '../../lib/date';
 import '../Field/Field.css';
 import '../VisuallyHidden/VisuallyHidden.css';
 import './DateInput.css';
@@ -100,17 +104,17 @@ export type DateInputPresentation = 'popover' | 'bottom-sheet' | 'native' | 'ada
 export type DateInputNativePicker = 'touch' | 'always' | 'never';
 
 export interface Props extends FieldComposedProps {
-  /** Selected date (`YYYY-MM-DD`). The element owns it afterwards. */
-  value?: ISODateString | null;
+  /** Selected date (`YYYY-MM-DD` or `Temporal.PlainDate`). The element owns it afterwards. */
+  value?: DateValue | null;
   /** Why the input is disabled (tooltip on hover/focus; also describes the input). */
   disabledMessage?: string;
   /** Busy: aria-busy + spinner; typing, picking and clearing blocked. @default false */
   isLoading?: boolean;
-  /** Minimum selectable date (ISO). */
-  min?: ISODateString;
-  /** Maximum selectable date (ISO). */
-  max?: ISODateString;
-  /** A date is disabled if ANY returns false (evaluated on the server, see the header). */
+  /** Minimum selectable date (ISO or `Temporal.PlainDate`). */
+  min?: DateValue;
+  /** Maximum selectable date (ISO or `Temporal.PlainDate`). */
+  max?: DateValue;
+  /** A date is disabled if ANY returns false (evaluated on the server, see the header); receives the day's local midnight as a `Date`, as in Astryx. */
   dateConstraints?: ReadonlyArray<(date: Date) => boolean>;
   /** Placeholder; a caller placeholder replaces the calendar format hint. @default translated "Select a date" */
   placeholder?: string;
@@ -136,11 +140,11 @@ export interface Props extends FieldComposedProps {
 }
 
 const {
-  value: valueProp,
+  value: valuePropValue,
   disabledMessage,
   isLoading = false,
-  min,
-  max,
+  min: minProp,
+  max: maxProp,
   dateConstraints,
   placeholder: placeholderProp,
   size: sizeProp,
@@ -156,6 +160,10 @@ const {
   slot: _slot, ...props
 } = Astro.props as typeof Astro.props & {slot?: string};
 
+// Temporal.PlainDate values become ISO strings (strings pass as given).
+const valueProp = isoDateOf(valuePropValue);
+const min = isoDateOf(minProp);
+const max = isoDateOf(maxProp);
 const r = routeFieldProps('DateInput', props as Props & Record<string, unknown>, {groupable: true});
 const {isDisabled, status, statusVariant} = r;
 const isEffectivelyDisabled = isDisabled || isLoading;

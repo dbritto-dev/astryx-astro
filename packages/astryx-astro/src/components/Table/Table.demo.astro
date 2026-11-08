@@ -46,6 +46,7 @@ import Spinner from '../Spinner/Spinner.astro';
 import EmptyState from '../EmptyState/EmptyState.astro';
 import Text from '../Text/Text.astro';
 import ScrollableArea from '../ScrollableArea/ScrollableArea.astro';
+import {Temporal} from '../../lib/temporal';
 
 const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
 
@@ -87,6 +88,8 @@ const people: Person[] = [
 ];
 const usd = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD', maximumFractionDigits: 0});
 const date = new Intl.DateTimeFormat('en-US', {dateStyle: 'medium', timeZone: 'UTC'});
+// A day as Intl writes it: Intl formats the day's UTC-midnight instant (never a Temporal object).
+const formatDay = (day: Temporal.PlainDate | string) => date.format(Temporal.PlainDate.from(day).toZonedDateTime('UTC').epochMilliseconds);
 const statusVariant = {Active: 'success', Away: 'warning', Offline: 'neutral'} as const;
 const few = people.slice(0, 5);
 
@@ -104,7 +107,7 @@ const sortColumns: TableColumn<Person>[] = [
   {key: 'name', header: 'Name', sortable: true, width: proportional(2)},
   {key: 'team', header: 'Team', sortable: true},
   {key: 'location', header: 'Location', sortable: true},
-  {key: 'startDate', header: 'Start date', sortable: true, format: (v) => date.format(new Date(v as string))},
+  {key: 'startDate', header: 'Start date', sortable: true, format: (v) => formatDay(v as string)},
   {key: 'rating', header: 'Rating', sortable: true, align: 'end', width: pixel(96)},
   {key: 'salary', header: 'Salary', sortable: true, align: 'end', width: pixel(120), format: (v) => usd.format(v as number)},
 ];
@@ -149,7 +152,7 @@ const wideColumns: TableColumn<Person>[] = [
   {key: 'role', header: 'Role', width: pixel(200), sortable: true},
   {key: 'team', header: 'Team', width: pixel(130), sortable: true},
   {key: 'location', header: 'Location', width: pixel(140)},
-  {key: 'startDate', header: 'Start date', width: pixel(130), format: (v) => date.format(new Date(v as string))},
+  {key: 'startDate', header: 'Start date', width: pixel(130), format: (v) => formatDay(v as string)},
   {key: 'projects', header: 'Projects', width: pixel(100), align: 'end', sortable: true},
   {key: 'rating', header: 'Rating', width: pixel(100), align: 'end'},
   {key: 'bio', header: 'Notes', width: pixel(320)},
@@ -236,13 +239,14 @@ const skeletonColumns: TableColumn[] = ['name', 'role', 'team'].map((key, i) => 
   renderCell: () => comp(Skeleton, {height: 14, width: i === 0 ? '70%' : '50%', index: i, radius: 1}),
 }));
 
-// Filtering: PowerSearch fields the columns refer to; in-page rows filtered in the browser.
+// Filtering: PowerSearch fields the columns refer to; in-page rows filtered in the browser. The
+// start date is a Temporal.PlainDate (port addition): a date filter reads it at its UTC midnight.
 interface FilterPerson extends Person {
-  started: Date;
+  started: Temporal.PlainDate;
   skills: string[];
 }
 const skillSets = [['Go', 'Kubernetes'], ['Figma', 'Research'], ['SQL', 'Roadmaps'], ['Go', 'Terraform'], ['Python', 'SQL'], ['TypeScript', 'React'], ['Leadership'], ['Rust', 'Go'], ['Research'], ['Security', 'Go']];
-const filterPeople: FilterPerson[] = people.map((p, i) => ({...p, started: new Date(`${p.startDate}T00:00:00Z`), skills: skillSets[i % skillSets.length]}));
+const filterPeople: FilterPerson[] = people.map((p, i) => ({...p, started: Temporal.PlainDate.from(p.startDate), skills: skillSets[i % skillSets.length]}));
 const teamValues = [...new Set(people.map((p) => p.team))].sort().map((t) => ({value: t, label: t}));
 const {config: peopleSearch} = createPowerSearchConfig([
   {key: 'name', type: 'string', label: 'Name'},
@@ -257,7 +261,7 @@ const filterColumns: TableColumn<FilterPerson>[] = [
   {key: 'team', header: 'Team', width: pixel(130), filter: 'team'},
   {key: 'status', header: 'Status', width: pixel(140), filter: {field: 'status', operator: 'is_any_of'}, renderCell: (p) => comp(Badge, {variant: statusVariant[p.status], label: p.status})},
   {key: 'salary', header: 'Salary', align: 'end', width: pixel(140), filter: {field: 'salary', operator: 'greater_than_or_equal'}, format: (v) => usd.format(v as number)},
-  {key: 'started', header: 'Start date', width: pixel(150), filter: {field: 'started', operator: 'after'}, format: (v) => date.format(v as Date)},
+  {key: 'started', header: 'Start date', width: pixel(150), filter: {field: 'started', operator: 'after'}, format: (v) => formatDay(v as Temporal.PlainDate)},
   {key: 'skills', header: 'Skills', width: proportional(2), filter: 'skills', format: (v) => (v as string[]).join(', ')},
 ];
 const popoverFilters = useTableFilterState({team: 'Platform'});

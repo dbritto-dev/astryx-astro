@@ -1,5 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
-// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/timeParser.ts.
+// MIT License. Ported from @astryxdesign/core 0.7.9 src/utils/timeParser.ts (times are checked,
+// compared, clamped and stepped as Temporal.PlainTime; the typed-text grammar is Astryx's).
 
 /**
  * @file timeParser.ts
@@ -9,6 +10,8 @@
  *
  * SYNC: When modified, update this header
  */
+
+import {Temporal, isTemporal} from '../temporal';
 
 /**
  * ISO time string in HH:MM or HH:MM:SS format (24-hour).
@@ -38,56 +41,69 @@ export function createISOTimeString(value: string): ISOTimeString | null {
 }
 
 /**
- * Parses an ISO time string into a ParsedTime object.
- * Accepts HH:MM or HH:MM:SS format.
+ * A wall time as a `Temporal.PlainTime`, or null when it is not one. Takes Astryx's lenient
+ * `HH:MM[:SS]` text (see `parseISOTime`) or a `Temporal.PlainTime` (port addition).
  */
-export function parseISOTime(time: string): ParsedTime | null {
-  if (!time) {
+export function toPlainTime(
+  time: string | Temporal.PlainTime | null | undefined,
+): Temporal.PlainTime | null {
+  if (isTemporal(time, 'PlainTime')) {
+    return time;
+  }
+  if (!time || typeof time !== 'string') {
     return null;
   }
 
+  // Astryx's grammar: two or three colon-separated fields, each read with
+  // parseInt (so "7:8" and "14:30abc" are times), then checked by Temporal.
   const parts = time.split(':');
   if (parts.length < 2 || parts.length > 3) {
     return null;
   }
-
   const hour = parseInt(parts[0], 10);
   const minute = parseInt(parts[1], 10);
   const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
+  return plainTimeOf({hour, minute, second});
+}
 
-  if (
-    isNaN(hour) ||
-    isNaN(minute) ||
-    isNaN(second) ||
-    hour < 0 ||
-    hour > 23 ||
-    minute < 0 ||
-    minute > 59 ||
-    second < 0 ||
-    second > 59
-  ) {
+/** The PlainTime of the fields, or null when any is out of range (or not a number). */
+function plainTimeOf(fields: ParsedTime): Temporal.PlainTime | null {
+  try {
+    return Temporal.PlainTime.from(fields, {overflow: 'reject'});
+  } catch {
     return null;
   }
+}
 
-  return {hour, minute, second};
+function toParsed(time: Temporal.PlainTime): ParsedTime {
+  return {hour: time.hour, minute: time.minute, second: time.second};
 }
 
 /**
- * Formats a ParsedTime object into an ISOTimeString.
+ * Parses an ISO time string into a ParsedTime object.
+ * Accepts HH:MM or HH:MM:SS format.
+ */
+export function parseISOTime(time: string): ParsedTime | null {
+  const parsed = toPlainTime(time);
+  return parsed ? toParsed(parsed) : null;
+}
+
+/**
+ * Formats a ParsedTime object (or a `Temporal.PlainTime`) into an ISOTimeString:
+ * `Temporal.PlainTime#toString` to the minute or the second. Throws a RangeError
+ * for fields that are not a time of day.
  */
 export function formatISOTime(
-  time: ParsedTime,
+  time: ParsedTime | Temporal.PlainTime,
   includeSeconds: boolean = false,
 ): ISOTimeString {
-  const hh = time.hour.toString().padStart(2, '0');
-  const mm = time.minute.toString().padStart(2, '0');
-
-  if (includeSeconds) {
-    const ss = time.second.toString().padStart(2, '0');
-    return `${hh}:${mm}:${ss}` as ISOTimeString;
-  }
-
-  return `${hh}:${mm}` as ISOTimeString;
+  const plain = isTemporal(time, 'PlainTime')
+    ? time
+    : Temporal.PlainTime.from(time, {overflow: 'reject'});
+  return plain.toString({
+    smallestUnit: includeSeconds ? 'second' : 'minute',
+    roundingMode: 'trunc',
+  }) as ISOTimeString;
 }
 
 /**
@@ -102,7 +118,7 @@ export function formatDisplayTime12h(
     return '';
   }
 
-  const parsed = parseISOTime(time);
+  const parsed = toPlainTime(time);
   if (!parsed) {
     return '';
   }
@@ -132,7 +148,7 @@ export function formatDisplayTime24h(
     return '';
   }
 
-  const parsed = parseISOTime(time);
+  const parsed = toPlainTime(time);
   if (!parsed) {
     return '';
   }
@@ -305,8 +321,8 @@ export function compareTime(
     return 1;
   }
 
-  const parsedA = parseISOTime(a);
-  const parsedB = parseISOTime(b);
+  const parsedA = toPlainTime(a);
+  const parsedB = toPlainTime(b);
 
   if (!parsedA && !parsedB) {
     return 0;
@@ -318,10 +334,7 @@ export function compareTime(
     return 1;
   }
 
-  const totalA = parsedA.hour * 3600 + parsedA.minute * 60 + parsedA.second;
-  const totalB = parsedB.hour * 3600 + parsedB.minute * 60 + parsedB.second;
-
-  return totalA - totalB;
+  return Temporal.PlainTime.compare(parsedA, parsedB);
 }
 
 /**
@@ -351,13 +364,13 @@ export function clampTime(
   max?: ISOTimeString,
   includeSeconds: boolean = false,
 ): ISOTimeString {
-  const parsed = parseISOTime(time);
+  const parsed = toPlainTime(time);
   if (!parsed) {
     return time;
   }
 
   if (min && compareTime(time, min) < 0) {
-    const parsedMin = parseISOTime(min);
+    const parsedMin = toPlainTime(min);
     if (parsedMin) {
       return formatISOTime(
         onWholeMinute(parsedMin, 1, includeSeconds, max),
@@ -366,7 +379,7 @@ export function clampTime(
     }
   }
   if (max && compareTime(time, max) > 0) {
-    const parsedMax = parseISOTime(max);
+    const parsedMax = toPlainTime(max);
     if (parsedMax) {
       return formatISOTime(
         onWholeMinute(parsedMax, -1, includeSeconds, min),
@@ -384,23 +397,20 @@ export function clampTime(
  * before the other bound, the bound stays as it is.
  */
 function onWholeMinute(
-  bound: ParsedTime,
+  bound: Temporal.PlainTime,
   direction: 1 | -1,
   includeSeconds: boolean,
   other: ISOTimeString | undefined,
-): ParsedTime {
+): Temporal.PlainTime {
   if (includeSeconds || bound.second === 0) {
     return bound;
   }
-  const minutes = bound.hour * 60 + bound.minute + (direction === 1 ? 1 : 0);
-  if (minutes > 23 * 60 + 59) {
+  // The whole minute down (a maximum) or up (a minimum); none above 23:59.
+  const down = bound.round({smallestUnit: 'minute', roundingMode: 'floor'});
+  if (direction === 1 && down.hour === 23 && down.minute === 59) {
     return bound;
   }
-  const rounded = {
-    hour: Math.floor(minutes / 60),
-    minute: minutes % 60,
-    second: 0,
-  };
+  const rounded = direction === 1 ? down.add({minutes: 1}) : down;
   const order = compareTime(formatISOTime(rounded, true), other);
   if (other && (direction === 1 ? order > 0 : order < 0)) {
     return bound;
@@ -420,7 +430,7 @@ export function adjustTime(
   deltaMinutes: number,
   includeSeconds: boolean = false,
 ): ISOTimeString {
-  const parsed = parseISOTime(time);
+  const parsed = toPlainTime(time);
   if (!parsed) {
     return time;
   }
@@ -434,16 +444,10 @@ export function adjustTime(
     return time;
   }
 
-  let totalMinutes = parsed.hour * 60 + parsed.minute + deltaMinutes;
-
-  // Wrap around midnight (double-modulo handles negatives in O(1))
-  totalMinutes = ((totalMinutes % (24 * 60)) + 24 * 60) % (24 * 60);
-
-  const newHour = Math.floor(totalMinutes / 60);
-  const newMinute = totalMinutes % 60;
-
+  // Temporal.PlainTime arithmetic wraps around midnight. The delta is
+  // reduced to one day first, so a huge integer stays exact.
   return formatISOTime(
-    {hour: newHour, minute: newMinute, second: parsed.second},
+    parsed.add({minutes: deltaMinutes % (24 * 60)}),
     includeSeconds,
   );
 }
