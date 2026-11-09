@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: Timestamps whose values are a `Temporal.Instant` and a
+ * `Temporal.ZonedDateTime` (read as its instant), built here on the server from
+ * astryx-astro/lib/temporal: Temporal objects cannot travel in story args.
+ */
+import Timestamp, {type TimestampFormat} from 'astryx-astro/components/Timestamp/Timestamp.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to both Timestamps. */
+  format?: TimestampFormat;
+}
+const {format = 'date_long'} = Astro.props;
+---
+<div style="display:flex;flex-wrap:wrap;gap:var(--spacing-5);align-items:baseline">
+  <Timestamp value={Temporal.Instant.from('2026-02-19T12:00:00Z')} format={format} />
+  <Timestamp
+    value={Temporal.ZonedDateTime.from('2026-02-19T07:00:00-05:00[America/Bogota]')}
+    format={format}
+    tooltipEntries={[{timezoneID: 'America/Bogota', label: 'Bogotá', format: 'system_date_time'}]}
+  />
+</div>

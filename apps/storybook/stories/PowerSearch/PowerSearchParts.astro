@@ -1,0 +1,43 @@
+---
+/**
+ * Story wrapper: PowerSearch's parts on their own: PowerSearchToken (clickable and removable,
+ * a date value, a truncated list, disabled) and a standalone PowerSearchFilterEditor in edit
+ * mode. Both read a `config` built with `createPowerSearchConfig()` and are sub-components
+ * without a story file of their own.
+ */
+import PowerSearchToken from 'astryx-astro/components/PowerSearch/PowerSearchToken.astro';
+import PowerSearchFilterEditor from 'astryx-astro/components/PowerSearch/PowerSearchFilterEditor.astro';
+import {createPowerSearchConfig, type PowerSearchConfig} from 'astryx-astro/components/PowerSearch/PowerSearch.astro';
+
+interface Props {
+  /** Forwarded to PowerSearchFilterEditor. */
+  saveButtonLabel?: string;
+}
+const {saveButtonLabel = 'Save filter'} = Astro.props;
+const {config: base} = createPowerSearchConfig([
+  {key: 'status', type: 'enum', label: 'Status', enumValues: [{value: 'open', label: 'Open'}, {value: 'closed', label: 'Closed'}]},
+  {key: 'created', type: 'date', label: 'Created'},
+  {key: 'tags', type: 'string_list', label: 'Tags'},
+] as const);
+const config: PowerSearchConfig = {
+  ...base,
+  fields: [
+    ...base.fields,
+    {key: 'priority', label: 'Priority', operators: [
+      {key: 'is', label: 'is', value: {type: 'integer', minValue: 1, maxValue: 5}},
+      {key: 'at_least', label: 'is at least', value: {type: 'integer', minValue: 1, maxValue: 5}},
+    ]},
+  ],
+};
+---
+<div style="display:grid;gap:var(--spacing-4);max-width:560px">
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-2)">
+    <PowerSearchToken config={config} filter={{field: 'status', operator: 'is', value: {type: 'enum', value: 'open'}}} isClickable isRemovable />
+    <PowerSearchToken config={config} filter={{field: 'created', operator: 'after', value: {type: 'date_absolute', unixSeconds: 1767225600}}} timezoneID="UTC" />
+    <PowerSearchToken config={config} filter={{field: 'tags', operator: 'is_any_of', value: {type: 'string_list', value: ['frontend', 'accessibility', 'performance', 'documentation']}}} maxLength={30} />
+    <PowerSearchToken config={config} filter={{field: 'status', operator: 'is', value: {type: 'enum', value: 'closed'}}} isDisabled />
+  </div>
+  <div style="border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container)">
+    <PowerSearchFilterEditor config={config} filter={{field: 'priority', operator: 'is', value: {type: 'integer', value: 2}}} mode="edit" saveButtonLabel={saveButtonLabel} />
+  </div>
+</div>

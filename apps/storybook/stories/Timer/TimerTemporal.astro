@@ -1,0 +1,16 @@
+---
+/**
+ * Story wrapper: Timer with a `Temporal.Instant` start time (midnight UTC, 1 January 2026),
+ * built here on the server from astryx-astro/lib/temporal: Temporal objects cannot travel in
+ * story args. The server's first paint reads "0s"; the browser shows the time since then.
+ */
+import Timer, {type TimerFormat} from 'astryx-astro/components/Timer/Timer.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to Timer. */
+  format?: TimerFormat;
+}
+const {format = 'clock'} = Astro.props;
+---
+<Timer startTime={Temporal.Instant.from('2026-01-01T00:00:00Z')} format={format} />

@@ -1,0 +1,88 @@
+---
+/**
+ * Story wrapper: PowerSearch over an issue tracker's fields. The `config` is built here with
+ * `createPowerSearchConfig()` and holds a static search source (functions) for the Assignee
+ * values, so every PowerSearch story renders through a wrapper; the stories vary the
+ * forwarded props. Date fields: Created (after / before / between), Updated (relative) and Due
+ * (date and time). `timezoneID` defaults to UTC so date values are the same everywhere.
+ */
+import PowerSearch, {createPowerSearchConfig, type PowerSearchConfig, type PowerSearchFilter, type PowerSearchSize} from 'astryx-astro/components/PowerSearch/PowerSearch.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import {createStaticSource} from 'astryx-astro/components/Typeahead/createStaticSource';
+import type {InputStatus, LabelIcon} from 'astryx-astro/components/Field/fieldProps';
+import type {TokenizerOverflowBehavior} from 'astryx-astro/components/Tokenizer/Tokenizer.astro';
+
+interface Props {
+  /** Forwarded to PowerSearch. */
+  filters?: PowerSearchFilter[];
+  /** Forwarded to PowerSearch. */
+  label?: string;
+  /** Forwarded to PowerSearch. */
+  isLabelHidden?: boolean;
+  /** Forwarded to PowerSearch. */
+  placeholder?: string;
+  /** Forwarded to PowerSearch. */
+  size?: PowerSearchSize;
+  /** Forwarded to PowerSearch. */
+  resultCount?: number | string;
+  /** Forwarded to PowerSearch. */
+  hasClear?: boolean;
+  /** Forwarded to PowerSearch. */
+  isReadOnly?: boolean;
+  /** Forwarded to PowerSearch. */
+  isDisabled?: boolean;
+  /** Forwarded to PowerSearch. */
+  disabledMessage?: string;
+  /** Forwarded to PowerSearch. */
+  status?: InputStatus;
+  /** Forwarded to PowerSearch. */
+  startIcon?: LabelIcon;
+  /** Forwarded to PowerSearch. */
+  tokenOverflowBehavior?: TokenizerOverflowBehavior;
+  /** Forwarded to PowerSearch. */
+  maxTokenLength?: number;
+  /** Forwarded to PowerSearch. */
+  popoverSaveButtonLabel?: string;
+  /** Forwarded to PowerSearch. @default 'UTC' */
+  timezoneID?: string;
+  /** Story knob: a Badge in the `endContent` slot. */
+  hasEndBadge?: boolean;
+}
+const {timezoneID = 'UTC', hasEndBadge = false, ...rest} = Astro.props;
+
+const {config: base} = createPowerSearchConfig([
+  {key: 'title', type: 'string', label: 'Title'},
+  {key: 'status', type: 'enum', label: 'Status', enumValues: [
+    {value: 'open', label: 'Open'}, {value: 'in_progress', label: 'In progress'}, {value: 'closed', label: 'Closed'},
+  ]},
+  {key: 'labels', type: 'enum_list', label: 'Labels', enumValues: [
+    {value: 'bug', label: 'Bug'}, {value: 'ui', label: 'UI'}, {value: 'docs', label: 'Docs'}, {value: 'perf', label: 'Performance'},
+  ]},
+  {key: 'estimate', type: 'number', label: 'Estimate'},
+  {key: 'created', type: 'date', label: 'Created'},
+  {key: 'archived', type: 'boolean', label: 'Archived'},
+] as const, 'IssueSearch');
+const people = ['Ada Lovelace', 'Grace Hopper', 'Margaret Hamilton', 'Alan Kay', 'Susan Kare'].map((label) => ({id: label.toLowerCase().replace(/\s+/g, '-'), label}));
+const config: PowerSearchConfig = {
+  name: 'IssueSearch',
+  contentSearchFieldKey: 'title',
+  fields: [
+    ...base.fields.map((field) => ({
+      ...field,
+      group: field.key === 'created' ? 'Dates' : field.key === 'archived' ? 'Flags' : undefined,
+      description: field.key === 'title' ? 'Words in the issue title' : field.key === 'status' ? 'Where the issue is in its workflow' : undefined,
+      typeaheadAliases: field.key === 'status' ? ['state'] : undefined,
+    })),
+    {
+      key: 'assignee', label: 'Assignee', icon: 'search', description: 'People the issue is assigned to',
+      operators: [{key: 'is_any_of', i18nKey: '@astryx.powersearch.operator.isAnyOf', value: {type: 'entity_list', searchSource: createStaticSource(people)}}],
+    },
+    {key: 'updated', label: 'Updated', group: 'Dates', operators: [{key: 'within', label: 'within', value: {type: 'date_relative', isFutureAllowed: false}}]},
+    {key: 'due', label: 'Due', group: 'Dates', operators: [{key: 'at', label: 'at', value: {type: 'date_absolute', isDateOnly: false}}]},
+    {key: 'team', label: 'Team', operators: [{key: 'is', label: 'is', value: {type: 'enum', values: [{value: 'core', label: 'Core'}, {value: 'web', label: 'Web'}]}}]},
+  ],
+};
+---
+<PowerSearch config={config} timezoneID={timezoneID} {...rest}>
+  {hasEndBadge && <Badge slot="endContent" label="Saved view" />}
+</PowerSearch>
