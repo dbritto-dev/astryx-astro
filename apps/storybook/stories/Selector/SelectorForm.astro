@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: Selector inside a `<form>` with a Reset button. `htmlName` submits the value
+ * through a hidden input and a form reset restores the server value; both need a form around
+ * the field, which args cannot render.
+ */
+import Selector from 'astryx-astro/components/Selector/Selector.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to Selector. */
+  label?: string;
+}
+const {label = 'Favourite fruit'} = Astro.props;
+const fruit = ['Apple', 'Banana', 'Cherry', 'Durian', 'Elderberry', 'Fig', 'Grape'];
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:280px">
+  <Selector label={label} options={fruit} value="Cherry" htmlName="fruit" hasClear isRequired />
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>

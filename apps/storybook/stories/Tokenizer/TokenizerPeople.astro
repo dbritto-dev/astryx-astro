@@ -1,0 +1,46 @@
+---
+/**
+ * Story wrapper: a Tokenizer of people, with a `renderItem` function (each row adds the
+ * person's role) and, optionally, a `renderToken` function (colored tokens). Render functions
+ * and the static source are server-side functions, so they live here.
+ */
+import Tokenizer, {createStaticSource, type SearchableItem, type TokenizerSize} from 'astryx-astro/components/Tokenizer/Tokenizer.astro';
+import TypeaheadItem from 'astryx-astro/components/Typeahead/TypeaheadItem.astro';
+import Token, {type TokenColor} from 'astryx-astro/components/Token/Token.astro';
+
+interface Props {
+  /** Forwarded to Tokenizer. */
+  label?: string;
+  /** Forwarded to Tokenizer. */
+  size?: TokenizerSize;
+  /** Forwarded to Tokenizer. */
+  hasClear?: boolean;
+  /** Story knob: render each token with `renderToken` (a colored Token). */
+  hasColoredTokens?: boolean;
+}
+const {label = 'Reviewers', size, hasClear = true, hasColoredTokens = false} = Astro.props;
+type Person = SearchableItem<{role: string; color: TokenColor}>;
+const people: Person[] = [
+  {id: 'ada', label: 'Ada Lovelace', auxiliaryData: {role: 'Engineering', color: 'purple'}},
+  {id: 'grace', label: 'Grace Hopper', auxiliaryData: {role: 'Compilers', color: 'blue'}},
+  {id: 'margaret', label: 'Margaret Hamilton', auxiliaryData: {role: 'Apollo software', color: 'teal'}},
+  {id: 'katherine', label: 'Katherine Johnson', auxiliaryData: {role: 'Trajectories', color: 'green'}},
+  {id: 'dieter', label: 'Dieter Rams', auxiliaryData: {role: 'Industrial design', color: 'orange'}},
+  {id: 'susan', label: 'Susan Kare', auxiliaryData: {role: 'Icons', color: 'pink'}},
+  {id: 'alan', label: 'Alan Kay', auxiliaryData: {role: 'Research', color: 'cyan'}},
+  {id: 'barbara', label: 'Barbara Liskov', auxiliaryData: {role: 'Abstraction', color: 'red'}},
+];
+const aux = (item: SearchableItem) => item.auxiliaryData as {role: string; color: TokenColor};
+---
+<Tokenizer
+  label={label}
+  size={size}
+  searchSource={createStaticSource(people)}
+  value={hasColoredTokens ? [people[2], people[5]] : [people[0], people[1]]}
+  placeholder="Search people…"
+  description="Selected people leave the list"
+  hasClear={hasClear}
+  debounceMs={0}
+  renderItem={(item) => <TypeaheadItem item={item} description={aux(item).role} />}
+  renderToken={hasColoredTokens ? (item) => <Token label={item.label} color={aux(item).color} isRemovable /> : undefined}
+/>

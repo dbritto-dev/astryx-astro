@@ -1,0 +1,24 @@
+---
+/**
+ * Story wrapper: a Typeahead inside a `<form>` with a Reset button. `htmlName` (port extension)
+ * submits the selected item's id through a hidden input and a form reset restores the server
+ * value; the form and the static source cannot be expressed as args.
+ */
+import Typeahead, {createStaticSource, type SearchableItem} from 'astryx-astro/components/Typeahead/Typeahead.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to Typeahead. */
+  label?: string;
+}
+const {label = 'Favourite fruit'} = Astro.props;
+const fruits: SearchableItem[] = ['Apple', 'Apricot', 'Banana', 'Cherry', 'Fig', 'Grape', 'Kiwi', 'Mango', 'Pear', 'Plum']
+  .map((name) => ({id: name.toLowerCase(), label: name}));
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:300px">
+  <Typeahead label={label} searchSource={createStaticSource(fruits)} htmlName="fruit" value={fruits[0]} debounceMs={0} isRequired />
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>

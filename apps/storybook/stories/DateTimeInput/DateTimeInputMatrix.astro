@@ -1,0 +1,18 @@
+---
+/**
+ * Story wrapper: every status × size of DateTimeInput side by side on one canvas (its status
+ * message is always detached, under both segments).
+ */
+import DateTimeInput, {type DateTimeInputSize} from 'astryx-astro/components/DateTimeInput/DateTimeInput.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: DateTimeInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'The room is booked then', warning: 'Outside office hours', success: 'Everyone is free'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style={grid}>
+  {statuses.map((type) => sizes.map((size) => (
+    <DateTimeInput label={`${type[0].toUpperCase()}${type.slice(1)}, ${size}`} size={size} value="2026-03-21T14:30" status={{type, message: messages[type]}} />
+  )))}
+</div>

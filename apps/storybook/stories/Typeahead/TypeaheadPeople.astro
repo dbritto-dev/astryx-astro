@@ -1,0 +1,36 @@
+---
+/**
+ * Story wrapper: a Typeahead over people grouped by team (`auxiliaryData.group`), with extra
+ * search keywords (aliases) and a `renderItem` function that adds each person's role. The
+ * source and the render function are server-side functions, so they live here.
+ */
+import Typeahead, {createStaticSource, type SearchableItem, type TypeaheadSize} from 'astryx-astro/components/Typeahead/Typeahead.astro';
+import TypeaheadItem from 'astryx-astro/components/Typeahead/TypeaheadItem.astro';
+
+interface Props {
+  /** Forwarded to Typeahead. */
+  label?: string;
+  /** Forwarded to Typeahead. */
+  size?: TypeaheadSize;
+}
+const {label = 'Assignee', size} = Astro.props;
+type Person = SearchableItem<{role: string; group: string; aliases: string[]}>;
+const people: Person[] = [
+  {id: 'ada', label: 'Ada Lovelace', auxiliaryData: {role: 'Engineering', group: 'Engineering', aliases: ['countess']}},
+  {id: 'grace', label: 'Grace Hopper', auxiliaryData: {role: 'Compilers', group: 'Engineering', aliases: ['admiral']}},
+  {id: 'margaret', label: 'Margaret Hamilton', auxiliaryData: {role: 'Apollo software', group: 'Engineering', aliases: ['apollo']}},
+  {id: 'dieter', label: 'Dieter Rams', auxiliaryData: {role: 'Industrial design', group: 'Design', aliases: ['braun']}},
+  {id: 'susan', label: 'Susan Kare', auxiliaryData: {role: 'Icons', group: 'Design', aliases: ['icons']}},
+  {id: 'alan', label: 'Alan Kay', auxiliaryData: {role: 'Research', group: 'Research', aliases: ['smalltalk']}},
+];
+const source = createStaticSource(people, {keywords: (item) => item.auxiliaryData?.aliases ?? []});
+---
+<Typeahead
+  label={label}
+  size={size}
+  searchSource={source}
+  value={people[1]}
+  description="Grouped by team; aliases match too"
+  debounceMs={0}
+  renderItem={(item) => <TypeaheadItem item={item} description={(item.auxiliaryData as {role: string}).role} />}
+/>

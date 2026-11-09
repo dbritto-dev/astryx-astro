@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: MultiSelector variants × sizes, and every status × size (with the tooltip
+ * status variant), on one canvas.
+ */
+import MultiSelector, {type MultiSelectorSize, type MultiSelectorVariant} from 'astryx-astro/components/MultiSelector/MultiSelector.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: MultiSelectorSize[] = ['sm', 'md', 'lg'];
+const variants: MultiSelectorVariant[] = ['input', 'secondary', 'ghost'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Choose at least one column', warning: 'Wide tables scroll sideways', success: 'Saved to your view'};
+const columns = ['Name', 'Email', 'Role', 'Team', 'Location', 'Status'];
+const cap = (text: string) => `${text[0].toUpperCase()}${text.slice(1)}`;
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style={grid}>
+    {variants.map((variant) => sizes.map((size) => (
+      <MultiSelector label={`${cap(variant)}, ${size}`} variant={variant} size={size} options={columns} value={['Name', 'Email']} />
+    )))}
+  </div>
+  <div style={grid}>
+    {statuses.map((type) => sizes.map((size) => (
+      <MultiSelector label={`${cap(type)}, ${size}`} size={size} options={columns} status={{type, message: messages[type]}} />
+    )))}
+    <MultiSelector label="Tooltip status" options={columns} status={{type: 'warning', message: messages.warning}} statusVariant="tooltip" />
+  </div>
+</div>

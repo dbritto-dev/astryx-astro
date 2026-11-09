@@ -1,0 +1,15 @@
+---
+/**
+ * Story wrapper: a Timer inside a line of Text, inheriting its type and color
+ * (`type="inherit" color="inherit"`). A composition of two components in one render.
+ */
+import Timer, {type TimerFormat} from 'astryx-astro/components/Timer/Timer.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Forwarded to Timer. */
+  format?: TimerFormat;
+}
+const {format} = Astro.props;
+---
+<Text type="large">Processing for <Timer type="inherit" color="inherit" format={format} /></Text>

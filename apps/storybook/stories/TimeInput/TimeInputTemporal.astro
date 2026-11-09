@@ -1,0 +1,28 @@
+---
+/**
+ * Story wrapper: TimeInput with `Temporal.PlainTime` value, min and max, built here on the
+ * server from astryx-astro/lib/temporal (Temporal objects cannot travel in story args:
+ * `storybook dev` sends args to the server as JSON).
+ */
+import TimeInput, {type TimeInputSize} from 'astryx-astro/components/TimeInput/TimeInput.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to TimeInput. */
+  label?: string;
+  /** Forwarded to TimeInput. */
+  size?: TimeInputSize;
+  /** Forwarded to TimeInput. */
+  increment?: number;
+}
+const {label = 'Morning slot', size, increment = 15} = Astro.props;
+---
+<TimeInput
+  label={label}
+  value={Temporal.PlainTime.from('08:45')}
+  min={Temporal.PlainTime.from('08:00')}
+  max={Temporal.PlainTime.from('12:00')}
+  increment={increment}
+  description="8 AM – noon"
+  size={size}
+/>

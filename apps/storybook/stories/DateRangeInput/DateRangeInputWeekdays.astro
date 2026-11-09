@@ -1,0 +1,16 @@
+---
+/**
+ * Story wrapper: DateRangeInput with `dateConstraints` (weekdays only). Constraints are
+ * functions, evaluated on the server, so they cannot be story args.
+ */
+import DateRangeInput from 'astryx-astro/components/DateRangeInput/DateRangeInput.astro';
+
+interface Props {
+  /** Forwarded to DateRangeInput. */
+  label?: string;
+}
+const {label = 'Weekdays only'} = Astro.props;
+// dateConstraints receive the day's local midnight as a Date (Astryx's API).
+const noWeekends = (date: Date) => date.getDay() !== 0 && date.getDay() !== 6;
+---
+<DateRangeInput label={label} value={{start: '2026-03-02', end: '2026-03-06'}} dateConstraints={[noWeekends]} description="Saturdays and Sundays are unavailable" />

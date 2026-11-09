@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: TimeInput in a `<form>` (with a Reset button) and in an InputGroup.
+ * `htmlName` submits the ISO time through a hidden input and a reset restores the server
+ * value; InputGroup's text addons and the group context need one Astro render.
+ */
+import TimeInput from 'astryx-astro/components/TimeInput/TimeInput.astro';
+import InputGroup from 'astryx-astro/components/InputGroup/InputGroup.astro';
+import InputGroupText from 'astryx-astro/components/InputGroup/InputGroupText.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to the first TimeInput. */
+  label?: string;
+}
+const {label = 'Opens'} = Astro.props;
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:360px">
+  <TimeInput label={label} htmlName="opens" value="09:00" isRequired />
+  <InputGroup label="Meeting">
+    <InputGroupText>From</InputGroupText>
+    <TimeInput label="From" htmlName="from" value="10:00" />
+    <InputGroupText>UTC</InputGroupText>
+  </InputGroup>
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>

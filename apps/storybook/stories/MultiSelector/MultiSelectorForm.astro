@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: MultiSelector inside a `<form>` with a Reset button. `htmlName` submits one
+ * hidden input per selected value and a form reset restores the server values; both need a
+ * form around the field, which args cannot render.
+ */
+import MultiSelector from 'astryx-astro/components/MultiSelector/MultiSelector.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to MultiSelector. */
+  label?: string;
+}
+const {label = 'Visible columns'} = Astro.props;
+const columns = ['Name', 'Email', 'Role', 'Team', 'Location', 'Status'];
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:300px">
+  <MultiSelector label={label} options={columns} value={['Name', 'Email']} htmlName="columns" hasSelectAll hasClear />
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>

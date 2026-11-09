@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: every size, and every status × size, of a Typeahead (each needs a static
+ * search source, built here).
+ */
+import Typeahead, {createStaticSource, type SearchableItem, type TypeaheadSize} from 'astryx-astro/components/Typeahead/Typeahead.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: TypeaheadSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Choose an assignee', warning: 'Out of office this week', success: 'Available'};
+const people: SearchableItem[] = ['Ada Lovelace', 'Grace Hopper', 'Margaret Hamilton', 'Dieter Rams', 'Susan Kare', 'Alan Kay']
+  .map((name) => ({id: name.split(' ')[0].toLowerCase(), label: name}));
+const source = createStaticSource(people);
+const cap = (text: string) => `${text[0].toUpperCase()}${text.slice(1)}`;
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style={grid}>
+  {sizes.map((size) => <Typeahead label={`Size ${size}`} size={size} searchSource={source} value={people[1]} debounceMs={0} />)}
+  {statuses.map((type) => sizes.map((size) => (
+    <Typeahead label={`${cap(type)}, ${size}`} size={size} searchSource={source} status={{type, message: messages[type]}} debounceMs={0} />
+  )))}
+</div>

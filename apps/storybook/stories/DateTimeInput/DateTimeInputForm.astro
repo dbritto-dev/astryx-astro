@@ -1,0 +1,22 @@
+---
+/**
+ * Story wrapper: DateTimeInput inside a `<form>` with a Reset button. `htmlName` submits the
+ * ISO datetime through a hidden input and a form reset restores the server value; both need a
+ * form around the field, which args cannot render.
+ */
+import DateTimeInput from 'astryx-astro/components/DateTimeInput/DateTimeInput.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to DateTimeInput. */
+  label?: string;
+}
+const {label = 'Starts'} = Astro.props;
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:480px">
+  <DateTimeInput label={label} htmlName="starts" value="2026-03-21T09:00" isRequired />
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>
