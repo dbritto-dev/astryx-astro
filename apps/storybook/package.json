@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "storybook dev -p 6006",
-    "build": "storybook build -o storybook-static",
+    "build": "storybook build -o storybook-static && node scripts/postbuild.mjs",
+    "serve": "node scripts/serve.mjs",
+    "verify": "node scripts/verify-static.mjs",
     "stories": "node scripts/stories.mjs",
     "check": "node scripts/stories.mjs --check && tsc --noEmit -p tsconfig.json"
   },
