@@ -24,11 +24,13 @@
  * images → `<img>` (block images in `.astryx-markdown-image`); inline code → Code; `[id]` /
  * `【id】` with `sources` → Citation; `~~x~~` → `<del>`.
  *
- * Safety (as Astryx): raw HTML in the source is text, always escaped. Link destinations follow
- * the shared navigation rule (lib/safeUrl via `sanitizeMarkdownLinkUrl`): a blocked one
- * (`javascript:`, `vbscript:`, `data:text/html`) renders its text in a plain `<span>` — inert,
- * never an `<a>`; image sources use the stricter `sanitizeMarkdownUrl` (every `data:` blocked →
- * `[alt]`). External links open in a new tab with `noopener noreferrer`; internal links render
+ * Safety (as Astryx): raw HTML in the source is text, always escaped. Link destinations are
+ * gated twice. The parser does not recognise `[text](url)` with an unsafe URL as a link, so
+ * the source stays literal text (`[x](javascript:…)`). A link node that reaches rendering anyway
+ * (one a text transform makes) follows the shared navigation rule (lib/safeUrl via
+ * `sanitizeMarkdownLinkUrl`): a blocked one (`javascript:`, `vbscript:`, `data:text/html`)
+ * renders its text in a plain `<span>` — inert, never an `<a>`. Image sources use the stricter
+ * `sanitizeMarkdownUrl` (every `data:` blocked → `[alt]`). External links open in a new tab with `noopener noreferrer`; internal links render
  * through the LinkProvider component when one is set. Math renders only through
  * `components.math` (which also enables `$…$` parsing); without it dollars stay text.
  *

@@ -43,6 +43,17 @@ interface GestureState {
   collapsible: boolean;
 }
 
+/**
+ * The nearest element sibling that renders, after `el` (`next`) or before it. Astro writes a
+ * component's `<script>` right after its first instance, so the handle's (or the pane's) own
+ * script can sit between the handle and its pane.
+ */
+function renderedSibling(el: Element, next: boolean): Element | null {
+  let sib = next ? el.nextElementSibling : el.previousElementSibling;
+  while (sib && ['script', 'style', 'template', 'link'].includes(sib.localName)) sib = next ? sib.nextElementSibling : sib.previousElementSibling;
+  return sib;
+}
+
 function parseConfig(raw: string | null): ResizableConfig | null {
   if (!raw) return null;
   try {
@@ -383,7 +394,7 @@ class AxResizable extends HTMLElement {
       ? document.getElementById(id)
       : this.getAttribute('data-position') === 'overlay'
         ? this.parentElement
-        : this.#isReversed() ? this.nextElementSibling : this.previousElementSibling;
+        : renderedSibling(this, this.#isReversed());
     return el instanceof HTMLElement ? el : null;
   }
 
