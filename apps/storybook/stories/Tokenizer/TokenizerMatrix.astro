@@ -1,0 +1,24 @@
+---
+/**
+ * Story wrapper: every size, and every status × size (plus the detached and tooltip status
+ * variants), of a Tokenizer (each needs a static search source, built here).
+ */
+import Tokenizer, {createStaticSource, type SearchableItem, type TokenizerSize} from 'astryx-astro/components/Tokenizer/Tokenizer.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: TokenizerSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Pick at least one reviewer', warning: 'Two reviewers are out this week', success: 'Reviewers notified'};
+const tags: SearchableItem[] = ['Design', 'Engineering', 'Research', 'Marketing', 'Sales'].map((name) => ({id: name.toLowerCase(), label: name}));
+const source = createStaticSource(tags);
+const cap = (text: string) => `${text[0].toUpperCase()}${text.slice(1)}`;
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style={grid}>
+  {sizes.map((size) => <Tokenizer label={`Size ${size}`} size={size} searchSource={source} value={tags.slice(0, 2)} hasClear />)}
+  {statuses.map((type) => sizes.map((size) => (
+    <Tokenizer label={`${cap(type)}, ${size}`} size={size} searchSource={source} value={[tags[0]]} status={{type, message: messages[type]}} />
+  )))}
+  <Tokenizer label="Detached status" searchSource={source} status={{type: 'error', message: 'Required'}} statusVariant="detached" isRequired />
+  <Tokenizer label="Tooltip status" searchSource={source} status={{type: 'warning', message: 'Check the tags'}} statusVariant="tooltip" value={[tags[0]]} />
+</div>

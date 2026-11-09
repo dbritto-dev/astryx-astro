@@ -1,0 +1,59 @@
+---
+/**
+ * Story wrapper: a Tokenizer over a static list of tags. `searchSource` is built with
+ * `createStaticSource()` (an object with functions), which cannot travel in story args, so
+ * every Tokenizer story renders through a wrapper; the stories vary the forwarded props.
+ * `debounceMs` defaults to 0 here: the static source answers synchronously.
+ */
+import Tokenizer, {createStaticSource, type Props as TokenizerProps, type SearchableItem} from 'astryx-astro/components/Tokenizer/Tokenizer.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+
+interface Props {
+  /** Forwarded to Tokenizer. */
+  label?: string;
+  /** Forwarded to Tokenizer. */
+  description?: string;
+  /** Forwarded to Tokenizer. */
+  placeholder?: string;
+  /** Forwarded to Tokenizer (items of the tag list, e.g. `{id: 'design', label: 'Design'}`). */
+  value?: SearchableItem[];
+  /** Forwarded to Tokenizer. */
+  size?: TokenizerProps['size'];
+  /** Forwarded to Tokenizer. */
+  status?: TokenizerProps['status'];
+  /** Forwarded to Tokenizer. */
+  statusVariant?: TokenizerProps['statusVariant'];
+  /** Forwarded to Tokenizer. */
+  hasClear?: boolean;
+  /** Forwarded to Tokenizer. */
+  hasCreate?: boolean;
+  /** Forwarded to Tokenizer. */
+  hasEntriesOnFocus?: boolean;
+  /** Forwarded to Tokenizer. */
+  maxEntries?: number;
+  /** Forwarded to Tokenizer. */
+  minQueryLength?: number;
+  /** Forwarded to Tokenizer. */
+  debounceMs?: number;
+  /** Forwarded to Tokenizer. */
+  tokenOverflowBehavior?: TokenizerProps['tokenOverflowBehavior'];
+  /** Forwarded to Tokenizer. */
+  width?: number;
+  /** Forwarded to Tokenizer. */
+  startIcon?: TokenizerProps['startIcon'];
+  /** Forwarded to Tokenizer. */
+  isLabelHidden?: boolean;
+  /** Forwarded to Tokenizer. */
+  isDisabled?: boolean;
+  /** Forwarded to Tokenizer. */
+  disabledMessage?: string;
+  /** Story knob: a Badge in the `endContent` slot. */
+  hasEndBadge?: boolean;
+}
+const {label = 'Tags', debounceMs = 0, hasEndBadge = false, ...rest} = Astro.props;
+const tags: SearchableItem[] = ['Design', 'Engineering', 'Research', 'Marketing', 'Sales', 'Support', 'Legal', 'Finance', 'Operations', 'Security']
+  .map((name) => ({id: name.toLowerCase(), label: name}));
+---
+<Tokenizer label={label} searchSource={createStaticSource(tags)} debounceMs={debounceMs} {...rest}>
+  {hasEndBadge && <Badge slot="endContent" label="3" />}
+</Tokenizer>

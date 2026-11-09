@@ -1,0 +1,52 @@
+---
+/**
+ * Story wrapper: a Typeahead over a static fruit source. `searchSource` is built with
+ * `createStaticSource()` (an object with functions), which cannot travel in story args, so
+ * every Typeahead story renders through a wrapper; the stories vary the forwarded props.
+ * `debounceMs` defaults to 0 here: the static source answers synchronously.
+ */
+import Typeahead, {createStaticSource, type Props as TypeaheadProps, type SearchableItem} from 'astryx-astro/components/Typeahead/Typeahead.astro';
+
+interface Props {
+  /** Forwarded to Typeahead. */
+  label?: string;
+  /** Forwarded to Typeahead. */
+  description?: string;
+  /** Forwarded to Typeahead. */
+  placeholder?: string;
+  /** Forwarded to Typeahead (an item of the fruit list, e.g. `{id: 'cherry', label: 'Cherry'}`). */
+  value?: SearchableItem | null;
+  /** Forwarded to Typeahead. */
+  size?: TypeaheadProps['size'];
+  /** Forwarded to Typeahead. */
+  status?: TypeaheadProps['status'];
+  /** Forwarded to Typeahead. */
+  hasClear?: boolean;
+  /** Forwarded to Typeahead. */
+  hasEntriesOnFocus?: boolean;
+  /** Forwarded to Typeahead. */
+  maxMenuItems?: number;
+  /** Forwarded to Typeahead. */
+  minQueryLength?: number;
+  /** Forwarded to Typeahead. */
+  emptySearchText?: string;
+  /** Forwarded to Typeahead. */
+  debounceMs?: number;
+  /** Forwarded to Typeahead. */
+  startIcon?: TypeaheadProps['startIcon'];
+  /** Forwarded to Typeahead. */
+  hasMatchHighlight?: boolean;
+  /** Forwarded to Typeahead. */
+  isDisabled?: boolean;
+  /** Forwarded to Typeahead. */
+  disabledMessage?: string;
+  /** Forwarded to Typeahead. */
+  isRequired?: boolean;
+  /** Forwarded to Typeahead. */
+  isLabelHidden?: boolean;
+}
+const {label = 'Fruit', debounceMs = 0, ...rest} = Astro.props;
+const fruits: SearchableItem[] = ['Apple', 'Apricot', 'Banana', 'Blackberry', 'Blueberry', 'Cherry', 'Coconut', 'Date', 'Dragon fruit', 'Fig', 'Grape', 'Guava', 'Kiwi', 'Lemon', 'Lime', 'Lychee', 'Mango', 'Melon', 'Orange', 'Papaya', 'Peach', 'Pear', 'Pineapple', 'Plum', 'Raspberry', 'Strawberry', 'Watermelon']
+  .map((name) => ({id: name.toLowerCase().replace(/\s+/g, '-'), label: name}));
+---
+<Typeahead label={label} searchSource={createStaticSource(fruits)} debounceMs={debounceMs} {...rest} />

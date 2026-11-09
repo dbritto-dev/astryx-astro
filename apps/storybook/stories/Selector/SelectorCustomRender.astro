@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: Selector with `renderOption` and `renderValue`, server-side render functions
+ * returning SelectorOption markup. Functions cannot travel in story args, so they live here.
+ */
+import Selector, {type SelectorOptionData, type SelectorSize} from 'astryx-astro/components/Selector/Selector.astro';
+import SelectorOption from 'astryx-astro/components/Selector/SelectorOption.astro';
+
+interface Props {
+  /** Forwarded to Selector. */
+  label?: string;
+  /** Forwarded to Selector. */
+  size?: SelectorSize;
+}
+const {label = 'Owner', size} = Astro.props;
+const people: SelectorOptionData[] = [
+  {value: 'ada', label: 'Ada Lovelace', description: 'Engineering', icon: 'info'},
+  {value: 'grace', label: 'Grace Hopper', description: 'Compilers', icon: 'wrench'},
+  {value: 'alan', label: 'Alan Turing', description: 'Research', icon: 'search'},
+];
+---
+<Selector
+  label={label}
+  size={size}
+  options={people}
+  value="grace"
+  renderOption={(o) => <SelectorOption label={o.label} description={o.description} icon={o.icon} />}
+  renderValue={(o) => <SelectorOption label={o.label} icon={o.icon} layout="inline" />}
+/>

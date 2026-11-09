@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: a Tokenizer inside a `<form>` with a Reset button. `htmlName` submits one
+ * hidden input per selected id and a form reset restores the server value; the form and the
+ * static source cannot be expressed as args.
+ */
+import Tokenizer, {createStaticSource, type SearchableItem} from 'astryx-astro/components/Tokenizer/Tokenizer.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to Tokenizer. */
+  label?: string;
+}
+const {label = 'Tags'} = Astro.props;
+const tags: SearchableItem[] = ['Design', 'Engineering', 'Research', 'Marketing', 'Security'].map((name) => ({id: name.toLowerCase(), label: name}));
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:360px">
+  <Tokenizer label={label} searchSource={createStaticSource(tags)} htmlName="tag" value={[tags[0], tags[2]]} debounceMs={0} hasCreate hasClear />
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>

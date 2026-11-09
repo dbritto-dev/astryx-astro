@@ -1,0 +1,30 @@
+---
+/**
+ * Story wrapper: Selector variants × sizes, and every status × size (with the tooltip and
+ * detached status variants), on one canvas.
+ */
+import Selector, {type SelectorSize, type SelectorVariant} from 'astryx-astro/components/Selector/Selector.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: SelectorSize[] = ['sm', 'md', 'lg'];
+const variants: SelectorVariant[] = ['input', 'secondary', 'ghost'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Pick a fruit to continue', warning: 'Seasonal: limited stock', success: 'In stock'};
+const fruit = ['Apple', 'Banana', 'Cherry', 'Durian', 'Elderberry', 'Fig', 'Grape'];
+const cap = (text: string) => `${text[0].toUpperCase()}${text.slice(1)}`;
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style={grid}>
+    {variants.map((variant) => sizes.map((size) => (
+      <Selector label={`${cap(variant)}, ${size}`} variant={variant} size={size} options={fruit} value="Banana" />
+    )))}
+  </div>
+  <div style={grid}>
+    {statuses.map((type) => sizes.map((size) => (
+      <Selector label={`${cap(type)}, ${size}`} size={size} options={fruit} value="Fig" status={{type, message: messages[type]}} />
+    )))}
+    <Selector label="Tooltip status" options={fruit} status={{type: 'warning', message: messages.warning}} statusVariant="tooltip" />
+    <Selector label="Secondary with status" variant="secondary" options={fruit} status={{type: 'error', message: messages.error}} />
+  </div>
+</div>
