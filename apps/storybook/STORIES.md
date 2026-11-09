@@ -154,6 +154,9 @@ One story per meaningful prop combination, pre-rendered.
   provides through `Astro.locals` reaches it. When in doubt, use a wrapper.
 - Args travel to the server as JSON in dev: anything that does not survive `JSON.stringify` (a
   function, a Temporal object, a `Map`) silently becomes something else there. Use a wrapper.
+- `args.slots` objects merge between meta and story: a slot the meta sets reaches every story.
+  Keep `slots` off the meta when stories use a prop of the same name (HoverCard's `content`).
+- A story arg set to `undefined` does not reliably remove a meta arg: give the value explicitly.
 
 ## 7. Story wrappers
 
@@ -167,8 +170,8 @@ in one Astro render. Template: `templates/ComponentStory.astro.template`; exampl
 - Import components by package path (`astryx-astro/components/...`), Temporal from
   `astryx-astro/lib/temporal`, types from `astryx-astro/lib/types`.
 - `interface Props`: optional props the stories vary, named after the meta component's props they
-  are forwarded to (JSDoc `Forwarded to <Name>.`); story-only knobs are allowed (`panels`,
-  `hasHeaderAndFooter` in LayoutStory) and documented.
+  are forwarded to (JSDoc `Forwarded to <Name>.`); story-only knobs are allowed (`panels` in
+  LayoutStory) and documented.
 - In the story file:
 
   ```ts
@@ -184,6 +187,19 @@ in one Astro render. Template: `templates/ComponentStory.astro.template`; exampl
   (and only those) to the wrapper as props, keeps those Controls in dev (all others are hidden),
   and shows `source` in the Code panel. Without `controls` the wrapper gets no props and the story
   no Controls.
+- `composed()` also forwards the **meta's** args named in `controls`: a wrapper prop named like a
+  meta arg receives the meta's value unless the story sets its own. Set such args in every
+  wrapper story (`label`), and don't name a story-only knob like a meta arg.
+- A conditional child in a named slot still counts as content: with
+  `{cond && <X slot="end" />}`, `Astro.slots.has('end')` is true even when `cond` is false, so the
+  component renders an empty region. Branch whole elements in the wrapper instead.
+- Ids: `uid()` restarts with every render, so generated ids repeat between stories on one docs
+  page. Give ids that must be unique on the page with `layerId()`, or render the story in its
+  own frame (`docs.story.inline: false`).
+- A wrapper `<script>` runs again every time a story using it renders (switching stories, the
+  test runner). Wire document-level listeners once, behind a guard:
+  `if (!document[Symbol.for('astryx-storybook:<name>')]) { … }`. Use a wrapper script only where
+  a control would otherwise look interactive and do nothing (a Toast button, an async source).
 - Deterministic data only: generate large data sets with a fixed seed (TableDataHeavy).
 - Give layers that tests need stable hooks only through public props (`id`, `data-testid`
   where the component supports it); otherwise query by role.
@@ -239,6 +255,36 @@ export const Default: Story = {
 - Assertions describe behaviour a user or assistive technology sees; don't assert class names or
   inline styles.
 - Never leave a story in a state another story depends on; each story renders fresh.
+- Every story after the first in a preview is **inserted into a live page** whose elements are
+  already defined (switching stories, the test runner). That is real coverage of markup a client
+  router or `innerHTML` inserts: if a component only works on the first story, it is a component
+  bug (late-insert.test.mjs guards the known ones). Don't re-attach or re-create elements to make
+  a play pass.
+- Wait for what a step's keys act on: after opening a list, wait for `aria-expanded="true"` (or
+  the layer showing) before arrowing through it; an editor that moves focus a frame after it
+  opens gets `waitFor(() => expect(field).toHaveFocus())` before Escape or Enter.
+- `userEvent` details:
+  - Direct calls share no pointer state (`hover` then `pointer` sends no `mouseleave`): use
+    `const user = userEvent.setup()` for multi-step pointer sequences and drags.
+  - `userEvent.click` refuses an element with `pointer-events: none` (disabled rows): prove
+    nothing happens with `el.click()` or focus + Space.
+  - It cannot trigger CSS `:hover`, the native light dismiss of `popover="auto"`, or native
+    keyboard scrolling. Leave those steps to `tools/tests` and say so in a comment.
+- Timing and geometry: measure inside `waitFor` (entry motion scales and fades layers, so
+  `toBeVisible` and rects change for a moment). The test viewport is small and layers flip:
+  placement plays accept the requested side or, when it does not fit, the opposite one.
+- Live regions clear about 2 s after an announcement: assert soon after the action, and assert a
+  re-announcement after repeating it. Button carries a hidden `role="status"` region, so
+  `getByRole('status')` may match two elements; query the component instead.
+- Plays run on page load in the published Storybook, as the viewer's own session: stub
+  `navigator.clipboard.writeText` (restore it in `finally`) rather than overwrite their clipboard.
+- Toast auto-hide pauses while the document has no focus, which is always true in the test
+  frame: `window.focus()`, or dispatch a window `focus` event, before testing it.
+- Storybook inserts every story after load, so "silent at page load" behaviour (a Spinner
+  present on load is not announced) cannot be asserted; `tools/tests` covers it.
+- A description may include a value tooltip's text: match it with `expect.stringContaining`.
+- Links: the preview logs navigations instead of following them in every story root, the test
+  runner's included, so plays click links freely (no local guard).
 
 ## 9. Overlays, popovers, modals
 
@@ -393,6 +439,12 @@ Run from the repository root:
   scripts; they are made ordered again (as on an Astro page) and the story waits for them before
   `play` and axe run. `astryx-*` events are logged to the Actions panel; link and form
   navigations are logged instead of leaving the preview.
+  `renderToCanvas` marks the element it renders into as a story root, which covers the Vitest
+  runner's canvas; its page has `<base target="_parent">`, so a `#id` link that would leave the
+  frame is logged too.
+- Memory: Chrome renderers, Vitest and a dev server together need a few GB. On a small machine
+  run a few folders at a time; "Browser connection was closed" or "Target crashed" before any
+  test ran is the machine, not the story.
 - `scripts/postbuild.mjs`: the framework inlines every stylesheet a story's components import
   into each pre-rendered story (shared CSS repeats per story). The post-build step writes each
   stylesheet once to `_astro/story-css/` and leaves an `@import` in the story, which keeps the

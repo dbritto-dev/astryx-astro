@@ -17,7 +17,7 @@ export default meta;
 export const Overview = overview(Demo, demoSource);
 
 const options = {
-  controls: ['height', 'contentWidth', 'padding', 'defaultHasDividers', 'panels', 'hasHeaderAndFooter'],
+  controls: ['height', 'contentWidth', 'padding', 'defaultHasDividers', 'panels'],
   source: layoutSource,
 };
 

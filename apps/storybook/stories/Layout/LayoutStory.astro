@@ -1,8 +1,11 @@
 ---
 /**
- * Story wrapper: a Layout in a fixed-height Card, filling all five slots (header, start, content,
- * end, footer) with the Layout region components. Regions read the Layout's slot context
+ * Story wrapper: a Layout in a fixed-height Card, filling its slots (header, start, content, end,
+ * footer) with the Layout region components. Regions read the Layout's slot context
  * (`data-layout-slots`, dividers), so they are composed here in one render.
+ *
+ * Each `panels` value renders its own Layout: a conditional child in a named slot
+ * (`{cond && <LayoutPanel slot="end" />}`) still counts as content for `Astro.slots.has`.
  */
 import Card from 'astryx-astro/components/Card/Card.astro';
 import Layout from 'astryx-astro/components/Layout/Layout.astro';
@@ -24,32 +27,45 @@ interface Props {
   defaultHasDividers?: boolean;
   /** Which side panels to render (story knob). */
   panels?: 'none' | 'start' | 'end' | 'both';
-  /** Render the header and footer slots (story knob). */
-  hasHeaderAndFooter?: boolean;
 }
-const {height, contentWidth, padding, defaultHasDividers, panels = 'none', hasHeaderAndFooter = true} = Astro.props;
+const {height, contentWidth, padding, defaultHasDividers, panels = 'none'} = Astro.props;
+const layout = {height, contentWidth, padding, defaultHasDividers};
 const rows = (n: number, label: string) => Array.from({length: n}, (_, i) => `${label} ${i + 1}`);
+const sections = rows(12, 'Section');
+const paragraphs = rows(14, 'Paragraph').map((row) => `${row}: the content region scrolls inside the Layout.`);
+const inspector = 'An inspector panel with a divider on its start edge.';
 ---
 <Card height={height === 'auto' ? undefined : 320}>
-  <Layout height={height} contentWidth={contentWidth} padding={padding} defaultHasDividers={defaultHasDividers}>
-    {hasHeaderAndFooter && (
+  {panels === 'none' && (
+    <Layout {...layout}>
       <LayoutHeader slot="header" role="banner" label="Workspace"><Text type="label">Workspace</Text></LayoutHeader>
-    )}
-    {(panels === 'start' || panels === 'both') && (
-      <LayoutPanel slot="start" width={160} hasDivider role="navigation" label="Sections">
-        {rows(12, 'Section').map((row) => <Text display="block" type="supporting">{row}</Text>)}
-      </LayoutPanel>
-    )}
-    <LayoutContent role="main" label="Document">
-      {rows(14, 'Paragraph').map((row) => <Text display="block">{row}: the content region scrolls inside the Layout.</Text>)}
-    </LayoutContent>
-    {(panels === 'end' || panels === 'both') && (
-      <LayoutPanel slot="end" width={180} hasDivider role="complementary" label="Details">
-        <Text display="block" type="supporting">An inspector panel with a divider on its start edge.</Text>
-      </LayoutPanel>
-    )}
-    {hasHeaderAndFooter && (
+      <LayoutContent role="main" label="Document">{paragraphs.map((row) => <Text display="block">{row}</Text>)}</LayoutContent>
       <LayoutFooter slot="footer"><Text type="supporting">Saved 2 minutes ago</Text></LayoutFooter>
-    )}
-  </Layout>
+    </Layout>
+  )}
+  {panels === 'start' && (
+    <Layout {...layout}>
+      <LayoutHeader slot="header" role="banner" label="Workspace"><Text type="label">Workspace</Text></LayoutHeader>
+      <LayoutPanel slot="start" width={160} hasDivider role="navigation" label="Sections">{sections.map((row) => <Text display="block" type="supporting">{row}</Text>)}</LayoutPanel>
+      <LayoutContent role="main" label="Document">{paragraphs.map((row) => <Text display="block">{row}</Text>)}</LayoutContent>
+      <LayoutFooter slot="footer"><Text type="supporting">Saved 2 minutes ago</Text></LayoutFooter>
+    </Layout>
+  )}
+  {panels === 'end' && (
+    <Layout {...layout}>
+      <LayoutHeader slot="header" role="banner" label="Workspace"><Text type="label">Workspace</Text></LayoutHeader>
+      <LayoutContent role="main" label="Document">{paragraphs.map((row) => <Text display="block">{row}</Text>)}</LayoutContent>
+      <LayoutPanel slot="end" width={180} hasDivider role="complementary" label="Details"><Text display="block" type="supporting">{inspector}</Text></LayoutPanel>
+      <LayoutFooter slot="footer"><Text type="supporting">Saved 2 minutes ago</Text></LayoutFooter>
+    </Layout>
+  )}
+  {panels === 'both' && (
+    <Layout {...layout}>
+      <LayoutHeader slot="header" role="banner" label="Workspace"><Text type="label">Workspace</Text></LayoutHeader>
+      <LayoutPanel slot="start" width={160} hasDivider role="navigation" label="Sections">{sections.map((row) => <Text display="block" type="supporting">{row}</Text>)}</LayoutPanel>
+      <LayoutContent role="main" label="Document">{paragraphs.map((row) => <Text display="block">{row}</Text>)}</LayoutContent>
+      <LayoutPanel slot="end" width={180} hasDivider role="complementary" label="Details"><Text display="block" type="supporting">{inspector}</Text></LayoutPanel>
+      <LayoutFooter slot="footer"><Text type="supporting">Saved 2 minutes ago</Text></LayoutFooter>
+    </Layout>
+  )}
 </Card>
