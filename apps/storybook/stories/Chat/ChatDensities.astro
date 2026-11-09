@@ -1,0 +1,34 @@
+---
+/**
+ * Story wrapper: the same short exchange in a ChatMessageList of each density. The list's
+ * density reaches its messages and bubbles through the render context, and the bubbles group
+ * (first / middle / last), so each list is one composition.
+ */
+import Avatar from 'astryx-astro/components/Avatar/Avatar.astro';
+import ChatMessage from 'astryx-astro/components/Chat/ChatMessage.astro';
+import ChatMessageBubble from 'astryx-astro/components/Chat/ChatMessageBubble.astro';
+import ChatMessageList from 'astryx-astro/components/Chat/ChatMessageList.astro';
+import ChatMessageMetadata from 'astryx-astro/components/Chat/ChatMessageMetadata.astro';
+import type {ChatDensity} from 'astryx-astro/components/Chat/types';
+
+const densities: ChatDensity[] = ['compact', 'balanced', 'spacious'];
+const frame = 'display:flex;flex-direction:column;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-surface)';
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--spacing-5);align-items:start">
+  {densities.map((density) => (
+    <div style={frame}>
+      <ChatMessageList density={density} align="top" aria-label={`Conversation (${density})`}>
+        <ChatMessage sender="assistant" name={`Navi (${density})`}>
+          <Avatar slot="avatar" name="Navi" size="sm" tooltip={false} />
+          <ChatMessageBubble group="first">First bubble</ChatMessageBubble>
+          <ChatMessageBubble group="middle">Middle bubble</ChatMessageBubble>
+          <ChatMessageBubble group="last"><ChatMessageMetadata slot="metadata" timestamp="2:30 PM" />Last bubble</ChatMessageBubble>
+        </ChatMessage>
+        <ChatMessage sender="user">
+          <ChatMessageBubble group="first">Got it</ChatMessageBubble>
+          <ChatMessageBubble group="last"><ChatMessageMetadata slot="metadata" timestamp="2:31 PM" status="delivered" />Thanks!</ChatMessageBubble>
+        </ChatMessage>
+      </ChatMessageList>
+    </div>
+  ))}
+</div>

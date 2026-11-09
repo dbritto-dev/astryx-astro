@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: every Spinner size × shade. `onMedia` sits on a dark surface and `inherit`
+ * inside a coloured one, the surfaces each shade is made for.
+ */
+import Spinner, {type SpinnerShade, type SpinnerSize} from 'astryx-astro/components/Spinner/Spinner.astro';
+
+const sizes: SpinnerSize[] = ['sm', 'md', 'lg', 'xl'];
+const shades: SpinnerShade[] = ['default', 'subtle', 'onMedia', 'inherit'];
+const surfaces: Record<string, string> = {
+  onMedia: 'background:#1c1c1e',
+  inherit: 'background:var(--color-accent);color:var(--color-on-accent)',
+};
+const grid = `display:grid;grid-template-columns:repeat(${sizes.length + 1},max-content);align-items:center;justify-items:center;gap:var(--spacing-2)`;
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary);justify-self:start';
+const cell = 'display:inline-flex;align-items:center;justify-content:center;width:56px;height:48px;border-radius:var(--radius-element)';
+---
+<div style={grid}>
+  <span></span>
+  {sizes.map((size) => <span style={head}>{size}</span>)}
+  {shades.map((shade) => (
+    <>
+      <span style={head}>{shade}</span>
+      {sizes.map((size) => (
+        <span style={`${cell};${surfaces[shade] ?? ''}`}><Spinner size={size} shade={shade} aria-label={`Loading (${shade}, ${size})`} /></span>
+      ))}
+    </>
+  ))}
+</div>

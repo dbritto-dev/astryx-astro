@@ -1,0 +1,18 @@
+---
+/**
+ * Story wrapper: one Skeleton per radius step, staggered by `index` so the pulse runs as a
+ * wave across them.
+ */
+import Skeleton, {type SkeletonRadius} from 'astryx-astro/components/Skeleton/Skeleton.astro';
+
+const radii: SkeletonRadius[] = ['none', 0, 1, 2, 3, 4, 'rounded'];
+const caption = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+---
+<div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4)">
+  {radii.map((radius, i) => (
+    <span style="display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1)">
+      <Skeleton width={72} height={48} radius={radius} index={i} />
+      <code style={caption}>radius={String(radius)}</code>
+    </span>
+  ))}
+</div>

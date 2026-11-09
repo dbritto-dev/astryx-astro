@@ -1,0 +1,48 @@
+---
+/**
+ * Story wrapper: a standalone ChatComposer with its optional parts — a drawer of attachments,
+ * a compact send button, or a plain textarea in the `input` slot. The composer hands its state
+ * to the parts inside it through the render context, so each variant is one composition.
+ */
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import ChatComposer, {type Props as ComposerProps} from 'astryx-astro/components/Chat/ChatComposer.astro';
+import ChatComposerDrawer from 'astryx-astro/components/Chat/ChatComposerDrawer.astro';
+import ChatSendButton from 'astryx-astro/components/Chat/ChatSendButton.astro';
+
+interface Props {
+  /** Forwarded to ChatComposer. */
+  value?: string;
+  /** Forwarded to ChatComposer. */
+  placeholder?: string;
+  /** Forwarded to ChatComposer. */
+  isDisabled?: boolean;
+  /** Forwarded to ChatComposer. */
+  isStopShown?: boolean;
+  /** Forwarded to ChatComposer. */
+  density?: ComposerProps['density'];
+  /** Forwarded to ChatComposer. */
+  elevation?: ComposerProps['elevation'];
+  /** Forwarded to ChatComposer. */
+  status?: ComposerProps['status'];
+  /** Forwarded to ChatComposer. */
+  statusPosition?: ComposerProps['statusPosition'];
+  /** Story knob: an attachments drawer (`open` or `collapsed`). */
+  drawer?: 'open' | 'collapsed';
+  /** Story knob: a small send button in the `sendButton` slot. @default false */
+  hasSmallSendButton?: boolean;
+  /** Story knob: a plain textarea in the `input` slot. @default false */
+  hasCustomInput?: boolean;
+}
+const {value, placeholder, isDisabled, isStopShown, density, elevation, status, statusPosition, drawer, hasSmallSendButton = false, hasCustomInput = false} = Astro.props;
+---
+<div style="max-width:560px">
+  <ChatComposer value={value} placeholder={placeholder} isDisabled={isDisabled} isStopShown={isStopShown} density={density} elevation={elevation} status={status} statusPosition={statusPosition}>
+    {drawer && (
+      <ChatComposerDrawer slot="drawer" count={3} label="Attachments" defaultIsCollapsed={drawer === 'collapsed'}>
+        <Badge label="spec.pdf" /><Badge label="notes.md" /><Badge label="diagram.png" />
+      </ChatComposerDrawer>
+    )}
+    {hasSmallSendButton && <ChatSendButton slot="sendButton" size="sm" />}
+    {hasCustomInput && <textarea slot="input" rows="2" aria-label="Plain message" style="border:0;outline:0;padding:0;font:inherit;background:transparent;color:inherit" placeholder="A plain textarea in the input slot"></textarea>}
+  </ChatComposer>
+</div>

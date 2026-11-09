@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: every StatusDot variant plain, pulsing and with an icon, each next to visible
+ * text (colour alone is not accessible), so one story shows a theme's status palette.
+ */
+import StatusDot, {type StatusDotVariant} from 'astryx-astro/components/StatusDot/StatusDot.astro';
+
+const variants: {variant: StatusDotVariant; label: string; icon: string}[] = [
+  {variant: 'success', label: 'Online', icon: 'check'},
+  {variant: 'warning', label: 'Degraded', icon: 'warning'},
+  {variant: 'error', label: 'Offline', icon: 'close'},
+  {variant: 'accent', label: 'Selected', icon: 'info'},
+  {variant: 'neutral', label: 'Idle', icon: 'clock'},
+];
+const grid = 'display:grid;grid-template-columns:repeat(4,max-content);align-items:center;gap:var(--spacing-3) var(--spacing-6);font-size:var(--font-size-sm);color:var(--color-text-primary)';
+const head = 'color:var(--color-text-secondary)';
+const item = 'display:inline-flex;align-items:center;gap:var(--spacing-2)';
+---
+<div style={grid}>
+  <span></span><span style={head}>dot</span><span style={head}>pulsing</span><span style={head}>icon</span>
+  {variants.map(({variant, label, icon}) => (
+    <>
+      <span style={head}>{variant}</span>
+      <span style={item}><StatusDot variant={variant} label={label} />{label}</span>
+      <span style={item}><StatusDot variant={variant} label={`${label}, live`} isPulsing />{label}</span>
+      <span style={item}><StatusDot variant={variant} label={label} icon={icon} />{label}</span>
+    </>
+  ))}
+</div>

@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: ChatMessageMetadata with every delivery status on user messages, then an
+ * assistant reply whose metadata footer holds action buttons. Metadata reads its sender from
+ * the enclosing message, so this is one composition.
+ */
+import Avatar from 'astryx-astro/components/Avatar/Avatar.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import ChatMessage from 'astryx-astro/components/Chat/ChatMessage.astro';
+import ChatMessageBubble from 'astryx-astro/components/Chat/ChatMessageBubble.astro';
+import ChatMessageList from 'astryx-astro/components/Chat/ChatMessageList.astro';
+import ChatMessageMetadata from 'astryx-astro/components/Chat/ChatMessageMetadata.astro';
+import type {ChatMessageStatus} from 'astryx-astro/components/Chat/types';
+
+const statuses: ChatMessageStatus[] = ['sending', 'sent', 'delivered', 'read', 'error'];
+const frame = 'display:flex;flex-direction:column;max-width:720px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-surface)';
+---
+<div style={frame}>
+  <ChatMessageList align="top" density="compact">
+    {statuses.map((status) => (
+      <ChatMessage sender="user"><ChatMessageBubble><ChatMessageMetadata slot="metadata" timestamp="10:02 AM" footer="edited" status={status} />Status: {status}</ChatMessageBubble></ChatMessage>
+    ))}
+    <ChatMessage sender="assistant" name="Navi">
+      <Avatar slot="avatar" name="Navi" size="sm" tooltip={false} />
+      <ChatMessageBubble variant="ghost">Footer actions below an unbubbled reply</ChatMessageBubble>
+      <ChatMessageMetadata slot="metadata" timestamp="10:03 AM">
+        <span slot="footer" style="display:inline-flex;gap:var(--spacing-1)"><Button label="Copy" icon="copy" variant="ghost" size="sm" isIconOnly /><Button label="Good response" icon="check" variant="ghost" size="sm" isIconOnly /></span>
+      </ChatMessageMetadata>
+    </ChatMessage>
+  </ChatMessageList>
+</div>

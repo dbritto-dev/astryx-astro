@@ -1,0 +1,27 @@
+---
+/**
+ * Story wrapper: every Token colour × size, then a removable and a disabled token of each size,
+ * so one story shows a theme's whole token palette.
+ */
+import Token, {type TokenColor, type TokenSize} from 'astryx-astro/components/Token/Token.astro';
+
+const colors: TokenColor[] = ['default', 'red', 'orange', 'yellow', 'green', 'teal', 'cyan', 'blue', 'purple', 'pink', 'gray'];
+const sizes: TokenSize[] = ['sm', 'md', 'lg'];
+const grid = `display:grid;grid-template-columns:repeat(${sizes.length + 1},max-content);align-items:center;justify-items:start;gap:var(--spacing-2) var(--spacing-4)`;
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const title = (s: string) => s[0].toUpperCase() + s.slice(1);
+---
+<div style={grid}>
+  <span></span>
+  {sizes.map((size) => <span style={head}>{size}</span>)}
+  {colors.map((color) => (
+    <>
+      <span style={head}>{color}</span>
+      {sizes.map((size) => <Token label={title(color)} color={color} size={size} />)}
+    </>
+  ))}
+  <span style={head}>removable</span>
+  {sizes.map((size) => <Token label={`Filter ${size}`} size={size} color="blue" isRemovable />)}
+  <span style={head}>disabled</span>
+  {sizes.map((size) => <Token label={`Locked ${size}`} size={size} isDisabled />)}
+</div>

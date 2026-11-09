@@ -1,0 +1,53 @@
+---
+/**
+ * Story wrapper: ChatToolCalls whose calls carry a `resultDetail` of Astro markup (a code
+ * snippet), which args cannot hold, optionally inside an assistant ChatMessage with a reply
+ * bubble (sub-components in one render).
+ */
+import ChatMessage from 'astryx-astro/components/Chat/ChatMessage.astro';
+import ChatMessageBubble from 'astryx-astro/components/Chat/ChatMessageBubble.astro';
+import ChatToolCalls from 'astryx-astro/components/Chat/ChatToolCalls.astro';
+import type {ChatToolCallItem} from 'astryx-astro/components/Chat/types';
+
+interface Props {
+  /** Forwarded to ChatToolCalls. */
+  label?: string;
+  /** Forwarded to ChatToolCalls. */
+  defaultIsExpanded?: boolean;
+  /**
+   * Story knob: `detail` (one call with a result detail), `group` (four calls, one with a
+   * detail) or `message` (two calls above the reply, in an assistant message). @default 'group'
+   */
+  example?: 'detail' | 'group' | 'message';
+}
+const {label, defaultIsExpanded, example = 'group'} = Astro.props;
+const pre = 'margin:0;font-size:var(--text-supporting-size);font-family:var(--font-family-code);white-space:pre-wrap';
+const session: ChatToolCallItem[] = [
+  {name: 'read_file', target: 'src/Button/Button.tsx', duration: '120ms'},
+  {name: 'grep', target: 'focusOutline', node: 'navi', duration: '48ms', stats: '14 matches'},
+  {name: 'edit_file', target: 'Button.css', additions: 12, deletions: 3, duration: '0.4s'},
+  {name: 'run_tests', status: 'running', target: 'pnpm test button'},
+];
+---
+{example === 'detail' && (
+  <ChatToolCalls
+    label={label}
+    defaultIsExpanded={defaultIsExpanded}
+    calls={[{name: 'bash', target: 'git status --short', duration: '90ms', resultDetail: <pre style={pre}>{' M src/Button/Button.css\n?? src/Button/Button.test.tsx'}</pre>}]}
+  />
+)}
+{example === 'group' && (
+  <ChatToolCalls
+    label={label}
+    defaultIsExpanded={defaultIsExpanded}
+    calls={session.map((call) => call.name === 'edit_file'
+      ? {...call, resultDetail: <pre style={pre}>{'- outline: 2px solid blue;\n+ outline: var(--focus-outline-width) var(--focus-outline-style) var(--focus-outline-color);'}</pre>}
+      : call)}
+  />
+)}
+{example === 'message' && (
+  <ChatMessage sender="assistant" name="Navi">
+    <ChatToolCalls label={label} defaultIsExpanded={defaultIsExpanded} calls={session.slice(0, 2)} />
+    <ChatMessageBubble variant="ghost"><p style="margin:0">I read the button source and found the focus helper it uses.</p></ChatMessageBubble>
+  </ChatMessage>
+)}

@@ -1,0 +1,36 @@
+---
+/**
+ * Story wrapper: Icon sizes × a few names, every colour, and a directional icon mirrored in a
+ * right-to-left container (`class="ax-mirror-rtl"`), on one canvas.
+ */
+import Icon, {type IconColor, type IconSize} from 'astryx-astro/components/Icon/Icon.astro';
+
+const sizes: IconSize[] = ['xsm', 'sm', 'md', 'lg'];
+const names = ['search', 'calendar', 'upload', 'warning'] as const;
+const colors: IconColor[] = [
+  'inherit', 'primary', 'secondary', 'tertiary', 'disabled', 'accent', 'info', 'success', 'error', 'warning',
+  'blue', 'red', 'green', 'gray', 'cyan', 'teal', 'yellow', 'orange', 'pink', 'purple',
+];
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const grid = `display:grid;grid-template-columns:repeat(${sizes.length + 1},max-content);align-items:center;gap:var(--spacing-3) var(--spacing-5)`;
+const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1);min-width:64px';
+---
+<div style="display:grid;gap:var(--spacing-6);color:var(--color-text-primary)">
+  <div style={grid}>
+    <span></span>
+    {sizes.map((size) => <span style={head}>{size}</span>)}
+    {names.map((name) => (
+      <>
+        <span style={head}>{name}</span>
+        {sizes.map((size) => <Icon icon={name} size={size} />)}
+      </>
+    ))}
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-3)">
+    {colors.map((color) => <span style={cell}><Icon icon="info" color={color} size="lg" /><code style={head}>{color}</code></span>)}
+  </div>
+  <div style="display:flex;gap:var(--spacing-5)" dir="rtl">
+    <span style={cell}><Icon icon="chevronRight" size="lg" class="ax-mirror-rtl" /><code style={head}>ax-mirror-rtl</code></span>
+    <span style={cell}><Icon icon="chevronRight" size="lg" /><code style={head}>not mirrored</code></span>
+  </div>
+</div>

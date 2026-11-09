@@ -1,0 +1,25 @@
+---
+/**
+ * Story wrapper: every Banner status in both containers, then every elevation, on one canvas.
+ */
+import Banner, {type BannerContainer, type BannerStatus} from 'astryx-astro/components/Banner/Banner.astro';
+import type {Elevation} from 'astryx-astro/lib/types';
+
+const statuses: BannerStatus[] = ['info', 'success', 'warning', 'error'];
+const containers: BannerContainer[] = ['card', 'section'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const title = (s: string) => s[0].toUpperCase() + s.slice(1);
+const head = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--spacing-4)">
+  {containers.map((container) => (
+    <div style="display:grid;gap:var(--spacing-3);align-content:start">
+      <p style={head}>container="{container}"</p>
+      {statuses.map((status) => <Banner status={status} container={container} title={`${title(status)} banner`} description="Supporting description text for this message." />)}
+    </div>
+  ))}
+  <div style="display:grid;gap:var(--spacing-3);align-content:start;grid-column:1 / -1;max-width:640px">
+    <p style={head}>elevation</p>
+    {elevations.map((elevation) => <Banner status="success" elevation={elevation} title={`elevation="${elevation}"`} />)}
+  </div>
+</div>

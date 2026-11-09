@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: ChatMessageBubble variants and senders in one ChatMessageList — filled,
+ * ghost, full width, a spacious message inside a balanced list, a system-sender message and
+ * system notices (default with an icon, and the divider). Bubbles read their sender and
+ * density from the enclosing message, so this is one composition.
+ */
+import ChatMessage from 'astryx-astro/components/Chat/ChatMessage.astro';
+import ChatMessageBubble from 'astryx-astro/components/Chat/ChatMessageBubble.astro';
+import ChatMessageList from 'astryx-astro/components/Chat/ChatMessageList.astro';
+import ChatSystemMessage from 'astryx-astro/components/Chat/ChatSystemMessage.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+
+const frame = 'display:flex;flex-direction:column;max-width:720px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-surface)';
+---
+<div style={frame}>
+  <ChatMessageList gap={2} align="top">
+    <ChatSystemMessage variant="divider">March 15, 2026</ChatSystemMessage>
+    <ChatMessage sender="assistant"><ChatMessageBubble name="Navi">Filled (assistant), with a name row</ChatMessageBubble></ChatMessage>
+    <ChatMessage sender="user"><ChatMessageBubble>Filled (user)</ChatMessageBubble></ChatMessage>
+    <ChatMessage sender="assistant"><ChatMessageBubble variant="ghost">Ghost: no boundary, same text column</ChatMessageBubble></ChatMessage>
+    <ChatMessage sender="assistant">
+      <ChatMessageBubble variant="ghost" width="100%">
+        <div style="padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-container)">An artifact card spanning the full message column</div>
+      </ChatMessageBubble>
+    </ChatMessage>
+    <ChatMessage sender="user" density="spacious"><ChatMessageBubble>Spacious message inside a balanced list</ChatMessageBubble></ChatMessage>
+    <ChatMessage sender="system"><ChatMessageBubble>A system-sender message: centered, no avatar</ChatMessageBubble></ChatMessage>
+    <ChatSystemMessage><Icon slot="icon" icon="info" size="sm" />Grace changed the topic to "Toolbar polish"</ChatSystemMessage>
+  </ChatMessageList>
+</div>

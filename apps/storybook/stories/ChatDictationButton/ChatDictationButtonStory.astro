@@ -1,0 +1,21 @@
+---
+/**
+ * Story wrapper: a ChatDictationButton in a ChatComposer's `sendActions` slot, where it
+ * dictates into the composer's own input (a composition that needs one render).
+ */
+import ChatComposer from 'astryx-astro/components/Chat/ChatComposer.astro';
+import ChatDictationButton, {type Props as DictationProps} from 'astryx-astro/components/Chat/ChatDictationButton.astro';
+
+interface Props {
+  /** Forwarded to ChatDictationButton. */
+  size?: DictationProps['size'];
+  /** Forwarded to ChatDictationButton. */
+  isHiddenWhenUnsupported?: boolean;
+}
+const {size, isHiddenWhenUnsupported} = Astro.props;
+---
+<div style="max-width:560px">
+  <ChatComposer placeholder="Press the microphone and speak…">
+    <ChatDictationButton slot="sendActions" size={size} isHiddenWhenUnsupported={isHiddenWhenUnsupported} />
+  </ChatComposer>
+</div>

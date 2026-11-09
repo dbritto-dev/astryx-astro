@@ -1,0 +1,80 @@
+---
+/**
+ * Story wrapper: a whole chat in a fixed-height frame — ChatLayout with a ChatMessageList
+ * (system notices, grouped user bubbles with metadata and tokenized text, an assistant reply
+ * with tool calls) and a docked ChatComposer (drawer, header and footer actions, an `@`
+ * mention trigger on a static source). Every piece reads the layout's or the message's
+ * context, so it all renders in one Astro render; the trigger's `onSelect` is a function.
+ * Sending dispatches `astryx-submit` (logged in Actions); appending the reply is the app's job.
+ */
+import Avatar from 'astryx-astro/components/Avatar/Avatar.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import ChatComposer from 'astryx-astro/components/Chat/ChatComposer.astro';
+import ChatComposerDrawer from 'astryx-astro/components/Chat/ChatComposerDrawer.astro';
+import ChatComposerInput from 'astryx-astro/components/Chat/ChatComposerInput.astro';
+import ChatLayout from 'astryx-astro/components/Chat/ChatLayout.astro';
+import ChatMessage from 'astryx-astro/components/Chat/ChatMessage.astro';
+import ChatMessageBubble from 'astryx-astro/components/Chat/ChatMessageBubble.astro';
+import ChatMessageList from 'astryx-astro/components/Chat/ChatMessageList.astro';
+import ChatMessageMetadata from 'astryx-astro/components/Chat/ChatMessageMetadata.astro';
+import ChatSystemMessage from 'astryx-astro/components/Chat/ChatSystemMessage.astro';
+import ChatTokenizedText from 'astryx-astro/components/Chat/ChatTokenizedText.astro';
+import ChatToolCalls from 'astryx-astro/components/Chat/ChatToolCalls.astro';
+import type {ChatComposerToken, ChatComposerTrigger, ChatDensity} from 'astryx-astro/components/Chat/types';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import {createStaticSource} from 'astryx-astro/components/Typeahead/createStaticSource';
+import type {SearchableItem} from 'astryx-astro/lib/searchableItem';
+
+interface Props {
+  /** Forwarded to ChatLayout. */
+  density?: ChatDensity;
+}
+const {density} = Astro.props;
+
+const people: SearchableItem<{group: string}>[] = [
+  {id: 'ada', label: 'Ada Lovelace', auxiliaryData: {group: 'Team'}},
+  {id: 'grace', label: 'Grace Hopper', auxiliaryData: {group: 'Team'}},
+  {id: 'margaret', label: 'Margaret Hamilton', auxiliaryData: {group: 'Team'}},
+  {id: 'alan', label: 'Alan Kay', auxiliaryData: {group: 'Guests'}},
+];
+const mention = (item: SearchableItem): ChatComposerToken => ({value: `@${item.id}`, label: `@${item.label}`, variant: 'blue'});
+const peopleTrigger: ChatComposerTrigger = {character: '@', searchSource: createStaticSource(people), onSelect: mention, menuLabel: 'People'};
+const frame = 'display:flex;flex-direction:column;height:560px;max-width:720px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-surface)';
+---
+<div style={frame}>
+  <ChatLayout density={density}>
+    <ChatMessageList>
+      <ChatSystemMessage variant="divider">Today</ChatSystemMessage>
+      <ChatSystemMessage><Icon slot="icon" icon="info" size="sm" />Ada Lovelace joined the conversation</ChatSystemMessage>
+      <ChatMessage sender="user">
+        <ChatMessageBubble name="You" group="first">Can you check why the toolbar buttons look off in dark mode?</ChatMessageBubble>
+        <ChatMessageBubble group="last">
+          <ChatMessageMetadata slot="metadata" timestamp="9:41 AM" status="read" />
+          <ChatTokenizedText tokens={people.map(mention)} text="@grace mentioned it in standup too." />
+        </ChatMessageBubble>
+      </ChatMessage>
+      <ChatMessage sender="assistant" name="Navi">
+        <Avatar slot="avatar" name="Navi" size="md" tooltip={false} />
+        <ChatToolCalls calls={[
+          {name: 'read_file', target: 'Toolbar.tsx', duration: '120ms'},
+          {name: 'edit_file', target: 'Toolbar.css', additions: 3, deletions: 1, duration: '210ms'},
+        ]} />
+        <ChatMessageBubble variant="ghost">
+          <ChatMessageMetadata slot="metadata" timestamp="9:43 AM" />
+          <p style="margin:0">The ghost buttons painted their hover overlay with a hard-coded colour. I switched them to the overlay token, so dark mode now gets the lighter tint.</p>
+        </ChatMessageBubble>
+      </ChatMessage>
+    </ChatMessageList>
+    <ChatComposer slot="composer" placeholder="Message Navi…">
+      <ChatComposerDrawer slot="drawer" count={2} label="Files">
+        <Badge label="Toolbar.tsx" icon="externalLink" />
+        <Badge label="Toolbar.css" icon="externalLink" />
+      </ChatComposerDrawer>
+      <Button slot="headerActions" label="Attach" icon="upload" variant="ghost" size="sm" isIconOnly />
+      <span slot="headerContext">Context 12%</span>
+      <ChatComposerInput slot="input" triggers={[peopleTrigger]} />
+      <Button slot="footerActions" label="Claude" variant="ghost" size="md" endContent="chevronDown" />
+    </ChatComposer>
+  </ChatLayout>
+</div>

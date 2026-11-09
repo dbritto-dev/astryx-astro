@@ -1,0 +1,15 @@
+---
+/**
+ * Story wrapper: a loading profile row built from several Skeletons (an avatar circle and three
+ * staggered text lines) inside a region that conveys the busy state, as the component expects.
+ */
+import Skeleton from 'astryx-astro/components/Skeleton/Skeleton.astro';
+---
+<div role="group" aria-busy="true" aria-label="Loading profile" style="display:flex;gap:var(--spacing-3);align-items:center;max-width:420px">
+  <Skeleton width={48} height={48} radius="rounded" />
+  <div style="display:grid;gap:var(--spacing-2);flex:1">
+    <Skeleton height={16} width="70%" radius={1} index={0} />
+    <Skeleton height={12} width="90%" radius={1} index={1} />
+    <Skeleton height={12} width="55%" radius={1} index={2} />
+  </div>
+</div>

@@ -1,0 +1,61 @@
+---
+/**
+ * Story wrapper: every Avatar size × shape, with an image and with initials, then each status
+ * dot variant at the three dot tiers and a dot with an icon. A status dot holding an Icon is a
+ * nested composition, so it needs one Astro render.
+ */
+import Avatar, {type AvatarShape, type AvatarSize} from 'astryx-astro/components/Avatar/Avatar.astro';
+import AvatarStatusDot from 'astryx-astro/components/Avatar/AvatarStatusDot.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+
+// Inline SVG "photo" (no external images), as in Avatar.demo.astro.
+const photo =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6d8cff"/><stop offset="1" stop-color="#b06dff"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/><circle cx="48" cy="38" r="17" fill="#fff" fill-opacity=".85"/><path d="M14 96c4-22 18-32 34-32s30 10 34 32z" fill="#fff" fill-opacity=".85"/></svg>',
+  );
+const sizes: AvatarSize[] = ['xsm', 'sm', 'md', 'lg', 'xl', 64];
+const shapes: AvatarShape[] = ['circle', 'rounded', 'square'];
+const dotSizes: AvatarSize[] = ['sm', 'lg', 'xl'];
+const statuses = [
+  {variant: 'success', label: 'Online'},
+  {variant: 'neutral', label: 'Away'},
+  {variant: 'error', label: 'Busy'},
+];
+const grid = `display:grid;grid-template-columns:repeat(${sizes.length + 1},max-content);align-items:center;justify-items:center;gap:var(--spacing-3)`;
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary);justify-self:start';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style={grid}>
+    <span></span>
+    {sizes.map((size) => <span style={head}>{typeof size === 'number' ? `${size}px` : size}</span>)}
+    {shapes.map((shape) => (
+      <>
+        <span style={head}>{shape}</span>
+        {sizes.map((size) => <Avatar name="Ada Lovelace" size={size} shape={shape} src={photo} tooltip={false} />)}
+        <span style={head}>{shape}, initials</span>
+        {sizes.map((size) => <Avatar name="Grace Hopper" size={size} shape={shape} tooltip={false} />)}
+      </>
+    ))}
+  </div>
+  <div style={`display:grid;grid-template-columns:repeat(${dotSizes.length + 1},max-content);align-items:center;justify-items:center;gap:var(--spacing-3)`}>
+    <span></span>
+    {dotSizes.map((size) => <span style={head}>{size}</span>)}
+    {statuses.map(({variant, label}) => (
+      <>
+        <span style={head}>{variant}</span>
+        {dotSizes.map((size) => (
+          <Avatar name="Jane Doe" size={size} tooltip={false}>
+            <AvatarStatusDot slot="status" variant={variant} label={label} />
+          </Avatar>
+        ))}
+      </>
+    ))}
+    <span style={head}>icon</span>
+    {dotSizes.map((size) => (
+      <Avatar name="Jane Doe" size={size} shape="rounded" tooltip={false}>
+        <AvatarStatusDot slot="status" variant="success" label="Verified"><Icon slot="icon" icon="check" size="sm" style="width:100%;height:100%" /></AvatarStatusDot>
+      </Avatar>
+    ))}
+  </div>
+</div>

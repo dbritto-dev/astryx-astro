@@ -1,0 +1,16 @@
+---
+/**
+ * Story wrapper: inline Code inside running Text of different types, the context it is made
+ * for. `size="inherit"` adopts the surrounding text's size, and `color="inherit"` its colour,
+ * which only shows inside a parent text in the same render.
+ */
+import Code from 'astryx-astro/components/Code/Code.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+---
+<div style="display:grid;gap:var(--spacing-4)">
+  <Text as="p">Use <Code>const x = 1</Code> to declare a variable, then call <Code>format(x)</Code>.</Text>
+  <Text as="p" type="large">Default size in large text: run <Code>pnpm build</Code> first.</Text>
+  <Text as="p" type="large">Inherited size in large text: run <Code size="inherit">pnpm build</Code> first.</Text>
+  <Text as="p" type="supporting">Supporting text: set <Code color="secondary">--color-background-muted</Code> on the root.</Text>
+  <Text as="p" color="accent">Accent text with <Code color="inherit">color="inherit"</Code> code.</Text>
+</div>
