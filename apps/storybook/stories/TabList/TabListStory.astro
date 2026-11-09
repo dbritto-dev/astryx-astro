@@ -1,0 +1,114 @@
+---
+/**
+ * Story wrapper: a TabList with Tabs and a TabMenu. Tabs read the list's context (value, size,
+ * pattern) from its render, so the composition lives in a wrapper. `tabs` picks one of the tab
+ * sets below; the `order` set uses the tabs pattern and renders the panels its tabs control,
+ * swapped on `astryx-change` by the script below (Astryx leaves panels to the consumer).
+ * `dir` renders it right-to-left; `width` caps the strip (overflow stories).
+ */
+import TabList, {type Props as TabListProps} from 'astryx-astro/components/TabList/TabList.astro';
+import Tab from 'astryx-astro/components/TabList/Tab.astro';
+import TabMenu from 'astryx-astro/components/TabList/TabMenu.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+
+interface Props {
+  /** Forwarded to TabList (defaults to the set's own selection). */
+  value?: TabListProps['value'];
+  /** Forwarded to TabList. */
+  size?: TabListProps['size'];
+  /** Forwarded to TabList. */
+  layout?: TabListProps['layout'];
+  /** Forwarded to TabList. */
+  hasDivider?: TabListProps['hasDivider'];
+  /** Forwarded to TabList. */
+  overflow?: TabListProps['overflow'];
+  /**
+   * Story-only: the tab set. `project` buttons with a badge, a disabled tab and a TabMenu;
+   * `settings` three plain tabs; `icons` icons, a selected icon, icon-only tabs and end text;
+   * `order` the tabs pattern (`role="tablist"`) with panels; `links` link tabs and a TabMenu
+   * holding the value; `workspace` seven tabs for the overflow stories.
+   */
+  tabs?: 'project' | 'settings' | 'icons' | 'order' | 'links' | 'workspace';
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+  /** Story-only: max width of the box around the strip, in px. */
+  width?: number;
+}
+const {value, size, layout, hasDivider, overflow, tabs = 'project', dir, width} = Astro.props;
+const moreOptions = [
+  {value: 'settings', label: 'Settings', icon: 'wrench'},
+  {value: 'integrations', label: 'Integrations'},
+  {value: 'billing', label: 'Billing'},
+];
+const defaults = {project: 'overview', settings: 'general', icons: 'inbox', order: 'details', links: 'billing', workspace: 'reports'};
+const common = {value: value ?? defaults[tabs], size, layout, hasDivider, overflow};
+const panel = 'padding:var(--spacing-3) 0;color:var(--color-text-primary)';
+---
+<div dir={dir} style={width ? `max-width:${width}px` : undefined}>
+  {tabs === 'project' && (
+    <TabList {...common} aria-label="Project">
+      <Tab value="overview" label="Overview" />
+      <Tab value="activity" label="Activity"><Badge slot="endContent" label="3" /></Tab>
+      <Tab value="members" label="Members" />
+      <Tab value="archive" label="Archive" aria-disabled="true" />
+      <TabMenu label="More" options={moreOptions} />
+    </TabList>
+  )}
+  {tabs === 'settings' && (
+    <TabList {...common} aria-label="Settings">
+      <Tab value="general" label="General" />
+      <Tab value="security" label="Security" />
+      <Tab value="notifications" label="Notifications" />
+    </TabList>
+  )}
+  {tabs === 'icons' && (
+    <TabList {...common} aria-label="Mail">
+      <Tab value="inbox" label="Inbox" icon="menu" selectedIcon="check" endContent="12" />
+      <Tab value="search" label="Search" icon="search" />
+      <Tab value="calendar" label="Calendar" icon="calendar" isLabelHidden />
+      <Tab value="recent" label="Recent" isLabelHidden><Icon slot="icon" icon="clock" size="sm" /></Tab>
+    </TabList>
+  )}
+  {tabs === 'order' && (
+    <div data-story-tab-panels>
+      <TabList {...common} role="tablist" aria-label="Order">
+        <Tab value="details" label="Details" panelId="story-panel-details" id="story-tab-details" />
+        <Tab value="shipping" label="Shipping" panelId="story-panel-shipping" id="story-tab-shipping" />
+        <Tab value="returns" label="Returns" panelId="story-panel-returns" id="story-tab-returns" />
+      </TabList>
+      <div role="tabpanel" id="story-panel-details" aria-labelledby="story-tab-details" style={panel} hidden={common.value !== 'details'}>Order #1042: three items, paid by card.</div>
+      <div role="tabpanel" id="story-panel-shipping" aria-labelledby="story-tab-shipping" style={panel} hidden={common.value !== 'shipping'}>Ships in two to three business days.</div>
+      <div role="tabpanel" id="story-panel-returns" aria-labelledby="story-tab-returns" style={panel} hidden={common.value !== 'returns'}>Free returns within 30 days.</div>
+    </div>
+  )}
+  {tabs === 'links' && (
+    <TabList {...common} aria-label="Account">
+      <Tab value="profile" label="Profile" href="#profile" />
+      <Tab value="team" label="Team" href="#team" />
+      <Tab value="audit" label="Audit log" href="#audit" aria-disabled="true" />
+      <TabMenu label="More" options={moreOptions} />
+    </TabList>
+  )}
+  {tabs === 'workspace' && (
+    <TabList {...common} aria-label="Workspace">
+      <Tab value="home" label="Home" />
+      <Tab value="projects" label="Projects" />
+      <Tab value="issues" label="Issues" />
+      <Tab value="reports" label="Reports" />
+      <Tab value="insights" label="Insights" />
+      <Tab value="wiki" label="Wiki" />
+      <Tab value="settings" label="Settings" />
+    </TabList>
+  )}
+</div>
+<script>
+  // The tabs pattern: Astryx associates panels through each Tab's panelId; the consumer swaps
+  // them. Delegated, so it serves every render of this wrapper on the page.
+  document.addEventListener('astryx-change', (event) => {
+    const host = (event.target as Element).closest?.('[data-story-tab-panels]');
+    if (!host || event.defaultPrevented) return;
+    const value = (event as CustomEvent<{value: string}>).detail.value;
+    for (const panel of host.querySelectorAll<HTMLElement>(':scope > [role="tabpanel"]')) panel.hidden = panel.id !== `story-panel-${value}`;
+  });
+</script>

@@ -1,0 +1,46 @@
+---
+/**
+ * Story wrapper: an Outline beside the document it tracks. Scroll-spy and click navigation need
+ * the target headings and a scroll container in the same story, hence a wrapper. The container
+ * has a sticky 40px header, so the Outline gets `offset={40}`. Headings carry fixed ids; the
+ * stories render in their own frame on the docs page so the ids stay unique.
+ */
+import Outline, {type OutlineItem, type Props as OutlineProps} from 'astryx-astro/components/Outline/Outline.astro';
+
+interface Props {
+  /** Forwarded to Outline. */
+  density?: OutlineProps['density'];
+  /** Forwarded to Outline (controlled when set). */
+  activeId?: OutlineProps['activeId'];
+  /** Forwarded to Outline. */
+  hasScrollOnClick?: OutlineProps['hasScrollOnClick'];
+  /** Forwarded to Outline. */
+  label?: OutlineProps['label'];
+}
+const {density, activeId, hasScrollOnClick, label} = Astro.props;
+const items: OutlineItem[] = [
+  {id: 'guide-intro', label: 'Introduction', level: 1},
+  {id: 'guide-install', label: 'Installation', level: 2},
+  {id: 'guide-config', label: 'Configuration', level: 3},
+  {id: 'guide-env', label: 'Environment variables', level: 4},
+  {id: 'guide-secrets', label: 'Secrets', level: 5},
+  {id: 'guide-rotation', label: 'Key rotation', level: 6},
+  {id: 'guide-usage', label: 'Usage', level: 2},
+  {id: 'guide-faq', label: 'FAQ', level: 2},
+];
+const para = 'margin:0 0 var(--spacing-3);color:var(--color-text-secondary);line-height:1.6';
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:var(--spacing-4);align-items:start;color:var(--color-text-primary)">
+  <div id="guide-doc" tabindex="0" aria-label="Guide" role="region" style="height:320px;overflow:auto;border:1px solid var(--color-border);border-radius:var(--radius-element);padding:0 var(--spacing-4)">
+    <div style="position:sticky;top:0;height:40px;display:flex;align-items:center;background:var(--color-background-surface);border-bottom:1px solid var(--color-border);font-size:var(--text-supporting-size);color:var(--color-text-secondary);z-index:1">Deployment guide</div>
+    {items.map((item) => (
+      <section>
+        <h2 id={item.id} style="margin:var(--spacing-4) 0 var(--spacing-2);font-size:var(--font-size-base);scroll-margin-top:8px">{item.label}</h2>
+        <p style={para}>How {item.label.toLowerCase()} works in a deployment, and what to check before moving on to the next section.</p>
+        <p style={para}>A second paragraph keeps each section tall enough to scroll through.</p>
+      </section>
+    ))}
+    <div style="height:120px"></div>
+  </div>
+  <Outline items={items} scrollContainer="#guide-doc" offset={40} density={density} activeId={activeId} hasScrollOnClick={hasScrollOnClick} label={label} />
+</div>
