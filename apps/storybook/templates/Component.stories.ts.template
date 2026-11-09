@@ -1,0 +1,85 @@
+// TEMPLATE for stories/<Name>/<Name>.stories.ts (see STORIES.md). The scaffold already created
+// the file with its imports, meta and Overview story: keep those as they are, add the imports you
+// need and the variant stories below Overview. Replace every <…> and delete what you don't use.
+import <Name> from 'astryx-astro/components/<Dir>/<Name>.astro';
+import Demo from 'astryx-astro/components/<Dir>/<Name>.demo.astro';
+import demoSource from 'astryx-astro/components/<Dir>/<Name>.demo.astro?raw';
+// Only for a single leaf component in a named slot (STORIES.md, "Slots"):
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import {expect, userEvent, waitFor} from 'storybook/test';
+import {isShowing, recordEvents, upgraded} from '../_lib/play';
+import {astryx, composed, frame, overview, type Meta, type Story} from '../_lib/story';
+// A story wrapper (STORIES.md, "Story wrappers") and its source for the Code panel:
+import <Name><Thing> from './<Name><Thing>.astro';
+import <thing>Source from './<Name><Thing>.astro?raw';
+
+const meta = {
+  title: '<Category>/<Display Name>', // exactly the catalog title; `pnpm -F storybook check` verifies it
+  component: <Name>,
+  ...astryx('<Name>'),
+  // Args every story starts from: the required props, with fixed, realistic values.
+  args: {label: 'Save'},
+} satisfies Meta;
+export default meta;
+
+/** Every example from the docs page (<Name>.demo.astro), pre-rendered as one story. */
+export const Overview = overview(Demo, demoSource);
+
+// ── Variants: one meaningful prop combination per story, plain args ─────────────────────────
+
+export const Primary: Story = {args: {variant: 'primary'}};
+
+export const Small: Story = {args: {size: 'sm'}};
+
+/** One sentence when the name does not say it all: what this combination shows. */
+export const Disabled: Story = {args: {isDisabled: true}};
+
+// ── Slots ────────────────────────────────────────────────────────────────────────────────────
+
+/** Text or HTML in a slot: an `args.slots` string (`default` is the default slot). */
+export const CustomContent: Story = {args: {slots: {default: '<strong>Save</strong>&nbsp;draft'}}};
+
+/** A single leaf component in a named slot: a configured component. */
+export const IconSlot: Story = {args: {slots: {icon: {component: Icon, props: {icon: 'upload'}}}}};
+
+// ── Size-dependent behaviour (truncation, overflow, wrapping) ──────────────────────────────
+
+export const Truncated: Story = {args: {maxLines: 1}, decorators: [frame({width: 240})]};
+
+// ── Compositions, overlays, Temporal values, functions: a story wrapper ────────────────────
+
+/** What the composition shows. */
+export const <Thing> = composed(<Name><Thing>, {args: {size: 'md'}}, {controls: ['size'], source: <thing>Source});
+
+// ── Interaction tests (interactive components) ─────────────────────────────────────────────
+
+/** What the user does and what happens (keyboard, pointer, focus, the event it reports). */
+export const Default: Story = {
+  play: async ({canvas, canvasElement, step}) => {
+    // Wait until the component's element is defined (its script has run).
+    const host = await upgraded(canvasElement, 'ax-<tag>');
+    const changes = recordEvents<{value: string}>(canvasElement, 'astryx-change');
+    const trigger = canvas.getByRole('button', {name: 'Save'});
+
+    await step('Keyboard opens it', async () => {
+      trigger.focus();
+      await userEvent.keyboard('{Enter}');
+      await waitFor(() => expect(isShowing(canvasElement.querySelector('[popover]'))).toBe(true));
+    });
+
+    await step('Escape closes it and returns focus', async () => {
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(isShowing(canvasElement.querySelector('[popover]'))).toBe(false));
+      await expect(trigger).toHaveFocus();
+    });
+
+    await expect(changes.map((event) => event.detail.value)).toEqual([]);
+    await expect(host).toHaveAttribute('data-size', 'md');
+  },
+};
+
+/** A story rendered open: docs show it in its own frame so the layer cannot cover the page. */
+export const Open: Story = {
+  args: {isOpen: true},
+  parameters: {docs: {story: {inline: false, height: '360px'}}},
+};

@@ -6,6 +6,7 @@
     "dev": "storybook dev -p 6006",
     "build": "storybook build -o storybook-static && node scripts/postbuild.mjs",
     "test": "vitest --config vitest.config.ts --run",
+    "a11y": "node scripts/a11y-report.mjs",
     "serve": "node scripts/serve.mjs",
     "verify": "node scripts/verify-static.mjs",
     "stories": "node scripts/stories.mjs",
