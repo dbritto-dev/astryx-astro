@@ -185,6 +185,23 @@ try {
   eq('reversed: ArrowLeft grows', (await aria(insp)).now, '190');
   await drag(insp, -30);
   eq('reversed: dragging toward start grows', (await aria(insp)).now, '220');
+  // Astro writes a component's <script> right after its first instance: one between the handle
+  // and its pane is skipped, the pane is the next sibling that renders.
+  const inspPane = await page.$eval(insp, (el) => {
+    const pane = el.nextElementSibling;
+    pane.id ||= 'rz-inspector-pane';
+    const script = document.createElement('script');
+    script.type = 'text/plain';
+    script.id = 'rz-stray-script';
+    el.after(script);
+    return `#${pane.id}`;
+  });
+  const inspBefore = await paneWidth(inspPane);
+  await page.focus(insp);
+  await page.keyboard.press('ArrowLeft');
+  eq('reversed, a <script> after the handle: ArrowLeft grows the pane', `${(await aria(insp)).now} +${await paneWidth(inspPane) - inspBefore}px`, '230 +10px');
+  check('…and never sizes the script', await page.$eval('#rz-stray-script', (s) => s.style.length === 0));
+  await page.$eval('#rz-stray-script', (s) => s.remove());
 
   // ── Vertical with snaps (reversed: the pane is below) ────────────────
   const term = '#rz-terminal';
