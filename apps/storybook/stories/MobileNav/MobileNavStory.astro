@@ -1,0 +1,65 @@
+---
+/**
+ * Story wrapper: a standalone MobileNav drawer with its trigger (`attachMobileNav()`, a server
+ * helper) and SideNav rows inside. The trigger, the drawer and its rows are one composition,
+ * hence a wrapper. `content` picks the drawer content; `dir` renders it right-to-left. The ids
+ * are fixed, so these stories render in their own frame on the docs page.
+ */
+import MobileNav, {type Props as MobileNavProps} from 'astryx-astro/components/MobileNav/MobileNav.astro';
+import {attachMobileNav} from 'astryx-astro/components/MobileNav/attach';
+import Breadcrumbs from 'astryx-astro/components/Breadcrumbs/Breadcrumbs.astro';
+import BreadcrumbItem from 'astryx-astro/components/Breadcrumbs/BreadcrumbItem.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import NavIcon from 'astryx-astro/components/NavIcon/NavIcon.astro';
+import SideNavHeading from 'astryx-astro/components/SideNav/SideNavHeading.astro';
+import SideNavItem from 'astryx-astro/components/SideNav/SideNavItem.astro';
+import SideNavSection from 'astryx-astro/components/SideNav/SideNavSection.astro';
+import {chartIcon, folderIcon, homeIcon, homeIconSolid, inboxIcon, logoMark} from 'astryx-astro/components/NavItem/_demoIcons';
+
+interface Props {
+  /** Forwarded to MobileNav. */
+  isOpen?: MobileNavProps['isOpen'];
+  /** Forwarded to MobileNav (when `content` is `sections`). */
+  header?: MobileNavProps['header'];
+  /** Forwarded to MobileNav. */
+  width?: MobileNavProps['width'];
+  /** Forwarded to MobileNav. */
+  side?: MobileNavProps['side'];
+  /**
+   * Story-only: the drawer content. `sections` two SideNavSections (a group and a breadcrumb
+   * trail) under a text header; `heading` a SideNavHeading in the `header` slot and two rows.
+   */
+  content?: 'sections' | 'heading';
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {isOpen, header = 'Navigation', width, side, content = 'sections', dir} = Astro.props;
+const nav = attachMobileNav({id: 'story-mobile-nav', triggerId: 'story-mobile-nav-trigger'});
+---
+<div dir={dir}>
+  <Button {...nav.trigger} label="Open navigation" icon="menu" variant="secondary" />
+  {content === 'sections' ? (
+    <MobileNav {...nav.layer} isOpen={isOpen} header={header} width={width} side={side}>
+      <SideNavSection title="Main">
+        <SideNavItem label="Home" icon={homeIcon} selectedIcon={homeIconSolid} href="/home/" isSelected />
+        <SideNavItem label="Inbox" icon={inboxIcon} href="/inbox/" />
+        <SideNavItem label="Projects" icon={folderIcon}>
+          <SideNavItem label="Apollo" href="/projects/apollo/" />
+          <SideNavItem label="Gemini" href="/projects/gemini/" />
+        </SideNavItem>
+      </SideNavSection>
+      <SideNavSection title="Insights">
+        <SideNavItem label="Reports" icon={chartIcon} href="/reports/" />
+      </SideNavSection>
+      <div style="margin-top:var(--spacing-3)">
+        <Breadcrumbs variant="supporting"><BreadcrumbItem href="/home/">Home</BreadcrumbItem><BreadcrumbItem>Inbox</BreadcrumbItem></Breadcrumbs>
+      </div>
+    </MobileNav>
+  ) : (
+    <MobileNav {...nav.layer} isOpen={isOpen} width={width} side={side}>
+      <SideNavHeading slot="header" heading="Acme" subheading="Workspace"><NavIcon slot="icon" icon={logoMark} /></SideNavHeading>
+      <SideNavItem label="Dashboard" icon={homeIcon} href="/dashboard/" isSelected />
+      <SideNavItem label="Reports" icon={chartIcon} href="/reports/" />
+    </MobileNav>
+  )}
+</div>

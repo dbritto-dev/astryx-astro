@@ -1,0 +1,94 @@
+---
+/**
+ * Story wrapper: a TopNav bar with a TopNavHeading and its items, menus and end content. The
+ * items learn their slot from the bar's render (subtree locals), so the composition lives in a
+ * wrapper. `content` picks one of the bars below; `dir` renders it right-to-left. The bar keeps
+ * its content width and scrolls inside the bordered box when the box is narrower (a standalone
+ * bar; inside an AppShell it turns into the mobile bar below the viewport breakpoint instead).
+ */
+import TopNav, {type Props as TopNavProps} from 'astryx-astro/components/TopNav/TopNav.astro';
+import TopNavHeading from 'astryx-astro/components/TopNav/TopNavHeading.astro';
+import TopNavItem from 'astryx-astro/components/TopNav/TopNavItem.astro';
+import TopNavMegaMenu from 'astryx-astro/components/TopNav/TopNavMegaMenu.astro';
+import TopNavMegaMenuFeaturedCard from 'astryx-astro/components/TopNav/TopNavMegaMenuFeaturedCard.astro';
+import TopNavMegaMenuItem from 'astryx-astro/components/TopNav/TopNavMegaMenuItem.astro';
+import TopNavMenu from 'astryx-astro/components/TopNav/TopNavMenu.astro';
+import NavHeadingMenu from 'astryx-astro/components/NavMenu/NavHeadingMenu.astro';
+import NavHeadingMenuItem from 'astryx-astro/components/NavMenu/NavHeadingMenuItem.astro';
+import NavIcon from 'astryx-astro/components/NavIcon/NavIcon.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+import {bellIcon, boltIcon, chartIcon, chatIcon, featuredImage, gearIcon, layersIcon, logoMark, usersIcon} from 'astryx-astro/components/NavItem/_demoIcons';
+
+interface Props {
+  /** Forwarded to TopNav. */
+  label?: TopNavProps['label'];
+  /**
+   * Story-only: the bar. `app` a heading with a product menu, a selected item, a hover menu, a
+   * mega menu, a disabled item, an item with an icon and an icon-only end item; `center` a search
+   * field in `centerContent` and an end menu; `headings` the TopNavHeading forms side by side.
+   */
+  content?: 'app' | 'center' | 'headings';
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {label = 'Main navigation', content = 'app', dir} = Astro.props;
+const solutions = [
+  {title: 'Analytics', description: 'Track and analyze user behavior', icon: chartIcon, href: '/solutions/analytics/'},
+  {title: 'Messaging', description: 'Real-time communication tools', icon: chatIcon, href: '/solutions/messaging/'},
+  {title: 'Automation', description: 'Workflows without code', icon: boltIcon, href: '/solutions/automation/'},
+];
+const box = 'min-width:0;overflow-x:auto;border:1px solid var(--color-border);border-radius:var(--radius-container);background:var(--color-background-surface)';
+const fit = 'min-width:max-content';
+---
+<div dir={dir}>
+  {content === 'app' && (
+    <div style={box}>
+      <TopNav label={label} style={fit}>
+        <TopNavHeading slot="heading" heading="Acme Cloud" superheading="Acme Suite">
+          <NavIcon slot="logo" icon={logoMark} />
+          <NavHeadingMenu slot="menu">
+            <NavHeadingMenuItem label="Acme Cloud" description="Current product" href="/cloud/" />
+            <NavHeadingMenuItem label="Acme Analytics" href="/analytics/" />
+          </NavHeadingMenu>
+        </TopNavHeading>
+        <TopNavItem label="Overview" href="/overview/" isSelected />
+        <TopNavMenu label="Solutions" items={solutions} />
+        <TopNavMegaMenu label="Platform">
+          <Fragment slot="items">
+            <TopNavMegaMenuItem title="Compute" description="Serverless functions and containers" icon={layersIcon} href="/platform/compute/" />
+            <TopNavMegaMenuItem title="Data" description="Postgres, KV and blob storage" icon={chartIcon} href="/platform/data/" />
+            <TopNavMegaMenuItem title="Teams" description="Roles, SSO and audit logs" icon={usersIcon} href="/platform/teams/" />
+            <TopNavMegaMenuItem title="Changelog" description="What shipped this week" icon={boltIcon} href="/changelog/" />
+          </Fragment>
+          <TopNavMegaMenuFeaturedCard slot="featured" title="What's new in v4" description="AI-assisted analytics and real-time collaboration." image={featuredImage} linkLabel="Read the announcement" linkHref="/blog/v4/" />
+        </TopNavMegaMenu>
+        <TopNavItem label="Billing" href="/billing/" isDisabled />
+        <TopNavItem label="Docs" href="/docs/" icon={gearIcon} />
+        <Fragment slot="endContent">
+          <TopNavItem label="Notifications" href="/notifications/" icon={bellIcon} isIconOnly />
+        </Fragment>
+      </TopNav>
+    </div>
+  )}
+  {content === 'center' && (
+    <div style={box}>
+      <TopNav label={label} style={fit}>
+        <TopNavHeading slot="heading" heading="Docs"><NavIcon slot="logo" icon="wrench" /></TopNavHeading>
+        <Fragment slot="centerContent">
+          <TextInput label="Search" isLabelHidden placeholder="Search docs" size="sm" />
+        </Fragment>
+        <Fragment slot="endContent">
+          <TopNavMenu label="Resources" items={[{title: 'Guides', description: 'Step-by-step tutorials', href: '/guides/'}, {title: 'API reference', href: '/api/'}]} />
+        </Fragment>
+      </TopNav>
+    </div>
+  )}
+  {content === 'headings' && (
+    <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-6);align-items:center">
+      <TopNavHeading headingHref="/" logoLabel="Acme home"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>
+      <TopNavHeading heading="Acme" headingHref="/"><NavIcon slot="logo" icon={boltIcon} /></TopNavHeading>
+      <TopNavHeading heading="Billing" subheading="Acme Inc." />
+      <TopNavHeading heading="Acme Cloud" superheading="Acme Suite" superheadingHref="/suite/" subheading="Production"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>
+    </div>
+  )}
+</div>
