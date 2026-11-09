@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: every IconButton variant × size, then the loading, disabled and elevated (FAB)
+ * state of each variant, so one story shows a theme's whole icon-button system. Several
+ * instances side by side need one render, hence a wrapper.
+ */
+import IconButton from 'astryx-astro/components/IconButton/IconButton.astro';
+import type {ButtonVariant} from 'astryx-astro/components/Button/Button.astro';
+import type {ComponentSize, Elevation} from 'astryx-astro/lib/types';
+
+const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const grid = 'display:grid;grid-template-columns:repeat(5,max-content);align-items:center;gap:var(--spacing-3)';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style={grid}>
+    <span></span>
+    {variants.map((variant) => <span style={head}>{variant}</span>)}
+    {sizes.map((size) => (
+      <>
+        <span style={head}>{size}</span>
+        {variants.map((variant) => <IconButton label={`Settings (${variant}, ${size})`} icon="wrench" variant={variant} size={size} />)}
+      </>
+    ))}
+    <span style={head}>loading</span>
+    {variants.map((variant) => <IconButton label={`Refreshing (${variant})`} icon="arrowsUpDown" variant={variant} isLoading />)}
+    <span style={head}>disabled</span>
+    {variants.map((variant) => <IconButton label={`Delete (${variant})`} icon="close" variant={variant} isDisabled />)}
+  </div>
+  <div style={grid}>
+    <span></span>
+    {elevations.map((elevation) => <span style={head}>{elevation}</span>)}
+    <span style={head}>elevation</span>
+    {elevations.map((elevation) => <IconButton label={`Add (${elevation})`} icon="arrowUp" variant="primary" size="lg" elevation={elevation} />)}
+  </div>
+</div>

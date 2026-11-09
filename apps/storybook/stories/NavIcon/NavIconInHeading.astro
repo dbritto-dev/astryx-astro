@@ -1,0 +1,10 @@
+---
+/**
+ * Story wrapper: NavIcon as the `logo` of a TopNavHeading, where it identifies the product. The
+ * heading is another component composed with it, hence a wrapper.
+ */
+import NavIcon from 'astryx-astro/components/NavIcon/NavIcon.astro';
+import TopNavHeading from 'astryx-astro/components/TopNav/TopNavHeading.astro';
+import {logoMark} from 'astryx-astro/components/NavItem/_demoIcons';
+---
+<TopNavHeading heading="Acme Cloud" subheading="Production"><NavIcon slot="logo" icon={logoMark} /></TopNavHeading>

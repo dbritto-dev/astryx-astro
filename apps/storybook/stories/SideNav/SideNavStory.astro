@@ -1,0 +1,96 @@
+---
+/**
+ * Story wrapper: a SideNav with its heading, sections, nested items and footer icons, in a
+ * fixed-height box. Items read the nav's render-scoped context (collapse, depth), so the
+ * composition lives in a wrapper. `content` picks the content below; `dir` renders it
+ * right-to-left; `hasOutsideToggle` adds a SideNavCollapseButton outside the nav (`controls`).
+ * The ids are fixed, so these stories render in their own frame on the docs page.
+ */
+import SideNav, {type Props as SideNavProps} from 'astryx-astro/components/SideNav/SideNav.astro';
+import SideNavCollapseButton from 'astryx-astro/components/SideNav/SideNavCollapseButton.astro';
+import SideNavHeading from 'astryx-astro/components/SideNav/SideNavHeading.astro';
+import SideNavItem from 'astryx-astro/components/SideNav/SideNavItem.astro';
+import SideNavSection from 'astryx-astro/components/SideNav/SideNavSection.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import IconButton from 'astryx-astro/components/IconButton/IconButton.astro';
+import NavHeadingMenu from 'astryx-astro/components/NavMenu/NavHeadingMenu.astro';
+import NavHeadingMenuItem from 'astryx-astro/components/NavMenu/NavHeadingMenuItem.astro';
+import NavIcon from 'astryx-astro/components/NavIcon/NavIcon.astro';
+import {bellIcon, chartIcon, folderIcon, gearIcon, helpIcon, homeIcon, homeIconSolid, inboxIcon, logoMark, plusIcon, usersIcon} from 'astryx-astro/components/NavItem/_demoIcons';
+
+interface Props {
+  /** Forwarded to SideNav. */
+  collapsible?: SideNavProps['collapsible'];
+  /** Forwarded to SideNav. */
+  resizable?: SideNavProps['resizable'];
+  /**
+   * Story-only: the content. `app` a heading with a menu, a create link (`topContent`, left out
+   * when collapsible), two sections with nested groups, a badge, a disabled row and footer icons; `sizes` sm / md / lg rows, a hidden section
+   * header and always-shown children.
+   */
+  content?: 'app' | 'sizes';
+  /** Story-only: a SideNavCollapseButton outside the nav that controls it. */
+  hasOutsideToggle?: boolean;
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {collapsible, resizable, content = 'app', hasOutsideToggle = false, dir} = Astro.props;
+const box = 'height:440px;display:flex;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-body)';
+---
+<div dir={dir} style="display:flex;gap:var(--spacing-4);align-items:flex-start">
+  <div style={box}>
+    {content === 'app' && (
+      <SideNav collapsible={collapsible} resizable={resizable} id="story-side-nav">
+        <SideNavHeading slot="header" heading="Acme" subheading="Production">
+          <NavIcon slot="icon" icon={logoMark} />
+          <NavHeadingMenu slot="menu">
+            <NavHeadingMenuItem label="Production" description="Current workspace" href="/workspaces/production/" />
+            <NavHeadingMenuItem label="Staging" href="/workspaces/staging/" />
+          </NavHeadingMenu>
+        </SideNavHeading>
+        {/* A full-width button does not fit the 48px rail, so collapsible stories leave it out. */}
+        {!collapsible && <Fragment slot="topContent"><Button label="Create" icon={plusIcon} variant="primary" width="100%" href="/new/" /></Fragment>}
+        <SideNavSection title="Main" subtitle="Everyday">
+          <SideNavItem label="Home" icon={homeIcon} selectedIcon={homeIconSolid} href="/home/" isSelected />
+          <SideNavItem label="Inbox" icon={inboxIcon} href="/inbox/"><Badge slot="endContent" label="3" /></SideNavItem>
+          <SideNavItem label="Projects" icon={folderIcon}>
+            <SideNavItem label="Apollo" href="/projects/apollo/" />
+            <SideNavItem label="Gemini" href="/projects/gemini/">
+              <SideNavItem label="Launch plan" href="/projects/gemini/launch/" />
+            </SideNavItem>
+          </SideNavItem>
+          <SideNavItem label="Reports" icon={chartIcon} href="/reports/" collapsible={{defaultIsCollapsed: true}}>
+            <SideNavItem label="Weekly" href="/reports/weekly/" />
+            <SideNavItem label="Quarterly" href="/reports/quarterly/" />
+          </SideNavItem>
+        </SideNavSection>
+        <SideNavSection title="Team">
+          <SideNavItem label="People" icon={usersIcon} href="/people/" />
+          <SideNavItem label="Billing" href="/billing/" />
+          <SideNavItem label="Audit log" icon={gearIcon} isDisabled />
+        </SideNavSection>
+        <Fragment slot="footerIcons">
+          <IconButton label="Help" icon={helpIcon} variant="ghost" href="/help/" />
+          <IconButton label="Notifications" icon={bellIcon} variant="ghost" href="/notifications/" />
+        </Fragment>
+      </SideNav>
+    )}
+    {content === 'sizes' && (
+      <SideNav collapsible={collapsible} resizable={resizable} id="story-side-nav">
+        <SideNavSection title="Rows" isHeaderHidden>
+          <SideNavItem label="Small row" icon={homeIcon} href="/small/" size="sm" />
+          <SideNavItem label="Medium row" icon={inboxIcon} href="/medium/" />
+          <SideNavItem label="Large row" icon={chartIcon} href="/large/" size="lg" />
+        </SideNavSection>
+        <SideNavSection title="Settings">
+          <SideNavItem label="Workspace" icon={gearIcon} collapsible={false}>
+            <SideNavItem label="General" href="/settings/general/" />
+            <SideNavItem label="Security" href="/settings/security/" />
+          </SideNavItem>
+        </SideNavSection>
+      </SideNav>
+    )}
+  </div>
+  {hasOutsideToggle && <SideNavCollapseButton controls="story-side-nav" />}
+</div>

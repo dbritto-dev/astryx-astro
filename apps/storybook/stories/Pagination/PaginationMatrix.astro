@@ -1,0 +1,22 @@
+---
+/**
+ * Story wrapper: every Pagination variant at both sizes, so one story shows a theme's whole
+ * pagination system.
+ */
+import Pagination, {type PaginationSize, type PaginationVariant} from 'astryx-astro/components/Pagination/Pagination.astro';
+
+const variants: PaginationVariant[] = ['pages', 'count', 'compact', 'dots', 'input', 'none'];
+const sizes: PaginationSize[] = ['sm', 'md'];
+const grid = 'display:grid;grid-template-columns:max-content max-content max-content;align-items:center;gap:var(--spacing-3) var(--spacing-6)';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style={grid}>
+  <span></span>
+  {sizes.map((size) => <span style={head}>{size}</span>)}
+  {variants.map((variant) => (
+    <>
+      <span style={head}>{variant}</span>
+      {sizes.map((size) => <Pagination page={3} totalItems={120} pageSize={10} variant={variant} size={size} label={`Pagination (${variant}, ${size})`} />)}
+    </>
+  ))}
+</div>

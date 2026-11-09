@@ -1,0 +1,91 @@
+---
+/**
+ * Story wrapper: a Stepper with its Steps. Steps read the Stepper's render-scoped context
+ * (activeStep, orientation, indicator position, density), so the composition lives in a
+ * wrapper. `steps` picks one of the step sets below.
+ */
+import Stepper, {type Props as StepperProps} from 'astryx-astro/components/Stepper/Stepper.astro';
+import Step from 'astryx-astro/components/Stepper/Step.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+
+interface Props {
+  /** Forwarded to Stepper. */
+  activeStep?: StepperProps['activeStep'];
+  /** Forwarded to Stepper. */
+  orientation?: StepperProps['orientation'];
+  /** Forwarded to Stepper. */
+  isNonLinear?: StepperProps['isNonLinear'];
+  /** Forwarded to Stepper. */
+  label?: StepperProps['label'];
+  /** Forwarded to Stepper. */
+  density?: StepperProps['density'];
+  /** Forwarded to Stepper. */
+  indicatorPosition?: StepperProps['indicatorPosition'];
+  /** Forwarded to Stepper. */
+  horizontalOptions?: StepperProps['horizontalOptions'];
+  /**
+   * Story-only: the step set. `signup` four plain steps; `wizard` descriptions, an error status,
+   * an optional step and a disabled step with end content; `shipping` success / warning / accent
+   * statuses; `presets` number, none and a custom indicator; `content` step content (vertical);
+   * `narrow` four short steps with a disabled one (compact layout).
+   */
+  steps?: 'signup' | 'wizard' | 'shipping' | 'presets' | 'content' | 'narrow';
+}
+const {activeStep = 1, orientation, isNonLinear, label, density, indicatorPosition, horizontalOptions, steps = 'signup'} = Astro.props;
+const props = {activeStep, orientation, isNonLinear, label, density, indicatorPosition, horizontalOptions};
+const supporting = 'margin:0;font-size:var(--text-supporting-size);color:var(--color-text-secondary)';
+---
+<div style="color:var(--color-text-primary)">
+  {steps === 'signup' && (
+    <Stepper {...props}>
+      <Step step={0} label="Account" />
+      <Step step={1} label="Profile" />
+      <Step step={2} label="Team" />
+      <Step step={3} label="Review" />
+    </Stepper>
+  )}
+  {steps === 'wizard' && (
+    <Stepper {...props}>
+      <Step step={0} label="Account" description="Email and password" />
+      <Step step={1} label="Profile" description="Name and photo" />
+      <Step step={2} label="Billing" status="error" description="Card declined" />
+      <Step step={3} label="Team" isOptional />
+      <Step step={4} label="Review" isDisabled description="Finish billing first"><Badge slot="endContent" label="New" variant="blue" /></Step>
+    </Stepper>
+  )}
+  {steps === 'shipping' && (
+    <Stepper {...props}>
+      <Step step={0} label="Cart" status="success" />
+      <Step step={1} label="Shipping" status="warning" description="Address unverified" />
+      <Step step={2} label="Payment" status="accent" />
+      <Step step={3} label="Confirm" />
+    </Stepper>
+  )}
+  {steps === 'presets' && (
+    <Stepper {...props}>
+      <Step step={0} label="Number" indicator="number" />
+      <Step step={1} label="Automatic" />
+      <Step step={2} label="No indicator" indicator="none" />
+      <Step step={3} label="Custom"><Icon slot="indicator" icon="calendar" size="sm" /></Step>
+    </Stepper>
+  )}
+  {steps === 'content' && (
+    <Stepper {...props}>
+      <Step step={0} label="Create project" description="Name it" />
+      <Step step={1} label="Invite people" description="Optional teammates">
+        <p style={supporting}>Three teammates invited; two have joined.</p>
+      </Step>
+      <Step step={2} label="Deploy"><p style={supporting}>Ships to the staging environment first.</p></Step>
+      <Step step={3} label="Monitor" />
+    </Stepper>
+  )}
+  {steps === 'narrow' && (
+    <Stepper {...props}>
+      <Step step={0} label="Cart" />
+      <Step step={1} label="Address" description="Where it ships" />
+      <Step step={2} label="Gift wrap" isDisabled />
+      <Step step={3} label="Payment" />
+    </Stepper>
+  )}
+</div>

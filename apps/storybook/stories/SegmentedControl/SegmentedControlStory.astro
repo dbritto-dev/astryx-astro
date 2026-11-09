@@ -1,0 +1,80 @@
+---
+/**
+ * Story wrapper: a SegmentedControl with its SegmentedControlItems. The control stamps its
+ * segments (selection, tab stop, size, disabled) in the same render, so the composition lives in
+ * a wrapper. `items` picks one of the segment sets below; `dir` renders it right-to-left.
+ */
+import SegmentedControl, {type Props as SegmentedControlProps} from 'astryx-astro/components/SegmentedControl/SegmentedControl.astro';
+import SegmentedControlItem from 'astryx-astro/components/SegmentedControl/SegmentedControlItem.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+
+interface Props {
+  /** Forwarded to SegmentedControl (defaults to the set's second segment). */
+  value?: SegmentedControlProps['value'];
+  /** Forwarded to SegmentedControl. */
+  size?: SegmentedControlProps['size'];
+  /** Forwarded to SegmentedControl. */
+  layout?: SegmentedControlProps['layout'];
+  /** Forwarded to SegmentedControl. */
+  isDisabled?: SegmentedControlProps['isDisabled'];
+  /** Forwarded to SegmentedControl. */
+  disabledMessage?: SegmentedControlProps['disabledMessage'];
+  /**
+   * Story-only: the segment set. `periods` Day / Week / Month / Year; `icons` icons and labels
+   * with a disabled segment; `iconOnly` icon-only segments with tooltips; `plans` two segments;
+   * `sections` four longer labels.
+   */
+  items?: 'periods' | 'icons' | 'iconOnly' | 'plans' | 'sections';
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {value, size, layout, isDisabled, disabledMessage, items = 'periods', dir} = Astro.props;
+const sets = {
+  periods: {label: 'Period', value: 'week'},
+  icons: {label: 'Layout', value: 'grid'},
+  iconOnly: {label: 'Tool', value: 'search'},
+  plans: {label: 'Billing period', value: 'monthly'},
+  sections: {label: 'Workspace view', value: 'overview'},
+};
+const set = sets[items];
+---
+<div dir={dir}>
+  <SegmentedControl label={set.label} value={value ?? set.value} size={size} layout={layout} isDisabled={isDisabled} disabledMessage={disabledMessage}>
+    {items === 'periods' && (
+      <Fragment>
+        <SegmentedControlItem value="day" label="Day" />
+        <SegmentedControlItem value="week" label="Week" />
+        <SegmentedControlItem value="month" label="Month" />
+        <SegmentedControlItem value="year" label="Year" />
+      </Fragment>
+    )}
+    {items === 'icons' && (
+      <Fragment>
+        <SegmentedControlItem value="list" label="List"><Icon slot="icon" icon="menu" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="grid" label="Grid"><Icon slot="icon" icon="viewColumns" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="calendar" label="Calendar" isDisabled><Icon slot="icon" icon="calendar" size="sm" /></SegmentedControlItem>
+      </Fragment>
+    )}
+    {items === 'iconOnly' && (
+      <Fragment>
+        <SegmentedControlItem value="search" label="Search" isLabelHidden tooltip="Search"><Icon slot="icon" icon="search" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="filter" label="Filter" isLabelHidden tooltip="Filter"><Icon slot="icon" icon="funnel" size="sm" /></SegmentedControlItem>
+        <SegmentedControlItem value="sort" label="Sort" isLabelHidden tooltip="Sort"><Icon slot="icon" icon="arrowsUpDown" size="sm" /></SegmentedControlItem>
+      </Fragment>
+    )}
+    {items === 'plans' && (
+      <Fragment>
+        <SegmentedControlItem value="monthly" label="Monthly" />
+        <SegmentedControlItem value="yearly" label="Yearly" />
+      </Fragment>
+    )}
+    {items === 'sections' && (
+      <Fragment>
+        <SegmentedControlItem value="overview" label="Overview" />
+        <SegmentedControlItem value="activity" label="Activity" />
+        <SegmentedControlItem value="members" label="Members" />
+        <SegmentedControlItem value="billing" label="Billing" />
+      </Fragment>
+    )}
+  </SegmentedControl>
+</div>

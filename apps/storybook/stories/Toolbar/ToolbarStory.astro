@@ -1,0 +1,116 @@
+---
+/**
+ * Story wrapper: a Toolbar with Buttons, IconButtons, a ButtonGroup, text and a field in its
+ * slots. The toolbar stamps its size onto the buttons in the same render and its slots hold
+ * several components, so the composition lives in a wrapper. `content` picks one of the slot
+ * sets below; `dir` renders it right-to-left. The bordered box shows where the toolbar ends.
+ */
+import Toolbar, {type Props as ToolbarProps} from 'astryx-astro/components/Toolbar/Toolbar.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import ButtonGroup from 'astryx-astro/components/ButtonGroup/ButtonGroup.astro';
+import Divider from 'astryx-astro/components/Divider/Divider.astro';
+import IconButton from 'astryx-astro/components/IconButton/IconButton.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Forwarded to Toolbar. */
+  size?: ToolbarProps['size'];
+  /** Forwarded to Toolbar. */
+  gap?: ToolbarProps['gap'];
+  /** Forwarded to Toolbar. */
+  orientation?: ToolbarProps['orientation'];
+  /** Forwarded to Toolbar. */
+  variant?: ToolbarProps['variant'];
+  /** Forwarded to Toolbar. */
+  dividers?: ToolbarProps['dividers'];
+  /**
+   * Story-only: the slot content. `document` start and end; `editor` start, center and end
+   * with a ButtonGroup, a separator and a badge; `bulk` start only; `search` end only with a
+   * text field; `disabled` disabled items; `tools` icon buttons for a vertical toolbar.
+   */
+  content?: 'document' | 'editor' | 'bulk' | 'search' | 'disabled' | 'tools';
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {size, gap, orientation, variant, dividers, content = 'document', dir} = Astro.props;
+const label = {
+  document: 'Document actions', editor: 'Editor', bulk: 'Bulk actions', search: 'Search',
+  disabled: 'Row actions', tools: 'Tools',
+}[content];
+const props = {label, size, gap, orientation, variant, dividers};
+const box = `border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;color:var(--color-text-primary)${content === 'tools' ? ';display:inline-block' : ''}`;
+const input = 'font:inherit;font-size:var(--text-label-size);min-height:var(--size-element-sm);padding-inline:var(--spacing-2);border-radius:var(--radius-element);border:var(--border-width) solid var(--color-border-emphasized);background:var(--color-background-surface);color:var(--color-text-primary);width:160px';
+---
+<div dir={dir} style={box}>
+  {content === 'document' && (
+    <Toolbar {...props}>
+      <Fragment slot="startContent">
+        <Button label="Back" variant="ghost" icon="chevronLeft" />
+        <Text type="body" weight="bold">Quarterly report</Text>
+      </Fragment>
+      <Fragment slot="endContent">
+        <IconButton label="Search" icon="search" variant="ghost" />
+        <Button label="Share" />
+        <Button label="Publish" variant="primary" />
+      </Fragment>
+    </Toolbar>
+  )}
+  {content === 'editor' && (
+    <Toolbar {...props}>
+      <Fragment slot="startContent">
+        <ButtonGroup label="History">
+          <IconButton label="Undo" icon="chevronLeft" />
+          <IconButton label="Redo" icon="chevronRight" />
+        </ButtonGroup>
+        <Divider orientation="vertical" style="height:var(--size-element-sm)" />
+        <Button label="Format" variant="ghost" />
+      </Fragment>
+      <Fragment slot="centerContent">
+        <Text type="body" weight="bold" maxLines={1}>Untitled document</Text>
+      </Fragment>
+      <Fragment slot="endContent">
+        <Badge label="Draft" />
+        <IconButton label="More" icon="moreHorizontal" variant="ghost" />
+      </Fragment>
+    </Toolbar>
+  )}
+  {content === 'bulk' && (
+    <Toolbar {...props}>
+      <Fragment slot="startContent">
+        <Button label="Select all" variant="ghost" />
+        <Button label="Archive" />
+        <Button label="Delete" variant="destructive" />
+      </Fragment>
+    </Toolbar>
+  )}
+  {content === 'search' && (
+    <Toolbar {...props}>
+      <Fragment slot="endContent">
+        <input type="search" aria-label="Search rows" placeholder="Search…" style={input} />
+        <Button label="Apply" variant="primary" />
+      </Fragment>
+    </Toolbar>
+  )}
+  {content === 'disabled' && (
+    <Toolbar {...props}>
+      <Fragment slot="startContent">
+        <Button label="Edit" />
+        <Button label="Duplicate" isDisabled />
+        <Button label="Move" isDisabled tooltip="Requires edit access" />
+        <Button label="Delete" variant="destructive" />
+      </Fragment>
+    </Toolbar>
+  )}
+  {content === 'tools' && (
+    <Toolbar {...props}>
+      <Fragment slot="startContent">
+        <IconButton label="Select" icon="check" variant="ghost" />
+        <IconButton label="Search" icon="search" variant="ghost" />
+      </Fragment>
+      <Fragment slot="endContent">
+        <IconButton label="Settings" icon="wrench" variant="ghost" />
+      </Fragment>
+    </Toolbar>
+  )}
+</div>

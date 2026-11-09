@@ -1,0 +1,88 @@
+---
+/**
+ * Story wrapper: a ButtonGroup with Button / IconButton members. The group stamps its members
+ * (connected geometry, size, group-disabled) in the same render, so the composition lives in a
+ * wrapper. `members` picks one of the member sets below; `dir` renders the group right-to-left.
+ */
+import ButtonGroup, {type Props as ButtonGroupProps} from 'astryx-astro/components/ButtonGroup/ButtonGroup.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import IconButton from 'astryx-astro/components/IconButton/IconButton.astro';
+
+interface Props {
+  /** Forwarded to ButtonGroup. */
+  orientation?: ButtonGroupProps['orientation'];
+  /** Forwarded to ButtonGroup. */
+  size?: ButtonGroupProps['size'];
+  /** Forwarded to ButtonGroup. */
+  elevation?: ButtonGroupProps['elevation'];
+  /** Forwarded to ButtonGroup. */
+  isDisabled?: ButtonGroupProps['isDisabled'];
+  /**
+   * Story-only: the member set. `clipboard` three Buttons; `icons` IconButtons; `split` a primary
+   * action with a menu chevron; `tooltips` members with tooltips; `links` link members;
+   * `partial` a disabled and a busy member; `locked` every member kind (for a disabled group).
+   */
+  members?: 'clipboard' | 'icons' | 'split' | 'tooltips' | 'links' | 'partial' | 'locked';
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {orientation, size, elevation, isDisabled, members = 'clipboard', dir} = Astro.props;
+const label = {
+  clipboard: 'Clipboard', icons: 'History', split: 'Approve action', tooltips: 'View options',
+  links: 'Documentation', partial: 'Partially available', locked: 'Locked actions',
+}[members];
+---
+<div dir={dir} style="display:flex">
+  <ButtonGroup label={label} orientation={orientation} size={size} elevation={elevation} isDisabled={isDisabled}>
+    {members === 'clipboard' && (
+      <Fragment>
+        <Button label="Copy" />
+        <Button label="Cut" />
+        <Button label="Paste" />
+      </Fragment>
+    )}
+    {members === 'icons' && (
+      <Fragment>
+        <IconButton label="Undo" icon="chevronLeft" />
+        <IconButton label="Redo" icon="chevronRight" />
+        <IconButton label="History" icon="clock" />
+      </Fragment>
+    )}
+    {members === 'split' && (
+      <Fragment>
+        <Button label="Allow once" variant="primary" />
+        <IconButton label="Allow options" icon="chevronDown" variant="primary" />
+      </Fragment>
+    )}
+    {members === 'tooltips' && (
+      <Fragment>
+        <Button label="Grid" icon="viewColumns" tooltip="Show as a grid" />
+        <Button label="List" icon="menu" tooltip="Show as a list" />
+      </Fragment>
+    )}
+    {members === 'links' && (
+      <Fragment>
+        <Button label="Guides" href="#guides" />
+        <Button label="Components" href="/components/button/" />
+        <Button label="Changelog" href="#changelog" />
+      </Fragment>
+    )}
+    {members === 'partial' && (
+      <Fragment>
+        <Button label="First" />
+        <Button label="Skipped" isDisabled />
+        <Button label="Third" />
+        <Button label="Saving" isLoading />
+      </Fragment>
+    )}
+    {members === 'locked' && (
+      <Fragment>
+        <Button label="Archive" icon="upload" />
+        <Button label="Move" tooltip="Requires edit access" />
+        <Button label="Open" href="/components/link/" />
+        <Button label="Sync" isLoading />
+        <IconButton label="More" icon="moreHorizontal" />
+      </Fragment>
+    )}
+  </ButtonGroup>
+</div>

@@ -1,0 +1,18 @@
+---
+/**
+ * Story wrapper: Links inside running text (`type="inherit"` adopts the surrounding Text's size
+ * and leading). The paragraph and its links are one composition, hence a wrapper.
+ */
+import Link, {type Props as LinkProps} from 'astryx-astro/components/Link/Link.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Forwarded to both Links. */
+  hasUnderline?: LinkProps['hasUnderline'];
+}
+const {hasUnderline} = Astro.props;
+---
+<div style="display:grid;gap:var(--spacing-3);max-width:520px">
+  <Text as="p" type="large">Read our <Link href="#terms" type="inherit" hasUnderline={hasUnderline}>terms of service</Link> before you continue.</Text>
+  <Text as="p">Invoices are emailed on the first of each month. You can change the recipient in <Link href="#billing" type="inherit" hasUnderline={hasUnderline}>billing settings</Link>.</Text>
+</div>
