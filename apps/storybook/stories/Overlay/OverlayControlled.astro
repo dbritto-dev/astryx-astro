@@ -29,9 +29,16 @@ const media = 'aspect-ratio:16/10;border-radius:var(--radius-container);backgrou
 </VStack>
 
 <script>
-  document.addEventListener('click', (event) => {
-    const button = (event.target as Element | null)?.closest?.('[data-overlay-toggle]');
-    const overlay = button && document.getElementById(button.getAttribute('aria-controls') ?? '');
-    (overlay as (HTMLElement & {toggle?: () => void}) | null)?.toggle?.();
-  });
+  // A story's scripts may run again for every render of the story (Storybook re-inserts them):
+  // wire the page once.
+  const wired = Symbol.for('astryx-storybook:overlay-controlled-story');
+  const page = document as unknown as Record<symbol, boolean>;
+  if (!page[wired]) {
+    page[wired] = true;
+    document.addEventListener('click', (event) => {
+      const button = (event.target as Element | null)?.closest?.('[data-overlay-toggle]');
+      const overlay = button && document.getElementById(button.getAttribute('aria-controls') ?? '');
+      (overlay as (HTMLElement & {toggle?: () => void}) | null)?.toggle?.();
+    });
+  }
 </script>

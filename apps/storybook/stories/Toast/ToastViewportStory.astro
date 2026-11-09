@@ -1,0 +1,60 @@
+---
+/**
+ * Story wrapper: a ToastViewport (the stack `toast()` fills) with buttons that raise toasts
+ * through the viewport's own `toast()` method, as an app would: an info toast, an error toast,
+ * one with an Undo action, and a burst of four. The Undo action is a server-rendered Button
+ * kept in a `<template>` and cloned per toast. One delegated listener per page; each button
+ * finds the viewport of its own story, so several stories on a docs page never mix.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import ToastViewport, {type ToastPosition} from 'astryx-astro/components/Toast/ToastViewport.astro';
+
+interface Props {
+  /** Forwarded to ToastViewport. */
+  position?: ToastPosition;
+  /** Forwarded to ToastViewport. */
+  maxVisible?: number;
+}
+const {position, maxVisible = 3} = Astro.props;
+---
+<div data-toast-story>
+  <HStack gap={2} wrap="wrap">
+    <Button label="Info toast" data-toast-raise="info" />
+    <Button label="Error toast" variant="destructive" data-toast-raise="error" />
+    <Button label="With Undo" data-toast-raise="undo" />
+    <Button label="Burst of four" data-toast-raise="burst" />
+  </HStack>
+  <template data-toast-undo><Button label="Undo" variant="ghost" size="sm" /></template>
+  <ToastViewport position={position} maxVisible={maxVisible} />
+</div>
+
+<script>
+  // A story's scripts may run again for every render of the story (Storybook re-inserts them):
+  // wire the page once.
+  const wired = Symbol.for('astryx-storybook:toast-viewport-story');
+  const page = document as unknown as Record<symbol, boolean>;
+  if (!page[wired]) {
+    page[wired] = true;
+    type Viewport = HTMLElement & {toast(options: Record<string, unknown>): () => void};
+    document.addEventListener('click', (event) => {
+      const button = (event.target as Element | null)?.closest?.('[data-toast-raise]');
+      const story = button?.closest('[data-toast-story]');
+      const viewport = story?.querySelector<Viewport>('ax-toast-viewport');
+      if (!button || !story || !viewport?.toast) return;
+      const kind = button.getAttribute('data-toast-raise');
+      if (kind === 'info') viewport.toast({body: 'Changes saved'});
+      if (kind === 'error') viewport.toast({body: 'Could not reach the server', type: 'error'});
+      if (kind === 'burst') for (let i = 1; i <= 4; i++) viewport.toast({body: `Notification ${i} of 4`, isAutoHide: false});
+      if (kind === 'undo') {
+        const template = story.querySelector<HTMLTemplateElement>('template[data-toast-undo]')!;
+        const undo = document.importNode(template.content, true).querySelector('button')!;
+        const dismiss = viewport.toast({body: 'Message archived', endContent: undo, isAutoHide: false});
+        undo.addEventListener('click', () => {
+          dismiss();
+          viewport.toast({body: 'Message restored'});
+        });
+      }
+    });
+  }
+</script>

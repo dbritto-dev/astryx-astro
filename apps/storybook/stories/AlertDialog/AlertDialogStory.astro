@@ -59,15 +59,22 @@ const dialog = attachDialog();
 />
 
 <script>
-  // The app's part: run the (simulated) work, then close. One delegated listener per page.
-  type AlertHost = HTMLElement & {actionLoading: boolean; hide(): void};
-  document.addEventListener('astryx-action', (event) => {
-    const host = event.target as AlertHost;
-    if (!(host instanceof HTMLElement) || !host.querySelector(':scope > [data-alert-story]')) return;
-    host.actionLoading = true;
-    setTimeout(() => {
-      host.actionLoading = false;
-      host.hide();
-    }, 600);
-  });
+  // A story's scripts may run again for every render of the story (Storybook re-inserts them):
+  // wire the page once.
+  const wired = Symbol.for('astryx-storybook:alert-dialog-story');
+  const page = document as unknown as Record<symbol, boolean>;
+  if (!page[wired]) {
+    page[wired] = true;
+    // The app's part: run the (simulated) work, then close. One delegated listener per page.
+    type AlertHost = HTMLElement & {actionLoading: boolean; hide(): void};
+    document.addEventListener('astryx-action', (event) => {
+      const host = event.target as AlertHost;
+      if (!(host instanceof HTMLElement) || !host.querySelector(':scope > [data-alert-story]')) return;
+      host.actionLoading = true;
+      setTimeout(() => {
+        host.actionLoading = false;
+        host.hide();
+      }, 600);
+    });
+  }
 </script>

@@ -30,7 +30,14 @@ const panel = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--rad
 
 <script>
   import {toast} from 'astryx-astro/elements/toast';
-  document.addEventListener('click', (event) => {
-    if ((event.target as Element | null)?.closest?.('[data-layer-provider-toast]')) toast({body: 'Saved to the provider’s viewport'});
-  });
+  // A story's scripts may run again for every render of the story (Storybook re-inserts them):
+  // wire the page once.
+  const wired = Symbol.for('astryx-storybook:layer-provider-story');
+  const page = document as unknown as Record<symbol, boolean>;
+  if (!page[wired]) {
+    page[wired] = true;
+    document.addEventListener('click', (event) => {
+      if ((event.target as Element | null)?.closest?.('[data-layer-provider-toast]')) toast({body: 'Saved to the provider’s viewport'});
+    });
+  }
 </script>
