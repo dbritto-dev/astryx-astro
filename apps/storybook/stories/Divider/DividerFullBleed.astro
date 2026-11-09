@@ -1,0 +1,37 @@
+---
+/**
+ * Story wrapper: Dividers inside a Card. `isFullBleed` reads the padding the Card publishes
+ * (--container-padding-*), so the Card has to be in the same render; a default Divider is shown
+ * after it for comparison.
+ */
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Divider, {type DividerVariant} from 'astryx-astro/components/Divider/Divider.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to the full-bleed Dividers. */
+  variant?: DividerVariant;
+  /** Forwarded to the Card (the inset the full-bleed Dividers escape). */
+  padding?: SpacingStep;
+  /** Which Dividers bleed (story knob). */
+  orientation?: 'horizontal' | 'vertical';
+}
+const {variant, padding = 6, orientation = 'horizontal'} = Astro.props;
+const text = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+{orientation === 'horizontal' ? (
+  <Card maxWidth={420} padding={padding}>
+    <p style={`${text};margin-block-end:var(--spacing-3)`}>Card content above a full-bleed divider.</p>
+    <Divider isFullBleed variant={variant} data-testid="bleed" />
+    <p style={`${text};margin-block:var(--spacing-3)`}>It escapes the card's padding to touch both edges; the default one does not:</p>
+    <Divider variant={variant} data-testid="contained" />
+  </Card>
+) : (
+  <Card maxWidth={420} padding={padding}>
+    <div style="display:flex;height:64px;align-items:stretch;gap:var(--spacing-3)">
+      <span style={text}>Start</span>
+      <Divider orientation="vertical" isFullBleed variant={variant} aria-label="Section break" data-testid="bleed" />
+      <span style={text}>A vertical full-bleed divider reaches the card's top and bottom edges.</span>
+    </div>
+  </Card>
+)}

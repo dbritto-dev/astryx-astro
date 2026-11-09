@@ -1,0 +1,26 @@
+---
+/**
+ * Story wrapper: a FormLayout around three TextInputs: one unmarked, one `isOptional`, one
+ * `isRequired`. FormLayout stamps direction and optionality onto the fields it renders (a slot
+ * cascade), so the fields must be in the same render.
+ */
+import FormLayout, {type FormLayoutDirection, type FormOptionality} from 'astryx-astro/components/FormLayout/FormLayout.astro';
+import TextArea from 'astryx-astro/components/TextArea/TextArea.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+
+interface Props {
+  /** Forwarded to FormLayout. */
+  direction?: FormLayoutDirection;
+  /** Forwarded to FormLayout. */
+  defaultOptionality?: FormOptionality;
+  /** Add a TextArea after the inputs (story knob). */
+  hasTextArea?: boolean;
+}
+const {direction, defaultOptionality, hasTextArea = false} = Astro.props;
+---
+<FormLayout direction={direction} defaultOptionality={defaultOptionality} style={direction === 'horizontal' ? undefined : 'max-width:520px'}>
+  <TextInput label="Organization" value="Northwind Traders" />
+  <TextInput label="Website" type="url" description="Include https://" isOptional />
+  <TextInput label="Contact email" type="email" isRequired />
+  {hasTextArea && <TextArea label="Notes" rows={3} />}
+</FormLayout>

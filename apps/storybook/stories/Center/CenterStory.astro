@@ -1,0 +1,55 @@
+---
+/**
+ * Story wrapper: a Center with a dashed outline and one placeholder box, so the centring and the
+ * padding are visible. With `isInline` it sits in a line of text, which is what inline centring
+ * is for (in a `<div>`: Center renders a `<div>`, which a `<p>` cannot hold). A wrapper because
+ * the outline and the surrounding text are story scaffolding, not Center props.
+ */
+import Center, {type CenterAxis} from 'astryx-astro/components/Center/Center.astro';
+import type {SizeValue, SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Center. */
+  axis?: CenterAxis;
+  /** Forwarded to Center. */
+  width?: SizeValue;
+  /** Forwarded to Center. */
+  height?: SizeValue;
+  /** Forwarded to Center. */
+  maxWidth?: SizeValue;
+  /** Forwarded to Center. */
+  minHeight?: SizeValue;
+  /** Forwarded to Center. */
+  padding?: SpacingStep;
+  /** Forwarded to Center. */
+  paddingBlockStart?: SpacingStep;
+  /** Forwarded to Center. */
+  isInline?: boolean;
+}
+const {axis, width, height, maxWidth, minHeight, padding, paddingBlockStart, isInline} = Astro.props;
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+const dot = 'margin-inline:var(--spacing-1);border-radius:var(--radius-full);background:var(--color-accent);color:var(--color-on-accent);vertical-align:middle';
+---
+{isInline ? (
+  <div>
+    Press
+    <Center isInline axis={axis} width={width ?? 28} height={28} style={dot}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg>
+    </Center>
+    to add a member: the icon is centred in its circle, in the line of text.
+  </div>
+) : (
+  <Center
+    axis={axis}
+    width={width}
+    height={height}
+    maxWidth={maxWidth}
+    minHeight={minHeight}
+    padding={padding}
+    paddingBlockStart={paddingBlockStart}
+    style={outline}
+  >
+    <div style={box}>Centred content</div>
+  </Center>
+)}
