@@ -2,12 +2,15 @@
 /**
  * Story wrapper: a Spinner rendered on the server inside a <template>, so the play test can
  * insert it after load the way client code would. A spinner that appears after load announces
- * its label once through the polite live region; one present at load stays silent.
+ * its label once through the polite live region; one present at load stays silent. A hidden
+ * Spinner comes first: Astro writes a component's `<script>` after its first instance, and inside
+ * the template it would never run.
  */
 import Spinner from 'astryx-astro/components/Spinner/Spinner.astro';
 import Text from 'astryx-astro/components/Text/Text.astro';
 ---
 <div data-spinner-host style="display:grid;gap:var(--spacing-3);justify-items:start">
   <Text type="supporting">The spinner below is inserted after load by the story's interaction test.</Text>
+  <div hidden><Spinner size="sm" label="Loads the Spinner scripts" /></div>
   <template data-spinner-template><Spinner size="sm" label="Loading comments" /></template>
 </div>

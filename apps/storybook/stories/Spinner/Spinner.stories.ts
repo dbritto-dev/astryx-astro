@@ -2,6 +2,7 @@ import Spinner from 'astryx-astro/components/Spinner/Spinner.astro';
 import Demo from 'astryx-astro/components/Spinner/Spinner.demo.astro';
 import demoSource from 'astryx-astro/components/Spinner/Spinner.demo.astro?raw';
 import {expect, waitFor} from 'storybook/test';
+import {pageLoaded} from '../_lib/play';
 import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
 import SpinnerInserted from './SpinnerInserted.astro';
 import insertedSource from './SpinnerInserted.astro?raw';
@@ -85,6 +86,7 @@ export const InsertedAfterLoad = composed(
   SpinnerInserted,
   {
     play: async ({canvas, canvasElement}) => {
+      await pageLoaded();
       const host = canvasElement.querySelector('[data-spinner-host]')!;
       const template = host.querySelector<HTMLTemplateElement>('template[data-spinner-template]')!;
       host.append(template.content.cloneNode(true));

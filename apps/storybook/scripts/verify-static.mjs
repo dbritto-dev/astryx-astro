@@ -38,11 +38,18 @@ const isDateStory = (entry) => DATE_COMPONENTS.test(entry.componentPath ?? '');
  * element's script when the instance needs behaviour. Story id → tags.
  */
 const UNDEFINED_BY_DESIGN = {
-  // A Banner without isDismissable/toggle is static markup (Banner.astro loads banner.ts only then).
-  'layout-app-shell--overview': ['ax-banner'],
   // InputGroup's `labelTooltip` layer: the docs page leaves ax-tooltip undefined too (tooltip.ts
   // is not loaded by InputGroup.astro). Pre-existing, reported upstream; not a Storybook issue.
   'form-controls-input-group--overview': ['ax-tooltip'],
+};
+
+/**
+ * Elements whose script a component loads only when the instance has behaviour: an instance
+ * without any of these parts is static markup, and its tag may stay undefined. Tag → selector.
+ */
+const STATIC_UNLESS = {
+  // Banner.astro loads banner.ts only with a dismiss button or an expand toggle.
+  'ax-banner': '[data-ax-banner-dismiss], [data-ax-banner-toggle]',
 };
 
 const {server, url} = await serve({port: 6170 + Math.floor(Math.random() * 100)});
@@ -88,14 +95,15 @@ async function checkStory(entry, temporal) {
     if (phase !== 'completed' && phase !== 'finished') fail(label, `story ${phase}`);
     // Let component scripts (deferred module chunks, Temporal) settle.
     await page.waitForLoadState('networkidle');
-    const state = await page.evaluate(async () => {
+    const state = await page.evaluate(async (staticUnless) => {
       const root = document.querySelector('#storybook-root');
       const custom = [...root.querySelectorAll('*')].filter((el) => el.localName.includes('-'));
-      const undefinedTags = [...new Set(custom.filter((el) => !customElements.get(el.localName)).map((el) => el.localName))];
+      const isStatic = (el) => el.localName in staticUnless && !el.querySelector(staticUnless[el.localName]);
+      const undefinedTags = [...new Set(custom.filter((el) => !customElements.get(el.localName) && !isStatic(el)).map((el) => el.localName))];
       const notUpgraded = [...new Set(custom.filter((el) => customElements.get(el.localName) && !(el instanceof customElements.get(el.localName))).map((el) => el.localName))];
       const temporal = typeof globalThis.Temporal;
       return {empty: root.children.length === 0, undefinedTags, notUpgraded, temporal};
-    });
+    }, STATIC_UNLESS);
     if (state.empty) fail(label, 'rendered nothing');
     const unexpected = state.undefinedTags.filter((tag) => !UNDEFINED_BY_DESIGN[entry.id]?.includes(tag));
     if (unexpected.length) fail(label, `custom elements never defined: ${unexpected.join(', ')}`);

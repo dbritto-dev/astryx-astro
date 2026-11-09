@@ -2,7 +2,9 @@
 /**
  * Story wrapper: an EmptyState with Buttons in its `actions` slot (several components in one
  * slot need one render), and optionally a template holding a second EmptyState that the play
- * test inserts after load, the way client code empties a list.
+ * test inserts after load, the way client code empties a list. A hidden EmptyState comes first:
+ * Astro writes a component's `<script>` after its first instance, and inside the template it
+ * would never run.
  */
 import Button from 'astryx-astro/components/Button/Button.astro';
 import EmptyState, {type Props as EmptyStateProps} from 'astryx-astro/components/EmptyState/EmptyState.astro';
@@ -25,6 +27,7 @@ const frame = 'border:1px dashed var(--color-border);border-radius:var(--radius-
 ---
 {isInsertedLater ? (
   <div style={frame} data-empty-host>
+    <div hidden><EmptyState title="Loads the EmptyState script" /></div>
     <template data-empty-template><EmptyState isCompact title="List cleared" description="This message is announced because it appeared after load." /></template>
   </div>
 ) : (

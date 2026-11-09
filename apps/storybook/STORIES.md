@@ -193,6 +193,9 @@ in one Astro render. Template: `templates/ComponentStory.astro.template`; exampl
 - A conditional child in a named slot still counts as content: with
   `{cond && <X slot="end" />}`, `Astro.slots.has('end')` is true even when `cond` is false, so the
   component renders an empty region. Branch whole elements in the wrapper instead.
+- A component that appears only inside a `<template>` (for a play to insert later) has its
+  `<script>` there too: Astro writes it after the first instance, and template content never
+  runs. Render one hidden instance before the template (`<div hidden><Spinner … /></div>`).
 - Ids: `uid()` restarts with every render, so generated ids repeat between stories on one docs
   page. Give ids that must be unique on the page with `layerId()`, or render the story in its
   own frame (`docs.story.inline: false`).
@@ -281,7 +284,9 @@ export const Default: Story = {
 - Toast auto-hide pauses while the document has no focus, which is always true in the test
   frame: `window.focus()`, or dispatch a window `focus` event, before testing it.
 - Storybook inserts every story after load, so "silent at page load" behaviour (a Spinner
-  present on load is not announced) cannot be asserted; `tools/tests` covers it.
+  present on load is not announced) cannot be asserted; `tools/tests` covers it. The reverse
+  needs care in the static build, whose plays run while the page may still be loading: a play
+  about content inserted *after* load starts with `await pageLoaded()` (`_lib/play.ts`).
 - A description may include a value tooltip's text: match it with `expect.stringContaining`.
 - Links: the preview logs navigations instead of following them in every story root, the test
   runner's included, so plays click links freely (no local guard).

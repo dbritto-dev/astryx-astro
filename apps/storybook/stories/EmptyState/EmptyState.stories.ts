@@ -3,6 +3,7 @@ import Demo from 'astryx-astro/components/EmptyState/EmptyState.demo.astro';
 import demoSource from 'astryx-astro/components/EmptyState/EmptyState.demo.astro?raw';
 import Icon from 'astryx-astro/components/Icon/Icon.astro';
 import {expect, waitFor} from 'storybook/test';
+import {pageLoaded} from '../_lib/play';
 import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
 import EmptyStateStory from './EmptyStateStory.astro';
 import storySource from './EmptyStateStory.astro?raw';
@@ -96,6 +97,7 @@ export const AppearsAfterLoad = composed(
   {
     args: {isInsertedLater: true},
     play: async ({canvas, canvasElement}) => {
+      await pageLoaded();
       const host = canvasElement.querySelector('[data-empty-host]')!;
       host.append(host.querySelector<HTMLTemplateElement>('template[data-empty-template]')!.content.cloneNode(true));
       await expect(canvas.getByRole('heading', {name: 'List cleared'})).toBeVisible();

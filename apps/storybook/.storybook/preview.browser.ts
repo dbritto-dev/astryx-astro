@@ -67,6 +67,41 @@ async function storyScriptsRan(canvasElement: HTMLElement) {
   await Promise.race([Promise.all(runs), new Promise((resolve) => setTimeout(resolve, 10_000))]);
 }
 
+/** Whether every `@import` of a story `<style>` has loaded (an imported sheet has rules then). */
+const importsLoaded = (style: HTMLStyleElement) => {
+  try {
+    const rules = style.sheet?.cssRules;
+    if (!rules) return false;
+    return [...rules].every((rule) => !(rule instanceof CSSImportRule) || (rule.styleSheet?.cssRules.length ?? 0) > 0);
+  } catch {
+    return true;
+  }
+};
+
+const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+/**
+ * The static build keeps each story stylesheet as `@import url(…)` in a `<style>` that the
+ * renderer moves into <head> (scripts/postbuild.mjs). Imports load asynchronously, so a play
+ * could measure markup before its CSS applies (a Grid with one column, an unhidden
+ * VisuallyHidden). Wait for them, as a page's first render does. Inline CSS (dev, the test
+ * runner) has no imports and passes at once.
+ *
+ * Markup that rendered before its CSS also *transitions* into it (a Button's background fades
+ * in from transparent, a hidden reveal fades out), which a page whose CSS precedes its first
+ * render never does. Once the CSS applies, those transitions are finished.
+ */
+async function storyStylesLoaded(timeout = 10_000) {
+  const styles = () => [...document.querySelectorAll<HTMLStyleElement>('style[data-storybook-astro-styles]')];
+  if (!styles().some((style) => style.textContent?.includes('@import'))) return;
+  const start = performance.now();
+  while (performance.now() - start < timeout && !styles().every(importsLoaded)) {
+    await new Promise((resolve) => setTimeout(resolve, 16));
+  }
+  await nextFrame();
+  for (const animation of document.getAnimations()) if (animation instanceof CSSTransition) animation.finish();
+}
+
 /** Log `astryx-*` CustomEvents to the Actions panel. */
 function logAstryxEvents() {
   const dispatch = EventTarget.prototype.dispatchEvent;
@@ -110,14 +145,15 @@ let installed = false;
 const preview: ProjectAnnotations<AstroRenderer> = {
   /**
    * The framework's renderToCanvas resolves when the story's HTML is in the page; its component
-   * scripts (custom elements, behaviours) are then still loading. Play functions and addon-a11y
-   * run next, so wait for those scripts, as a page's DOMContentLoaded would. A static build loads
+   * scripts (custom elements, behaviours) and, in the static build, its stylesheets are then
+   * still loading. Play functions and addon-a11y run next, so wait for both, as a page's first
+   * render would. A static build loads
    * them over the network on first view, which is where interacting early showed.
    */
   async renderToCanvas(context, canvasElement) {
     canvasElement.setAttribute(STORY_ROOT_ATTR, '');
     const teardown = await renderAstroToCanvas(context, canvasElement);
-    await storyScriptsRan(canvasElement);
+    await Promise.all([storyScriptsRan(canvasElement), storyStylesLoaded()]);
     return teardown;
   },
   parameters: {
