@@ -1,0 +1,35 @@
+---
+/**
+ * Story wrapper: interactive ListItems in one List: a button row (with a nested Button), a link
+ * row, a row whose checkbox owns the action (`interactiveRef`), a selected row and a disabled
+ * row. The rows read the List's context, so they render together.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import List, {type ListDensity} from 'astryx-astro/components/List/List.astro';
+import ListItem from 'astryx-astro/components/List/ListItem.astro';
+
+interface Props {
+  /** Forwarded to List. */
+  density?: ListDensity;
+  /** Forwarded to List. */
+  hasDividers?: boolean;
+}
+const {density, hasDividers = true} = Astro.props;
+---
+<div style="max-width:440px">
+  <List header="Settings" density={density} hasDividers={hasDividers}>
+    <ListItem label="Notifications" description="Manage your alerts" interactiveRole="button" data-testid="button-row">
+      <Icon slot="startContent" icon="info" size="sm" />
+      <Button slot="endContent" label="Mute" size="sm" variant="ghost" />
+    </ListItem>
+    <ListItem label="Privacy" description="Control your data" href="#privacy" data-testid="link-row">
+      <Icon slot="startContent" icon="eyeSlash" size="sm" />
+    </ListItem>
+    <ListItem label="Weekly digest" description="A summary every Monday" interactiveRef="input" data-testid="delegate-row">
+      <input slot="startContent" type="checkbox" aria-label="Weekly digest" data-ax-inherit="item-description" />
+    </ListItem>
+    <ListItem label="Security" description="Password and two-factor" interactiveRole="button" isSelected />
+    <ListItem label="Billing" description="Only owners can change billing" interactiveRole="button" isDisabled />
+  </List>
+</div>

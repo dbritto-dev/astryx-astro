@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: a MetadataList of a deployment's details (text, a Badge, Code, an icon label).
+ * MetadataList post-processes the items it renders (unwrapping or hiding them), so the items
+ * are composed with it in one render.
+ */
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Code from 'astryx-astro/components/Code/Code.astro';
+import MetadataList, {type MetadataListColumns, type MetadataListLabelConfig} from 'astryx-astro/components/MetadataList/MetadataList.astro';
+import MetadataListItem from 'astryx-astro/components/MetadataList/MetadataListItem.astro';
+
+interface Props {
+  /** Forwarded to MetadataList. */
+  columns?: MetadataListColumns;
+  /** Forwarded to MetadataList. */
+  label?: MetadataListLabelConfig;
+  /** Forwarded to MetadataList. */
+  maxNumOfItems?: number;
+  /** Forwarded to MetadataList. */
+  orientation?: 'vertical' | 'horizontal';
+  /** Forwarded to MetadataList. */
+  title?: string;
+  /** Forwarded to MetadataList. */
+  locale?: string;
+}
+const {columns, label, maxNumOfItems, orientation, title = 'Deployment', locale} = Astro.props;
+---
+<div style="max-width:640px;padding:var(--spacing-4);border:1px solid var(--color-border);border-radius:var(--radius-container)">
+  <MetadataList columns={columns} label={label} maxNumOfItems={maxNumOfItems} orientation={orientation} title={title} locale={locale} data-testid="meta">
+    <MetadataListItem label="Name">checkout-service</MetadataListItem>
+    <MetadataListItem label="Status"><Badge variant="success" label="Healthy" /></MetadataListItem>
+    <MetadataListItem label="Created" icon="calendar">March 4, 2026</MetadataListItem>
+    <MetadataListItem label="Image"><Code>registry.example.com/checkout:4.2.1</Code></MetadataListItem>
+    <MetadataListItem label="Region">eu-west-1</MetadataListItem>
+    <MetadataListItem label="Owner">Payments team</MetadataListItem>
+    <MetadataListItem label="Description">Handles carts, payment intents and order confirmation emails.</MetadataListItem>
+  </MetadataList>
+</div>
