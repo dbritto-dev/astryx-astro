@@ -17,20 +17,6 @@ export default meta;
 /** Every example from the docs page (MobileNav.demo.astro), pre-rendered as one story. */
 export const Overview = overview(Demo, demoSource);
 
-/**
- * Keeps link clicks in the story while a play runs. The preview logs link navigations instead
- * of following them, but only inside `#storybook-root` / `.docs-story`; the container that
- * `pnpm -F storybook test` renders into is neither, so a clicked link would leave the test page.
- * Same phase as the preview's guard (bubble, on window): components see the click first.
- */
-function holdNavigation(): () => void {
-  const guard = (event: MouseEvent) => {
-    if (!event.defaultPrevented && (event.target as Element | null)?.closest?.('a[href]')) event.preventDefault();
-  };
-  window.addEventListener('click', guard);
-  return () => window.removeEventListener('click', guard);
-}
-
 const options = {controls: ['isOpen', 'header', 'width', 'side', 'content', 'dir'], source: storySource};
 // Fixed ids, and a modal drawer: each story gets its own frame on the docs page.
 const ownFrame = {docs: {story: {inline: false, height: '480px'}}};
@@ -65,13 +51,8 @@ export const Default = composed(MobileNavStory, {
     await step('A group toggle keeps it open; a row closes it and focus returns', async () => {
       await userEvent.click(canvas.getByRole('button', {name: 'Projects'}));
       await expect(dialog.open).toBe(true);
-      const release = holdNavigation();
-      try {
-        await userEvent.click(canvas.getByRole('link', {name: 'Inbox'}));
-        await closed(dialog);
-      } finally {
-        release();
-      }
+      await userEvent.click(canvas.getByRole('link', {name: 'Inbox'}));
+      await closed(dialog);
       await expect(navigations.map((e) => e.detail.href)).toContain('/inbox/');
       await expect(trigger).toHaveAttribute('aria-expanded', 'false');
       await waitFor(() => expect(trigger).toHaveFocus());
@@ -102,13 +83,8 @@ export const BreadcrumbCloses = composed(MobileNavStory, {
     const {dialog, trigger} = parts(canvasElement);
     await userEvent.click(trigger);
     await opened(dialog);
-    const release = holdNavigation();
-    try {
-      await userEvent.click(canvas.getByRole('link', {name: 'Home', current: false}));
-      await closed(dialog);
-    } finally {
-      release();
-    }
+    await userEvent.click(canvas.getByRole('link', {name: 'Home', current: false}));
+    await closed(dialog);
   },
 }, options);
 

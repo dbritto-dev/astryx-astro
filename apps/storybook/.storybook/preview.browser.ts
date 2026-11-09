@@ -18,7 +18,13 @@ import {action} from 'storybook/actions';
 import type {ProjectAnnotations} from 'storybook/internal/types';
 import DocsPage from './DocsPage';
 
-const STORY_ROOTS = '#storybook-root, .docs-story';
+/**
+ * Where stories render: the canvas, docs-page stories, and any element renderToCanvas rendered
+ * into (marked below), which covers the Vitest runner's canvas. Its page has
+ * `<base target="_parent">`, so an unguarded link click there navigates the test orchestrator.
+ */
+const STORY_ROOT_ATTR = 'data-astryx-story-root';
+const STORY_ROOTS = `#storybook-root, .docs-story, [${STORY_ROOT_ATTR}]`;
 
 const describe = (node: EventTarget) =>
   node instanceof Element
@@ -72,13 +78,21 @@ function logAstryxEvents() {
   };
 }
 
-/** Same-document anchors (`#id`) keep working; every other navigation is logged instead. */
+/** The browsing context a link opens in: its own target, else the document's `<base target>`. */
+const linkTarget = (link: HTMLAnchorElement) =>
+  (link.target || document.querySelector('base[target]')?.getAttribute('target') || '_self').toLowerCase();
+
+/**
+ * Same-document anchors (`#id`) that stay in this frame keep working; every other navigation is
+ * logged instead (the Vitest page's `<base target="_parent">` would send even `#id` elsewhere).
+ */
 function onClick(event: MouseEvent) {
   if (event.defaultPrevented || !inStory(event.target)) return;
   const link = (event.target as Element).closest('a[href]');
   if (!(link instanceof HTMLAnchorElement)) return;
   const url = new URL(link.href, location.href);
-  if (url.origin === location.origin && url.pathname === location.pathname && url.search === location.search && url.hash) return;
+  const samePage = url.origin === location.origin && url.pathname === location.pathname && url.search === location.search;
+  if (samePage && url.hash && linkTarget(link) === '_self') return;
   event.preventDefault();
   action('navigate')({href: link.getAttribute('href'), target: link.target || undefined});
 }
@@ -101,6 +115,7 @@ const preview: ProjectAnnotations<AstroRenderer> = {
    * them over the network on first view, which is where interacting early showed.
    */
   async renderToCanvas(context, canvasElement) {
+    canvasElement.setAttribute(STORY_ROOT_ATTR, '');
     const teardown = await renderAstroToCanvas(context, canvasElement);
     await storyScriptsRan(canvasElement);
     return teardown;

@@ -19,13 +19,6 @@ export const Overview = overview(Demo, demoSource);
 
 const options = {controls: ['variant', 'contentPadding', 'height', 'mobileNav', 'nav', 'hasBanner', 'rows'], source: shellSource};
 
-/**
- * Keep the story's links from navigating while a play test clicks them. The Vitest runner renders
- * stories outside #storybook-root, where the preview's navigation guard does not reach.
- */
-const stayOnPage = (root: Element) => {
-  for (const link of root.querySelectorAll('a[href]')) link.addEventListener('click', (event) => event.preventDefault());
-};
 const shellRoot = (root: HTMLElement) => root.querySelector<HTMLElement>('.astryx-app-shell')!;
 const isShown = (el: Element | null) => el != null && el.getClientRects().length > 0;
 
@@ -54,7 +47,6 @@ export const Elevated = composed(AppShellStory, {
       await waitFor(() => expect(main).toHaveAttribute('tabindex', '0'));
     });
     await step('The skip link is the first tab stop; activating it focuses main', async () => {
-      stayOnPage(canvasElement);
       await userEvent.tab();
       const skip = canvas.getByRole('link', {name: 'Skip to content'});
       await expect(skip).toHaveFocus();
@@ -129,7 +121,6 @@ export const MobileDrawer = composed(AppShellStory, {
     const toggle = root.querySelector<HTMLElement>('.ax-mobile-nav-toggle')!;
     const drawer = drawerOf(toggle);
     const navigations = recordEvents<{href: string}>(canvasElement, 'astryx-navigate');
-    stayOnPage(drawer);
 
     await step('Mobile: the rail leaves, the bar becomes the mobile bar with a menu button', async () => {
       await expect(root).toHaveAttribute('data-astryx-shell-mobile', 'true');

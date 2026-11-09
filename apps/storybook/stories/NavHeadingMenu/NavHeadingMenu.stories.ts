@@ -17,20 +17,6 @@ export default meta;
 /** Every example from the docs page (NavHeadingMenu.demo.astro), pre-rendered as one story. */
 export const Overview = overview(Demo, demoSource);
 
-/**
- * Keeps link clicks in the story while a play runs. The preview logs link navigations instead
- * of following them, but only inside `#storybook-root` / `.docs-story`; the container that
- * `pnpm -F storybook test` renders into is neither, so a clicked link would leave the test page.
- * Same phase as the preview's guard (bubble, on window): components see the click first.
- */
-function holdNavigation(): () => void {
-  const guard = (event: MouseEvent) => {
-    if (!event.defaultPrevented && (event.target as Element | null)?.closest?.('a[href]')) event.preventDefault();
-  };
-  window.addEventListener('click', guard);
-  return () => window.removeEventListener('click', guard);
-}
-
 const options = {controls: ['size', 'minWidth', 'rows', 'inHeading'], source: storySource};
 
 /**
@@ -98,12 +84,7 @@ export const InTopNavHeading = composed(NavHeadingMenuStory, {
     await waitFor(() => expect(canvas.getByRole('menuitem', {name: /^Acme Cloud/})).toHaveFocus());
     await userEvent.keyboard('{ArrowDown}');
     await expect(canvas.getByRole('menuitem', {name: 'Acme Analytics'})).toHaveFocus();
-    const release = holdNavigation();
-    try {
-      await userEvent.click(canvas.getByRole('menuitem', {name: 'Acme Analytics'}));
-      await waitFor(() => expect(isShowing(layer)).toBe(false));
-    } finally {
-      release();
-    }
+    await userEvent.click(canvas.getByRole('menuitem', {name: 'Acme Analytics'}));
+    await waitFor(() => expect(isShowing(layer)).toBe(false));
   },
 }, options);

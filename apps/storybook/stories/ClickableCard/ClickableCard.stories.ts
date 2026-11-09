@@ -23,13 +23,6 @@ export default meta;
 /** Every example from the docs page (ClickableCard.demo.astro), pre-rendered as one story. */
 export const Overview = overview(Demo, demoSource);
 
-/**
- * Keep a link from navigating while a play test clicks it. The Vitest runner renders stories
- * outside #storybook-root, where the preview's navigation guard does not reach, and leaving the
- * page would end the test run.
- */
-const stayOnPage = (link: Element) => link.addEventListener('click', (event) => event.preventDefault());
-
 /** Clicks on the card's hidden control (the activation): every activation is exactly one of them. */
 function activations(card: Element, control: Element) {
   const clicks: Event[] = [];
@@ -69,7 +62,6 @@ export const LinkCard: Story = {
   play: async ({canvas, canvasElement}) => {
     const link = canvas.getByRole('link', {name: 'Team settings'});
     await expect(link).toHaveAttribute('href', '#team-settings');
-    stayOnPage(link);
     const clicks = activations(canvasElement.querySelector('.astryx-clickable-card')!, link);
     await userEvent.click(canvas.getByTestId('title'));
     await expect(clicks).toHaveLength(1);
@@ -133,7 +125,6 @@ export const NestedControls = composed(ClickableCardNested, {
     const linkCard = canvas.getByTestId('link-card');
     const buttonClicks = activations(buttonCard, canvas.getByRole('button', {name: 'Open details'}));
     const linkClicks = activations(linkCard, canvas.getByRole('link', {name: 'Team settings'}));
-    for (const link of canvas.getAllByRole('link')) stayOnPage(link);
 
     await step('A nested Button keeps its own click', async () => {
       await userEvent.click(canvas.getByRole('button', {name: 'Share'}));
