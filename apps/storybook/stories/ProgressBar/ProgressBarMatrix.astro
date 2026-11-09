@@ -1,0 +1,24 @@
+---
+/**
+ * Story wrapper: every ProgressBar variant with a value, with marks (a mark on the fill and
+ * one on the track) and indeterminate, then the disabled state of each, on one canvas.
+ */
+import ProgressBar, {type ProgressBarVariant} from 'astryx-astro/components/ProgressBar/ProgressBar.astro';
+
+const variants: ProgressBarVariant[] = ['accent', 'success', 'warning', 'error', 'neutral'];
+const marks = [{value: 30, label: 'Checkpoint: 30%'}, {value: 80, label: 'Goal: 80%'}];
+const title = (s: string) => s[0].toUpperCase() + s.slice(1);
+const grid = 'display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:var(--spacing-4) var(--spacing-5);align-items:end';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style={grid}>
+  <span style={head}>value</span><span style={head}>marks</span><span style={head}>indeterminate</span><span style={head}>disabled</span>
+  {variants.map((variant) => (
+    <>
+      <ProgressBar label={`${title(variant)} upload`} variant={variant} value={60} hasValueLabel />
+      <ProgressBar label={`${title(variant)} fundraiser`} variant={variant} value={60} marks={marks} />
+      <ProgressBar label={`${title(variant)} sync`} variant={variant} isIndeterminate />
+      <ProgressBar label={`${title(variant)} canceled`} variant={variant} value={60} isDisabled hasValueLabel />
+    </>
+  ))}
+</div>

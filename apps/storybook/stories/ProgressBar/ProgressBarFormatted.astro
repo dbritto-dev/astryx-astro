@@ -1,0 +1,16 @@
+---
+/**
+ * Story wrapper: a ProgressBar with a `formatValueLabel` function (functions cannot travel as
+ * args), which formats both the visible value label and aria-valuetext.
+ */
+import ProgressBar from 'astryx-astro/components/ProgressBar/ProgressBar.astro';
+
+interface Props {
+  /** Forwarded to ProgressBar. */
+  value?: number;
+  /** Forwarded to ProgressBar. */
+  max?: number;
+}
+const {value = 3.2, max = 5} = Astro.props;
+---
+<ProgressBar label="Disk usage" value={value} max={max} hasValueLabel formatValueLabel={(v, m) => `${v} GB / ${m} GB`} />

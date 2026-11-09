@@ -1,0 +1,57 @@
+---
+/**
+ * Story wrapper: a Banner with a details list in its default slot and Buttons in its
+ * `endContent` slot (several components in a slot need one render), after a text field that
+ * the play test focuses first: dismissing returns focus to where it was before the banner.
+ */
+import Banner, {type Props as BannerProps} from 'astryx-astro/components/Banner/Banner.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+
+interface Props {
+  /** Forwarded to Banner. */
+  status?: BannerProps['status'];
+  /** Forwarded to Banner. */
+  title?: string;
+  /** Forwarded to Banner. */
+  description?: string;
+  /** Forwarded to Banner. */
+  isDismissable?: boolean;
+  /** Forwarded to Banner. */
+  collapsible?: BannerProps['collapsible'];
+  /** Forwarded to Banner. */
+  role?: string;
+  /** Story knob: a list of field errors in the default slot (the expandable details). @default true */
+  hasDetails?: boolean;
+  /** Story knob: Undo and View buttons in the `endContent` slot. @default false */
+  hasActions?: boolean;
+}
+const {
+  status = 'warning',
+  title = '3 fields need attention',
+  description = 'Expand for the list.',
+  isDismissable,
+  collapsible,
+  role,
+  hasDetails = true,
+  hasActions = false,
+} = Astro.props;
+---
+<div style="display:grid;gap:var(--spacing-3);max-width:640px">
+  <TextInput label="Name on card" value="Ada Lovelace" />
+  <Banner status={status} title={title} description={description} isDismissable={isDismissable} collapsible={collapsible} role={role}>
+    {hasActions && (
+      <Fragment slot="endContent">
+        <Button label="Undo" size="sm" variant="secondary" />
+        <Button label="View" size="sm" variant="ghost" />
+      </Fragment>
+    )}
+    {hasDetails && (
+      <ul style="margin:0;padding-inline-start:var(--spacing-5)">
+        <li>Email address is invalid</li>
+        <li>Password must be at least 8 characters</li>
+        <li>Accept the terms to continue</li>
+      </ul>
+    )}
+  </Banner>
+</div>
