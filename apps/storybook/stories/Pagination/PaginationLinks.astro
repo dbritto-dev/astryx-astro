@@ -1,0 +1,19 @@
+---
+/**
+ * Story wrapper: Pagination in links mode. `href` is a server-side function (page → URL), which
+ * args cannot carry, hence a wrapper. Every page is a real link; in Storybook a click is logged
+ * in the Actions panel (`navigate`) instead of leaving the story.
+ */
+import Pagination, {type Props as PaginationProps} from 'astryx-astro/components/Pagination/Pagination.astro';
+
+interface Props {
+  /** Forwarded to Pagination. */
+  page?: PaginationProps['page'];
+  /** Forwarded to Pagination. */
+  totalPages?: PaginationProps['totalPages'];
+  /** Forwarded to Pagination. */
+  variant?: PaginationProps['variant'];
+}
+const {page = 1, totalPages = 9, variant} = Astro.props;
+---
+<Pagination page={page} totalPages={totalPages} variant={variant} href={(p) => `/docs/changelog/?page=${p}`} />

@@ -1,0 +1,89 @@
+---
+/**
+ * Story wrapper: a Breadcrumbs trail of BreadcrumbItems. Items read the trail's variant and
+ * separator from the Breadcrumbs render (subtree locals), so the composition lives in a wrapper.
+ * `trail` picks one of the trails below; `iconSeparator` puts a chevron Icon in the `separator`
+ * slot; `dir` renders the trail right-to-left.
+ */
+import Breadcrumbs, {type Props as BreadcrumbsProps} from 'astryx-astro/components/Breadcrumbs/Breadcrumbs.astro';
+import BreadcrumbItem from 'astryx-astro/components/Breadcrumbs/BreadcrumbItem.astro';
+import DropdownMenuDivider from 'astryx-astro/components/DropdownMenu/DropdownMenuDivider.astro';
+import DropdownMenuItem from 'astryx-astro/components/DropdownMenu/DropdownMenuItem.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import {folderIcon, homeIcon} from 'astryx-astro/components/NavItem/_demoIcons';
+
+interface Props {
+  /** Forwarded to Breadcrumbs. */
+  variant?: BreadcrumbsProps['variant'];
+  /** Forwarded to Breadcrumbs. */
+  separator?: BreadcrumbsProps['separator'];
+  /** Forwarded to Breadcrumbs. */
+  label?: BreadcrumbsProps['label'];
+  /**
+   * Story-only: the trail. `links` three links, the last current automatically; `icons` start
+   * icons; `menu` an overflow-menu crumb, a button crumb and an explicit current page;
+   * `currentMenu` a current crumb with a menu; `notCurrent` the last item opts out of current.
+   */
+  trail?: 'links' | 'icons' | 'menu' | 'currentMenu' | 'notCurrent';
+  /** Story-only: a chevron Icon in the `separator` slot (mirrored in RTL). */
+  iconSeparator?: boolean;
+  /** Story-only: text direction of the surrounding block. */
+  dir?: 'ltr' | 'rtl';
+}
+const {variant, separator, label, trail = 'links', iconSeparator = false, dir} = Astro.props;
+const projects = [
+  {label: 'Apollo', href: '/projects/apollo/'},
+  {label: 'Gemini', href: '/projects/gemini/'},
+  {type: 'divider' as const},
+  {label: 'All projects', href: '/projects/'},
+];
+---
+<div dir={dir}>
+  <Breadcrumbs variant={variant} separator={separator} label={label}>
+    {iconSeparator && <Icon slot="separator" icon="chevronRight" size="xsm" color="inherit" class="ax-mirror-rtl" />}
+    {trail === 'links' && (
+      <Fragment>
+        <BreadcrumbItem href="#home">Home</BreadcrumbItem>
+        <BreadcrumbItem href="#projects">Projects</BreadcrumbItem>
+        <BreadcrumbItem href="#apollo">Apollo</BreadcrumbItem>
+      </Fragment>
+    )}
+    {trail === 'icons' && (
+      <Fragment>
+        <BreadcrumbItem href="#home" startIcon={homeIcon}>Home</BreadcrumbItem>
+        <BreadcrumbItem href="#projects" startIcon={folderIcon}>Projects</BreadcrumbItem>
+        <BreadcrumbItem startIcon={folderIcon}>Apollo</BreadcrumbItem>
+      </Fragment>
+    )}
+    {trail === 'menu' && (
+      <Fragment>
+        <BreadcrumbItem href="#home">Home</BreadcrumbItem>
+        <BreadcrumbItem menu={projects}>Projects</BreadcrumbItem>
+        <BreadcrumbItem interactiveRole="button">Apollo</BreadcrumbItem>
+        <BreadcrumbItem isCurrent>Settings</BreadcrumbItem>
+      </Fragment>
+    )}
+    {trail === 'currentMenu' && (
+      <Fragment>
+        <BreadcrumbItem href="#org">Acme</BreadcrumbItem>
+        <BreadcrumbItem href="#team">Platform</BreadcrumbItem>
+        <BreadcrumbItem isCurrent>
+          Billing
+          <Fragment slot="menu">
+            <DropdownMenuItem label="Overview" href="#overview" />
+            <DropdownMenuItem label="Invoices" href="#invoices" />
+            <DropdownMenuDivider />
+            <DropdownMenuItem label="Export" />
+          </Fragment>
+        </BreadcrumbItem>
+      </Fragment>
+    )}
+    {trail === 'notCurrent' && (
+      <Fragment>
+        <BreadcrumbItem href="#docs">Docs</BreadcrumbItem>
+        <BreadcrumbItem href="#guides">Guides</BreadcrumbItem>
+        <BreadcrumbItem href="#theming" isCurrent={false}>Theming</BreadcrumbItem>
+      </Fragment>
+    )}
+  </Breadcrumbs>
+</div>
