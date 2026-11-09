@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "description": "Astryx design system re-implemented as Astro components with light-DOM web components. Unofficial port of Meta's Astryx.",
   "license": "MIT",
+  "homepage": "https://dbritto-dev.github.io/astryx-astro/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dbritto-dev/astryx-astro.git",
+    "directory": "packages/astryx-astro"
+  },
+  "bugs": "https://github.com/dbritto-dev/astryx-astro/issues",
   "type": "module",
   "files": [
     "src",

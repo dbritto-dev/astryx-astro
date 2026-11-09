@@ -5,6 +5,10 @@ system, to **server-rendered Astro components** with plain CSS and small light-D
 components. Pages ship no JavaScript for static components; interactive ones (dialogs, menus,
 tooltips, comboboxes, tables …) load only their own script.
 
+**[Documentation](https://dbritto-dev.github.io/astryx-astro/)** (every component, theme and mode) ·
+**[Storybook](https://dbritto-dev.github.io/astryx-astro/storybook/)** (every variant as a story, with
+interaction tests)
+
 - **All 110 Astryx 0.7.9 components** and their sub-components, with the same prop names,
   defaults, variants, sizes, ARIA and keyboard behaviour. Callback props become bubbling DOM
   `CustomEvent`s (`astryx-change`, `astryx-open-change` …).
