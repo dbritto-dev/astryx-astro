@@ -7,10 +7,6 @@ import {astryx, composed, frame, overview, type Meta, type Story} from '../_lib/
 import SliderFormatted from './SliderFormatted.astro';
 import formattedSource from './SliderFormatted.astro?raw';
 
-// Known issue (component): inside a FormLayout with defaultOptionality="required" (the Overview
-// demo), the cascade stamps `aria-required` onto the Slider's visually hidden "Required"
-// element, a critical axe `aria-allowed-attr` violation. Reported, not fixed here.
-
 const meta = {
   title: 'Form Controls/Slider',
   component: Slider,

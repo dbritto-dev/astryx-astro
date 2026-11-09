@@ -119,9 +119,11 @@ export const FixedMode = composed(LayerStory, {
     const layer = layerOf(canvasElement);
     await userEvent.click(canvas.getByRole('button', {name: 'Show layer'}));
     await waitFor(() => expect(isShowing(layer)).toBe(true));
-    // Known issue: Layer.astro writes `inset:auto` after `top` / `left` in the fixed-mode style,
-    // so the shorthand resets them and the layer shows at (0, 0) instead of (x, y). The position
-    // check is left out until the component is fixed.
+    // Fixed mode sits at the viewport coordinates `x` / `y`, wherever the trigger is.
+    await waitFor(() => {
+      const r = layer.getBoundingClientRect();
+      expect([Math.round(r.left), Math.round(r.top)]).toEqual([24, 24]);
+    });
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(isShowing(layer)).toBe(false));
   },
