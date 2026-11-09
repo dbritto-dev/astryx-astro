@@ -5,6 +5,10 @@ system, to **server-rendered Astro components** with plain CSS and small light-D
 components. Pages ship no JavaScript for static components; interactive ones (dialogs, menus,
 tooltips, comboboxes, tables …) load only their own script.
 
+**[Documentation](https://dbritto-dev.github.io/astryx-astro/)** (every component, theme and mode) ·
+**[Storybook](https://dbritto-dev.github.io/astryx-astro/storybook/)** (every variant as a story, with
+interaction tests)
+
 - **All 110 Astryx 0.7.9 components** and their sub-components, with the same prop names,
   defaults, variants, sizes, ARIA and keyboard behaviour. Callback props become bubbling DOM
   `CustomEvent`s (`astryx-change`, `astryx-open-change` …).
@@ -124,12 +128,17 @@ import Timestamp from 'astryx-astro/components/Timestamp/Timestamp.astro';
 | `packages/astryx-astro/docs/platform.md` | Browser features relied on: Required vs Enhancement |
 | `packages/astryx-astro/scripts` | Token/theme/locale/syntax generation, docs manifest, index, conformance check |
 | `apps/docs` | Documentation site: every component, every theme, light/dark |
+| `apps/storybook` | Storybook: every variant as a story, with interaction and axe tests ([`STORIES.md`](apps/storybook/STORIES.md) explains how to write them) |
+| `.github/workflows/pages.yml` | Publishes the docs site and Storybook to GitHub Pages on every push to `main` |
 | `tools` | Screenshot helper and the browser test suite (`tools/tests`) |
 
 ```sh
 pnpm install
 pnpm dev                                   # docs site
 pnpm build                                 # build the docs
+pnpm storybook                             # Storybook dev server (live Controls)
+pnpm -F storybook build                    # static Storybook, as GitHub Pages serves it
+pnpm -F storybook test                     # every story as a browser test (play + axe)
 pnpm -F astryx-astro generate              # regenerate tokens, themes, locales, syntax, manifest, index
 pnpm -F astryx-astro check:generated       # verify generated files are current
 pnpm -F astryx-astro check:baseline        # every Required browser feature is Baseline

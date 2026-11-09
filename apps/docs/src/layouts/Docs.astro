@@ -15,6 +15,8 @@ interface Props {
 }
 const {title, current} = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+// Set by the Pages workflow, where Storybook is published next to the docs (`<base>/storybook/`).
+const storybookUrl = import.meta.env.PUBLIC_STORYBOOK_URL as string | undefined;
 const themes = ['neutral', 'butter', 'chocolate', 'gothic', 'matcha', 'stone', 'y2k'];
 const fonts = [
   'Figtree:wght@400;500;600;700', 'JetBrains+Mono:wght@400;500;600;700', 'Outfit:wght@400;500;600;700', 'Sarina',
@@ -68,6 +70,10 @@ const fontHref = `https://fonts.googleapis.com/css2?${fonts.map((f) => `family=$
       </aside>
       <div class="docs-main">
         <header class="docs-toolbar">
+          <nav class="docs-links" aria-label="Project">
+            {storybookUrl && <a href={storybookUrl}>Storybook</a>}
+            <a href="https://github.com/dbritto-dev/astryx-astro">GitHub</a>
+          </nav>
           <label>Theme
             <select id="docs-theme">
               {themes.map((t) => <option value={t}>{t}</option>)}
@@ -116,7 +122,10 @@ const fontHref = `https://fonts.googleapis.com/css2?${fonts.map((f) => `family=$
   .docs-nav a[data-ported] { color: var(--color-text-primary); }
   .docs-nav a:hover { background: var(--color-overlay-hover); }
   .docs-nav a[aria-current="page"] { background: var(--color-accent-muted); color: var(--color-text-accent); }
-  .docs-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: var(--spacing-4); justify-content: flex-end; padding: var(--spacing-2) var(--spacing-6); background: var(--color-background-body); border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+  .docs-toolbar { position: sticky; top: 0; z-index: 1; display: flex; gap: var(--spacing-4); align-items: center; justify-content: flex-end; padding: var(--spacing-2) var(--spacing-6); background: var(--color-background-body); border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+  .docs-links { display: flex; gap: var(--spacing-4); margin-inline-end: auto; }
+  .docs-links a { color: var(--color-text-secondary); }
+  .docs-links a:hover { color: var(--color-text-primary); }
   .docs-toolbar select { margin-inline-start: var(--spacing-1); font: inherit; color: var(--color-text-primary); }
   .docs-content { padding: var(--spacing-8) var(--spacing-6) var(--spacing-12); max-width: 1040px; }
   @media (max-width: 760px) {

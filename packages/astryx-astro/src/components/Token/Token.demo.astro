@@ -2,6 +2,8 @@
 import Token, {type TokenColor, type TokenSize} from './Token.astro';
 import Icon from '../Icon/Icon.astro';
 import Badge from '../Badge/Badge.astro';
+// Cross-links to other docs pages follow the site's base path (GitHub Pages serves it under /astryx-astro/).
+const docsBase = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 const colors: TokenColor[] = ['default', 'red', 'orange', 'yellow', 'green', 'teal', 'cyan', 'blue', 'purple', 'pink', 'gray'];
 const sizes: TokenSize[] = ['sm', 'md', 'lg'];
@@ -37,8 +39,8 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
     <h3 style={cap}>Interactive</h3>
     <div style={row} data-test="interactive">
       <Token label="Ada Lovelace" isRemovable data-test="removable" />
-      <Token label="Docs" href="/components/link/" color="blue" data-test="link" />
-      <Token label="Docs (removable)" href="/components/link/" isRemovable color="blue" data-test="link-removable" />
+      <Token label="Docs" href={`${docsBase}components/link/`} color="blue" data-test="link" />
+      <Token label="Docs (removable)" href={`${docsBase}components/link/`} isRemovable color="blue" data-test="link-removable" />
       <Token label="Open filter" interactiveRole="button" color="orange" data-test="clickable"><Icon slot="icon" icon="funnel" size="sm" /></Token>
       <Token label="Clickable + remove" interactiveRole="button" isRemovable data-test="clickable-removable" />
       <Token label="Blocked" href="javascript:alert(1)" data-test="blocked" />

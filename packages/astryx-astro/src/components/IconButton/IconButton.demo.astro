@@ -3,6 +3,8 @@ import IconButton from './IconButton.astro';
 import Icon from '../Icon/Icon.astro';
 import type {ButtonVariant} from '../Button/Button.astro';
 import type {ComponentSize, Elevation} from '../../lib/types';
+// Cross-links to other docs pages follow the site's base path (GitHub Pages serves it under /astryx-astro/).
+const docsBase = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
 const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
@@ -26,7 +28,7 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
       <IconButton label="Refreshing" icon="arrowsUpDown" isLoading />
       <IconButton label="Delete" icon="close" variant="destructive" isDisabled />
       <IconButton label="Copy (tooltip)" icon="copy" tooltip="Copy to clipboard" isDisabled />
-      <IconButton label="Open docs" icon="externalLink" href="/components/link/" variant="ghost" />
+      <IconButton label="Open docs" icon="externalLink" href={`${docsBase}components/link/`} variant="ghost" />
       <IconButton label="Wide" icon="menu" width={64} />
     </div>
   </section>
