@@ -1,0 +1,51 @@
+---
+/**
+ * Story wrapper: a Lightbox with the triggers that open it: thumbnails spread with
+ * `lightboxTriggerProps(id, index)` (a gallery), or one button with `data-ax-lightbox` (a single
+ * item). The triggers and the viewer share an id, so they render together. Each "photo" is an
+ * inline SVG scene as a data URI (no image requests), as in the docs demo.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import {layerId} from 'astryx-astro/components/Layer/layer';
+import Lightbox from 'astryx-astro/components/Lightbox/Lightbox.astro';
+import {lightboxTriggerProps} from 'astryx-astro/components/Lightbox/trigger';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+
+interface Props {
+  /** Story-only: four photos with thumbnails (a gallery) or one photo opened by a button. @default 'gallery' */
+  items?: 'gallery' | 'single';
+  /** Forwarded to Lightbox. */
+  hasZoom?: boolean;
+  /** Forwarded to Lightbox. */
+  isOpen?: boolean;
+  /** Forwarded to Lightbox. */
+  defaultIndex?: number;
+}
+const {items = 'gallery', hasZoom, isOpen, defaultIndex} = Astro.props;
+
+const scene = (sky: [string, string], ground: string, sun: string, label: string, w = 1600, h = 1000) =>
+  'data:image/svg+xml;utf8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">` +
+    `<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sky[0]}"/><stop offset="1" stop-color="${sky[1]}"/></linearGradient></defs>` +
+    `<rect width="${w}" height="${h}" fill="url(#s)"/><circle cx="${w * 0.72}" cy="${h * 0.32}" r="${h * 0.1}" fill="${sun}"/>` +
+    `<path d="M0 ${h * 0.72} L${w * 0.22} ${h * 0.46} L${w * 0.4} ${h * 0.66} L${w * 0.6} ${h * 0.4} L${w} ${h * 0.7} L${w} ${h} L0 ${h}Z" fill="${ground}" opacity="0.85"/>` +
+    `<text x="${w / 2}" y="${h * 0.9}" font-family="sans-serif" font-size="${h * 0.06}" fill="white" text-anchor="middle">${label}</text></svg>`,
+  );
+// The fourth photo has no alt text: the viewer is then named "Media viewer".
+const photos = [
+  {src: scene(['#4f7cff', '#bcd2ff'], '#2f5d3a', '#ffe08a', 'Harbour at noon'), alt: 'Harbour at noon', caption: 'The harbour seen from the old lighthouse.'},
+  {src: scene(['#ff8a5c', '#ffd2a8'], '#5a3d2b', '#fff2c4', 'Dunes at dusk'), alt: 'Dunes at dusk', caption: 'Late light over the dunes.'},
+  {src: scene(['#1b1f4b', '#4b4f9b'], '#14162e', '#e8e8ff', 'Night ridge'), alt: 'Night ridge'},
+  {src: scene(['#7fd1c7', '#e4fbf6'], '#3b7a57', '#fffbe0', ''), alt: ''},
+];
+const id = layerId('lightbox-story');
+const thumb = 'display:block;width:120px;height:75px;object-fit:cover;border-radius:var(--radius-element);cursor:zoom-in';
+---
+{items === 'single' ? (
+  <Button label="View photo" icon="search" data-ax-lightbox={id} />
+) : (
+  <HStack gap={2} wrap="wrap">
+    {photos.map((photo, i) => <img src={photo.src} alt={photo.alt || `Photo ${i + 1}`} style={thumb} {...lightboxTriggerProps(id, i)} />)}
+  </HStack>
+)}
+<Lightbox id={id} media={items === 'single' ? photos[1]! : photos} hasZoom={hasZoom} isOpen={isOpen} defaultIndex={defaultIndex} />

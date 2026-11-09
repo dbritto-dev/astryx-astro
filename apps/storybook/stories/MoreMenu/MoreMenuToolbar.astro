@@ -1,0 +1,20 @@
+---
+/**
+ * Story wrapper: a MoreMenu without its own `size` inside a small Toolbar. The trigger inherits
+ * the toolbar's size through the size cascade, and its rows follow the trigger when the menu
+ * opens; the cascade only reaches components rendered in the same Astro render.
+ */
+import MoreMenu from 'astryx-astro/components/MoreMenu/MoreMenu.astro';
+import type {DropdownMenuOption} from 'astryx-astro/components/DropdownMenu/menuShared';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import Toolbar from 'astryx-astro/components/Toolbar/Toolbar.astro';
+
+const items: DropdownMenuOption[] = [
+  {label: 'Export as CSV', icon: 'arrowUp', id: 'export'},
+  {label: 'Column settings', icon: 'viewColumns', id: 'columns'},
+];
+---
+<Toolbar label="Invoice actions" size="sm">
+  <Fragment slot="startContent"><Text type="body" weight="semibold">Invoices</Text></Fragment>
+  <Fragment slot="endContent"><MoreMenu items={items} alignment="end" label="Table options" /></Fragment>
+</Toolbar>

@@ -1,0 +1,80 @@
+---
+/**
+ * Story wrapper: an AlertDialog with its trigger (attachDialog: a zero-JS `commandfor`
+ * invoker) and a button outside the dialog, so play tests can check that the page behind is
+ * inert while it is open. The action does not close an AlertDialog by itself: the script below
+ * plays the app's part, as the docs demo does: on `astryx-action` it sets `actionLoading`, then
+ * hides the dialog once the (simulated) work settles.
+ */
+import AlertDialog from 'astryx-astro/components/AlertDialog/AlertDialog.astro';
+import Button, {type ButtonVariant} from 'astryx-astro/components/Button/Button.astro';
+import {attachDialog} from 'astryx-astro/components/Dialog/attach';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+
+interface Props {
+  /** Forwarded to AlertDialog. */
+  title?: string;
+  /** Forwarded to AlertDialog. */
+  description?: string;
+  /** Forwarded to AlertDialog. */
+  actionLabel?: string;
+  /** Forwarded to AlertDialog. */
+  cancelLabel?: string;
+  /** Forwarded to AlertDialog. */
+  actionVariant?: ButtonVariant;
+  /** Forwarded to AlertDialog. */
+  isActionLoading?: boolean;
+  /** Forwarded to AlertDialog. */
+  isOpen?: boolean;
+  /** Forwarded to AlertDialog. */
+  width?: number | string;
+}
+const {
+  title = 'Delete project?',
+  description = 'The project, its 24 files and their history are removed for everyone. This cannot be undone.',
+  actionLabel = 'Delete',
+  cancelLabel,
+  actionVariant,
+  isActionLoading,
+  isOpen,
+  width,
+} = Astro.props;
+const dialog = attachDialog();
+---
+<HStack gap={2}>
+  <Button label="Delete project" variant="destructive" {...dialog.trigger} />
+  <Button label="Outside the dialog" variant="ghost" data-outside />
+</HStack>
+<AlertDialog
+  {...dialog.layer}
+  title={title}
+  description={description}
+  actionLabel={actionLabel}
+  cancelLabel={cancelLabel}
+  actionVariant={actionVariant}
+  isActionLoading={isActionLoading}
+  isOpen={isOpen}
+  width={width}
+  data-alert-story
+/>
+
+<script>
+  // A story's scripts may run again for every render of the story (Storybook re-inserts them):
+  // wire the page once.
+  const wired = Symbol.for('astryx-storybook:alert-dialog-story');
+  const page = document as unknown as Record<symbol, boolean>;
+  if (!page[wired]) {
+    page[wired] = true;
+    // The app's part: run the (simulated) work, then close. One delegated listener per page.
+    type AlertHost = HTMLElement & {actionLoading: boolean; hide(): void};
+    document.addEventListener('astryx-action', (event) => {
+      const host = event.target as AlertHost;
+      if (!(host instanceof HTMLElement) || !host.querySelector(':scope > [data-alert-story]')) return;
+      host.actionLoading = true;
+      setTimeout(() => {
+        host.actionLoading = false;
+        host.hide();
+      }, 600);
+    });
+  }
+</script>

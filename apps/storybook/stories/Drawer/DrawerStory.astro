@@ -1,0 +1,65 @@
+---
+/**
+ * Story wrapper: a Drawer with its trigger (attachDrawer: a zero-JS `commandfor` invoker,
+ * modal or popover to match `hasScrim`), a DrawerHeader with a close button and a footer, and a
+ * button outside the drawer so play tests can check whether the page behind is inert. The
+ * header, content and footer are Layout regions, which read the drawer's padding context, so
+ * they must render in the same Astro render as the Drawer.
+ */
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Drawer, {type DrawerPurpose} from 'astryx-astro/components/Drawer/Drawer.astro';
+import DrawerHeader from 'astryx-astro/components/Drawer/DrawerHeader.astro';
+import {attachDrawer} from 'astryx-astro/components/Drawer/attach';
+import Layout from 'astryx-astro/components/Layout/Layout.astro';
+import LayoutContent from 'astryx-astro/components/Layout/LayoutContent.astro';
+import LayoutFooter from 'astryx-astro/components/Layout/LayoutFooter.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Drawer. */
+  isOpen?: boolean;
+  /** Forwarded to Drawer. */
+  side?: 'start' | 'end';
+  /** Forwarded to Drawer. */
+  width?: number | string;
+  /** Forwarded to Drawer (and to attachDrawer, so the trigger matches). */
+  hasScrim?: boolean;
+  /** Forwarded to Drawer. */
+  purpose?: DrawerPurpose;
+  /** Forwarded to Drawer. */
+  padding?: SpacingStep;
+}
+const {isOpen, side, width, hasScrim, purpose, padding} = Astro.props;
+const drawer = attachDrawer({hasScrim});
+const isRequired = purpose === 'required';
+---
+<HStack gap={2}>
+  <Button label="Host details" {...drawer.trigger} />
+  <Button label="Outside the drawer" variant="ghost" data-outside />
+</HStack>
+<Drawer {...drawer.layer} label="Host details: web-01" isOpen={isOpen} side={side} width={width} hasScrim={hasScrim} purpose={purpose} padding={padding}>
+  <Layout>
+    <DrawerHeader slot="header" title="web-01" subtitle="us-east-1 · t3.large" hasCloseButton={!isRequired} hasDivider>
+      <Fragment slot="endContent"><Badge label="Healthy" variant="success" /></Fragment>
+    </DrawerHeader>
+    <LayoutContent>
+      <VStack gap={3}>
+        <Text type="body">CPU 42% · Memory 61% · Uptime 18 days</Text>
+        <Text type="body" color="secondary">
+          {isRequired ? 'Confirm the restart window before you continue.' : 'Restart drains connections first; it takes about a minute.'}
+        </Text>
+        <HStack gap={2}>
+          <Button label="Restart" data-autofocus />
+          <Button label="View logs" variant="ghost" />
+        </HStack>
+      </VStack>
+    </LayoutContent>
+    <LayoutFooter slot="footer" hasDivider>
+      <HStack gap={2} hAlign="end"><Button {...drawer.close} label={isRequired ? 'Confirm' : 'Done'} variant="primary" /></HStack>
+    </LayoutFooter>
+  </Layout>
+</Drawer>

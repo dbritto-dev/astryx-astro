@@ -1,0 +1,14 @@
+---
+/**
+ * Story wrapper: an inline trigger area (`triggerAs="span"`) inside a paragraph, so the text
+ * keeps flowing around the part that owns the context menu. The paragraph is story content
+ * around the component, which args cannot express.
+ */
+import ContextMenu from 'astryx-astro/components/ContextMenu/ContextMenu.astro';
+
+const items = [{label: 'Copy reference', id: 'copy-ref'}, {label: 'Open in new tab', id: 'open-tab'}];
+---
+<p style="margin:0;max-width:60ch;color:var(--color-text-primary)">
+  Right-click{' '}<ContextMenu triggerAs="span" items={items} label="Reference actions" tabindex="0" triggerStyle="color:var(--color-text-accent);text-decoration:underline">RFC 9110, section 15</ContextMenu>{' '}to act on the
+  reference, while the rest of the sentence keeps flowing around it.
+</p>

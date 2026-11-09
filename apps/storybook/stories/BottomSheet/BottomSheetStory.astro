@@ -1,0 +1,61 @@
+---
+/**
+ * Story wrapper: a BottomSheet with its trigger (attachBottomSheet: a zero-JS `commandfor`
+ * invoker, modal or popover to match `hasScrim`) and a button outside the sheet, so play tests
+ * can check whether the page behind is inert. The content is composed from Heading, Item and
+ * Button (one Astro render); "Done" closes the sheet with `data-ax-dialog-close`.
+ */
+import BottomSheet, {type BottomSheetHeight, type BottomSheetPurpose, type BottomSheetSnapPoint} from 'astryx-astro/components/BottomSheet/BottomSheet.astro';
+import {attachBottomSheet} from 'astryx-astro/components/BottomSheet/attach';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Divider from 'astryx-astro/components/Divider/Divider.astro';
+import Item from 'astryx-astro/components/Item/Item.astro';
+import Section from 'astryx-astro/components/Section/Section.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+import Heading from 'astryx-astro/components/Text/Heading.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to BottomSheet. */
+  isOpen?: boolean;
+  /** Forwarded to BottomSheet. */
+  purpose?: BottomSheetPurpose;
+  /** Forwarded to BottomSheet. */
+  height?: BottomSheetHeight | number | string;
+  /** Forwarded to BottomSheet. */
+  snapPoints?: BottomSheetSnapPoint[];
+  /** Forwarded to BottomSheet (and to attachBottomSheet, so the trigger matches). */
+  hasScrim?: boolean;
+  /** Forwarded to BottomSheet. `0` renders flush rows under a padded heading. */
+  padding?: SpacingStep;
+}
+const {isOpen, purpose, height, snapPoints, hasScrim, padding} = Astro.props;
+const sheet = attachBottomSheet({hasScrim});
+const places = ['Blue Bottle Coffee', 'Tartine Bakery', 'Dolores Park', 'Mission Dolores', 'Bi-Rite Creamery', 'Ritual Coffee', 'Valencia Street Books', 'Golden Gate Park'];
+const isRequired = purpose === 'required';
+---
+<HStack gap={2}>
+  <Button label="Nearby places" {...sheet.trigger} />
+  <Button label="Outside the sheet" variant="ghost" data-outside />
+</HStack>
+<BottomSheet {...sheet.layer} label="Nearby places" isOpen={isOpen} purpose={purpose} height={height} snapPoints={snapPoints} hasScrim={hasScrim} padding={padding}>
+  {padding === 0 ? (
+    <>
+      <Section padding={4}><Heading level={3}>Nearby places</Heading></Section>
+      <Divider />
+      {places.slice(0, 4).map((place, i) => <Item label={place} description={`${(i + 2) * 120} m away`} />)}
+      <Section padding={4}><Button label="Done" variant="primary" data-ax-dialog-close /></Section>
+    </>
+  ) : (
+    <VStack gap={2}>
+      <HStack gap={2} hAlign="between" vAlign="center">
+        <Heading level={3}>Nearby places</Heading>
+        <Button label={isRequired ? 'Accept' : 'Done'} variant="primary" size="sm" data-ax-dialog-close />
+      </HStack>
+      {isRequired && <Text type="body" color="secondary">Escape, the scrim and a swipe do nothing here: finish with the button.</Text>}
+      {places.map((place, i) => <Item label={place} description={`${(i + 2) * 120} m away`} />)}
+    </VStack>
+  )}
+</BottomSheet>

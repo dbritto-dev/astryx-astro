@@ -1,0 +1,76 @@
+---
+/**
+ * Story wrapper: a Popover whose trigger is a Button in its default slot and whose content is
+ * composed from Text, Stack and Button (the `content` slot holds components, so it needs one
+ * Astro render). A "Done" button closes the popover with a native `popovertargetaction="hide"`
+ * invoker, and a button outside the popover lets play tests move focus out of it.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import {layerId} from 'astryx-astro/components/Layer/layer';
+import Popover, {type PopoverPresentation} from 'astryx-astro/components/Popover/Popover.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {LayerAlignment, LayerPlacement, SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Popover. */
+  label?: string;
+  /** Forwarded to Popover. */
+  placement?: LayerPlacement;
+  /** Forwarded to Popover. */
+  alignment?: LayerAlignment;
+  /** Forwarded to Popover. */
+  isOpen?: boolean;
+  /** Forwarded to Popover. */
+  isEnabled?: boolean;
+  /** Forwarded to Popover. */
+  width?: number | string;
+  /** Forwarded to Popover. */
+  padding?: SpacingStep;
+  /** Forwarded to Popover. */
+  role?: 'dialog' | 'none';
+  /** Forwarded to Popover. */
+  isModal?: boolean;
+  /** Forwarded to Popover. */
+  hasCloseButton?: boolean;
+  /** Forwarded to Popover. */
+  hasAutoFocus?: boolean;
+  /** Forwarded to Popover. */
+  hasLightDismiss?: boolean;
+  /** Forwarded to Popover. */
+  hasEscapeDismiss?: boolean;
+  /** Forwarded to Popover. */
+  presentation?: PopoverPresentation;
+}
+const props = Astro.props;
+const id = layerId('popover-story');
+// role="none": the content owns its role, here a listbox of sort orders.
+const isListbox = props.role === 'none';
+const option = 'padding:var(--spacing-2) var(--spacing-3);font-size:var(--font-size-sm);cursor:default';
+---
+<HStack gap={2}>
+  <Popover {...props} id={id}>
+    <Button label={isListbox ? 'Sort by' : 'Share'} icon={isListbox ? undefined : 'externalLink'} />
+    <Fragment slot="content">
+      {isListbox ? (
+        <div role="listbox" aria-label="Sort by" style="padding-block:var(--spacing-1)">
+          <div role="option" aria-selected="true" style={option}>Newest first</div>
+          <div role="option" aria-selected="false" style={option}>Oldest first</div>
+          <div role="option" aria-selected="false" style={option}>Most viewed</div>
+        </div>
+      ) : (
+        <VStack gap={2}>
+          <Text type="body" weight="semibold">Share this page</Text>
+          <Text type="body" color="secondary">Anyone with the link can view.</Text>
+          <HStack gap={2}>
+            <Button label="Copy link" size="sm" />
+            <Button label="Invite" size="sm" variant="ghost" />
+            <Button label="Done" size="sm" variant="primary" popovertarget={id} popovertargetaction="hide" />
+          </HStack>
+        </VStack>
+      )}
+    </Fragment>
+  </Popover>
+  <Button label="Outside the popover" variant="ghost" data-outside />
+</HStack>

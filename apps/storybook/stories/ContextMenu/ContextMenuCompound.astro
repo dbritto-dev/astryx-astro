@@ -1,0 +1,48 @@
+---
+/**
+ * Story wrapper: a ContextMenu built from compound rows in its `menuContent` slot (a group,
+ * checkbox rows, a radio group, a sub-menu, a Kbd shortcut). Rows read the menu's context, so
+ * they render in the same Astro render as the menu.
+ */
+import ContextMenu from 'astryx-astro/components/ContextMenu/ContextMenu.astro';
+import ContextMenuCheckboxItem from 'astryx-astro/components/ContextMenu/ContextMenuCheckboxItem.astro';
+import ContextMenuDivider from 'astryx-astro/components/ContextMenu/ContextMenuDivider.astro';
+import ContextMenuGroup from 'astryx-astro/components/ContextMenu/ContextMenuGroup.astro';
+import ContextMenuItem from 'astryx-astro/components/ContextMenu/ContextMenuItem.astro';
+import ContextMenuRadioGroup from 'astryx-astro/components/ContextMenu/ContextMenuRadioGroup.astro';
+import ContextMenuRadioItem from 'astryx-astro/components/ContextMenu/ContextMenuRadioItem.astro';
+import ContextMenuSubMenu from 'astryx-astro/components/ContextMenu/ContextMenuSubMenu.astro';
+import Kbd from 'astryx-astro/components/Kbd/Kbd.astro';
+
+interface Props {
+  /** Forwarded to ContextMenu. */
+  size?: 'sm' | 'md' | 'lg';
+  /** Forwarded to ContextMenu. */
+  menuWidth?: number | string;
+  /** Forwarded to ContextMenu. */
+  label?: string;
+}
+const {size, menuWidth, label} = Astro.props;
+const area = 'display:grid;place-items:center;min-height:140px;padding:var(--spacing-4);border:var(--border-width) dashed var(--color-border-emphasized);border-radius:var(--radius-container);background:var(--color-background-muted);color:var(--color-text-secondary);font-size:var(--font-size-sm)';
+---
+<ContextMenu size={size} menuWidth={menuWidth} label={label}>
+  <div tabindex="0" style={area}>Right-click for layer options (or focus and press Shift+F10)</div>
+  <Fragment slot="menuContent">
+    <ContextMenuGroup title="Layer">
+      <ContextMenuItem label="Rename"><Kbd slot="endContent" keys="mod+r" /></ContextMenuItem>
+      <ContextMenuItem label="Duplicate" />
+    </ContextMenuGroup>
+    <ContextMenuDivider />
+    <ContextMenuCheckboxItem label="Visible" value={true} />
+    <ContextMenuCheckboxItem label="Locked" />
+    <ContextMenuDivider />
+    <ContextMenuRadioGroup label="Blend mode" value="normal">
+      <ContextMenuRadioItem value="normal" label="Normal" />
+      <ContextMenuRadioItem value="multiply" label="Multiply" />
+    </ContextMenuRadioGroup>
+    <ContextMenuSubMenu label="Arrange">
+      <ContextMenuItem label="Bring to front" />
+      <ContextMenuItem label="Send to back" />
+    </ContextMenuSubMenu>
+  </Fragment>
+</ContextMenu>

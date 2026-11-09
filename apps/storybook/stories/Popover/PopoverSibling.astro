@@ -1,0 +1,21 @@
+---
+/**
+ * Story wrapper: sibling mode (Astryx `anchorRef`). The trigger is a Button rendered outside
+ * the Popover, wired with attachPopover() (a server helper), and the Popover points at it with
+ * `for`, so both must be in one Astro render.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Popover from 'astryx-astro/components/Popover/Popover.astro';
+import {attachPopover} from 'astryx-astro/components/Popover/attach';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+const pop = attachPopover();
+---
+<HStack gap={3} vAlign="center">
+  <Text type="body" color="secondary">Filters apply to every table on this page.</Text>
+  <Button label="Filters" icon="viewColumns" {...pop.trigger} />
+</HStack>
+<Popover {...pop.layer} label="Filters" width={260}>
+  <Text slot="content" type="body">Anchored to a trigger rendered elsewhere: <code>attachPopover()</code> + <code>for</code>.</Text>
+</Popover>
