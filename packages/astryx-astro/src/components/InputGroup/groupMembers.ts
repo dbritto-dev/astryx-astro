@@ -21,6 +21,11 @@
  *    `disabled` + `data-ax-disabled` (`aria-disabled` when they are tooltip triggers).
  * Nested groups were transformed by their own InputGroup first (their markers are consumed);
  * layer roots end the walk, as contexts end at layer boundaries.
+ *
+ * Removed markup never takes a `<script>` with it. Astro renders a component's script once per
+ * page, after its first instance, so a script inside a removed shell (a label or status
+ * tooltip) or dropped node (a disabled member's clear button) may be the only copy on the page.
+ * Such scripts move to just after the member's control.
  */
 import {ELEMENT_NODE, parse, render, type Node} from 'ultrahtml';
 import {
@@ -74,6 +79,16 @@ function removeWhere(root: El, pred: (n: El) => boolean) {
   for (const child of root.children) if (isEl(child)) removeWhere(child, pred);
 }
 
+/** Every `<script>` element in `nodes`, in document order. */
+function scriptsIn(nodes: Node[], out: El[] = []): El[] {
+  for (const n of nodes) {
+    if (!isEl(n)) continue;
+    if (n.name === 'script') out.push(n);
+    else scriptsIn(n.children ?? [], out);
+  }
+  return out;
+}
+
 function parentOf(root: El, target: El): El | null {
   for (const child of root.children ?? []) {
     if (child === target) return root;
@@ -113,6 +128,7 @@ function unwrapMember(field: El, ctx: GroupContext): Node[] {
   const control = find(field, (n) => GROUP_CONTROL in attrsOf(n));
   if (!control) return [field];
   const allIds = collectIds(field);
+  const allScripts = scriptsIn([field]);
 
   // The control and the layer roots right after it (e.g. a disabled-message tooltip) stay.
   const holder = parentOf(field, control) ?? field;
@@ -156,7 +172,8 @@ function unwrapMember(field: El, ctx: GroupContext): Node[] {
     ca['data-disabled'] = 'disabled';
     for (const n of findAll(control, (x) => GROUP_DISABLE in attrsOf(x))) attrsOf(n)['aria-disabled'] = 'true';
   }
-  return keep;
+  const kept = new Set(scriptsIn(keep));
+  return [...keep, ...allScripts.filter((s) => !kept.has(s))];
 }
 
 function walk(parent: El, ctx: GroupContext, depth: number) {
