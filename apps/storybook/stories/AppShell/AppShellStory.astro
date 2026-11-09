@@ -1,0 +1,67 @@
+---
+/**
+ * Story wrapper: an AppShell in a 420px frame (the shell normally fills the viewport) with a
+ * TopNav, a SideNav, an optional banner and a scrolling main (AppShellStory*.astro parts).
+ * AppShell renders its nav slots once per presentation through subtree locals (rail, phone bar,
+ * drawer), so the navs are in the same render. Each slot combination is its own AppShell
+ * element: a named slot written conditionally (`{cond && <X slot="…" />}`) still counts as
+ * present for `Astro.slots.has()`, which would change the shell's layout.
+ */
+import AppShell, {type AppShellVariant, type MobileNavConfig} from 'astryx-astro/components/AppShell/AppShell.astro';
+import Banner from 'astryx-astro/components/Banner/Banner.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+import Main from './AppShellStoryMain.astro';
+import SideNavPart from './AppShellStorySideNav.astro';
+import TopNavPart from './AppShellStoryTopNav.astro';
+
+interface Props {
+  /** Forwarded to AppShell. */
+  variant?: AppShellVariant;
+  /** Forwarded to AppShell. */
+  contentPadding?: SpacingStep;
+  /** Forwarded to AppShell. */
+  height?: 'fill' | 'auto';
+  /** Forwarded to AppShell. */
+  mobileNav?: false | MobileNavConfig;
+  /** Which nav slots to fill (story knob). @default 'both' */
+  nav?: 'both' | 'top' | 'side';
+  /** Fill the `banner` slot with a Banner, with both navs (story knob). */
+  hasBanner?: boolean;
+  /** Number of activity rows in main (story knob; enough to overflow by default). @default 14 */
+  rows?: number;
+}
+const {variant, contentPadding = 4, height, mobileNav, nav = 'both', hasBanner = false, rows = 14} = Astro.props;
+const shell = {variant, contentPadding, height, mobileNav, style: height === 'auto' ? 'min-height:0' : 'height:100%', 'data-testid': 'shell'};
+const frame = height === 'auto'
+  ? 'height:320px;overflow:auto;border:1px solid var(--color-border);border-radius:var(--radius-container)'
+  : 'height:420px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden';
+---
+<div style={frame}>
+  {nav === 'both' && hasBanner && (
+    <AppShell {...shell}>
+      <Fragment slot="banner"><Banner status="info" title="Scheduled maintenance on Sunday at 02:00 UTC" /></Fragment>
+      <TopNavPart slot="topNav" />
+      <SideNavPart slot="sideNav" />
+      <Main rows={rows} />
+    </AppShell>
+  )}
+  {nav === 'both' && !hasBanner && (
+    <AppShell {...shell}>
+      <TopNavPart slot="topNav" />
+      <SideNavPart slot="sideNav" />
+      <Main rows={rows} />
+    </AppShell>
+  )}
+  {nav === 'top' && (
+    <AppShell {...shell}>
+      <TopNavPart slot="topNav" />
+      <Main rows={rows} />
+    </AppShell>
+  )}
+  {nav === 'side' && (
+    <AppShell {...shell}>
+      <SideNavPart slot="sideNav" />
+      <Main rows={rows} />
+    </AppShell>
+  )}
+</div>

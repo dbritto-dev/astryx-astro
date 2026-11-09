@@ -1,0 +1,13 @@
+---
+/** Story part: the TopNav of AppShellStory (heading, two items, a Deploy button). */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import TopNav from 'astryx-astro/components/TopNav/TopNav.astro';
+import TopNavHeading from 'astryx-astro/components/TopNav/TopNavHeading.astro';
+import TopNavItem from 'astryx-astro/components/TopNav/TopNavItem.astro';
+---
+<TopNav label="Main navigation">
+  <TopNavHeading slot="heading" heading="Acme Cloud" headingHref="#home" />
+  <TopNavItem label="Overview" href="#overview" isSelected />
+  <TopNavItem label="Deployments" href="#deployments" />
+  <Fragment slot="endContent"><Button label="Deploy" variant="primary" size="sm" /></Fragment>
+</TopNav>
