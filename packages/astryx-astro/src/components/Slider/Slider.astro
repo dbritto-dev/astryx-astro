@@ -134,7 +134,8 @@ const statusMessageID = r.statusMessageId;
 const requiredID = r.ids.make('required');
 
 // Required (useResolvedRequired): explicit → a visible-to-AT "Required"; neither flag → the
-// same span enrols in FormLayout's `form-required` key and draws its text only once stamped.
+// same span enrols in FormLayout's `form-optionality` key and draws its text only once stamped
+// `required` (not `form-required`: that key stamps aria-required, which a plain span may not carry).
 const explicitRequired = !!r.field.isRequired && !r.field.isOptional;
 const inheritsRequired = !r.field.isRequired && !r.field.isOptional;
 const conveysRequired = explicitRequired || inheritsRequired;
@@ -273,7 +274,7 @@ const textValue = isRange ? `${display(values[0])} – ${display(values[1])}` : 
     {valueDisplay === 'text' && <span class="ax-slider-text" data-ax-slider-text>{textValue}</span>}
   </ax-slider>
   {explicitRequired && <VisuallyHidden id={requiredID}>{t('@astryx.field.required')}</VisuallyHidden>}
-  {inheritsRequired && <span id={requiredID} class="ax-visually-hidden ax-slider-required" data-ax-inherit="form-required" data-ax-label={t('@astryx.field.required')}></span>}
+  {inheritsRequired && <span id={requiredID} class="ax-visually-hidden ax-slider-required" data-ax-inherit="form-optionality" data-ax-label={t('@astryx.field.required')}></span>}
   {disabledTip && <Tooltip {...disabledTip.layer} content={disabledMessage} placement="above" focusTrigger="always" />}
 </Field>
 <script>import '../../elements/slider';</script>

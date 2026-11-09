@@ -290,5 +290,5 @@
 
   /* Inherited required (FormLayout defaultOptionality="required"): the span the thumbs point at
    * draws its text only once the form stamped it (generated content joins the description). */
-  .ax-slider-required[aria-required="true"]::before { content: attr(data-ax-label); }
+  .ax-slider-required[data-form-optionality="required"]::before { content: attr(data-ax-label); }
 }

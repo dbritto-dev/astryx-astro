@@ -291,6 +291,8 @@ const req = await page.evaluate(() => {
 check('isRequired: the thumb is described by "Required" (no aria-required on role=slider)', req.quality.includes('Required') && !req.ariaRequired, JSON.stringify(req));
 check('FormLayout required default: an unmarked slider is described as Required', req.seats.includes('Required'), JSON.stringify(req));
 check('FormLayout: an isOptional slider is not', !req.discount.includes('Required'), JSON.stringify(req));
+const strayAria = await page.evaluate(() => [...document.querySelectorAll('ax-slider [aria-required]')].filter((n) => !n.matches('input')).map((n) => n.id || n.className));
+check('no aria-required on non-input Slider parts (FormLayout marks the hidden "Required" with data-form-optionality)', strayAria.length === 0, JSON.stringify(strayAria));
 check('error status: aria-invalid + described by the detached message', req.invalid === 'true' && req.err.includes('Budget exceeds the plan limit'), JSON.stringify(req));
 
 // ── form submit / reset ──

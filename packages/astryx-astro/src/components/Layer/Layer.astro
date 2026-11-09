@@ -88,7 +88,9 @@ const fixed = mode === 'fixed';
   role={role}
   aria-label={label}
   style={mergeStyles(
-    fixed ? {position: 'fixed', top: cssSize(y), left: cssSize(x), margin: '0', inset: 'auto'} : positioning === 'anchor' ? clearance(offset) : undefined,
+    // `inset` (resetting the popover UA `inset: 0`) comes before `top`/`left`: a shorthand
+    // written after them would reset the coordinates.
+    fixed ? {position: 'fixed', inset: 'auto', top: cssSize(y), left: cssSize(x), margin: '0'} : positioning === 'anchor' ? clearance(offset) : undefined,
     style as StyleValue,
   )}
   {...rest}
