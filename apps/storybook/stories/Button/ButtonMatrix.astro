@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: every Button variant × size, then the loading, disabled and icon-only states of
+ * each variant, so one story shows a theme's whole button system.
+ */
+import Button, {type ButtonVariant} from 'astryx-astro/components/Button/Button.astro';
+import type {ComponentSize} from 'astryx-astro/lib/types';
+
+const variants: ButtonVariant[] = ['primary', 'secondary', 'ghost', 'destructive'];
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const grid = 'display:grid;grid-template-columns:repeat(5,max-content);align-items:center;gap:var(--spacing-3)';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style={grid}>
+  <span></span>
+  {variants.map((variant) => <span style={head}>{variant}</span>)}
+  {sizes.map((size) => (
+    <>
+      <span style={head}>{size}</span>
+      {variants.map((variant) => <Button label="Button" variant={variant} size={size} />)}
+    </>
+  ))}
+  <span style={head}>icon</span>
+  {variants.map((variant) => <Button label="Upload" icon="upload" variant={variant} />)}
+  <span style={head}>icon only</span>
+  {variants.map((variant) => <Button label={`More (${variant})`} icon="moreHorizontal" isIconOnly variant={variant} />)}
+  <span style={head}>loading</span>
+  {variants.map((variant) => <Button label="Saving" variant={variant} isLoading />)}
+  <span style={head}>disabled</span>
+  {variants.map((variant) => <Button label="Disabled" variant={variant} isDisabled />)}
+</div>

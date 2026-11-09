@@ -1,0 +1,34 @@
+---
+/**
+ * Story wrapper: DateInput with Temporal values. Temporal objects are built here, on the server,
+ * from astryx-astro/lib/temporal (native Temporal or the polyfill). They cannot travel in story
+ * args: `storybook dev` sends args to the server as JSON, which turns them into ISO strings.
+ */
+import DateInput, {type Props as DateInputProps} from 'astryx-astro/components/DateInput/DateInput.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to DateInput. */
+  label?: string;
+  /** Forwarded to DateInput. */
+  size?: DateInputProps['size'];
+  /** Forwarded to DateInput. */
+  hasClear?: boolean;
+  /** Forwarded to DateInput. */
+  calendar?: DateInputProps['calendar'];
+  /** Forwarded to DateInput. */
+  locale?: string;
+}
+const {label = 'Start date', size, hasClear, calendar, locale} = Astro.props;
+---
+<DateInput
+  label={label}
+  value={Temporal.PlainDate.from('2026-11-08')}
+  min={Temporal.PlainDate.from('2026-11-01')}
+  max={Temporal.PlainDate.from('2027-03-31')}
+  description="November 2026 to March 2027"
+  size={size}
+  hasClear={hasClear}
+  calendar={calendar}
+  locale={locale}
+/>

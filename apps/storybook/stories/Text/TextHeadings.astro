@@ -1,0 +1,18 @@
+---
+/**
+ * Story wrapper: Heading (documented under Text) at every level, with the props that change its
+ * look or its announced level.
+ */
+import Heading from 'astryx-astro/components/Text/Heading.astro';
+---
+<div style="display:grid;gap:var(--spacing-2)">
+  <Heading level={1}>Heading 1</Heading>
+  <Heading level={2}>Heading 2</Heading>
+  <Heading level={3}>Heading 3</Heading>
+  <Heading level={4}>Heading 4</Heading>
+  <Heading level={5}>Heading 5</Heading>
+  <Heading level={6}>Heading 6</Heading>
+  <Heading level={3} color="secondary">Heading 3, secondary</Heading>
+  <Heading level={6} accessibilityLevel={2}>Heading 6, announced as level 2</Heading>
+  <Heading level={2} type="display-2">Heading 2 with the display-2 type</Heading>
+</div>

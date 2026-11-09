@@ -1,0 +1,49 @@
+---
+/**
+ * Story wrapper: a Dialog with its trigger (attachDialog: a zero-JS `commandfor` invoker), a
+ * header, content with a field, and a footer with a close invoker. A button outside the dialog
+ * lets the play test check that the page behind is inert while it is open.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Dialog, {type DialogPurpose, type DialogVariant} from 'astryx-astro/components/Dialog/Dialog.astro';
+import DialogHeader from 'astryx-astro/components/Dialog/DialogHeader.astro';
+import {attachDialog} from 'astryx-astro/components/Dialog/attach';
+import Layout from 'astryx-astro/components/Layout/Layout.astro';
+import LayoutContent from 'astryx-astro/components/Layout/LayoutContent.astro';
+import LayoutFooter from 'astryx-astro/components/Layout/LayoutFooter.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+
+interface Props {
+  /** Forwarded to Dialog. */
+  isOpen?: boolean;
+  /** Forwarded to Dialog. */
+  variant?: DialogVariant;
+  /** Forwarded to Dialog. */
+  purpose?: DialogPurpose;
+  /** Forwarded to Dialog. */
+  width?: number | string;
+}
+const {isOpen, variant, purpose, width} = Astro.props;
+const dialog = attachDialog();
+---
+<HStack gap={2}>
+  <Button label="Rename file" variant="primary" {...dialog.trigger} />
+  <Button label="Outside the dialog" variant="ghost" data-outside />
+</HStack>
+<Dialog {...dialog.layer} isOpen={isOpen} variant={variant} purpose={purpose} width={width}>
+  <Layout height="auto">
+    <DialogHeader slot="header" title="Rename file" subtitle="Names must be unique in this folder." hasCloseButton />
+    <LayoutContent>
+      <Text display="block">The new name shows everywhere the file is shared.</Text>
+      <TextInput label="File name" value="Quarterly report.pdf" />
+    </LayoutContent>
+    <LayoutFooter slot="footer">
+      <HStack gap={2} hAlign="end">
+        <Button label="Cancel" variant="ghost" {...dialog.close} />
+        <Button label="Rename" variant="primary" {...dialog.close} />
+      </HStack>
+    </LayoutFooter>
+  </Layout>
+</Dialog>

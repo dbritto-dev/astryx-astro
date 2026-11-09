@@ -1,13 +1,5 @@
 {
   "extends": "astro/tsconfigs/strict",
-  "compilerOptions": {
-    "types": [
-      "astro/client",
-      "vite/client"
-    ]
-  },
-  "include": [
-    ".storybook/**/*.ts",
-    "stories/**/*.ts"
-  ]
+  "compilerOptions": {"types": ["astro/client", "vite/client"]},
+  "include": [".storybook/**/*.ts", "stories/**/*.ts", "vitest.config.ts"]
 }

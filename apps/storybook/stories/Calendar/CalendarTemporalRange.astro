@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: a range Calendar seeded with Temporal values (value, min and max), built on the
+ * server from astryx-astro/lib/temporal; Temporal objects cannot travel in story args.
+ */
+import Calendar from 'astryx-astro/components/Calendar/Calendar.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to Calendar. */
+  numberOfMonths?: 1 | 2;
+}
+const {numberOfMonths = 2} = Astro.props;
+const start = Temporal.PlainDate.from('2026-11-09');
+---
+<Calendar
+  mode="range"
+  value={{start, end: start.add({days: 6})}}
+  min={start.subtract({months: 1})}
+  max={start.add({months: 3})}
+  maxRangeSpan={14}
+  numberOfMonths={numberOfMonths}
+/>
