@@ -1,0 +1,34 @@
+---
+/**
+ * Story wrapper: every FieldStatus type × variant on one canvas (attached under a bordered
+ * box like Field draws it, detached with its icon, and the deprecated tooltip variant), so one
+ * story shows a theme's whole status system.
+ */
+import FieldStatus, {type FieldStatusType, type FieldStatusVariant} from 'astryx-astro/components/FieldStatus/FieldStatus.astro';
+
+const types: FieldStatusType[] = ['error', 'warning', 'success'];
+const variants: FieldStatusVariant[] = ['attached', 'detached', 'tooltip'];
+const messages: Record<FieldStatusType, string> = {
+  error: 'Enter a valid email address',
+  warning: 'This address is already invited',
+  success: 'Email verified',
+};
+const grid = 'display:grid;grid-template-columns:max-content repeat(3,minmax(200px,1fr));gap:var(--spacing-4);align-items:start';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const box = 'height:var(--size-element-md);border:var(--border-width) solid var(--color-border-emphasized);border-radius:var(--radius-element);background:var(--color-background-surface)';
+---
+<div style={grid}>
+  <span></span>
+  {variants.map((variant) => <span style={head}>{variant}</span>)}
+  {types.map((type) => (
+    <>
+      <span style={head}>{type}</span>
+      {variants.map((variant) => (
+        <div>
+          {variant === 'attached' && <div style={box}></div>}
+          <FieldStatus type={type} variant={variant} message={messages[type]} />
+        </div>
+      ))}
+    </>
+  ))}
+</div>

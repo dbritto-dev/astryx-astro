@@ -1,0 +1,64 @@
+---
+/**
+ * Story wrapper: an InputGroup with its members. The group rewrites the markup of the inputs
+ * and addons it is given (drops their Field shells, renames and re-describes them, stamps the
+ * size), so the group and its members must render in one Astro render.
+ *
+ * `addons` (story knob) picks the composition: `text` (a "https://" prefix and a TextInput with
+ * a clear button), `number` ("$" and "USD" around a NumberInput) or `buttons` (a search
+ * TextInput with a Button).
+ */
+import InputGroup, {type Props as InputGroupProps} from 'astryx-astro/components/InputGroup/InputGroup.astro';
+import InputGroupText from 'astryx-astro/components/InputGroup/InputGroupText.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+import NumberInput from 'astryx-astro/components/NumberInput/NumberInput.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to InputGroup. */
+  label?: string;
+  /** Forwarded to InputGroup. */
+  description?: string;
+  /** Forwarded to InputGroup. */
+  size?: InputGroupProps['size'];
+  /** Forwarded to InputGroup. */
+  status?: InputGroupProps['status'];
+  /** Forwarded to InputGroup. */
+  isLabelHidden?: boolean;
+  /** Forwarded to InputGroup. */
+  isDisabled?: boolean;
+  /** Forwarded to InputGroup. */
+  isRequired?: boolean;
+  /** Forwarded to InputGroup. */
+  isOptional?: boolean;
+  /** Forwarded to InputGroup. */
+  labelTooltip?: string;
+  /** Story knob: which members the group holds. @default 'text' */
+  addons?: 'text' | 'number' | 'buttons';
+}
+const {addons = 'text', label = 'Website', ...rest} = Astro.props;
+const isError = rest.status?.type === 'error';
+---
+<div style="max-width:420px">
+  <InputGroup label={label} {...rest}>
+    {addons === 'text' && (
+      <>
+        <InputGroupText>https://</InputGroupText>
+        <TextInput label="Domain" isLabelHidden value="astryx.dev" hasClear htmlName="domain" status={isError ? {type: 'error'} : undefined} />
+      </>
+    )}
+    {addons === 'number' && (
+      <>
+        <InputGroupText>$</InputGroupText>
+        <NumberInput label="Amount in USD" isLabelHidden value={12.5} step={0.5} min={0} />
+        <InputGroupText>USD</InputGroupText>
+      </>
+    )}
+    {addons === 'buttons' && (
+      <>
+        <TextInput label="Query" isLabelHidden placeholder="Order number or customer" startIcon="search" />
+        <Button label="Search" variant="primary" />
+      </>
+    )}
+  </InputGroup>
+</div>

@@ -1,0 +1,19 @@
+---
+/**
+ * Story wrapper: a theme's replacement indicator. `registerIndicatorTheme` (a server-side
+ * registry call, as `defineTheme({indicators})` does) maps `check` to the RadioIndicator for a
+ * story theme, and `<Indicator theme>` resolves through it; the default theme is shown beside it.
+ */
+import Indicator from 'astryx-astro/components/Indicator/Indicator.astro';
+import RadioIndicator from 'astryx-astro/components/Indicator/RadioIndicator.astro';
+import {registerIndicatorTheme} from 'astryx-astro/components/Indicator/indicatorRegistry';
+
+registerIndicatorTheme('story-radio-check', {check: RadioIndicator});
+const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-5);align-items:center';
+const cell = 'display:inline-flex;flex-direction:column;align-items:center;gap:var(--spacing-1);font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+---
+<div style={row}>
+  <span style={cell}><Indicator name="check" state="checked" />default check</span>
+  <span style={cell}><Indicator name="check" state="checked" theme="story-radio-check" />replaced, checked</span>
+  <span style={cell}><Indicator name="check" state="unchecked" theme="story-radio-check" />replaced, unchecked</span>
+</div>

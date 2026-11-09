@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: RadioListItem's slots — a rich `label` named with `aria-label`, a `description`
+ * slot, `startContent` before the circle and `endContent` after the label. The items read the
+ * list's context, so they render with it here.
+ */
+import RadioList from 'astryx-astro/components/RadioList/RadioList.astro';
+import RadioListItem from 'astryx-astro/components/RadioList/RadioListItem.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+---
+<RadioList label="Plan" value="team" description="You can change plans at any time">
+  <RadioListItem value="free" label="Free" description="Up to 3 projects">
+    <Icon slot="startContent" icon="success" size="sm" color="secondary" />
+  </RadioListItem>
+  <RadioListItem value="team" aria-label="Team, recommended">
+    <span slot="label">Team <Badge label="Recommended" variant="blue" /></span>
+    <span slot="description">Unlimited projects, <strong>10 seats</strong></span>
+  </RadioListItem>
+  <RadioListItem value="enterprise" label="Enterprise" description="Single sign-on and audit log" align="first-line">
+    <Icon slot="endContent" icon="info" size="sm" color="secondary" />
+  </RadioListItem>
+</RadioList>

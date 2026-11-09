@@ -1,0 +1,46 @@
+---
+/**
+ * Story wrapper: a CheckboxList with three CheckboxListItem rows. The items read the list's
+ * context (collection values, disabled, read-only, required, status), so list and items must
+ * render in one Astro render. Without `value` the items are standalone and start from
+ * `isChecked` (Email checked).
+ */
+import CheckboxList, {type Props as CheckboxListProps} from 'astryx-astro/components/CheckboxList/CheckboxList.astro';
+import CheckboxListItem from 'astryx-astro/components/CheckboxList/CheckboxListItem.astro';
+
+interface Props {
+  /** Forwarded to CheckboxList. */
+  label?: string;
+  /** Forwarded to CheckboxList. */
+  description?: string;
+  /** Forwarded to CheckboxList. Leave it out for standalone items. */
+  value?: string[];
+  /** Forwarded to CheckboxList. */
+  density?: CheckboxListProps['density'];
+  /** Forwarded to CheckboxList. */
+  hasDividers?: boolean;
+  /** Forwarded to CheckboxList. */
+  isLabelHidden?: boolean;
+  /** Forwarded to CheckboxList. */
+  isDisabled?: boolean;
+  /** Forwarded to CheckboxList. */
+  disabledMessage?: string;
+  /** Forwarded to CheckboxList. */
+  isReadOnly?: boolean;
+  /** Forwarded to CheckboxList. */
+  isRequired?: boolean;
+  /** Forwarded to CheckboxList. */
+  isOptional?: boolean;
+  /** Forwarded to CheckboxList. */
+  status?: CheckboxListProps['status'];
+  /** Forwarded to CheckboxList. */
+  htmlName?: string;
+}
+const {label = 'Notifications', value, ...rest} = Astro.props;
+const standalone = (id: string) => (value === undefined ? id === 'email' : undefined);
+---
+<CheckboxList label={label} value={value} {...rest}>
+  <CheckboxListItem label="Email" value="email" description="Daily digest" isChecked={standalone('email')} />
+  <CheckboxListItem label="SMS" value="sms" description="Standard rates apply" isChecked={standalone('sms')} />
+  <CheckboxListItem label="Push" value="push" description="On your devices" isChecked={standalone('push')} />
+</CheckboxList>

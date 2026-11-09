@@ -1,0 +1,28 @@
+---
+/**
+ * Story wrapper: every built-in indicator (checkbox, radio, check) × state × size, enabled and
+ * disabled, resolved through `<Indicator name>` the way form controls render them.
+ */
+import Indicator from 'astryx-astro/components/Indicator/Indicator.astro';
+import type {IndicatorSize, IndicatorState} from 'astryx-astro/components/Indicator/indicatorRegistry';
+
+const rows: Array<{name: 'checkbox' | 'radio' | 'check'; states: IndicatorState[]}> = [
+  {name: 'checkbox', states: ['unchecked', 'checked', 'indeterminate']},
+  {name: 'radio', states: ['unchecked', 'checked']},
+  {name: 'check', states: ['unchecked', 'checked']},
+];
+const sizes: IndicatorSize[] = ['sm', 'md'];
+const grid = 'display:grid;grid-template-columns:repeat(9,max-content);align-items:center;gap:var(--spacing-3) var(--spacing-4)';
+const head = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
+const cell = 'display:inline-flex;min-width:1.5rem;min-height:1.5rem;align-items:center;justify-content:center';
+---
+<div style={grid}>
+  {rows.map(({name, states}) => sizes.map((size) => (
+    <>
+      <span style={head}>{name} · {size}</span>
+      {states.map((state) => <span style={cell} title={state}><Indicator name={name} state={state} size={size} /></span>)}
+      {states.map((state) => <span style={cell} title={`disabled ${state}`}><Indicator name={name} state={state} size={size} isDisabled /></span>)}
+      {Array.from({length: 8 - states.length * 2}, () => <span></span>)}
+    </>
+  )))}
+</div>
