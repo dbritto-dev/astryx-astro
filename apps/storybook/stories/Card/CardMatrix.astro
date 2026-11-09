@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: every Card `variant` (13), every `elevation` (4) or a padding sweep, in a grid,
+ * so one canvas shows a theme's whole card system.
+ */
+import Card, {type CardVariant} from 'astryx-astro/components/Card/Card.astro';
+import Grid from 'astryx-astro/components/Grid/Grid.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {Elevation, SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Which prop to sweep (story knob). */
+  matrix?: 'variant' | 'elevation' | 'padding';
+}
+const {matrix = 'variant'} = Astro.props;
+const variants: CardVariant[] = ['default', 'transparent', 'muted', 'blue', 'cyan', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const paddings: (SpacingStep | undefined)[] = [0, 2, undefined, 6, 10];
+---
+<Grid columns={{minWidth: 150}} gap={4}>
+  {matrix === 'variant' && variants.map((variant) => (
+    <Card variant={variant}>
+      <Text display="block" weight="semibold">{variant}</Text>
+      <Text display="block" type="supporting">variant="{variant}"</Text>
+    </Card>
+  ))}
+  {matrix === 'elevation' && elevations.map((elevation) => (
+    <Card elevation={elevation}>
+      <Text display="block" weight="semibold">elevation</Text>
+      <Text display="block" type="supporting">{elevation}</Text>
+    </Card>
+  ))}
+  {matrix === 'padding' && paddings.map((padding) => (
+    <Card padding={padding} variant="muted">
+      <Text display="block" type="supporting">{padding == null ? 'theme padding' : `padding ${padding}`}</Text>
+    </Card>
+  ))}
+</Grid>

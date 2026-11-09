@@ -1,0 +1,34 @@
+---
+/**
+ * Story wrapper: one Carousel per value of `gap` or `padding`, stacked with a caption, so a
+ * theme's whole spacing scale for the scroller shows on one canvas. Buttons are off (each
+ * would be one more open layer); the edge fade stays on.
+ */
+import Carousel from 'astryx-astro/components/Carousel/Carousel.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Which prop to sweep (story knob). */
+  matrix?: 'gap' | 'padding';
+}
+const {matrix = 'gap'} = Astro.props;
+const gaps = [0, 0.5, 1, 1.5, 2, 3, 4] as const;
+const paddings: SpacingStep[] = [0, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10];
+const cap = 'margin:0 0 var(--spacing-1);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const tile = 'width:96px;height:48px;border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);display:flex;align-items:center;justify-content:center;font-size:var(--font-size-sm)';
+const tiles = Array.from({length: 8}, (_, i) => `Item ${i + 1}`);
+---
+<div style="display:grid;gap:var(--spacing-3);max-width:560px">
+  {matrix === 'gap' && gaps.map((gap) => (
+    <div>
+      <p style={cap}>gap={gap}</p>
+      <Carousel aria-label={`Gap ${gap}`} gap={gap} hasButtons={false}>{tiles.map((t) => <div style={tile}>{t}</div>)}</Carousel>
+    </div>
+  ))}
+  {matrix === 'padding' && paddings.map((padding) => (
+    <div>
+      <p style={cap}>padding={padding}</p>
+      <Carousel aria-label={`Padding ${padding}`} padding={padding} hasButtons={false} style="background:var(--color-background-muted);border-radius:var(--radius-element)">{tiles.map((t) => <div style={tile}>{t}</div>)}</Carousel>
+    </div>
+  ))}
+</div>

@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: a CollapsibleGroup of three FAQ items. The group stamps its open set, density,
+ * dividers and chevron position onto the items it renders (a slot cascade), so the items are
+ * composed with it in one render.
+ */
+import Collapsible, {type CollapsibleChevronPosition, type CollapsibleGroupDensity} from 'astryx-astro/components/Collapsible/Collapsible.astro';
+import CollapsibleGroup from 'astryx-astro/components/Collapsible/CollapsibleGroup.astro';
+
+interface Props {
+  /** Forwarded to CollapsibleGroup. */
+  type?: 'single' | 'multiple';
+  /** Forwarded to CollapsibleGroup. */
+  defaultValue?: string | string[];
+  /** Forwarded to CollapsibleGroup. */
+  hasDividers?: boolean;
+  /** Forwarded to CollapsibleGroup. */
+  density?: CollapsibleGroupDensity;
+  /** Forwarded to CollapsibleGroup. */
+  chevronPosition?: CollapsibleChevronPosition;
+}
+const {type, defaultValue = 'what', hasDividers = true, density, chevronPosition} = Astro.props;
+const text = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="max-width:520px">
+  <CollapsibleGroup type={type} defaultValue={defaultValue} hasDividers={hasDividers} density={density} chevronPosition={chevronPosition}>
+    <Collapsible trigger="What is Astryx?" value="what"><p style={text}>A design system with components, tokens and themes.</p></Collapsible>
+    <Collapsible trigger="How do I get started?" value="start"><p style={text}>Install the package and import the components you need.</p></Collapsible>
+    <Collapsible trigger="Can I bring my own theme?" value="themes"><p style={text}>Yes: themes are CSS files that set the design tokens.</p></Collapsible>
+  </CollapsibleGroup>
+</div>

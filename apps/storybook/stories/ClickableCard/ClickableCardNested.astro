@@ -1,0 +1,35 @@
+---
+/**
+ * Story wrapper: a button card (no `href`) and a link card, each with nested controls (a Button
+ * and a link). Nested controls keep their own clicks; a click anywhere else on the surface
+ * activates the card's hidden control. A wrapper because the nested Button is a component.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import ClickableCard from 'astryx-astro/components/ClickableCard/ClickableCard.astro';
+import type {CardVariant} from 'astryx-astro/components/Card/Card.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {Elevation} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to both ClickableCards. */
+  variant?: CardVariant;
+  /** Forwarded to both ClickableCards. */
+  elevation?: Elevation;
+}
+const {variant, elevation = 'low'} = Astro.props;
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-3);max-width:560px">
+  <ClickableCard label="Open details" variant={variant} elevation={elevation} data-testid="button-card">
+    <Text display="block" weight="semibold">Quarterly report</Text>
+    <Text display="block" type="supporting">Click anywhere to open the details.</Text>
+    <div style="margin-top:var(--spacing-3);display:flex;gap:var(--spacing-2);align-items:center">
+      <Button label="Share" size="sm" variant="ghost" icon="externalLink" />
+      <a href="#q3-report" style="font-size:var(--text-supporting-size);color:var(--color-accent)">Download</a>
+    </div>
+  </ClickableCard>
+  <ClickableCard label="Team settings" href="#team-settings" variant={variant} elevation={elevation} data-testid="link-card">
+    <Text display="block" weight="semibold">Team settings</Text>
+    <Text display="block" type="supporting">Members, roles and billing.</Text>
+    <div style="margin-top:var(--spacing-3)"><Button label="Invite" size="sm" /></div>
+  </ClickableCard>
+</div>

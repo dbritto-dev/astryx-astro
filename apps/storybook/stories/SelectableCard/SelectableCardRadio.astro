@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: three SelectableCards with `type="radio"` sharing a `name` inside a form, a
+ * single-choice set (port extension). The cards are one native radio group, so they render
+ * together.
+ */
+import type {CardVariant} from 'astryx-astro/components/Card/Card.astro';
+import SelectableCard from 'astryx-astro/components/SelectableCard/SelectableCard.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Forwarded to every SelectableCard. */
+  variant?: CardVariant;
+}
+const {variant} = Astro.props;
+const options = [
+  {value: 'standard', label: 'Standard shipping', detail: '5–7 business days · Free'},
+  {value: 'express', label: 'Express shipping', detail: '2 business days · $12'},
+  {value: 'overnight', label: 'Overnight shipping', detail: 'Next business day · $28'},
+];
+---
+<form id="shipping-form" aria-label="Shipping" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--spacing-3);max-width:620px">
+  {options.map((option, i) => (
+    <SelectableCard type="radio" name="shipping" value={option.value} label={option.label} isSelected={i === 0} variant={variant}>
+      <Text display="block" weight="semibold">{option.label}</Text>
+      <Text display="block" type="supporting">{option.detail}</Text>
+    </SelectableCard>
+  ))}
+</form>
