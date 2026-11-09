@@ -57,6 +57,17 @@ for (const p of placements) {
   }
 }
 
+console.log('Fixed mode sits at its x/y');
+await page.click('[popovertarget="layer-fixed"]');
+await sleep(60);
+const fixedAt = await page.evaluate(() => {
+  const r = document.getElementById('layer-fixed').getBoundingClientRect();
+  return [Math.round(r.left), Math.round(r.top)];
+});
+check('mode="fixed" x={24} y={24} opens at (24, 24)', (await isOpen(page, '#layer-fixed')) && fixedAt[0] === 24 && fixedAt[1] === 24, JSON.stringify(fixedAt));
+await page.keyboard.press('Escape');
+await sleep(30);
+
 console.log('Flips near a viewport edge, keeps the gutter');
 // Pin the "below/start" trigger to the bottom edge: the layer must open above it.
 await page.evaluate(() => {
