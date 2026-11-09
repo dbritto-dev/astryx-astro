@@ -143,13 +143,15 @@ export const KeyboardInvocation: Story = {
     });
 
     await step('Escape closes and returns focus; Tab closes too', async () => {
+      // Focus moves to the first row a frame after the menu shows: keys wait for it.
+      const firstRow = () => canvas.getByRole('menuitem', {name: /Cut/});
       await userEvent.keyboard('{Shift>}{F10}{/Shift}');
-      await waitFor(() => expect(isShowing(layer)).toBe(true));
+      await waitFor(() => expect(firstRow()).toHaveFocus());
       await userEvent.keyboard('{Escape}');
       await waitFor(() => expect(isShowing(layer)).toBe(false));
       await expect(target).toHaveFocus();
       await userEvent.keyboard('{Shift>}{F10}{/Shift}');
-      await waitFor(() => expect(isShowing(layer)).toBe(true));
+      await waitFor(() => expect(firstRow()).toHaveFocus());
       await userEvent.tab();
       await waitFor(() => expect(isShowing(layer)).toBe(false));
     });

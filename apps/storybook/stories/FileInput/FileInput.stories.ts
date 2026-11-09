@@ -81,7 +81,7 @@ export const Default: Story = {
       await userEvent.click(canvas.getByRole('button', {name: 'Clear Resume'}));
       await waitFor(() => expect(button).toHaveAccessibleName('Resume'));
       await expect(changes.at(-1)?.detail.value).toBeNull();
-      await expect(button).toHaveFocus();
+      await waitFor(() => expect(button).toHaveFocus());
     });
   },
 };

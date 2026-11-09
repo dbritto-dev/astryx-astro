@@ -153,6 +153,9 @@ export const Loop: Story = {
     await step('Scroll left at the start wraps to the end', async () => {
       await userEvent.click(p.start);
       await waitFor(() => expect(p.scroller.scrollLeft).toBeGreaterThanOrEqual(p.scroller.scrollWidth - p.scroller.clientWidth - 1));
+      // The carousel learns where it is from the scroll event, dispatched in the next rendering
+      // step: let it run before pressing the end button, or it scrolls on instead of wrapping.
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     });
     await step('Scroll right at the end wraps to the start', async () => {
       await userEvent.click(p.end);

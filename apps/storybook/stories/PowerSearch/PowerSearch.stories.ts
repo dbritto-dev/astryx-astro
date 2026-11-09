@@ -258,10 +258,18 @@ export const EditingFilters = issueStory({
     await step('Another operator of the same type keeps the value', async () => {
       await userEvent.click(action());
       await waitFor(() => expect(isShowing(editor)).toBe(true));
+      // The editor moves focus to its value a frame after it opens: let it land first, or it
+      // takes focus from the operator list opened below.
+      await waitFor(() => expect(text()).toHaveFocus());
       const operator = editor.querySelector<HTMLElement>('[data-ax-operator-cell] ax-selector button[role="combobox"]')!;
       await userEvent.click(operator);
-      await waitFor(() => expect(operator).toHaveAttribute('aria-expanded', 'true'));
-      await userEvent.keyboard('{ArrowDown}{Enter}');
+      // Each key acts on the highlight: wait for it to land before the next one.
+      const active = () => document.getElementById(operator.getAttribute('aria-activedescendant') ?? '')?.getAttribute('data-value');
+      await waitFor(() => expect(active()).toBe('contains'));
+      await expect(operator).toHaveFocus();
+      await userEvent.keyboard('{ArrowDown}');
+      await waitFor(() => expect(active()).toBe('not_contains'));
+      await userEvent.keyboard('{Enter}');
       await waitFor(() => expect(selectors()[1].value).toBe('not_contains'));
       await expect(text()).toHaveValue('focus ring');
     });
