@@ -1,0 +1,37 @@
+---
+/**
+ * Story wrapper: a CodeBlock (and an inline sample painted with every `--color-syntax-*` token)
+ * inside a SyntaxTheme, which swaps the syntax tokens of its subtree. A `defineSyntaxTheme()`
+ * object is a server-side value, so the custom theme is built here (`preset="brand"`).
+ */
+import CodeBlock from 'astryx-astro/components/CodeBlock/CodeBlock.astro';
+import SyntaxTheme from 'astryx-astro/components/theme/SyntaxTheme.astro';
+import {defineSyntaxTheme} from 'astryx-astro/components/theme/syntaxTheme';
+
+interface Props {
+  /** Forwarded to SyntaxTheme: a preset name, or `brand` for a defineSyntaxTheme() object. */
+  theme?: string;
+}
+const {theme = 'dracula'} = Astro.props;
+const brand = defineSyntaxTheme({
+  name: 'brand',
+  tokens: {
+    keyword: ['#7b2cbf', '#c77dff'], string: ['#2a9d8f', '#76c893'], comment: ['#6c757d', '#adb5bd'],
+    number: ['#e76f51', '#f4a261'], function: ['#0077b6', '#48cae4'], type: ['#9d4edd', '#e0aaff'],
+    variable: ['#212529', '#f8f9fa'], operator: ['#d62828', '#ff6b6b'], constant: ['#e76f51', '#f4a261'],
+    tag: ['#d62828', '#ff8fa3'], attribute: ['#2a9d8f', '#76c893'], property: ['#0077b6', '#90e0ef'],
+    punctuation: ['#495057', '#ced4da'], background: ['#f8f0ff', '#1a1025'],
+  },
+});
+const code = `// Retry three times, then give up
+export async function retry(task: () => Promise<Response>, count = 3) {
+  const response = await task();
+  return response.ok ? 'success' : count > 0 ? retry(task, count - 1) : null;
+}`;
+---
+<div style="max-width:560px">
+  <SyntaxTheme theme={theme === 'brand' ? brand : theme}>
+    <CodeBlock code={code} language="ts" title="retry.ts" />
+    <pre data-testid="sample" style="margin:var(--spacing-2) 0 0;padding:var(--spacing-3);border-radius:var(--radius-element);background:var(--color-syntax-background);font-family:var(--font-family-code);font-size:var(--font-size-sm)"><span data-testid="keyword" style="color:var(--color-syntax-keyword)">const</span> <span style="color:var(--color-syntax-variable)">label</span> <span style="color:var(--color-syntax-operator)">=</span> <span style="color:var(--color-syntax-string)">'Save'</span><span style="color:var(--color-syntax-punctuation)">;</span></pre>
+  </SyntaxTheme>
+</div>

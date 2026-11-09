@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: a painted surface (the parent paints the background, as MediaTheme requires)
+ * with Text, an Icon, a Badge and a Spinner inside a MediaTheme. A wrapper because the surface
+ * and the children are composed around the component in one render.
+ */
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import Spinner from 'astryx-astro/components/Spinner/Spinner.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import MediaTheme, {type MediaThemeMode} from 'astryx-astro/components/theme/MediaTheme.astro';
+
+interface Props {
+  /** Forwarded to MediaTheme. */
+  mode?: MediaThemeMode;
+  /** Forwarded to MediaTheme. */
+  fallback?: 'dark' | 'light';
+  /** The parent's background (story knob): a CSS color or gradient. @default the inverted surface */
+  surface?: string;
+}
+const {mode = 'dark', fallback, surface = 'var(--color-background-inverted)'} = Astro.props;
+---
+<div style={`display:grid;gap:var(--spacing-2);max-width:360px;padding:var(--spacing-4);border-radius:var(--radius-container);background:${surface}`} data-testid="surface">
+  <MediaTheme mode={mode} fallback={fallback}>
+    <Text weight="semibold" display="block" data-testid="title">Photo uploaded</Text>
+    <Text type="supporting" display="block">Secondary text adapts to the surface.</Text>
+    <span style="display:flex;gap:var(--spacing-2);align-items:center">
+      <Icon icon="info" color="primary" /> <Badge label="Live" variant="info" /> <Spinner size="sm" />
+    </span>
+  </MediaTheme>
+</div>

@@ -1,0 +1,65 @@
+---
+/**
+ * Story wrapper: a sample panel (Card, Heading, Text, Badge, Buttons, Icon) inside a Theme, next
+ * to the same panel in the page's theme for comparison. Setting a theme on a subtree is the
+ * component's purpose; the preview already loads every shipped theme's CSS, so nothing is
+ * imported here. A Theme inside a story is never the root (the story render has a request
+ * theme), so it does not touch `<html>`.
+ */
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import Heading from 'astryx-astro/components/Text/Heading.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import Theme from 'astryx-astro/components/theme/Theme.astro';
+import type {ThemeMode} from 'astryx-astro/components/theme/themeRoot';
+
+interface Props {
+  /** Forwarded to Theme. */
+  theme?: string;
+  /** Forwarded to Theme. */
+  mode?: ThemeMode;
+  /** A second Theme nested inside the first (story knob). */
+  nestedTheme?: string;
+  /** The nested Theme's mode (story knob). */
+  nestedMode?: ThemeMode;
+}
+const {theme = 'butter', mode, nestedTheme, nestedMode} = Astro.props;
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--spacing-3);align-items:start';
+const caption = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style={grid}>
+  <div>
+    <p style={caption}>Page theme</p>
+    <Card data-testid="page-card">
+      <div style="display:grid;gap:var(--spacing-2)">
+        <Heading level={3}>Weekly report</Heading>
+        <Text type="supporting">Deploys, incidents and response times.</Text>
+        <div style="display:flex;gap:var(--spacing-2);align-items:center"><Icon icon="info" /><Badge label="Draft" /></div>
+        <div style="display:flex;gap:var(--spacing-2)"><Button label="Publish" variant="primary" size="sm" /><Button label="Preview" size="sm" /></div>
+      </div>
+    </Card>
+  </div>
+  <div>
+    <p style={caption}>theme="{theme}"{mode ? ` mode="${mode}"` : ''}</p>
+    <Theme theme={theme} mode={mode}>
+      <Card data-testid="theme-card">
+        <div style="display:grid;gap:var(--spacing-2)">
+          <Heading level={3}>Weekly report</Heading>
+          <Text type="supporting">Deploys, incidents and response times.</Text>
+          <div style="display:flex;gap:var(--spacing-2);align-items:center"><Icon icon="info" /><Badge label="Draft" /></div>
+          <div style="display:flex;gap:var(--spacing-2)"><Button label="Publish" variant="primary" size="sm" /><Button label="Preview" size="sm" /></div>
+          {nestedTheme && (
+            <Theme theme={nestedTheme} mode={nestedMode}>
+              <Card data-testid="nested-card" variant="muted">
+                <Text type="supporting">Nested theme="{nestedTheme}"{nestedMode ? ` mode="${nestedMode}"` : ''}</Text>
+                <div style="margin-top:var(--spacing-2)"><Button label="Approve" variant="primary" size="sm" /></div>
+              </Card>
+            </Theme>
+          )}
+        </div>
+      </Card>
+    </Theme>
+  </div>
+</div>

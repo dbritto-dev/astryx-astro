@@ -1,0 +1,47 @@
+---
+/**
+ * Story wrapper: an InternationalizationProvider around locale-dependent components (a Calendar
+ * and a DateInput on fixed dates, a Spinner whose name is translated, a Kbd chord). The provider
+ * publishes its locale through subtree locals, so it only reaches children in the same render.
+ * The provider never writes `dir`: like a page would, the wrapper sets it from the locale.
+ */
+import Calendar from 'astryx-astro/components/Calendar/Calendar.astro';
+import DateInput from 'astryx-astro/components/DateInput/DateInput.astro';
+import InternationalizationProvider, {type CalendarSystem} from 'astryx-astro/components/i18n/InternationalizationProvider.astro';
+import Kbd from 'astryx-astro/components/Kbd/Kbd.astro';
+import Spinner from 'astryx-astro/components/Spinner/Spinner.astro';
+import {localeDirection} from 'astryx-astro/lib/i18n';
+
+interface Props {
+  /** Forwarded to InternationalizationProvider. */
+  locale?: string;
+  /** Forwarded to InternationalizationProvider. */
+  calendar?: CalendarSystem;
+  /** Forwarded to InternationalizationProvider. */
+  overrides?: Record<string, Record<string, string>>;
+  /** A second, nested provider with this locale around a Spinner (story knob). */
+  nestedLocale?: string;
+}
+const {locale = 'fr-FR', calendar, overrides, nestedLocale} = Astro.props;
+const box = 'display:grid;gap:var(--spacing-3);justify-items:start;padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element)';
+const tag = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div dir={localeDirection(locale)} lang={locale} style={box} data-testid="provided">
+  <InternationalizationProvider locale={locale} calendar={calendar} overrides={overrides}>
+    <span style={tag} dir="ltr">locale="{locale}"{calendar ? `, calendar="${calendar}"` : ''}</span>
+    <div style="display:flex;gap:var(--spacing-3);align-items:center">
+      <Spinner size="sm" data-testid="spinner" />
+      <Kbd keys="ctrl+enter" />
+    </div>
+    <DateInput label="Date" value="2026-11-08" />
+    <Calendar value="2026-11-08" />
+    {nestedLocale && (
+      <div dir={localeDirection(nestedLocale)} lang={nestedLocale} style={box}>
+        <InternationalizationProvider locale={nestedLocale}>
+          <span style={tag} dir="ltr">nested locale="{nestedLocale}"</span>
+          <Spinner size="sm" data-testid="nested-spinner" />
+        </InternationalizationProvider>
+      </div>
+    )}
+  </InternationalizationProvider>
+</div>
