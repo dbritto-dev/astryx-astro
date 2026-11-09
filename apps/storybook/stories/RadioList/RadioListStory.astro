@@ -1,0 +1,47 @@
+---
+/**
+ * Story wrapper: a RadioList with its RadioListItem options. The items read the list's context
+ * (shared name, value, size, disabled, required, status), so list and items must render in one
+ * Astro render.
+ */
+import RadioList, {type Props as RadioListProps} from 'astryx-astro/components/RadioList/RadioList.astro';
+import RadioListItem from 'astryx-astro/components/RadioList/RadioListItem.astro';
+
+interface Props {
+  /** Forwarded to RadioList. */
+  label?: string;
+  /** Forwarded to RadioList. */
+  description?: string;
+  /** Forwarded to RadioList. */
+  value?: string;
+  /** Forwarded to RadioList. */
+  orientation?: RadioListProps['orientation'];
+  /** Forwarded to RadioList. */
+  size?: RadioListProps['size'];
+  /** Forwarded to RadioList. */
+  htmlName?: string;
+  /** Forwarded to RadioList. */
+  isLabelHidden?: boolean;
+  /** Forwarded to RadioList. */
+  labelTooltip?: string;
+  /** Forwarded to RadioList. */
+  isDisabled?: boolean;
+  /** Forwarded to RadioList. */
+  disabledMessage?: string;
+  /** Forwarded to RadioList. */
+  isRequired?: boolean;
+  /** Forwarded to RadioList. */
+  isOptional?: boolean;
+  /** Forwarded to RadioList. */
+  status?: RadioListProps['status'];
+  /** Story knob: add a disabled "Fax" option between SMS and Push. */
+  hasDisabledItem?: boolean;
+}
+const {label = 'Notification preference', hasDisabledItem = false, ...rest} = Astro.props;
+---
+<RadioList label={label} {...rest}>
+  <RadioListItem label="Email" value="email" />
+  <RadioListItem label="SMS" value="sms" description="Standard messaging rates apply" />
+  {hasDisabledItem && <RadioListItem label="Fax" value="fax" description="No longer supported" isDisabled />}
+  <RadioListItem label="Push" value="push" />
+</RadioList>

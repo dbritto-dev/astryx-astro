@@ -1,0 +1,24 @@
+---
+/**
+ * Story wrapper: the CheckboxListItem options in one list — a rich `label` slot named with
+ * `aria-label`, a `description` slot, `endContent`, first-line alignment, a disabled item and a
+ * loading item. Items read the list's context, so they render with it here.
+ */
+import CheckboxList from 'astryx-astro/components/CheckboxList/CheckboxList.astro';
+import CheckboxListItem from 'astryx-astro/components/CheckboxList/CheckboxListItem.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+---
+<CheckboxList label="Plan add-ons" value={['pro']} hasDividers>
+  <CheckboxListItem value="pro" aria-label="Pro plan Recommended">
+    <span slot="label">Pro plan <Badge label="Recommended" variant="blue" /></span>
+  </CheckboxListItem>
+  <CheckboxListItem label="Priority support" value="support">
+    <span slot="description">Replies within <strong>4 hours</strong></span>
+  </CheckboxListItem>
+  <CheckboxListItem label="Audit log" value="audit" description="Every change, kept for a year" align="first-line">
+    <Icon slot="endContent" icon="info" size="sm" color="secondary" />
+  </CheckboxListItem>
+  <CheckboxListItem label="Single sign-on" value="sso" description="Enterprise plan only" isDisabled />
+  <CheckboxListItem label="Extra storage" value="storage" isLoading />
+</CheckboxList>

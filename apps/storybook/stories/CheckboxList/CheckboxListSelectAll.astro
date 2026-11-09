@@ -1,0 +1,16 @@
+---
+/**
+ * Story wrapper: a collection-mode CheckboxList led by a select-all item (port extension
+ * `isSelectAll`), with one disabled item the select-all leaves alone. List and items share
+ * context, so they render together here.
+ */
+import CheckboxList from 'astryx-astro/components/CheckboxList/CheckboxList.astro';
+import CheckboxListItem from 'astryx-astro/components/CheckboxList/CheckboxListItem.astro';
+---
+<CheckboxList label="Columns" description="Shown in the members table" value={['name', 'email']} hasDividers>
+  <CheckboxListItem label="All columns" isSelectAll isChecked="indeterminate" />
+  <CheckboxListItem label="Name" value="name" />
+  <CheckboxListItem label="Email" value="email" />
+  <CheckboxListItem label="Role" value="role" />
+  <CheckboxListItem label="ID (always shown)" value="id" isDisabled />
+</CheckboxList>
