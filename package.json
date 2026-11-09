@@ -7,7 +7,8 @@
     "tokens": "pnpm -F astryx-astro tokens",
     "dev": "pnpm -F docs dev",
     "build": "pnpm -F docs build",
-    "check": "pnpm -F docs check"
+    "check": "pnpm -F docs check",
+    "storybook": "pnpm -F storybook dev"
   },
   "devDependencies": {
     "node-html-parser": "^9.0.7",

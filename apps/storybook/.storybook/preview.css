@@ -1,0 +1,28 @@
+/*
+ * Storybook chrome around the stories. Unlayered, so it never competes with component CSS
+ * (which lives in @layer reset / astryx-base / astryx-theme).
+ */
+
+/* The canvas follows the active theme and mode, as a page with themeRootAttributes() does. */
+body {
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-body);
+}
+
+/* Docs pages keep Storybook's own styling; each story block shows the theme's page colours. */
+.sbdocs .docs-story > div:first-child {
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
+}
+
+/* The component's JSDoc on its docs page (DocsPage.ts). */
+.sbdocs pre.astryx-docs-notes {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 16px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
