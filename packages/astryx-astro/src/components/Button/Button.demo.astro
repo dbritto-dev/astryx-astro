@@ -7,6 +7,8 @@ import RouterLink from '../Link/_DemoRouterLink.astro';
 import Tooltip from '../Tooltip/Tooltip.astro';
 import {attachTooltip} from '../Tooltip/attach';
 import type {ComponentSize, Elevation} from '../../lib/types';
+// Cross-links to other docs pages follow the site's base path (GitHub Pages serves it under /astryx-astro/).
+const docsBase = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 // An external tooltip: the caller renders the layer and passes its trigger attributes.
 const shareTip = attachTooltip({id: 'btn-external-tip'});
@@ -66,7 +68,7 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
       <Button label="Settings" icon="wrench" isIconOnly variant="ghost" tooltip="Settings" data-test="tooltip-name" />
       <span id="export-help" hidden>Exports the visible rows only</span>
       <Button label="Export" tooltip="CSV, up to 10,000 rows" aria-describedby="export-help" data-test="tooltip-composed" />
-      <Button label="Docs" href="/components/tooltip/" tooltip="Opens the Tooltip docs" data-test="tooltip-link" />
+      <Button label="Docs" href={`${docsBase}components/tooltip/`} tooltip="Opens the Tooltip docs" data-test="tooltip-link" />
       <Button label="Share" icon="arrowUp" variant="secondary" {...shareTip.trigger} data-test="tooltip-external" /><Tooltip {...shareTip.layer} content="Copies a link to this page" />
     </div>
   </section>
@@ -84,12 +86,12 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
   <section>
     <h3 style={cap}>As link</h3>
     <div style={row} data-test="links">
-      <Button label="Read the docs" href="/components/link/" variant="primary" data-test="link" />
+      <Button label="Read the docs" href={`${docsBase}components/link/`} variant="primary" data-test="link" />
       <Button label="Ghost link" href="#ghost" variant="ghost" icon="externalLink" />
       <Button label="New tab" href="https://example.com" target="_blank" rel="noopener noreferrer" />
       <Button label="Blocked destination" href="javascript:alert(1)" data-test="blocked" />
       <Button label="Loading link" href="#loading" isLoading />
-      <Button label="Custom link component" href="/components/link/" as={RouterLink} data-test="custom" />
+      <Button label="Custom link component" href={`${docsBase}components/link/`} as={RouterLink} data-test="custom" />
     </div>
   </section>
 

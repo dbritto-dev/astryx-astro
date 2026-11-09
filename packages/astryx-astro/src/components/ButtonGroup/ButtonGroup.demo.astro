@@ -5,6 +5,8 @@ import IconButton from '../IconButton/IconButton.astro';
 import Icon from '../Icon/Icon.astro';
 import SizeProvider from '../Button/_ButtonSizeProvider.astro';
 import type {ComponentSize, Elevation} from '../../lib/types';
+// Cross-links to other docs pages follow the site's base path (GitHub Pages serves it under /astryx-astro/).
+const docsBase = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
 const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
@@ -95,7 +97,7 @@ const note = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
         <Button label="List" icon="menu" tooltip="Show as a list" />
       </ButtonGroup>
       <ButtonGroup label="Navigation" data-case="links">
-        <Button label="Docs" href="/components/button/" />
+        <Button label="Docs" href={`${docsBase}components/button/`} />
         <Button label="Source" href="https://example.com" target="_blank" rel="noopener noreferrer" icon="externalLink" />
       </ButtonGroup>
       <ButtonGroup label="Partially available" data-case="partial">
@@ -113,7 +115,7 @@ const note = 'font-size:var(--font-size-xs);color:var(--color-text-secondary)';
       <ButtonGroup label="Locked actions" isDisabled data-case="disabled">
         <Button label="Archive" icon="upload" />
         <Button label="Move" tooltip="Requires edit access" data-case-member="tooltip" />
-        <Button label="Open" href="/components/link/" data-case-member="link" />
+        <Button label="Open" href={`${docsBase}components/link/`} data-case-member="link" />
         <Button label="Sync" isLoading data-case-member="busy" />
         <IconButton label="More" icon="moreHorizontal" />
       </ButtonGroup>

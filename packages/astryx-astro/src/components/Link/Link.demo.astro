@@ -3,6 +3,8 @@ import Link from './Link.astro';
 import Text from '../Text/Text.astro';
 import Icon from '../Icon/Icon.astro';
 import RouterLink from './_DemoRouterLink.astro';
+// Cross-links to other docs pages follow the site's base path (GitHub Pages serves it under /astryx-astro/).
+const docsBase = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 const colors = ['accent', 'primary', 'secondary', 'disabled', 'placeholder', 'inherit'] as const;
 const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-4)';
@@ -38,7 +40,7 @@ const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weig
       <Link href="javascript:alert(1)" data-test="blocked">Blocked destination</Link>
       <Link href="#download" download="report.csv">Download</Link>
       <Link href="#tooltip" tooltip="More about this">With tooltip</Link>
-      <Link href="/components/button/" as={RouterLink} data-test="custom">Custom link component</Link>
+      <Link href={`${docsBase}components/button/`} as={RouterLink} data-test="custom">Custom link component</Link>
       <Link href="javascript:void 0" as={RouterLink} data-test="custom-blocked">Blocked custom</Link>
     </div>
   </section>

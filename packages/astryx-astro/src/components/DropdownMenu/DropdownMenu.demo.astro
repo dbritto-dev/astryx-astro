@@ -11,6 +11,8 @@ import Kbd from '../Kbd/Kbd.astro';
 import Badge from '../Badge/Badge.astro';
 import type {DropdownMenuOption} from './menuShared';
 import type {ComponentSize} from '../../lib/types';
+// Cross-links to other docs pages follow the site's base path (GitHub Pages serves it under /astryx-astro/).
+const docsBase = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
 const row = 'display:flex;flex-wrap:wrap;gap:var(--spacing-3);align-items:center';
@@ -33,7 +35,7 @@ const sections: DropdownMenuOption[] = [
     {label: 'Archive', id: 'move-archive'},
     {label: 'Projects', items: [{label: 'Website redesign', id: 'website'}, {label: 'Mobile app', id: 'mobile'}]},
   ]},
-  {label: 'Open docs', href: '/components/dropdown-menu/', id: 'docs'},
+  {label: 'Open docs', href: `${docsBase}components/dropdown-menu/`, id: 'docs'},
 ];
 
 const fruits = ['Apple', 'Apricot', 'Banana', 'Blackberry', 'Blueberry', 'Cherry', 'Clementine', 'Coconut', 'Cranberry', 'Date', 'Dragonfruit', 'Elderberry', 'Fig', 'Grape', 'Grapefruit', 'Guava', 'Kiwi', 'Lemon', 'Lime', 'Lychee', 'Mango', 'Melon', 'Nectarine', 'Orange', 'Papaya', 'Peach', 'Pear', 'Pineapple', 'Plum', 'Raspberry'];
