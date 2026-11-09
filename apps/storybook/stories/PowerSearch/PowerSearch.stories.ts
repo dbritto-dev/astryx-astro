@@ -46,25 +46,6 @@ const createdBetween: Filter = {
   value: {type: 'date_range', value: {start: {type: 'ABSOLUTE', unixSeconds: 1773014400}, end: {type: 'ABSOLUTE', unixSeconds: 1773532800}}},
 };
 
-/**
- * Known issue (component): markup inserted after the elements are defined (every story after
- * the first in one preview: switching stories, the test runner) is upgraded in tree order, so
- * <ax-power-search> connects first and assigns `searchSource`, `renderItem`, `renderToken` and
- * `isItemRemovable` to its not-yet-upgraded <ax-tokenizer> as plain own properties, which then
- * shadow the element's setters (and the tokenizer and selectors connect before their
- * <ax-combobox-layer>s upgrade). Dropping those properties and re-attaching the root re-runs
- * every connectedCallback with all elements upgraded.
- */
-const SHADOWED = ['searchSource', 'renderItem', 'renderToken', 'isItemRemovable'];
-const ready = async <T extends Element = Element>(canvasElement: HTMLElement, tag: string) => {
-  const host = await upgraded<T>(canvasElement, tag);
-  for (const field of canvasElement.querySelectorAll('ax-tokenizer')) {
-    for (const key of SHADOWED) if (Object.hasOwn(field, key) && key in Object.getPrototypeOf(field)) delete (field as unknown as Record<string, unknown>)[key];
-  }
-  for (const el of canvasElement.querySelectorAll(tag)) el.replaceWith(el);
-  return host;
-};
-
 const parts = (canvasElement: HTMLElement) => {
   const root = canvasElement.querySelector<HTMLElement & {filters: Filter[]; resultCount: number | string | null}>('ax-power-search')!;
   const input = root.querySelector<HTMLInputElement>('ax-tokenizer input[role="combobox"]')!;
@@ -108,7 +89,7 @@ const announced = (text: string) =>
 export const Default = issueStory({
   args: {filters: initial, startIcon: 'search'},
   play: async ({canvasElement, step}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const {root, input, list, editor, rows, tokens, token} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
 
@@ -185,7 +166,7 @@ export const Default = issueStory({
  */
 export const AddingFilters = issueStory({
   play: async ({canvasElement, step}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const {input, editor, selectors, valueCell, tokens} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
 
@@ -200,12 +181,12 @@ export const AddingFilters = issueStory({
 
     await step('Picking an enum value saves the filter and closes the editor', async () => {
       await userEvent.keyboard('{Enter}');
+      await waitFor(() => expect(document.activeElement).toHaveAttribute('aria-expanded', 'true'));
       await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
       await waitFor(() => expect(changes).toHaveLength(1));
       await expect(changes[0].detail.filters.at(-1)).toEqual({field: 'status', operator: 'is', value: {type: 'enum', value: 'closed'}});
       await waitFor(() => expect(isShowing(editor)).toBe(false));
-      // Not asserted: whether focus returns to the filter input. It does in the dev server and
-      // in tools/tests, but in the Vitest browser run it ends on <body> after the editor closes.
+      await waitFor(() => expect(input).toHaveFocus());
     });
 
     await step('An `empty` operator (Archived is true) adds without the editor', async () => {
@@ -221,6 +202,8 @@ export const AddingFilters = issueStory({
       await pickField(input, 'Estimate');
       await waitFor(() => expect(isShowing(editor)).toBe(true));
       await waitFor(() => expect(editor.querySelector('ax-number-input')).not.toBeNull());
+      // The editor moves focus to its value a frame after it opens: Escape goes there.
+      await waitFor(() => expect(valueCell().querySelector('input')).toHaveFocus());
       await userEvent.keyboard('{Escape}');
       await waitFor(() => expect(isShowing(editor)).toBe(false));
       await expect(changes).toHaveLength(2);
@@ -246,7 +229,7 @@ export const AddingFilters = issueStory({
 export const EditingFilters = issueStory({
   args: {filters: [initial[0], {field: 'title', operator: 'contains', value: {type: 'string', value: 'focus'}}]},
   play: async ({canvasElement, step}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const {editor, selectors, token, tokens} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     const action = () => token(1).querySelector<HTMLElement>('.ax-token-action')!;
@@ -275,7 +258,9 @@ export const EditingFilters = issueStory({
     await step('Another operator of the same type keeps the value', async () => {
       await userEvent.click(action());
       await waitFor(() => expect(isShowing(editor)).toBe(true));
-      await userEvent.click(editor.querySelector<HTMLElement>('[data-ax-operator-cell] ax-selector button[role="combobox"]')!);
+      const operator = editor.querySelector<HTMLElement>('[data-ax-operator-cell] ax-selector button[role="combobox"]')!;
+      await userEvent.click(operator);
+      await waitFor(() => expect(operator).toHaveAttribute('aria-expanded', 'true'));
       await userEvent.keyboard('{ArrowDown}{Enter}');
       await waitFor(() => expect(selectors()[1].value).toBe('not_contains'));
       await expect(text()).toHaveValue('focus ring');
@@ -299,7 +284,7 @@ export const EditingFilters = issueStory({
 export const DateFilters = issueStory({
   args: {filters: [createdBetween]},
   play: async ({canvasElement, step}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const {input, editor, valueCell, token, tokens} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     await expect(tokens()).toEqual(['Created: is between date range']);
@@ -317,8 +302,9 @@ export const DateFilters = issueStory({
       await userEvent.keyboard('March 1, 2026');
       await waitFor(() => expect(date).toHaveValue('March 1, 2026'));
       await waitFor(() => expect(editor.querySelector('[data-ax-apply]')).toBeEnabled());
-      // The editor focuses its first control, the DateInput's calendar toggle, so the story
-      // focuses the text field. The field's own Enter commits the typed date; the next one saves.
+      // As in Astryx, the editor focuses its first control, the DateInput's calendar toggle (it
+      // comes before the field), so the story focuses the text field. Enter with typed text
+      // commits the date and is held back from the editor; the next Enter saves.
       await userEvent.keyboard('{Enter}{Enter}');
       await waitFor(() => expect(changes).toHaveLength(1));
       await expect(changes[0].detail.filters.at(-1)).toEqual({field: 'created', operator: 'after', value: {type: 'date_absolute', unixSeconds: 1772323200}});
@@ -332,6 +318,7 @@ export const DateFilters = issueStory({
       await waitFor(() => expect(isShowing(editor)).toBe(true));
       await waitFor(() => expect(valueCell().contains(document.activeElement)).toBe(true));
       await userEvent.keyboard('{Enter}');
+      await waitFor(() => expect(document.activeElement).toHaveAttribute('aria-expanded', 'true'));
       await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
       await waitFor(() => expect(changes).toHaveLength(2));
       await expect(changes[1].detail.filters.at(-1)).toEqual({field: 'updated', operator: 'within', value: {type: 'date_relative', value: '7d_ago'}});
@@ -385,7 +372,7 @@ export const DateFilters = issueStory({
 export const WithResultCount = issueStory({
   args: {filters: initial, resultCount: 3, hasEndBadge: true},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const {root} = parts(canvasElement);
     const count = root.querySelector('[data-ax-result-count-text]')!;
     await expect(count).toHaveTextContent('3 results');
@@ -404,7 +391,7 @@ export const Large = issueStory({args: {size: 'lg', label: 'Search issues', isLa
 export const ReadOnly = issueStory({
   args: {filters: initial, isReadOnly: true},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const {root} = parts(canvasElement);
     await expect(root.querySelector('.ax-token-action')).toBeNull();
     await expect(root.querySelector('[data-ax-token-remove]')).toBeNull();
@@ -434,7 +421,7 @@ export const OverflowInline = issueStory({
   args: {filters: initial, tokenOverflowBehavior: 'unfocusedInline', resultCount: 'Many results'},
   decorators: [frame({width: 360})],
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-power-search');
+    await upgraded(canvasElement, 'ax-power-search');
     const field = canvasElement.querySelector('ax-tokenizer')!;
     await waitFor(() => expect(field).toHaveAttribute('data-ax-truncated'));
   },

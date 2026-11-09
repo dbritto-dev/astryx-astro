@@ -39,18 +39,6 @@ const options = {
 /** A story of the fruit Typeahead wrapper with these args. */
 const fruitStory = (story: Story = {}) => composed(TypeaheadStory, story, options);
 
-/**
- * Known issue (component): markup inserted after the elements are defined (every story after
- * the first in one preview: switching stories, the test runner) connects <ax-typeahead> before its
- * sibling <ax-combobox-layer> upgrades, so `comboboxLayer()` finds no layer and no behaviour is
- * wired. Re-attaching the host re-runs its connectedCallback with the layer upgraded.
- */
-const ready = async <T extends Element = Element>(canvasElement: HTMLElement, tag: string) => {
-  const host = await upgraded<T>(canvasElement, tag);
-  for (const el of canvasElement.querySelectorAll(tag)) el.replaceWith(el);
-  return host;
-};
-
 const parts = (canvasElement: HTMLElement) => {
   const host = canvasElement.querySelector<Host>('ax-typeahead')!;
   const input = host.querySelector<HTMLInputElement>('input[data-ax-typeahead-input]')!;
@@ -77,7 +65,7 @@ const announced = (text: string) =>
 export const Default = fruitStory({
   args: {hasMatchHighlight: true},
   play: async ({canvas, canvasElement, step}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {host, input, layer, token, visible, active} = parts(canvasElement);
     const changes = recordEvents<{value: Item | null}>(canvasElement, 'astryx-change');
     await expect(canvas.getByRole('combobox', {name: 'Fruit'})).toBe(input);
@@ -141,7 +129,7 @@ export const Default = fruitStory({
 export const NoResults = fruitStory({
   args: {emptySearchText: 'No fruit by that name'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {input, layer, emptyRow} = parts(canvasElement);
     const changes = recordEvents(canvasElement, 'astryx-change');
     await userEvent.click(input);
@@ -162,7 +150,7 @@ export const NoResults = fruitStory({
 export const WithValue = fruitStory({
   args: {value: {id: 'cherry', label: 'Cherry'}},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {host, input, token} = parts(canvasElement);
     await expect(token).toHaveTextContent('Cherry');
     await expect(input).toHaveAttribute('tabindex', '-1');
@@ -178,7 +166,7 @@ export const WithValue = fruitStory({
 export const EntriesOnFocus = fruitStory({
   args: {label: 'Recent', placeholder: 'Focus to see suggestions', hasEntriesOnFocus: true, maxMenuItems: 5},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {input, layer, visible} = parts(canvasElement);
     await userEvent.click(input);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -192,7 +180,7 @@ export const EntriesOnFocus = fruitStory({
 export const MinQueryLength = fruitStory({
   args: {label: 'Three characters', placeholder: 'Type 3+ characters', minQueryLength: 3},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {input, layer, visible} = parts(canvasElement);
     await userEvent.click(input);
     await userEvent.keyboard('ap');
@@ -212,7 +200,7 @@ export const MinQueryLength = fruitStory({
 export const AnsweredByEvent = fruitStory({
   args: {label: 'Country', placeholder: 'Search countries…', debounceMs: 150},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {host, input, layer, visible} = parts(canvasElement);
     const queries: Array<{query: string; respond: (items: Item[]) => void}> = [];
     // Scoped to this story's element and removed before play ends.
@@ -243,7 +231,7 @@ export const AnsweredByEvent = fruitStory({
 export const GroupedResults = composed(TypeaheadPeople, {
   args: {label: 'Assignee'},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {host, input, layer, visible} = parts(canvasElement);
     await userEvent.click(host);
     await waitFor(() => expect(input).toHaveValue('Grace Hopper'));
@@ -278,7 +266,7 @@ export const ErrorStatus = fruitStory({
 export const Disabled = fruitStory({
   args: {value: {id: 'banana', label: 'Banana'}, isDisabled: true, disabledMessage: 'Locked by an administrator'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {host, input, token, layer} = parts(canvasElement);
     await expect(input).toHaveAttribute('aria-disabled', 'true');
     await expect(input).toHaveAccessibleDescription(/Locked by an administrator/);
@@ -303,7 +291,7 @@ export const WithStartIcon = fruitStory({
 export const InForm = composed(TypeaheadForm, {
   args: {label: 'Favourite fruit'},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-typeahead');
+    await upgraded(canvasElement, 'ax-typeahead');
     const {host, input} = parts(canvasElement);
     const form = canvasElement.querySelector('form')!;
     await expect(Object.fromEntries(new FormData(form))).toEqual({fruit: 'apple'});

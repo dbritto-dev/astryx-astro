@@ -41,18 +41,6 @@ const options = {
 const tagStory = (story: Story = {}) => composed(TokenizerStory, story, options);
 const tag = (label: string) => ({id: label.toLowerCase(), label});
 
-/**
- * Known issue (component): markup inserted after the elements are defined (every story after
- * the first in one preview: switching stories, the test runner) connects <ax-tokenizer> before its
- * sibling <ax-combobox-layer> upgrades, so `comboboxLayer()` finds no layer and no behaviour is
- * wired. Re-attaching the host re-runs its connectedCallback with the layer upgraded.
- */
-const ready = async <T extends Element = Element>(canvasElement: HTMLElement, tag: string) => {
-  const host = await upgraded<T>(canvasElement, tag);
-  for (const el of canvasElement.querySelectorAll(tag)) el.replaceWith(el);
-  return host;
-};
-
 const parts = (canvasElement: HTMLElement) => {
   const host = canvasElement.querySelector<Host>('ax-tokenizer')!;
   const input = host.querySelector<HTMLInputElement>('input[role="combobox"]')!;
@@ -79,7 +67,7 @@ const announced = (text: string) =>
 export const Default = composed(TokenizerPeople, {
   args: {label: 'Reviewers'},
   play: async ({canvas, canvasElement, step}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {host, input, layer, tokens, remove, visible, active} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     await expect(canvas.getByRole('group', {name: 'Reviewers'})).toBe(host);
@@ -156,7 +144,7 @@ export const Default = composed(TokenizerPeople, {
 export const WithCreate = tagStory({
   args: {hasCreate: true},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {input, layer, tokens, visible} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     await userEvent.click(input);
@@ -175,7 +163,7 @@ export const WithCreate = tagStory({
 export const MaxEntries = tagStory({
   args: {label: 'Up to three', value: [tag('Design'), tag('Engineering')], maxEntries: 3, hasEntriesOnFocus: true, description: 'Pick up to three tags'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {input, layer, tokens, visible} = parts(canvasElement);
     await userEvent.click(input);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -196,7 +184,7 @@ export const MaxEntries = tagStory({
 export const MinQueryLength = tagStory({
   args: {label: 'Two characters', placeholder: 'Type 2+ characters', minQueryLength: 2, hasCreate: true},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {input, layer, visible} = parts(canvasElement);
     await userEvent.click(input);
     await userEvent.keyboard('R');
@@ -217,7 +205,7 @@ export const OverflowInline = tagStory({
     width: 280,
   },
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {host, input} = parts(canvasElement);
     const more = host.querySelector<HTMLElement>(':scope > [data-ax-overflow]')!;
     await waitFor(() => expect(host).toHaveAttribute('data-ax-truncated'));
@@ -242,7 +230,7 @@ export const OverflowLayer = tagStory({
     width: 280,
   },
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const host = canvasElement.querySelector<HTMLElement>('ax-tokenizer[data-ax-overlay]')!;
     const overlay = canvasElement.querySelector<HTMLElement>(`#${host.getAttribute('data-ax-overlay')}`)!;
     await waitFor(() => expect(host).toHaveAttribute('data-ax-truncated'));
@@ -259,7 +247,7 @@ export const OverflowLayer = tagStory({
 export const CustomTokens = composed(TokenizerPeople, {
   args: {label: 'Colored tokens', hasColoredTokens: true, hasClear: false},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {host, input, tokens, remove} = parts(canvasElement);
     await expect(host.querySelector('[data-ax-token-item="margaret"] .astryx-token')).toHaveAttribute('data-color', 'teal');
     await userEvent.click(input);
@@ -300,7 +288,7 @@ export const StartIconAndEndContent = tagStory({
 export const Disabled = tagStory({
   args: {value: [tag('Design'), tag('Engineering')], isDisabled: true, disabledMessage: 'Locked by an administrator', hasClear: true},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {host, input, tokens} = parts(canvasElement);
     await expect(input).toHaveAttribute('aria-disabled', 'true');
     await expect(input).toHaveAccessibleDescription(/Locked by an administrator/);
@@ -315,7 +303,7 @@ export const Disabled = tagStory({
 /** In a form: one hidden input per token id under `htmlName`; Reset restores the server value. */
 export const InForm = composed(TokenizerForm, {
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-tokenizer');
+    await upgraded(canvasElement, 'ax-tokenizer');
     const {host, input, tokens} = parts(canvasElement);
     const form = canvasElement.querySelector('form')!;
     const submitted = () => new FormData(form).getAll('tag');

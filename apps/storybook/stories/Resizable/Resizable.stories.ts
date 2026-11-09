@@ -119,10 +119,9 @@ export const PillPlacementCenter = composed(ResizableStory, {args: {label: 'Resi
 
 /**
  * `isReversed`: the handle sits before the pane it sizes (an end pane), so ArrowLeft grows it.
+ * The pane is the next sibling that renders: the handle's own `<script>` (Astro writes it right
+ * after the first ResizeHandle) sits between them and is skipped.
  */
-// Known issue: a reversed handle without `controls` sizes its next element sibling, which is
-// the handle's own <script> when it is the first ResizeHandle in the render (always in a story).
-// The wrapper passes `controls` for reversed handles, so the pane is found by id.
 export const Reversed = composed(ResizableStory, {
   args: {label: 'Resize inspector', resizable: {defaultSize: 200, minSize: 120, maxSize: 320}, isReversed: true, hasDivider: true},
   play: async ({canvas, canvasElement}) => {

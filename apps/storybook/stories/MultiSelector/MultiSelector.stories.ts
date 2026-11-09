@@ -26,18 +26,6 @@ export const Overview = overview(Demo, demoSource);
 type Host = HTMLElement & {values: string[]};
 type Change = {values: string[]; change?: {type: string; query: string}};
 
-/**
- * Known issue (component): markup inserted after the elements are defined (every story after
- * the first in one preview: switching stories, the test runner) connects <ax-multi-selector> before its
- * sibling <ax-combobox-layer> upgrades, so `comboboxLayer()` finds no layer and no behaviour is
- * wired. Re-attaching the host re-runs its connectedCallback with the layer upgraded.
- */
-const ready = async <T extends Element = Element>(canvasElement: HTMLElement, tag: string) => {
-  const host = await upgraded<T>(canvasElement, tag);
-  for (const el of canvasElement.querySelectorAll(tag)) el.replaceWith(el);
-  return host;
-};
-
 const parts = (canvasElement: HTMLElement) => {
   const host = canvasElement.querySelector<Host>('ax-multi-selector')!;
   const trigger = host.querySelector<HTMLButtonElement>('.ax-multi-selector-trigger')!;
@@ -63,7 +51,7 @@ const announced = (text: string) =>
  */
 export const Default: Story = {
   play: async ({canvas, canvasElement, step}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, summary, option, order, active} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     await expect(trigger).toHaveAttribute('role', 'combobox');
@@ -115,7 +103,7 @@ export const Default: Story = {
 export const WithSelectAll: Story = {
   args: {hasSelectAll: true},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, active} = parts(canvasElement);
     const selectAll = layer!.querySelector<HTMLElement>('[data-ax-select-all-row]')!;
     await expect(selectAll).toHaveAccessibleName('Select all, partially selected');
@@ -139,7 +127,7 @@ export const WithSelectAll: Story = {
 export const WithClear: Story = {
   args: {hasClear: true},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, summary} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     await userEvent.click(canvas.getByRole('button', {name: 'Clear all Columns'}));
@@ -163,7 +151,7 @@ export const WithClear: Story = {
 export const WithSearchAndCreate: Story = {
   args: {label: 'Tags', options: tags, value: [], hasSearch: true, hasCreate: true, triggerDisplay: 'labels', placeholder: 'Add tags'},
   play: async ({canvas, canvasElement, step}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, option} = parts(canvasElement);
     const changes = recordEvents<Change>(canvasElement, 'astryx-change');
     const search = canvas.getByRole('combobox', {name: 'Search options', hidden: true});
@@ -206,7 +194,7 @@ export const WithSearchAndCreate: Story = {
 export const TriggerLabels: Story = {
   args: {triggerDisplay: 'labels', value: ['Name', 'Role', 'Status']},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     await expect(parts(canvasElement).summary()).toBe('Name, Role, Status');
   },
 };
@@ -215,7 +203,7 @@ export const TriggerLabels: Story = {
 export const TriggerBadges: Story = {
   args: {triggerDisplay: 'badges', maxBadges: 2, value: ['Name', 'Role', 'Team', 'Status']},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, option} = parts(canvasElement);
     await expect(host.querySelectorAll('.astryx-badge')).toHaveLength(2);
     await expect(host.querySelector('.ax-multi-selector-overflow')).toHaveTextContent('+2');
@@ -243,7 +231,7 @@ export const GroupedOptions: Story = {
     ],
   },
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, option, active} = parts(canvasElement);
     await expect(option('infra')).toHaveAttribute('aria-disabled', 'true');
     trigger.focus();
@@ -288,7 +276,7 @@ export const WithStartIcon: Story = {args: {startIcon: 'viewColumns'}};
 export const Disabled: Story = {
   args: {isDisabled: true, disabledMessage: 'Pick a table first', htmlName: 'columns'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {trigger, layer} = parts(canvasElement);
     await expect(trigger).toHaveAttribute('aria-disabled', 'true');
     await expect(trigger).toHaveAccessibleDescription(/Pick a table first/);
@@ -323,7 +311,7 @@ export const Loading: Story = {
 export const EmptyOptions: Story = {
   args: {label: 'Nothing to pick', options: [], value: []},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {trigger, layer} = parts(canvasElement);
     await userEvent.click(trigger);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -341,7 +329,7 @@ export const Open: Story = {
   args: {isDefaultOpen: true, hasSelectAll: true, value: ['Role']},
   parameters: {docs: {story: {inline: false, height: '400px'}}},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {trigger, layer} = parts(canvasElement);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
     await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
@@ -352,7 +340,7 @@ export const Open: Story = {
 export const BottomSheet: Story = {
   args: {presentation: 'bottom-sheet', hasSelectAll: true},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {trigger, layer} = parts(canvasElement);
     await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
     await userEvent.click(trigger);
@@ -368,7 +356,7 @@ export const BottomSheet: Story = {
 export const InForm = composed(MultiSelectorForm, {
   args: {label: 'Visible columns'},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-multi-selector');
+    await upgraded(canvasElement, 'ax-multi-selector');
     const {host, trigger, layer, option} = parts(canvasElement);
     const form = canvasElement.querySelector('form')!;
     const submitted = () => new FormData(form).getAll('columns');

@@ -31,18 +31,6 @@ export const Overview = overview(Demo, demoSource);
 
 type Host = HTMLElement & {value: string | null};
 
-/**
- * Known issue (component): markup inserted after the elements are defined (every story after
- * the first in one preview: switching stories, the test runner) connects <ax-selector> before its
- * sibling <ax-combobox-layer> upgrades, so `comboboxLayer()` finds no layer and no behaviour is
- * wired. Re-attaching the host re-runs its connectedCallback with the layer upgraded.
- */
-const ready = async <T extends Element = Element>(canvasElement: HTMLElement, tag: string) => {
-  const host = await upgraded<T>(canvasElement, tag);
-  for (const el of canvasElement.querySelectorAll(tag)) el.replaceWith(el);
-  return host;
-};
-
 const parts = (canvasElement: HTMLElement) => {
   const host = canvasElement.querySelector<Host>('ax-selector')!;
   const trigger = host.querySelector<HTMLButtonElement>('.ax-selector-trigger')!;
@@ -65,7 +53,7 @@ const parts = (canvasElement: HTMLElement) => {
  */
 export const Default: Story = {
   play: async ({canvasElement, step}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, layer, label, option, active} = parts(canvasElement);
     const changes = recordEvents<{value: string | null}>(canvasElement, 'astryx-change');
     await expect(trigger).toHaveAttribute('role', 'combobox');
@@ -135,7 +123,7 @@ export const Default: Story = {
 export const WithClear: Story = {
   args: {hasClear: true},
   play: async ({canvas, canvasElement, step}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, layer, label} = parts(canvasElement);
     const changes = recordEvents<{value: string | null}>(canvasElement, 'astryx-change');
     const clear = canvas.getByRole('button', {name: 'Clear Fruit'});
@@ -167,7 +155,7 @@ export const WithClear: Story = {
 export const WithSearch: Story = {
   args: {label: 'Country', options: countries, value: null, hasSearch: true, placeholder: 'Select a country'},
   play: async ({canvas, canvasElement, step}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, layer, active} = parts(canvasElement);
     const search = canvas.getByRole('combobox', {name: 'Search options', hidden: true}) as HTMLInputElement;
     const visible = () => [...layer!.querySelectorAll<HTMLElement>('[role="option"]')].filter((o) => !o.hidden).map((o) => o.dataset.value);
@@ -230,7 +218,7 @@ export const GroupedOptions: Story = {
     ],
   },
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {trigger, layer, active} = parts(canvasElement);
     trigger.focus();
     await userEvent.keyboard('{Enter}');
@@ -259,7 +247,7 @@ export const DisabledOptions: Story = {
     ],
   },
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, layer, option} = parts(canvasElement);
     await userEvent.click(trigger);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -299,7 +287,7 @@ export const ErrorStatus: Story = {
 export const Disabled: Story = {
   args: {isDisabled: true, disabledMessage: 'You need the Editor role to change this'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {trigger, layer} = parts(canvasElement);
     await expect(trigger).toHaveAttribute('aria-disabled', 'true');
     await expect(trigger).toHaveAccessibleDescription(/Editor role/);
@@ -335,7 +323,7 @@ export const Loading: Story = {
 export const EmptyOptions: Story = {
   args: {label: 'Nothing yet', options: [], value: null},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {trigger, layer} = parts(canvasElement);
     await userEvent.click(trigger);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -364,7 +352,7 @@ export const OptionIcons: Story = {
 export const CustomRender = composed(SelectorCustomRender, {
   args: {label: 'Owner'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, layer, option} = parts(canvasElement);
     await userEvent.click(trigger);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -384,7 +372,7 @@ export const PlacementAbove: Story = {
   args: {value: null, placement: 'above'},
   parameters: {layout: 'centered'},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {trigger, layer} = parts(canvasElement);
     await userEvent.click(trigger);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
@@ -402,7 +390,7 @@ export const Open: Story = {
   args: {isDefaultOpen: true, placement: 'below'},
   parameters: {docs: {story: {inline: false, height: '360px'}}},
   play: async ({canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {trigger, layer} = parts(canvasElement);
     await waitFor(() => expect(isShowing(layer)).toBe(true));
     await waitFor(() => expect(trigger).toHaveAttribute('aria-expanded', 'true'));
@@ -416,7 +404,7 @@ export const Open: Story = {
 export const BottomSheet: Story = {
   args: {value: null, presentation: 'bottom-sheet'},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, layer} = parts(canvasElement);
     await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
     trigger.focus();
@@ -436,7 +424,7 @@ export const BottomSheet: Story = {
 export const InForm = composed(SelectorForm, {
   args: {label: 'Favourite fruit'},
   play: async ({canvas, canvasElement}) => {
-    await ready(canvasElement, 'ax-selector');
+    await upgraded(canvasElement, 'ax-selector');
     const {host, trigger, label} = parts(canvasElement);
     const form = canvasElement.querySelector('form')!;
     await expect(trigger).toHaveAttribute('aria-required', 'true');

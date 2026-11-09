@@ -3,12 +3,9 @@
  * Story wrapper: a ResizeHandle between a sized pane and the content beside it, in a bordered
  * row (a column when vertical). The handle resizes the element next to it, so the pane, the
  * handle and the content are rendered together. With `position="overlay"` the handle sits inside
- * the pane's edge instead.
- *
- * A reversed handle names its pane with `controls`: in a story (as on any Astro page where it
- * is the first ResizeHandle) the handle's own `<script>` is its next sibling, and a reversed
- * handle without `controls` would size that script instead of the pane (a component bug,
- * reported; see Resizable.stories.ts).
+ * the pane's edge instead. No `controls`: the handle finds its pane as the sibling that renders
+ * before it (after it when reversed), past its own `<script>`, which Astro writes right after the
+ * first ResizeHandle in the render.
  */
 import ResizeHandle from 'astryx-astro/components/Resizable/ResizeHandle.astro';
 import type {ResizableConfig} from 'astryx-astro/components/Resizable/resizableModel';
@@ -47,7 +44,6 @@ const overlay = position === 'overlay';
 // content (`Astro.slots.has('default')`) and replace the pill with nothing.
 const handle = {
   direction, isReversed, isDisabled, hasDivider, isAlwaysVisible, pillPlacement, label, resizable,
-  controls: isReversed ? 'resizable-story-pane' : undefined,
 };
 ---
 <div style={row}>
@@ -64,6 +60,6 @@ const handle = {
       <span style="position:absolute;z-index:2;padding:2px;border-radius:var(--radius-inner);background:var(--color-background-surface);border:1px solid var(--color-border);font-size:10px;line-height:1;color:var(--color-text-secondary);pointer-events:none">⋮</span>
     </ResizeHandle>
   )}
-  {isReversed && <div id="resizable-story-pane" style={pane} data-testid="pane">{vertical ? 'Terminal' : 'Inspector'}</div>}
+  {isReversed && <div style={pane} data-testid="pane">{vertical ? 'Terminal' : 'Inspector'}</div>}
   {!isReversed && <div style={content}>Line items, payments and notes take the space the pane leaves.</div>}
 </div>
