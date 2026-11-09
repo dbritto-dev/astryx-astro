@@ -1,0 +1,22 @@
+---
+/**
+ * Story wrapper: DateRangeInput inside a `<form>` with a Reset button. `htmlName` submits
+ * `<name>-start` and `<name>-end` through hidden inputs, and a form reset restores the server
+ * value; both need a form around the field, which args cannot render.
+ */
+import DateRangeInput from 'astryx-astro/components/DateRangeInput/DateRangeInput.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+
+interface Props {
+  /** Forwarded to DateRangeInput. */
+  label?: string;
+}
+const {label = 'Booking'} = Astro.props;
+---
+<form style="display:grid;gap:var(--spacing-3);max-width:360px">
+  <DateRangeInput label={label} htmlName="booking" value={{start: '2026-03-09', end: '2026-03-15'}} isRequired />
+  <div style="display:flex;gap:var(--spacing-2)">
+    <Button type="submit" label="Submit" variant="primary" />
+    <Button type="reset" label="Reset" variant="secondary" />
+  </div>
+</form>

@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: DateRangeInput with Temporal values and computed presets. The value, min and
+ * max are `Temporal.PlainDate`s and the presets use `getRange()` relative to a fixed "today",
+ * all built here on the server from astryx-astro/lib/temporal: Temporal objects and functions
+ * cannot travel in story args (`storybook dev` sends args to the server as JSON).
+ */
+import DateRangeInput, {type DateRangeInputSize, type DateRangePreset} from 'astryx-astro/components/DateRangeInput/DateRangeInput.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to DateRangeInput. */
+  label?: string;
+  /** Forwarded to DateRangeInput. */
+  size?: DateRangeInputSize;
+  /** Forwarded to DateRangeInput. */
+  numberOfMonths?: 1 | 2;
+}
+const {label = 'Sprint', size, numberOfMonths} = Astro.props;
+// A fixed "today": the story is pre-rendered once, so Temporal.Now would be the build day.
+const today = Temporal.PlainDate.from('2026-03-15');
+const lastDays = (n: number) => ({start: today.subtract({days: n - 1}), end: today});
+const presets: DateRangePreset[] = [
+  {label: 'Last 7 days', getRange: () => lastDays(7)},
+  {label: 'Last 14 days', getRange: () => lastDays(14)},
+  {label: 'Next sprint', getRange: () => ({start: today.add({days: 1}), end: today.add({days: 14})})},
+];
+---
+<DateRangeInput
+  label={label}
+  value={{start: Temporal.PlainDate.from('2026-03-02'), end: Temporal.PlainDate.from('2026-03-13')}}
+  min={Temporal.PlainDate.from('2026-01-01')}
+  max={today.add({months: 3})}
+  presets={presets}
+  description="January to June 2026"
+  size={size}
+  numberOfMonths={numberOfMonths}
+/>

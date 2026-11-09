@@ -1,0 +1,20 @@
+---
+/**
+ * Story wrapper: every status × size of TimeInput, plus the tooltip and detached status
+ * variants, side by side on one canvas.
+ */
+import TimeInput, {type TimeInputSize} from 'astryx-astro/components/TimeInput/TimeInput.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: TimeInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Outside business hours', warning: 'After the last train', success: 'Room available'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style={grid}>
+  {statuses.map((type) => sizes.map((size) => (
+    <TimeInput label={`${type[0].toUpperCase()}${type.slice(1)}, ${size}`} size={size} value="18:00" status={{type, message: messages[type]}} />
+  )))}
+  <TimeInput label="Tooltip status" value="18:00" status={{type: 'error', message: messages.error}} statusVariant="tooltip" />
+  <TimeInput label="Detached status" value="18:00" status={{type: 'warning', message: messages.warning}} statusVariant="detached" />
+</div>

@@ -1,0 +1,27 @@
+---
+/**
+ * Story wrapper: DateTimeInput with Temporal values: a `Temporal.PlainDateTime` value and
+ * `Temporal.ZonedDateTime` bounds (the field uses their wall-clock date and time). Temporal
+ * objects are built here, on the server, from astryx-astro/lib/temporal: they cannot travel in
+ * story args (`storybook dev` sends args to the server as JSON).
+ */
+import DateTimeInput, {type DateTimeInputSize} from 'astryx-astro/components/DateTimeInput/DateTimeInput.astro';
+import {Temporal} from 'astryx-astro/lib/temporal';
+
+interface Props {
+  /** Forwarded to DateTimeInput. */
+  label?: string;
+  /** Forwarded to DateTimeInput. */
+  size?: DateTimeInputSize;
+}
+const {label = 'Kickoff', size} = Astro.props;
+---
+<DateTimeInput
+  label={label}
+  value={Temporal.PlainDateTime.from('2026-03-23T10:00')}
+  min={Temporal.ZonedDateTime.from('2026-03-23T09:00[Europe/Berlin]')}
+  max={Temporal.ZonedDateTime.from('2026-03-27T18:00[Europe/Berlin]')}
+  timeOptionInterval={30}
+  description="Mar 23, 9 AM – Mar 27, 6 PM (Berlin wall clock)"
+  size={size}
+/>

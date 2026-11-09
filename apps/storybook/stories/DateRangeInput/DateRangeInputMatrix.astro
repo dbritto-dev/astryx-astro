@@ -1,0 +1,21 @@
+---
+/**
+ * Story wrapper: every status × size of DateRangeInput, plus the tooltip and detached status
+ * variants, side by side on one canvas.
+ */
+import DateRangeInput, {type DateRangeInputSize} from 'astryx-astro/components/DateRangeInput/DateRangeInput.astro';
+import type {InputStatusType} from 'astryx-astro/components/Field/fieldProps';
+
+const sizes: DateRangeInputSize[] = ['sm', 'md', 'lg'];
+const statuses: InputStatusType[] = ['error', 'warning', 'success'];
+const messages: Record<InputStatusType, string> = {error: 'Range is too long', warning: 'Includes a holiday', success: 'All days available'};
+const value = {start: '2026-03-09', end: '2026-03-15'};
+const grid = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--spacing-5);align-items:start';
+---
+<div style={grid}>
+  {statuses.map((type) => sizes.map((size) => (
+    <DateRangeInput label={`${type[0].toUpperCase()}${type.slice(1)}, ${size}`} size={size} value={value} status={{type, message: messages[type]}} />
+  )))}
+  <DateRangeInput label="Tooltip status" value={value} status={{type: 'error', message: messages.error}} statusVariant="tooltip" />
+  <DateRangeInput label="Detached status" value={value} status={{type: 'warning', message: messages.warning}} statusVariant="detached" />
+</div>
