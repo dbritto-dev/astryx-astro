@@ -1,0 +1,53 @@
+---
+/**
+ * Story wrapper: a Stack (or its HStack / VStack preset) with a dashed outline and placeholder
+ * boxes of different sizes, so direction, gap, alignment and wrapping are visible. A wrapper
+ * because the presets are separate components and the outline is story scaffolding.
+ */
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import Stack, {type StackAlignment, type StackCrossAlignment, type StackDirection, type StackMainAlignment, type StackWrap} from 'astryx-astro/components/Stack/Stack.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+import type {SizeValue, SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Stack. */
+  direction?: StackDirection;
+  /** Forwarded to Stack. */
+  gap?: SpacingStep;
+  /** Forwarded to Stack. */
+  wrap?: StackWrap;
+  /** Forwarded to Stack. */
+  hAlign?: StackAlignment;
+  /** Forwarded to Stack. */
+  vAlign?: StackAlignment;
+  /** Forwarded to Stack. */
+  justify?: StackMainAlignment;
+  /** Forwarded to Stack. */
+  align?: StackCrossAlignment;
+  /** Forwarded to Stack. */
+  padding?: SpacingStep;
+  /** Forwarded to Stack. */
+  width?: SizeValue;
+  /** Forwarded to Stack. */
+  height?: SizeValue;
+  /** Forwarded to Stack. */
+  maxWidth?: SizeValue;
+  /** Forwarded to Stack. */
+  as?: string;
+  /** Render the HStack or VStack preset instead of Stack (story knob; `direction` is then ignored). */
+  preset?: 'stack' | 'hstack' | 'vstack';
+  /** Number of placeholder boxes (story knob). @default 3 */
+  items?: number;
+}
+const {preset = 'stack', items = 3, direction, ...stackProps} = Astro.props;
+const Component = preset === 'hstack' ? HStack : preset === 'vstack' ? VStack : Stack;
+const props = preset === 'stack' ? {...stackProps, direction} : stackProps;
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+// Boxes of different sizes, so cross-axis alignment shows.
+const sizes = ['', 'padding-block:var(--spacing-4)', 'min-width:120px'];
+const names = ['Inbox', 'Drafts', 'Sent', 'Archive', 'Spam', 'Trash', 'Starred', 'Snoozed', 'Scheduled', 'Important', 'Chats', 'Outbox'];
+---
+<Component {...props} style={outline}>
+  {Array.from({length: items}, (_, i) => <div style={`${box};${sizes[i % sizes.length]}`}>{names[i % names.length]}</div>)}
+</Component>

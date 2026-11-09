@@ -1,0 +1,42 @@
+---
+/**
+ * Story wrapper: StackItem children inside an HStack: `size="fill"` next to static items,
+ * `crossAlignSelf`, and a scrollable item. StackItem is a sub-component, so it is composed here.
+ */
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import StackItem from 'astryx-astro/components/Stack/StackItem.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+
+interface Props {
+  /** Which StackItem feature to show (story knob). */
+  show?: 'size' | 'crossAlignSelf' | 'scrollable';
+}
+const {show = 'size'} = Astro.props;
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+---
+{show === 'size' && (
+  <HStack gap={2} padding={2} style={outline}>
+    <StackItem size="fill" data-testid="fill"><div style={box}>size="fill" grows into the free space</div></StackItem>
+    <StackItem size="static" data-testid="static"><div style={box}>static</div></StackItem>
+    <StackItem><div style={box}>static (default)</div></StackItem>
+  </HStack>
+)}
+{show === 'crossAlignSelf' && (
+  <HStack gap={2} padding={2} height={120} align="start" style={outline}>
+    <StackItem crossAlignSelf="start"><div style={box}>start</div></StackItem>
+    <StackItem crossAlignSelf="center"><div style={box}>center</div></StackItem>
+    <StackItem crossAlignSelf="end"><div style={box}>end</div></StackItem>
+    <StackItem crossAlignSelf="stretch" style="display:flex"><div style={box}>stretch</div></StackItem>
+  </HStack>
+)}
+{show === 'scrollable' && (
+  <HStack gap={2} height={120}>
+    <StackItem isScrollable size="fill" style="border:1px solid var(--color-border);border-radius:var(--radius-inner)" data-testid="scroller">
+      <VStack gap={1} padding={2}>{Array.from({length: 10}, (_, i) => <div>Notification {i + 1}</div>)}</VStack>
+    </StackItem>
+    <StackItem isScrollable size="fill" style="border:1px solid var(--color-border);border-radius:var(--radius-inner)" data-testid="fits">
+      <VStack gap={1} padding={2}><div>One short row</div></VStack>
+    </StackItem>
+  </HStack>
+)}

@@ -1,0 +1,34 @@
+---
+/**
+ * Story wrapper: a ScrollableArea inside a Card. `isFullBleed` reads the padding the Card
+ * publishes (--container-padding-*) to reach the card's edges, so the Card must be in the same
+ * render.
+ */
+import Card from 'astryx-astro/components/Card/Card.astro';
+import ScrollableArea from 'astryx-astro/components/ScrollableArea/ScrollableArea.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to ScrollableArea. */
+  isFullBleed?: boolean;
+  /** Forwarded to ScrollableArea. */
+  padding?: SpacingStep;
+}
+const {isFullBleed = true, padding = 4} = Astro.props;
+---
+<Card maxWidth={480}>
+  <Text display="block" type="supporting">The code sample scrolls sideways{isFullBleed ? ' and reaches the card edges' : ''}:</Text>
+  <ScrollableArea
+    label="Code sample"
+    axis="inline"
+    isFullBleed={isFullBleed}
+    padding={padding}
+    paddingBlockStart={2}
+    paddingBlockEnd={2}
+    style="margin-block:var(--spacing-3);background:var(--color-background-muted)"
+  >
+    <pre style="margin:0;font-size:var(--font-size-sm)"><code>const result = await fetch('/api/reports?range=last-quarter&amp;groupBy=region&amp;include=forecasts,actuals');</code></pre>
+  </ScrollableArea>
+  <Text display="block" type="supporting">Card content after the sample.</Text>
+</Card>

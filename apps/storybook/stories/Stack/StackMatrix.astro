@@ -1,0 +1,49 @@
+---
+/**
+ * Story wrapper: every value of Stack's alignment and gap props on one canvas, each in a dashed
+ * outline with placeholder boxes. Rows: main-axis alignment (`justify` start … evenly), cross-axis
+ * alignment (`align` start … stretch) and the gap scale (every spacing step).
+ */
+import Stack, {type StackCrossAlignment, type StackMainAlignment} from 'astryx-astro/components/Stack/Stack.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Which matrix to show (story knob). */
+  matrix?: 'justify' | 'align' | 'gap';
+}
+const {matrix = 'justify'} = Astro.props;
+const justify: StackMainAlignment[] = ['start', 'center', 'end', 'between', 'around', 'evenly'];
+const align: StackCrossAlignment[] = ['start', 'center', 'end', 'stretch'];
+const gaps: SpacingStep[] = [0, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10];
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+const tall = `${box};padding-block:var(--spacing-5)`;
+const head = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const grid = 'display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:var(--spacing-3)';
+---
+<div style={grid}>
+  {matrix === 'justify' && justify.map((value) => (
+    <>
+      <p style={head}>justify="{value}"</p>
+      <Stack direction="horizontal" gap={2} justify={value} style={outline} data-testid={`justify-${value}`}>
+        <div style={box}>One</div><div style={box}>Two</div><div style={box}>Three</div>
+      </Stack>
+    </>
+  ))}
+  {matrix === 'align' && align.map((value) => (
+    <>
+      <p style={head}>align="{value}"</p>
+      <Stack direction="horizontal" gap={2} align={value} height={88} style={outline} data-testid={`align-${value}`}>
+        <div style={box}>Short</div><div style={tall}>Tall</div><div style={box}>Short</div>
+      </Stack>
+    </>
+  ))}
+  {matrix === 'gap' && gaps.map((value) => (
+    <>
+      <p style={head}>gap={value}</p>
+      <Stack direction="horizontal" gap={value} style={outline} data-testid={`gap-${value}`}>
+        <div style={box}>One</div><div style={box}>Two</div><div style={box}>Three</div>
+      </Stack>
+    </>
+  ))}
+</div>

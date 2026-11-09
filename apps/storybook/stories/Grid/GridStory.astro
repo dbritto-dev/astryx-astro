@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: a Grid with a dashed outline and numbered placeholder boxes, so columns, gaps
+ * and item alignment are visible. A wrapper because the outline and the placeholder count are
+ * story scaffolding.
+ */
+import Grid, {type GridAlignment, type GridColumns} from 'astryx-astro/components/Grid/Grid.astro';
+import type {SizeValue, SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Grid. */
+  columns?: GridColumns;
+  /** Forwarded to Grid. */
+  gap?: SpacingStep;
+  /** Forwarded to Grid. */
+  rowGap?: SpacingStep;
+  /** Forwarded to Grid. */
+  columnGap?: SpacingStep;
+  /** Forwarded to Grid. */
+  align?: GridAlignment;
+  /** Forwarded to Grid. */
+  justify?: GridAlignment;
+  /** Forwarded to Grid. */
+  width?: SizeValue;
+  /** Forwarded to Grid. */
+  maxWidth?: SizeValue;
+  /** Forwarded to Grid. */
+  minHeight?: SizeValue;
+  /** Number of placeholder boxes (story knob). @default 6 */
+  items?: number;
+}
+const {items = 6, ...gridProps} = Astro.props;
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element);padding:var(--spacing-2)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+---
+<Grid {...gridProps} style={outline}>
+  {Array.from({length: items}, (_, i) => <div style={box}>Item {i + 1}</div>)}
+</Grid>
