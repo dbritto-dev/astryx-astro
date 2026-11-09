@@ -171,6 +171,7 @@ export const WithMarks: Story = {
 
 /** A server-side `formatValue` function (a story wrapper) for a range with unlabelled marks. */
 export const FormattedRange = composed(SliderFormatted, {
+  args: {label: 'Price range'},
   play: async ({canvas, canvasElement}) => {
     await upgraded(canvasElement, 'ax-slider');
     const lower = canvas.getByRole('slider', {name: 'Minimum value'});
