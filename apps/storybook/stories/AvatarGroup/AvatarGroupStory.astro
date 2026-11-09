@@ -1,0 +1,68 @@
+---
+/**
+ * Story wrapper: an AvatarGroup with its Avatars and an AvatarGroupOverflow. The group stamps
+ * its size and shape onto members rendered in the same Astro render, and members with status
+ * dots or links are compositions args cannot express.
+ */
+import Avatar, {type AvatarShape, type AvatarSize} from 'astryx-astro/components/Avatar/Avatar.astro';
+import AvatarStatusDot from 'astryx-astro/components/Avatar/AvatarStatusDot.astro';
+import AvatarGroup from 'astryx-astro/components/AvatarGroup/AvatarGroup.astro';
+import AvatarGroupOverflow from 'astryx-astro/components/AvatarGroup/AvatarGroupOverflow.astro';
+
+interface Props {
+  /** Forwarded to AvatarGroup. */
+  size?: AvatarSize;
+  /** Forwarded to AvatarGroup. */
+  shape?: AvatarShape;
+  /** Forwarded to AvatarGroup. */
+  'aria-label'?: string;
+  /**
+   * Story knob: the members. `static` avatars, `links` (each Avatar has an `href`, which makes
+   * the group one Tab stop with arrow-key focus), or `status` (each Avatar has a status dot).
+   * @default 'static'
+   */
+  members?: 'static' | 'links' | 'status';
+  /**
+   * Story knob: the overflow chip. `count` ("+N"), `clickable` (a button), `custom` (slotted
+   * content) or `none`. @default 'count'
+   */
+  overflow?: 'count' | 'clickable' | 'custom' | 'none';
+}
+const {size, shape, 'aria-label': ariaLabel, members = 'static', overflow = 'count'} = Astro.props;
+
+// Inline SVG "photos" (no external images), as in AvatarGroup.demo.astro.
+const photo = (a: string, b: string) =>
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="96" height="96" fill="url(#g)"/><circle cx="48" cy="38" r="17" fill="#fff" fill-opacity=".85"/><path d="M14 96c4-22 18-32 34-32s30 10 34 32z" fill="#fff" fill-opacity=".85"/></svg>`,
+  );
+const people = [
+  {name: 'Ada Lovelace', src: photo('#6d8cff', '#b06dff'), slug: 'ada-lovelace'},
+  {name: 'Grace Hopper', slug: 'grace-hopper'},
+  {name: 'Linus Torvalds', src: photo('#ff9a62', '#ff5f8f'), slug: 'linus-torvalds'},
+  {name: 'Margaret Hamilton', slug: 'margaret-hamilton'},
+];
+const statuses = [
+  {variant: 'success', label: 'Online'},
+  {variant: 'neutral', label: 'Away'},
+  {variant: 'error', label: 'Busy'},
+  {variant: 'success', label: 'Online'},
+];
+const hidden = 5;
+---
+<AvatarGroup size={size} shape={shape} aria-label={ariaLabel}>
+  {people.map((person, i) =>
+    members === 'links' ? (
+      <Avatar name={person.name} src={person.src} href={`/people/${person.slug}`} />
+    ) : members === 'status' ? (
+      <Avatar name={person.name} src={person.src}>
+        <AvatarStatusDot slot="status" variant={statuses[i].variant} label={statuses[i].label} />
+      </Avatar>
+    ) : (
+      <Avatar name={person.name} src={person.src} />
+    ),
+  )}
+  {overflow === 'count' && <AvatarGroupOverflow count={hidden} />}
+  {overflow === 'clickable' && <AvatarGroupOverflow count={hidden} isClickable />}
+  {overflow === 'custom' && <AvatarGroupOverflow count={hidden}>{hidden}+</AvatarGroupOverflow>}
+</AvatarGroup>
