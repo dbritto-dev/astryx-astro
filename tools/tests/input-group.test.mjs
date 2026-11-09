@@ -7,7 +7,7 @@
  * visible, Button addon markers, status in the group, the disabled cascade, and a member
  * in a horizontal-labels FormLayout.   node tools/tests/input-group.test.mjs
  */
-import {setup} from './_harness.mjs';
+import {setup, isOpen, sleep} from './_harness.mjs';
 
 const {page, check, open, done} = await setup();
 await open('input-group');
@@ -107,5 +107,18 @@ const formLayout = await page.evaluate(() => {
   return {required: input.getAttribute('aria-required'), dir: field.dataset.formDirection, display: getComputedStyle(field).display};
 });
 check('in a horizontal-labels FormLayout: group field dissolves; member aria-required stamped', formLayout.required === 'true' && formLayout.dir === 'horizontal-labels' && formLayout.display === 'contents', JSON.stringify(formLayout));
+
+// Tooltips on a page whose first Tooltip sits in a member's removed Field shell: Astro renders a
+// component's <script> after its first instance only, so the group must keep that script.
+const tip = await page.evaluate(() => {
+  const icon = document.querySelector('[data-test="status"]').closest('.astryx-field').querySelector('[data-ax-label-tip]');
+  const r = icon.getBoundingClientRect();
+  return {defined: !!customElements.get('ax-tooltip'), id: icon.getAttribute('data-ax-tooltip'), x: r.left + r.width / 2, y: r.top + r.height / 2};
+});
+await page.mouse.move(tip.x, tip.y, {steps: 2});
+let tipOpen = false;
+for (let i = 0; i < 20 && !tipOpen; i++) { await sleep(50); tipOpen = await isOpen(page, `#${tip.id}`); }
+check('group label tooltip: <ax-tooltip> is defined and opens on hover', tip.defined && tipOpen, JSON.stringify({...tip, tipOpen}));
+await page.mouse.move(0, 0);
 
 await done();
