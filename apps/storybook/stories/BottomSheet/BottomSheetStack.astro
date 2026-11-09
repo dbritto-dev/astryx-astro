@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: stacking. The "Orders" sheet opens an "Order #1042" sheet over itself: the list
+ * recedes and stays mounted under one scrim. The order sheet is written inside the list's
+ * content, so it leaves with it; both sheets and their invokers must share one Astro render.
+ */
+import BottomSheet from 'astryx-astro/components/BottomSheet/BottomSheet.astro';
+import {attachBottomSheet} from 'astryx-astro/components/BottomSheet/attach';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+import Heading from 'astryx-astro/components/Text/Heading.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+const orders = attachBottomSheet();
+const order = attachBottomSheet();
+---
+<Button label="Orders" {...orders.trigger} />
+<BottomSheet {...orders.layer} label="Orders">
+  <VStack gap={2}>
+    <Heading level={3}>Orders</Heading>
+    <Button label="#1042 · Espresso beans" variant="ghost" {...order.trigger} />
+    <Button label="#1041 · Pour-over kit" variant="ghost" isDisabled />
+    <BottomSheet {...order.layer} label="Order #1042" height="hug">
+      <VStack gap={3}>
+        <Heading level={3}>Order #1042</Heading>
+        <Text type="body" color="secondary">Espresso beans, 2 × 1 kg. Shipped on 6 November 2026.</Text>
+        <Button label="Back to orders" variant="primary" data-ax-dialog-close />
+      </VStack>
+    </BottomSheet>
+  </VStack>
+</BottomSheet>

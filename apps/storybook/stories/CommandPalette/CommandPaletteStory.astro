@@ -1,0 +1,121 @@
+---
+/**
+ * Story wrapper: a CommandPalette opened from a trigger (attachDialog on its dialog id), with a
+ * server-side search source (`createStaticSource`, a server helper) and `renderItem` (a function),
+ * or an asynchronous source answered through `astryx-query`. A line under the trigger shows the
+ * last command that ran. The script is one delegated listener per page: it answers the async
+ * palettes (after 600 ms, aborted when a newer query supersedes it) and fills each story's
+ * output line from `astryx-select`.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import CommandPalette, {createStaticSource, type SearchableItem} from 'astryx-astro/components/CommandPalette/CommandPalette.astro';
+import CommandPaletteFooter from 'astryx-astro/components/CommandPalette/CommandPaletteFooter.astro';
+import CommandPaletteInput from 'astryx-astro/components/CommandPalette/CommandPaletteInput.astro';
+import {attachDialog} from 'astryx-astro/components/Dialog/attach';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import Kbd from 'astryx-astro/components/Kbd/Kbd.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+
+interface Props {
+  /** Story-only: grouped commands (default), the theme list (picker mode), or an async people search. */
+  source?: 'commands' | 'themes' | 'people';
+  /** Forwarded to CommandPalette. */
+  isOpen?: boolean;
+  /** Forwarded to CommandPalette. */
+  isInline?: boolean;
+  /** Forwarded to CommandPalette. */
+  label?: string;
+  /** Forwarded to CommandPalette. */
+  value?: string;
+  /** Forwarded to CommandPalette. */
+  width?: number | string;
+  /** Forwarded to CommandPalette. */
+  maxHeight?: number | string;
+  /** Forwarded to CommandPalette. */
+  hotkey?: string;
+  /** Forwarded to CommandPalette. */
+  emptySearchText?: string;
+}
+const {source = 'commands', isOpen, isInline, label, value, width, maxHeight, hotkey, emptySearchText} = Astro.props;
+
+type Command = SearchableItem<{group?: string; icon?: string; shortcut?: string}>;
+const commands: Command[] = [
+  {id: 'new-file', label: 'New file', auxiliaryData: {group: 'Actions', icon: 'upload', shortcut: 'mod+n'}},
+  {id: 'search', label: 'Search files', auxiliaryData: {group: 'Actions', icon: 'search', shortcut: 'mod+p'}},
+  {id: 'copy-link', label: 'Copy link', auxiliaryData: {group: 'Actions', icon: 'copy'}},
+  {id: 'home', label: 'Go to dashboard', auxiliaryData: {group: 'Navigation', icon: 'chevronRight'}},
+  {id: 'calendar', label: 'Open calendar', auxiliaryData: {group: 'Navigation', icon: 'calendar'}},
+  {id: 'theme', label: 'Toggle dark mode', auxiliaryData: {group: 'Preferences', icon: 'eyeSlash'}},
+  {id: 'help', label: 'Help and feedback', auxiliaryData: {icon: 'info'}},
+];
+const themes: SearchableItem[] = ['Neutral', 'Butter', 'Chocolate', 'Gothic', 'Matcha', 'Stone', 'Y2K'].map((name) => ({id: name.toLowerCase(), label: name}));
+const dialog = attachDialog();
+const out = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<VStack gap={2}>
+  {!isInline && (
+    <HStack gap={3} vAlign="center">
+      <Button label={source === 'people' ? 'Search people' : source === 'themes' ? 'Choose theme' : 'Open command palette'} variant="secondary" {...dialog.trigger} />
+      {hotkey && <Kbd keys={hotkey} />}
+      <output data-command-output style={out}>{source === 'themes' && value ? `Theme: ${value}` : 'Nothing run yet'}</output>
+    </HStack>
+  )}
+  {source === 'people' ? (
+    <CommandPalette id={dialog.id} isOpen={isOpen} isInline={isInline} label={label ?? 'People search'} width={width ?? 520} maxHeight={maxHeight} data-story-async>
+      <CommandPaletteInput slot="input" placeholder="Search people…" label="Search people" />
+      <Fragment slot="emptyBootstrapText">Start typing a name</Fragment>
+      <CommandPaletteFooter slot="footer">Results come from a simulated server.</CommandPaletteFooter>
+    </CommandPalette>
+  ) : source === 'themes' ? (
+    <CommandPalette id={dialog.id} isOpen={isOpen} isInline={isInline} label={label ?? 'Theme picker'} value={value} width={width} maxHeight={maxHeight ?? 360} searchSource={createStaticSource(themes)}
+      renderItem={(item, isSelected) => (
+        <>
+          <span style="flex:1">{item.label}</span>
+          {isSelected && <Icon icon="check" size="sm" color="primary" />}
+        </>
+      )} />
+  ) : (
+    <CommandPalette id={dialog.id} isOpen={isOpen} isInline={isInline} label={label} width={width} maxHeight={maxHeight} hotkey={hotkey} searchSource={createStaticSource(commands)} emptySearchText={emptySearchText ?? 'No commands match'}
+      renderItem={(item) => {
+        const aux = item.auxiliaryData as Command['auxiliaryData'];
+        return (
+          <>
+            {aux?.icon && <Icon icon={aux.icon} size="sm" color="secondary" />}
+            <span style="flex:1">{item.label}</span>
+            {aux?.shortcut && <Kbd keys={aux.shortcut} />}
+          </>
+        );
+      }} />
+  )}
+</VStack>
+
+<script>
+  // A story's scripts may run again for every render of the story (Storybook re-inserts them):
+  // wire the page once.
+  const wired = Symbol.for('astryx-storybook:command-palette-story');
+  const page = document as unknown as Record<symbol, boolean>;
+  if (!page[wired]) {
+    page[wired] = true;
+    const PEOPLE = ['Ada Lovelace', 'Alan Kay', 'Barbara Liskov', 'Dieter Rams', 'Grace Hopper', 'Katherine Johnson', 'Margaret Hamilton', 'Susan Kare'];
+    // The async palettes' backend: answer each query after 600 ms unless a newer one aborts it.
+    document.addEventListener('astryx-query', (event) => {
+      const host = event.target as HTMLElement;
+      if (!host.matches?.('ax-command-palette') || !host.querySelector('[data-story-async]')) return;
+      const {query, kind, respond, signal} = (event as CustomEvent).detail;
+      event.preventDefault();
+      if (kind === 'bootstrap') { respond([]); return; }
+      const timer = setTimeout(() => respond(PEOPLE.filter((p) => p.toLowerCase().includes(query.toLowerCase()))
+        .map((name) => ({id: name.toLowerCase().replace(/\s+/g, '-'), label: name, auxiliaryData: {group: name < 'H' ? 'A–G' : 'H–Z'}}))), 600);
+      signal.addEventListener('abort', () => clearTimeout(timer));
+    });
+    // Each story's output line shows the command that ran.
+    document.addEventListener('astryx-select', (event) => {
+      const host = event.target as HTMLElement;
+      if (!host.matches?.('ax-command-palette')) return;
+      const output = host.parentElement?.querySelector('[data-command-output]');
+      const {value, item} = (event as CustomEvent<{value: string; item: {label: string}}>).detail;
+      if (output) output.textContent = `Ran: ${item.label} (${value})`;
+    });
+  }
+</script>

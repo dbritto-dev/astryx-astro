@@ -1,0 +1,30 @@
+---
+/**
+ * Story wrapper: the palette's parts composed on their own (no dialog): CommandPaletteInput
+ * (a searchbox here), CommandPaletteList with a CommandPaletteGroup and CommandPaletteItems in
+ * each state (highlighted, selected, disabled), CommandPaletteEmpty and CommandPaletteFooter.
+ * Sub-components appear in their parent's stories through a wrapper.
+ */
+import CommandPaletteEmpty from 'astryx-astro/components/CommandPalette/CommandPaletteEmpty.astro';
+import CommandPaletteFooter from 'astryx-astro/components/CommandPalette/CommandPaletteFooter.astro';
+import CommandPaletteGroup from 'astryx-astro/components/CommandPalette/CommandPaletteGroup.astro';
+import CommandPaletteInput from 'astryx-astro/components/CommandPalette/CommandPaletteInput.astro';
+import CommandPaletteItem from 'astryx-astro/components/CommandPalette/CommandPaletteItem.astro';
+import CommandPaletteList from 'astryx-astro/components/CommandPalette/CommandPaletteList.astro';
+import Kbd from 'astryx-astro/components/Kbd/Kbd.astro';
+---
+<div style="display:grid;gap:var(--spacing-2);max-width:420px;border:var(--border-width) solid var(--color-border);border-radius:var(--radius-container)">
+  <CommandPaletteInput placeholder="Filter…" label="Filter commands" hasAutoFocus={false}>
+    <Kbd slot="endContent" keys="escape" />
+  </CommandPaletteInput>
+  <CommandPaletteList label="Quick actions">
+    <CommandPaletteGroup heading="Recent">
+      <CommandPaletteItem value="open" isHighlighted>Open project</CommandPaletteItem>
+      <CommandPaletteItem value="share" isSelected>Share</CommandPaletteItem>
+      <CommandPaletteItem value="archive" isDisabled>Archive (unavailable)</CommandPaletteItem>
+    </CommandPaletteGroup>
+    <CommandPaletteItem value="log-out">Log out</CommandPaletteItem>
+  </CommandPaletteList>
+  <CommandPaletteEmpty>No recent commands</CommandPaletteEmpty>
+  <CommandPaletteFooter />
+</div>

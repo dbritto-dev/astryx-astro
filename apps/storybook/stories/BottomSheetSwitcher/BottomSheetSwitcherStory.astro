@@ -1,0 +1,47 @@
+---
+/**
+ * Story wrapper: a two-step checkout flow. BottomSheetSwitcher hands its context to the
+ * BottomSheets inside it (`sheetId` steps), so they must render in the same Astro render. The
+ * first step is opened from a trigger (attachBottomSheet on its dialog id); controls inside the
+ * steps move the flow with `data-ax-switch-to` (empty closes it).
+ */
+import BottomSheet from 'astryx-astro/components/BottomSheet/BottomSheet.astro';
+import BottomSheetSwitcher from 'astryx-astro/components/BottomSheet/BottomSheetSwitcher.astro';
+import {attachBottomSheet} from 'astryx-astro/components/BottomSheet/attach';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+import Heading from 'astryx-astro/components/Text/Heading.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+
+interface Props {
+  /** Forwarded to BottomSheetSwitcher (the initial step; null is closed). */
+  activeSheet?: string | null;
+  /** Forwarded to BottomSheetSwitcher (and to attachBottomSheet, so the trigger matches). */
+  hasScrim?: boolean;
+}
+const {activeSheet = null, hasScrim} = Astro.props;
+const start = attachBottomSheet({hasScrim});
+---
+<Button label="Start checkout" {...start.trigger} />
+<BottomSheetSwitcher activeSheet={activeSheet} hasScrim={hasScrim}>
+  <BottomSheet sheetId="details" id={start.id} label="Delivery details" height="tall">
+    <VStack gap={3}>
+      <Heading level={3}>Delivery details</Heading>
+      <TextInput label="Address" value="12 Analytical Way" />
+      <TextInput label="Instructions" value="Leave at the door" />
+      <Button label="Continue" variant="primary" data-ax-switch-to="confirm" />
+    </VStack>
+  </BottomSheet>
+  <BottomSheet sheetId="confirm" label="Confirm order" height="hug" purpose="form">
+    <VStack gap={3}>
+      <Heading level={3}>Confirm order</Heading>
+      <Text type="body" color="secondary">2 items · ships on 10 November 2026. The scrim does not close this step (purpose="form"); Escape closes the flow.</Text>
+      <HStack gap={2}>
+        <Button label="Back" data-ax-switch-to="details" />
+        <Button label="Place order" variant="primary" data-ax-switch-to="" />
+      </HStack>
+    </VStack>
+  </BottomSheet>
+</BottomSheetSwitcher>
