@@ -1,0 +1,22 @@
+---
+/**
+ * Story wrapper: Fields inside a FormLayout with `direction="horizontal-labels"`. The layout
+ * stamps the direction onto each Field (the `data-layout="horizontal-labels"` theme hook), which
+ * turns every field into two cells of the layout's grid: the label beside the control, the
+ * description above the control. FormLayout and its fields must render together.
+ */
+import Field from 'astryx-astro/components/Field/Field.astro';
+import FormLayout from 'astryx-astro/components/FormLayout/FormLayout.astro';
+
+const native = 'box-sizing:border-box;width:100%;height:var(--size-element-md);padding:0 var(--spacing-2);border:var(--border-width) solid var(--color-border-emphasized);border-radius:var(--radius-element);background:var(--color-background-surface);color:var(--color-text-primary);font:inherit;font-size:var(--text-body-size)';
+---
+<div style="max-width:560px">
+  <FormLayout direction="horizontal-labels">
+    <Field label="Project" inputID="story-hl-project" description="Shown in the sidebar" descriptionID="story-hl-project-desc" isRequired>
+      <input id="story-hl-project" aria-describedby="story-hl-project-desc" aria-required="true" value="Apollo" style={native} />
+    </Field>
+    <Field label="Owner" inputID="story-hl-owner" isOptional>
+      <input id="story-hl-owner" value="Ada Lovelace" style={native} />
+    </Field>
+  </FormLayout>
+</div>
