@@ -1,0 +1,52 @@
+---
+/**
+ * Story wrapper: every ButtonGroup size × orientation (text and icon members), then each
+ * elevation, so one story shows a theme's whole connected-control system.
+ */
+import ButtonGroup from 'astryx-astro/components/ButtonGroup/ButtonGroup.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import IconButton from 'astryx-astro/components/IconButton/IconButton.astro';
+import type {ComponentSize, Elevation} from 'astryx-astro/lib/types';
+
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const grid = 'display:grid;grid-template-columns:repeat(4,max-content);align-items:start;gap:var(--spacing-4) var(--spacing-6)';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style={grid}>
+    <span></span>
+    <span style={head}>horizontal</span>
+    <span style={head}>icons</span>
+    <span style={head}>vertical</span>
+    {sizes.map((size) => (
+      <>
+        <span style={head}>{size}</span>
+        <ButtonGroup label={`Clipboard (${size})`} size={size}>
+          <Button label="Copy" icon="copy" />
+          <Button label="Cut" />
+          <Button label="Paste" />
+        </ButtonGroup>
+        <ButtonGroup label={`History (${size})`} size={size}>
+          <IconButton label={`Undo (${size})`} icon="chevronLeft" />
+          <IconButton label={`Redo (${size})`} icon="chevronRight" />
+        </ButtonGroup>
+        <ButtonGroup label={`Alignment (${size})`} orientation="vertical" size={size}>
+          <Button label="Top" icon="arrowUp" />
+          <Button label="Bottom" icon="arrowDown" />
+        </ButtonGroup>
+      </>
+    ))}
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:var(--spacing-6);align-items:center">
+    {elevations.map((elevation) => (
+      <div style="display:grid;gap:var(--spacing-2);justify-items:start">
+        <span style={head}>elevation {elevation}</span>
+        <ButtonGroup label={`Floating ${elevation}`} elevation={elevation}>
+          <Button label="Share" variant="primary" />
+          <IconButton label={`Share options (${elevation})`} icon="chevronDown" variant="primary" />
+        </ButtonGroup>
+      </div>
+    ))}
+  </div>
+</div>

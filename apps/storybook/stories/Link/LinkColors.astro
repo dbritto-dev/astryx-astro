@@ -1,0 +1,28 @@
+---
+/**
+ * Story wrapper: every Link `color` (the theme-hook visual prop), each as a standalone link, an
+ * always-underlined link and inline in running text. Several instances side by side need one
+ * render, hence a wrapper.
+ */
+import Link from 'astryx-astro/components/Link/Link.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {TextColor} from 'astryx-astro/components/Text/Text.astro';
+
+const colors: TextColor[] = ['accent', 'primary', 'secondary', 'disabled', 'placeholder', 'inherit'];
+const grid = 'display:grid;grid-template-columns:repeat(4,max-content);align-items:center;gap:var(--spacing-3) var(--spacing-6)';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<div style={grid}>
+  <span></span>
+  <span style={head}>standalone</span>
+  <span style={head}>underlined</span>
+  <span style={head}>inline</span>
+  {colors.map((color) => (
+    <>
+      <span style={head}>{color}</span>
+      <Link href={`#${color}`} color={color} isStandalone>Billing settings</Link>
+      <Link href={`#${color}-underlined`} color={color} hasUnderline isStandalone>Privacy policy</Link>
+      <Text>Read the <Link href={`#${color}-inline`} color={color} type="inherit">release notes</Link> first.</Text>
+    </>
+  ))}
+</div>

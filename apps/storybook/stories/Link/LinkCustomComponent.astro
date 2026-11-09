@@ -1,0 +1,13 @@
+---
+/**
+ * Story wrapper: Link with a custom link component (`as`, Astryx's LinkComponentType). The
+ * component is an Astro component, which args cannot carry, hence a wrapper. The second link has
+ * a blocked destination: it renders an inert `<a>` and never reaches the custom component.
+ */
+import Link from 'astryx-astro/components/Link/Link.astro';
+import RouterLink from 'astryx-astro/components/Link/_DemoRouterLink.astro';
+---
+<div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4)">
+  <Link href="/components/button/" as={RouterLink} isStandalone>Button docs</Link>
+  <Link href="javascript:void 0" as={RouterLink} isStandalone>Blocked destination</Link>
+</div>
