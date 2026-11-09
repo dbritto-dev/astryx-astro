@@ -45,6 +45,22 @@ export function isFocusLost(surface: Element | null, doc: Document = surface?.ow
   return isFocusDetached(doc) || (surface != null && surface.contains(doc.activeElement));
 }
 
+/**
+ * `el`, upgraded now when its element is defined but this instance is not upgraded yet.
+ *
+ * On page load a part's element is defined before the host that imports it, so the part is
+ * already upgraded when the host connects. Markup inserted after both are defined (innerHTML,
+ * a client router swapping the page, Storybook switching stories) upgrades in tree order
+ * instead: a host connects while a later sibling or a descendant is still a plain element, so
+ * `instanceof` fails, its API is missing, and properties set on it would be lost when it
+ * upgrades. A host that reaches for another element while connecting passes it through here.
+ * Upgrading also connects it, as on page load; `el` itself is returned either way.
+ */
+export function upgradeNow<T extends Element>(el: T | null): T | null {
+  if (el && !el.matches(':defined')) el.ownerDocument.defaultView?.customElements.upgrade(el);
+  return el;
+}
+
 /** A safe CSS identifier fragment from an id. */
 export function identFrom(value: string): string {
   return value.replace(/[^a-zA-Z0-9_-]/g, '-');

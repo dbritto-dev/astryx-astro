@@ -47,7 +47,7 @@
  *
  * Framework-free and SSR-safe to import.
  */
-import {isImeKeyEvent} from './dom';
+import {isImeKeyEvent, upgradeNow} from './dom';
 import {LayerElement, defineElement, type OpenChangeReason} from './layer';
 import type {LayerEscapeBehavior, LayerOutsidePress} from './layerStack';
 import {getModality} from './modality';
@@ -535,9 +535,12 @@ export class ComboboxLayerElement extends LayerElement {
 brandClass(ComboboxLayerElement, 'combobox-layer-element');
 defineElement('ax-combobox-layer', ComboboxLayerElement);
 
-/** Find a listbox layer by id (the owner's `data-ax-layer`). */
+/**
+ * Find a listbox layer by id (the owner's `data-ax-layer`). Owners call this while connecting,
+ * when inserted markup may not have upgraded the layer yet (it follows them): see upgradeNow.
+ */
 export function comboboxLayer(owner: Element, id: string | null): ComboboxLayerElement | null {
-  const el = id ? owner.ownerDocument.getElementById(id) : null;
+  const el = upgradeNow(id ? owner.ownerDocument.getElementById(id) : null);
   return el instanceof ComboboxLayerElement ? el : null;
 }
 

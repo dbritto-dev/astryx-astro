@@ -31,7 +31,7 @@ import './time-input';
 import './date-range-input';
 import '../behaviors/token';
 import {announce} from './runtime/announce';
-import {isImeKeyEvent} from './runtime/dom';
+import {isImeKeyEvent, upgradeNow} from './runtime/dom';
 import {globalSingleton} from './runtime/global';
 import {emit, fillMessage, fillPlural, formatNumber} from './field';
 import type {LayerElement} from './runtime/layer';
@@ -512,9 +512,12 @@ export class PowerSearchElement extends Base {
 
   connectedCallback(): void {
     const config = parseJSON<PowerSearchConfig>(this.getAttribute('data-ax-config'));
-    const tokenizer = this.querySelector<TokenizerElement>('ax-tokenizer[data-ax-power-search-field]');
+    // Inserted markup upgrades in tree order: the field Tokenizer (a descendant) and the editor
+    // layer (a later sibling) may not be upgraded yet, and the properties set on the Tokenizer
+    // below would be lost when it is (upgradeNow).
+    const tokenizer = upgradeNow(this.querySelector<TokenizerElement>('ax-tokenizer[data-ax-power-search-field]'));
     const layerId = this.getAttribute('data-ax-layer');
-    const layer = layerId ? this.ownerDocument.getElementById(layerId) as LayerElement | null : null;
+    const layer = upgradeNow(layerId ? this.ownerDocument.getElementById(layerId) as LayerElement | null : null);
     const editor = layer?.querySelector<PowerSearchEditorElement>('ax-power-search-editor') ?? null;
     if (!config || !tokenizer || !layer || !editor) return;
     this.#config = createInternalConfig(config);
