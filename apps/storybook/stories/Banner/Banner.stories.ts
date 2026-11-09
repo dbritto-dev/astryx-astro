@@ -106,6 +106,8 @@ export const Dismissable = composed(
         await expect(dismissals).toHaveLength(1);
         await expect(field).toHaveFocus();
       });
+      // Show the banner again, so the story does not end empty for whoever views it.
+      banner.hidden = false;
     },
   },
   options,

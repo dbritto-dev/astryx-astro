@@ -7,7 +7,7 @@ import Token, {type TokenColor, type TokenSize} from 'astryx-astro/components/To
 
 const colors: TokenColor[] = ['default', 'red', 'orange', 'yellow', 'green', 'teal', 'cyan', 'blue', 'purple', 'pink', 'gray'];
 const sizes: TokenSize[] = ['sm', 'md', 'lg'];
-const grid = `display:grid;grid-template-columns:repeat(${sizes.length + 1},max-content);align-items:center;gap:var(--spacing-2) var(--spacing-4)`;
+const grid = `display:grid;grid-template-columns:repeat(${sizes.length + 1},max-content);align-items:center;justify-items:start;gap:var(--spacing-2) var(--spacing-4)`;
 const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
 const title = (s: string) => s[0].toUpperCase() + s.slice(1);
 ---

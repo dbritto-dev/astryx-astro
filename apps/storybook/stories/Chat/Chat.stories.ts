@@ -253,6 +253,9 @@ export const ComposerWarningTop = composed(
       await waitFor(() => expect(document.querySelector('[data-astryx-live-region="assertive"]')).toHaveTextContent('Could not reach the server.'));
       composer.status = null;
       await waitFor(() => expect(canvas.queryByText('Could not reach the server.')).toBeNull());
+      // Leave the story showing the warning it is named after.
+      composer.status = {type: 'warning', message: 'You are near the context limit.'};
+      await waitFor(() => expect(canvas.getByText('You are near the context limit.')).toBeVisible());
     },
   },
   composerOptions,
