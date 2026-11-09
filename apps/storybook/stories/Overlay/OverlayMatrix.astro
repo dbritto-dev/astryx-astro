@@ -1,0 +1,27 @@
+---
+/**
+ * Story wrapper: every scrim `position` (fill, bottom, top) × every `scrim` mode (dark, light,
+ * none) on one canvas, each over the same gradient "photo" (inline CSS, no image request).
+ * Several Overlays side by side need one Astro render.
+ */
+import Grid from 'astryx-astro/components/Grid/Grid.astro';
+import Overlay, {type OverlayPosition, type OverlayScrimMode} from 'astryx-astro/components/Overlay/Overlay.astro';
+
+const positions: OverlayPosition[] = ['fill', 'bottom', 'top'];
+const scrims: OverlayScrimMode[] = ['dark', 'light', false];
+const media = (hue: number) =>
+  `aspect-ratio:16/10;border-radius:var(--radius-container);background:radial-gradient(circle at 30% 30%, hsl(${hue} 80% 70%), transparent 55%),linear-gradient(135deg, hsl(${hue} 60% 35%), hsl(${(hue + 60) % 360} 70% 20%))`;
+const title = 'margin:0;font-weight:var(--font-weight-semibold);color:var(--color-text-primary)';
+const meta = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+---
+<Grid columns={{minWidth: 200}} gap={3} align="start">
+  {positions.map((position, row) => scrims.map((scrim, column) => (
+    <Overlay position={position} scrim={scrim}>
+      <div style={media(row * 90 + column * 40)} role="img" aria-label={`Landscape ${row * 3 + column + 1}`}></div>
+      <Fragment slot="content">
+        <p style={title}>position="{position}"</p>
+        <p style={meta}>scrim={scrim === false ? '{false}' : `"${scrim}"`}</p>
+      </Fragment>
+    </Overlay>
+  )))}
+</Grid>

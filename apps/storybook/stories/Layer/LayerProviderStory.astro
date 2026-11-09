@@ -1,0 +1,36 @@
+---
+/**
+ * Story wrapper: LayerProvider, the app-level layer configuration. Its `inset` declares a 64px
+ * bar over the top edge (every anchored layer inside keeps that gutter, and the toast viewport
+ * moves by it); its `toast` config renders the page's one toast viewport (top end, two visible).
+ * The provider must wrap its content in the same Astro render. The button raises a toast with
+ * `toast()`, which finds the provider's viewport (one delegated listener).
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Layer from 'astryx-astro/components/Layer/Layer.astro';
+import LayerProvider from 'astryx-astro/components/Layer/LayerProvider.astro';
+import {layerId} from 'astryx-astro/components/Layer/layer';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+const id = layerId('layer-provider-story');
+const bar = 'position:fixed;inset:0 0 auto;height:64px;display:flex;align-items:center;padding-inline:var(--spacing-4);background:var(--color-background-surface);border-bottom:var(--border-width) solid var(--color-border);z-index:1';
+const panel = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-background-popover);box-shadow:var(--shadow-med);font-size:var(--font-size-sm);white-space:nowrap';
+---
+<LayerProvider inset={{blockStart: 64}} toast={{position: 'topEnd', maxVisible: 2}}>
+  <div style={bar}><Text type="body" weight="semibold">A 64px app bar (LayerProvider inset blockStart)</Text></div>
+  <HStack gap={2} style="margin-top:80px">
+    <Button label="Show layer" popovertarget={id} />
+    <Button label="Show a toast" data-layer-provider-toast />
+  </HStack>
+  <Layer id={id} placement="above" lightDismiss offset={4} role="dialog" label="Inset-aware layer">
+    <div style={panel}>Kept clear of the bar: it flips below rather than slide under it</div>
+  </Layer>
+</LayerProvider>
+
+<script>
+  import {toast} from 'astryx-astro/elements/toast';
+  document.addEventListener('click', (event) => {
+    if ((event.target as Element | null)?.closest?.('[data-layer-provider-toast]')) toast({body: 'Saved to the provider’s viewport'});
+  });
+</script>

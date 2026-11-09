@@ -1,0 +1,34 @@
+---
+/**
+ * Story wrapper: one `placement` with each `alignment` (start, center, end) at once: three
+ * triggers, each with a Layer open on load (`isDefaultOpen`) and anchored to it. Above and below
+ * set the triggers in a row; start and end stack them, so the open layers never overlap.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Layer from 'astryx-astro/components/Layer/Layer.astro';
+import {layerId} from 'astryx-astro/components/Layer/layer';
+import type {LayerAlignment, LayerPlacement} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to each Layer. */
+  placement?: LayerPlacement;
+}
+const {placement = 'above'} = Astro.props;
+const alignments: LayerAlignment[] = ['start', 'center', 'end'];
+const isRow = placement === 'above' || placement === 'below';
+const layout = isRow
+  ? 'display:flex;gap:var(--spacing-12);padding:var(--spacing-12) var(--spacing-4)'
+  : 'display:grid;gap:var(--spacing-8);padding:var(--spacing-4) var(--spacing-24)';
+const panel = 'padding:var(--spacing-1) var(--spacing-2);border-radius:var(--radius-inner);background:var(--color-background-popover);box-shadow:var(--shadow-med);font-size:var(--font-size-sm);white-space:nowrap';
+const layers = alignments.map((alignment) => ({alignment, id: layerId('layer-placement')}));
+---
+<div style={layout}>
+  {layers.map(({alignment, id}) => (
+    <>
+      <Button label={`alignment ${alignment}`} popovertarget={id} />
+      <Layer id={id} placement={placement} alignment={alignment} offset="var(--spacing-1)" isDefaultOpen>
+        <div style={panel}>{placement} · {alignment}</div>
+      </Layer>
+    </>
+  ))}
+</div>

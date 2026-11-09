@@ -1,0 +1,57 @@
+---
+/**
+ * Story wrapper: a Layer with its trigger, a native `popovertarget` invoker (zero JS). The
+ * trigger and the layer must share an id, so they render together. The panel inside carries a
+ * Close button (`popovertargetaction="hide"`) for layers without light dismiss.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Layer from 'astryx-astro/components/Layer/Layer.astro';
+import {layerId} from 'astryx-astro/components/Layer/layer';
+import HStack from 'astryx-astro/components/Stack/HStack.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {LayerAlignment, LayerPlacement} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Layer. */
+  mode?: 'context' | 'fixed';
+  /** Forwarded to Layer. */
+  placement?: LayerPlacement;
+  /** Forwarded to Layer. */
+  alignment?: LayerAlignment;
+  /** Forwarded to Layer. */
+  positioning?: 'anchor' | 'custom';
+  /** Forwarded to Layer. */
+  offset?: number | string;
+  /** Forwarded to Layer. */
+  x?: number;
+  /** Forwarded to Layer. */
+  y?: number;
+  /** Forwarded to Layer. */
+  role?: string;
+  /** Forwarded to Layer. */
+  label?: string;
+  /** Forwarded to Layer. */
+  lightDismiss?: boolean;
+  /** Forwarded to Layer. */
+  escape?: 'close' | 'block' | 'none';
+  /** Forwarded to Layer. */
+  hasMotion?: boolean;
+  /** Forwarded to Layer. */
+  isDefaultOpen?: boolean;
+  /** Forwarded to Layer (custom positioning styles). */
+  style?: string;
+}
+const props = Astro.props;
+const id = layerId('layer-story');
+const panel = 'display:flex;gap:var(--spacing-3);align-items:center;padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-background-popover);box-shadow:var(--shadow-med);white-space:nowrap';
+---
+<HStack gap={2}>
+  <Button label="Show layer" popovertarget={id} />
+  <Button label="Outside the layer" variant="ghost" data-outside />
+</HStack>
+<Layer {...props} id={id}>
+  <div style={panel}>
+    <Text type="body" size="sm">{props.lightDismiss ? 'Press outside or Escape to close' : 'Closes only with its button'}</Text>
+    <Button label="Close" size="sm" variant="ghost" popovertarget={id} popovertargetaction="hide" />
+  </div>
+</Layer>

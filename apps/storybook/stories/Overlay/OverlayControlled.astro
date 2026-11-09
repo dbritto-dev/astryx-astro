@@ -1,0 +1,37 @@
+---
+/**
+ * Story wrapper: a controlled Overlay (`isOpen`) with a button that toggles it through the
+ * element API (`toggle()`), as an app would. The script is one delegated listener: the button
+ * names its Overlay with `aria-controls`.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import {layerId} from 'astryx-astro/components/Layer/layer';
+import Overlay from 'astryx-astro/components/Overlay/Overlay.astro';
+import VStack from 'astryx-astro/components/Stack/VStack.astro';
+
+interface Props {
+  /** Forwarded to Overlay (the initial state; the button toggles it afterwards). */
+  isOpen?: boolean;
+}
+const {isOpen = false} = Astro.props;
+const id = layerId('overlay-story');
+const media = 'aspect-ratio:16/10;border-radius:var(--radius-container);background:radial-gradient(circle at 30% 30%, hsl(180 80% 70%), transparent 55%),linear-gradient(135deg, hsl(180 60% 35%), hsl(240 70% 20%))';
+---
+<VStack gap={2} style="max-width:320px">
+  <Overlay id={id} isOpen={isOpen} position="bottom">
+    <div style={media} role="img" aria-label="Glacier"></div>
+    <Fragment slot="content">
+      <p style="margin:0;font-weight:var(--font-weight-semibold);color:var(--color-text-primary)">Glacier</p>
+      <p style="margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)">Shown while the toggle is on</p>
+    </Fragment>
+  </Overlay>
+  <Button label="Toggle caption" aria-controls={id} data-overlay-toggle />
+</VStack>
+
+<script>
+  document.addEventListener('click', (event) => {
+    const button = (event.target as Element | null)?.closest?.('[data-overlay-toggle]');
+    const overlay = button && document.getElementById(button.getAttribute('aria-controls') ?? '');
+    (overlay as (HTMLElement & {toggle?: () => void}) | null)?.toggle?.();
+  });
+</script>
