@@ -1,0 +1,23 @@
+---
+/**
+ * Story wrapper: one short snippet in each of several built-in languages, so one story shows a
+ * theme's syntax colours across grammars (`language` is a theme hook on the block, its header
+ * and its title). Several blocks side by side need one render.
+ */
+import CodeBlock from 'astryx-astro/components/CodeBlock/CodeBlock.astro';
+
+const snippets: {language: string; code: string}[] = [
+  {language: 'tsx', code: `export function Greeting({name}: {name: string}) {\n  return <p className="greeting">Hello, {name}!</p>;\n}`},
+  {language: 'python', code: `def fib(n: int) -> int:\n    """Return the n-th Fibonacci number."""\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a`},
+  {language: 'rust', code: `fn main() {\n    let xs = vec![1, 2, 3];\n    let total: i32 = xs.iter().sum();\n    println!("{}", total);\n}`},
+  {language: 'go', code: `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, Go")\n}`},
+  {language: 'sql', code: `SELECT name, count(*) AS orders\nFROM customers\nJOIN orders ON orders.customer_id = customers.id\nGROUP BY name\nORDER BY orders DESC;`},
+  {language: 'css', code: `.card {\n  padding: var(--spacing-4);\n  border-radius: 8px; /* container radius */\n}`},
+  {language: 'json', code: `{\n  "name": "astryx-astro",\n  "private": true,\n  "version": "0.7.9"\n}`},
+  {language: 'bash', code: `pnpm install\ncd apps/docs && npx astro build`},
+  {language: 'plaintext', code: `Plain text has no highlighting.\nIt keeps its whitespace.`},
+];
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:var(--spacing-4)">
+  {snippets.map(({language, code}) => <CodeBlock code={code} language={language} title={`${language} snippet`} hasCopyButton={false} width="100%" />)}
+</div>

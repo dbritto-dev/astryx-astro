@@ -1,0 +1,39 @@
+---
+/**
+ * Story wrapper: an EmptyState with Buttons in its `actions` slot (several components in one
+ * slot need one render), and optionally a template holding a second EmptyState that the play
+ * test inserts after load, the way client code empties a list.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import EmptyState, {type Props as EmptyStateProps} from 'astryx-astro/components/EmptyState/EmptyState.astro';
+
+interface Props {
+  /** Forwarded to EmptyState. */
+  isCompact?: EmptyStateProps['isCompact'];
+  /** Forwarded to EmptyState. */
+  icon?: EmptyStateProps['icon'];
+  /** Forwarded to EmptyState. */
+  headingLevel?: EmptyStateProps['headingLevel'];
+  /**
+   * Story knob: render a template with an EmptyState ("List cleared") for the play test to
+   * insert after load, instead of the actions example. @default false
+   */
+  isInsertedLater?: boolean;
+}
+const {isCompact, icon, headingLevel, isInsertedLater = false} = Astro.props;
+const frame = 'border:1px dashed var(--color-border);border-radius:var(--radius-container);max-width:420px';
+---
+{isInsertedLater ? (
+  <div style={frame} data-empty-host>
+    <template data-empty-template><EmptyState isCompact title="List cleared" description="This message is announced because it appeared after load." /></template>
+  </div>
+) : (
+  <div style={frame}>
+    <EmptyState icon={icon} isCompact={isCompact} headingLevel={headingLevel} title="No messages" description="You're all caught up! New messages appear here.">
+      <Fragment slot="actions">
+        <Button label="Compose" variant="primary" />
+        <Button label="Refresh" />
+      </Fragment>
+    </EmptyState>
+  </div>
+)}
