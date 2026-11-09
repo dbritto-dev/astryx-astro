@@ -1,0 +1,15 @@
+---
+/**
+ * A sized box around a story (via `frame()` in story.ts), for components whose behaviour depends
+ * on the space they get: truncation, wrapping, overflow, scrolling regions.
+ */
+interface Props {
+  /** Number = px, string = CSS. */
+  width?: number | string;
+  /** Number = px, string = CSS. */
+  height?: number | string;
+}
+const {width, height} = Astro.props;
+const css = (v: number | string | undefined) => (typeof v === 'number' ? `${v}px` : v);
+---
+<div data-story-frame style={{width: css(width), maxWidth: '100%', height: css(height)}}><slot /></div>

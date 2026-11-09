@@ -1,0 +1,39 @@
+{
+  "name": "storybook",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "storybook dev -p 6006",
+    "build": "storybook build -o storybook-static && node scripts/postbuild.mjs",
+    "test": "vitest --config vitest.config.ts --run",
+    "a11y": "node scripts/a11y-report.mjs",
+    "serve": "node scripts/serve.mjs",
+    "verify": "node scripts/verify-static.mjs",
+    "stories": "node scripts/stories.mjs",
+    "check": "node scripts/stories.mjs --check && tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "astro": "^7.4.7",
+    "astryx-astro": "workspace:*"
+  },
+  "devDependencies": {
+    "@storybook-astro/framework": "1.15.0",
+    "@storybook-astro/renderer": "1.15.0",
+    "@storybook/addon-a11y": "10.6.4",
+    "@storybook/addon-docs": "10.6.4",
+    "@storybook/addon-vitest": "10.6.4",
+    "@storybook/builder-vite": "10.6.4",
+    "@types/react": "19.3.0",
+    "@vitest/browser": "5.0.5",
+    "@vitest/browser-playwright": "5.0.5",
+    "lightningcss": "1.33.0",
+    "playwright": "1.65.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "storybook": "10.6.4",
+    "ts-dedent": "2.3.0",
+    "typescript": "^5.9.3",
+    "vite": "8.3.6",
+    "vitest": "5.0.5"
+  }
+}

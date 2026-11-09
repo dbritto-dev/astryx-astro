@@ -1,0 +1,25 @@
+---
+// TEMPLATE for a story wrapper, stories/<Name>/<Name><Thing>.astro (see STORIES.md, "Story
+// wrappers"). Replace every <…>.
+/**
+ * Story wrapper: <what it composes and why it needs a wrapper (sub-components that read the
+ * parent's context, a trigger with its overlay, Temporal values, functions, a locale …)>.
+ */
+import <Name>, {type Props as <Name>Props} from 'astryx-astro/components/<Dir>/<Name>.astro';
+import <SubComponent> from 'astryx-astro/components/<Dir>/<SubComponent>.astro';
+import {Temporal} from 'astryx-astro/lib/temporal'; // only when the story needs Temporal values
+
+// Every prop is optional and forwarded under the meta component's prop name, so the story's
+// `composed(…, {controls: [...]})` list keeps those Controls working in `storybook dev`.
+interface Props {
+  /** Forwarded to <Name>. */
+  size?: <Name>Props['size'];
+}
+const {size} = Astro.props;
+// Fixed values only: a story is pre-rendered once, so no Temporal.Now / Date.now() / Math.random().
+const start = Temporal.PlainDate.from('2026-11-09');
+---
+<<Name> size={size} value={start}>
+  <<SubComponent> label="First" />
+  <<SubComponent> label="Second" />
+</<Name>>

@@ -1,0 +1,38 @@
+import {Meta} from '@storybook/addon-docs/blocks';
+
+<Meta title="Introduction" />
+
+# Astryx for Astro
+
+Every component of <a href="https://github.com/dbritto-dev/astryx-astro" target="_blank" rel="noreferrer">astryx-astro</a>,
+the server-rendered Astro port of Meta's Astryx design system, with its interactive behaviour
+running as on a page. The <a href="../" target="_top">documentation site</a> has the same
+examples with their API and theme hooks.
+
+## Reading a component
+
+- **Docs** shows the component's description, its examples and a props table read from the
+  component's TypeScript `Props` and JSDoc.
+- **Overview** is the component's whole docs-site demo in one story.
+- **The other stories** are single variants: one meaningful prop combination each, plus
+  compositions built in a story wrapper (an `.astro` file shown in the story's Code panel).
+- **Interactions** replays a story's test: keyboard, pointer and focus checks that run in the
+  browser against the rendered component.
+- **Actions** logs every `astryx-*` event a component dispatches (Astro components take no
+  callback props; events are their API). Links and form submits in stories are logged here
+  instead of navigating.
+- **Accessibility** runs axe on the story.
+
+## Theme and mode
+
+The toolbar switches the theme (`neutral`, `butter`, `chocolate`, `gothic`, `matcha`, `stone`,
+`y2k`) and the mode (system, light, dark). They set `data-astryx-theme` and `data-theme` on the
+preview's `<html>`, as `themeRootAttributes()` does in a layout. All seven themes share one icon
+set, so switching changes every token and no glyph.
+
+## This build is pre-rendered
+
+This Storybook is a static site: each story was rendered on the server once, when it was built,
+and only the components' own scripts run in your browser. That is why there is no Controls
+panel: changing a prop needs a new server render. Run `pnpm -F storybook dev` in the repository
+for live Controls.

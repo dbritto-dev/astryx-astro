@@ -1,0 +1,91 @@
+---
+/**
+ * Story wrapper: a data-heavy Table. 200 generated rows (deterministic) with sorting, row
+ * selection, sticky columns and client-side pagination. Plugins are functions and objects with
+ * functions, so they are built here, on the server; they cannot be story args.
+ */
+import Table from 'astryx-astro/components/Table/Table.astro';
+import TableSelectionToolbar from 'astryx-astro/components/Table/TableSelectionToolbar.astro';
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import {
+  comp,
+  pixel,
+  proportional,
+  useTablePagination,
+  useTableSelection,
+  useTableSelectionState,
+  useTableSortable,
+  useTableSortableState,
+  useTableStickyColumns,
+  type TableColumn,
+} from 'astryx-astro/components/Table/table';
+import type {TableDensity} from 'astryx-astro/components/Table/types';
+
+interface Props {
+  /** Forwarded to Table. */
+  density?: TableDensity;
+  /** Forwarded to Table. */
+  isStriped?: boolean;
+}
+const {density = 'compact', isStriped} = Astro.props;
+
+interface Order extends Record<string, unknown> {
+  id: string;
+  customer: string;
+  region: string;
+  status: 'Paid' | 'Pending' | 'Refunded';
+  items: number;
+  total: number;
+}
+const customers = ['Acme Corp', 'Globex', 'Initech', 'Umbrella', 'Hooli', 'Stark Industries', 'Wayne Enterprises', 'Wonka', 'Soylent', 'Tyrell'];
+const regions = ['North America', 'Europe', 'Asia Pacific', 'Latin America', 'Middle East'];
+const statuses: Order['status'][] = ['Paid', 'Pending', 'Refunded'];
+// A fixed linear congruential sequence: the same 200 rows on every build.
+let seed = 7;
+const next = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+const orders: Order[] = Array.from({length: 200}, (_, i) => ({
+  id: `ORD-${String(i + 1).padStart(4, '0')}`,
+  customer: customers[Math.floor(next() * customers.length)],
+  region: regions[Math.floor(next() * regions.length)],
+  status: statuses[Math.floor(next() * statuses.length)],
+  items: 1 + Math.floor(next() * 12),
+  total: Math.round(next() * 500000) / 100,
+}));
+
+const usd = new Intl.NumberFormat('en-US', {style: 'currency', currency: 'USD'});
+const statusVariant = {Paid: 'success', Pending: 'warning', Refunded: 'neutral'} as const;
+const columns: TableColumn<Order>[] = [
+  {key: 'id', header: 'Order', width: pixel(110), sortable: true},
+  {key: 'customer', header: 'Customer', width: proportional(2), sortable: true},
+  {key: 'region', header: 'Region', width: proportional(2), sortable: true},
+  {key: 'status', header: 'Status', width: pixel(120), renderCell: (o) => comp(Badge, {variant: statusVariant[o.status], label: o.status})},
+  {key: 'items', header: 'Items', width: pixel(90), align: 'end', sortable: true},
+  {key: 'total', header: 'Total', width: pixel(130), align: 'end', sortable: true, format: (v) => usd.format(v as number)},
+];
+
+const sorting = useTableSortableState({data: orders, defaultSort: [{sortKey: 'id', direction: 'ascending'}]});
+const {selectionConfig, selectionState} = useTableSelectionState({data: orders, idKey: 'id', getIsItemEnabled: (o) => o.status !== 'Refunded'});
+const paging = useTablePagination({page: 1, pageSize: 10, totalItems: orders.length, pageSizeOptions: [10, 25, 50], hasClientPaging: true});
+---
+<div style="display:grid;grid-template-columns:minmax(0,1fr);gap:var(--spacing-2)">
+  <TableSelectionToolbar for="orders" selection={selectionState}>
+    <Button slot="startContent" label="Export" variant="secondary" />
+  </TableSelectionToolbar>
+  <Table
+    id="orders"
+    aria-label="Orders"
+    data={sorting.sortedData}
+    columns={columns}
+    idKey="id"
+    density={density}
+    isStriped={isStriped}
+    hasHover
+    plugins={{
+      sort: useTableSortable(sorting.sortConfig),
+      selection: useTableSelection({...selectionConfig, getRowLabel: (o: Order) => o.id}),
+      sticky: useTableStickyColumns({startKeys: ['__xds_selection', 'id']}),
+      pagination: paging,
+    }}
+  />
+</div>

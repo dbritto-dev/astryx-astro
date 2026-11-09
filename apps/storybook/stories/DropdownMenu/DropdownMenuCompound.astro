@@ -1,0 +1,41 @@
+---
+/**
+ * Story wrapper: a DropdownMenu built from compound rows (checkbox rows, a radio group, a group
+ * with a sub-menu). Rows read the menu's context, so they must render in the same Astro render
+ * as the menu: compositions like this live in a wrapper, not in `args.slots`.
+ */
+import DropdownMenu from 'astryx-astro/components/DropdownMenu/DropdownMenu.astro';
+import DropdownMenuCheckboxItem from 'astryx-astro/components/DropdownMenu/DropdownMenuCheckboxItem.astro';
+import DropdownMenuDivider from 'astryx-astro/components/DropdownMenu/DropdownMenuDivider.astro';
+import DropdownMenuGroup from 'astryx-astro/components/DropdownMenu/DropdownMenuGroup.astro';
+import DropdownMenuItem from 'astryx-astro/components/DropdownMenu/DropdownMenuItem.astro';
+import DropdownMenuRadioGroup from 'astryx-astro/components/DropdownMenu/DropdownMenuRadioGroup.astro';
+import DropdownMenuRadioItem from 'astryx-astro/components/DropdownMenu/DropdownMenuRadioItem.astro';
+import DropdownMenuSubMenu from 'astryx-astro/components/DropdownMenu/DropdownMenuSubMenu.astro';
+import type {LayerPlacement} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to DropdownMenu. */
+  placement?: LayerPlacement;
+  /** Forwarded to DropdownMenu. */
+  isMenuOpen?: boolean;
+}
+const {placement, isMenuOpen} = Astro.props;
+---
+<DropdownMenu button={{label: 'View', icon: 'viewColumns'}} placement={placement} isMenuOpen={isMenuOpen}>
+  <DropdownMenuCheckboxItem label="Show grid" value={true} />
+  <DropdownMenuCheckboxItem label="Show rulers" />
+  <DropdownMenuDivider />
+  <DropdownMenuRadioGroup label="Sort by" value="newest">
+    <DropdownMenuRadioItem value="newest" label="Newest first" />
+    <DropdownMenuRadioItem value="oldest" label="Oldest first" icon="clock" />
+    <DropdownMenuRadioItem value="size" label="By size" description="Largest first" />
+  </DropdownMenuRadioGroup>
+  <DropdownMenuDivider />
+  <DropdownMenuGroup title="Export">
+    <DropdownMenuSubMenu label="Export as" icon="arrowUp">
+      <DropdownMenuItem label="PDF" />
+      <DropdownMenuItem label="PNG image" />
+    </DropdownMenuSubMenu>
+  </DropdownMenuGroup>
+</DropdownMenu>
