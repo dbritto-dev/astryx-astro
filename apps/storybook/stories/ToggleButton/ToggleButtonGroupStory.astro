@@ -1,0 +1,66 @@
+---
+/**
+ * Story wrapper: a ToggleButtonGroup with ToggleButton members. The group stamps selection, size
+ * and disabled onto its members in the same render, so the composition lives in a wrapper.
+ * `members` picks one of the member sets below.
+ */
+import ToggleButtonGroup, {type Props as ToggleButtonGroupProps} from 'astryx-astro/components/ToggleButton/ToggleButtonGroup.astro';
+import ToggleButton from 'astryx-astro/components/ToggleButton/ToggleButton.astro';
+
+interface Props {
+  /** Forwarded to ToggleButtonGroup. */
+  type?: ToggleButtonGroupProps['type'];
+  /** Forwarded to ToggleButtonGroup (defaults to the set's own selection). */
+  value?: ToggleButtonGroupProps['value'];
+  /** Forwarded to ToggleButtonGroup. */
+  orientation?: ToggleButtonGroupProps['orientation'];
+  /** Forwarded to ToggleButtonGroup. */
+  size?: ToggleButtonGroupProps['size'];
+  /** Forwarded to ToggleButtonGroup. */
+  isDisabled?: ToggleButtonGroupProps['isDisabled'];
+  /**
+   * Story-only: the member set. `views` List / Grid / Board with icons; `formatting` text
+   * toggles, one with its own size; `tools` icon-only toggles; `alignment` with a tooltip member.
+   */
+  members?: 'views' | 'formatting' | 'tools' | 'alignment';
+}
+const {type, value, orientation, size, isDisabled, members = 'views'} = Astro.props;
+const sets = {
+  views: {label: 'View mode', value: 'grid'},
+  formatting: {label: 'Formatting', value: ['bold', 'underline']},
+  tools: {label: 'Tools', value: 'search'},
+  alignment: {label: 'Alignment', value: 'start'},
+} as const;
+const set = sets[members];
+---
+<ToggleButtonGroup label={set.label} type={type} value={value ?? (set.value as ToggleButtonGroupProps['value'])} orientation={orientation} size={size} isDisabled={isDisabled}>
+  {members === 'views' && (
+    <Fragment>
+      <ToggleButton value="list" label="List" icon="menu" />
+      <ToggleButton value="grid" label="Grid" icon="viewColumns" />
+      <ToggleButton value="board" label="Board" icon="checkDouble" />
+    </Fragment>
+  )}
+  {members === 'formatting' && (
+    <Fragment>
+      <ToggleButton value="bold" label="Bold" />
+      <ToggleButton value="italic" label="Italic" />
+      <ToggleButton value="underline" label="Underline" />
+      <ToggleButton value="code" label="Code" size="lg" />
+    </Fragment>
+  )}
+  {members === 'tools' && (
+    <Fragment>
+      <ToggleButton value="search" label="Search" icon="search" isIconOnly />
+      <ToggleButton value="filter" label="Filter" icon="funnel" isIconOnly />
+      <ToggleButton value="columns" label="Columns" icon="viewColumns" isIconOnly />
+    </Fragment>
+  )}
+  {members === 'alignment' && (
+    <Fragment>
+      <ToggleButton value="start" label="Start" />
+      <ToggleButton value="center" label="Center" tooltip="Center the text" />
+      <ToggleButton value="end" label="End" />
+    </Fragment>
+  )}
+</ToggleButtonGroup>

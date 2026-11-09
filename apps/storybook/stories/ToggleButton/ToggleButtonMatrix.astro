@@ -1,0 +1,44 @@
+---
+/**
+ * Story wrapper: ToggleButton sizes × unpressed / pressed (text, icon, icon-only), the disabled
+ * and loading states, and every elevation, so one story shows a theme's whole toggle system.
+ */
+import ToggleButton from 'astryx-astro/components/ToggleButton/ToggleButton.astro';
+import type {ComponentSize, Elevation} from 'astryx-astro/lib/types';
+
+const sizes: ComponentSize[] = ['sm', 'md', 'lg'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+const grid = 'display:grid;grid-template-columns:repeat(7,max-content);align-items:center;gap:var(--spacing-3)';
+const head = 'font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const row = 'display:flex;flex-wrap:wrap;align-items:center;gap:var(--spacing-3)';
+---
+<div style="display:grid;gap:var(--spacing-6)">
+  <div style={grid}>
+    <span></span>
+    <span style={head}>text</span>
+    <span style={head}>text, pressed</span>
+    <span style={head}>icon</span>
+    <span style={head}>icon, pressed</span>
+    <span style={head}>icon only</span>
+    <span style={head}>icon only, pressed</span>
+    {sizes.map((size) => (
+      <>
+        <span style={head}>{size}</span>
+        <ToggleButton label={`Bold (${size})`} size={size} />
+        <ToggleButton label={`Italic (${size})`} size={size} isPressed />
+        <ToggleButton label={`Mute (${size})`} icon="microphone" size={size} />
+        <ToggleButton label={`Pin (${size})`} icon="check" size={size} isPressed />
+        <ToggleButton label={`Filter (${size})`} icon="funnel" isIconOnly size={size} />
+        <ToggleButton label={`Filtered (${size})`} icon="funnel" isIconOnly size={size} isPressed />
+      </>
+    ))}
+  </div>
+  <div style={row}>
+    <ToggleButton label="Disabled" isDisabled />
+    <ToggleButton label="Disabled, pressed" isDisabled isPressed />
+    <ToggleButton label="Syncing" isLoading isPressed />
+  </div>
+  <div style={row}>
+    {elevations.map((elevation) => <ToggleButton label={`Elevation ${elevation}`} icon="check" elevation={elevation} />)}
+  </div>
+</div>
