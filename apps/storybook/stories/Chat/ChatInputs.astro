@@ -1,0 +1,48 @@
+---
+/**
+ * Story wrapper: the composer's building blocks on their own — a standalone ChatComposerInput
+ * with an `@` trigger (Enter dispatches `astryx-submit` from the input itself), token
+ * elements, tokenized text and the send button states. The trigger's `onSelect` and the
+ * static source are functions, so they need a wrapper.
+ */
+import ChatComposerInput from 'astryx-astro/components/Chat/ChatComposerInput.astro';
+import ChatComposerTokenElement from 'astryx-astro/components/Chat/ChatComposerTokenElement.astro';
+import ChatSendButton from 'astryx-astro/components/Chat/ChatSendButton.astro';
+import ChatTokenizedText from 'astryx-astro/components/Chat/ChatTokenizedText.astro';
+import type {ChatComposerToken, ChatComposerTrigger} from 'astryx-astro/components/Chat/types';
+import {createStaticSource} from 'astryx-astro/components/Typeahead/createStaticSource';
+import type {SearchableItem} from 'astryx-astro/lib/searchableItem';
+
+const people: SearchableItem[] = [
+  {id: 'ada', label: 'Ada Lovelace'},
+  {id: 'grace', label: 'Grace Hopper'},
+  {id: 'margaret', label: 'Margaret Hamilton'},
+];
+const mention = (item: SearchableItem): ChatComposerToken => ({value: `@${item.id}`, label: `@${item.label}`, variant: 'blue'});
+const trigger: ChatComposerTrigger = {character: '@', searchSource: createStaticSource(people), onSelect: mention, menuLabel: 'People'};
+const cap = 'margin:0 0 var(--spacing-2);font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--spacing-5);align-items:start;color:var(--color-text-primary)">
+  <div>
+    <p style={cap}>ChatComposerInput (standalone)</p>
+    <ChatComposerInput triggers={[trigger]} placeholder="Mention someone with @" label="Standalone message" maxRows={4} />
+  </div>
+  <div>
+    <p style={cap}>ChatComposerTokenElement</p>
+    <ChatComposerTokenElement token={{value: '@ada', label: '@Ada Lovelace', variant: 'blue'}} />
+    <ChatComposerTokenElement token={{value: '/summarize', label: '/summarize', variant: 'purple', icon: 'search'}} />
+  </div>
+  <div>
+    <p style={cap}>ChatTokenizedText</p>
+    <ChatTokenizedText tokens={[...people.map(mention), {value: '/summarize', label: '/summarize', variant: 'purple'}]} text="/summarize the thread for @margaret and @grace" />
+  </div>
+  <div>
+    <p style={cap}>ChatSendButton: enabled, disabled, stop, small</p>
+    <div style="display:flex;gap:var(--spacing-2)">
+      <ChatSendButton isDisabled={false} />
+      <ChatSendButton />
+      <ChatSendButton isStopShown />
+      <ChatSendButton size="sm" isDisabled={false} />
+    </div>
+  </div>
+</div>

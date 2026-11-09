@@ -1,0 +1,18 @@
+---
+/**
+ * Story wrapper: Markdown with the first-party heading-links plugin
+ * (`createMarkdownHeadingLinks()`): each heading gets a trailing `#` button that copies its
+ * permalink. Plugins are objects with functions, so they cannot travel as args.
+ */
+import Markdown from 'astryx-astro/components/Markdown/Markdown.astro';
+import {createMarkdownHeadingLinks} from 'astryx-astro/lib/markdown/plugins/headingLinks';
+
+const doc = `## Install
+
+Add the package to your project.
+
+## Configure
+
+Set the theme on the root element.`;
+---
+<Markdown plugins={[createMarkdownHeadingLinks()]} children={doc} />

@@ -1,0 +1,28 @@
+---
+/**
+ * Story wrapper: empty states — a ChatLayout whose default slot is empty shows its
+ * `emptyState` above the composer, and an empty ChatMessageList shows its own. Slotted
+ * content with sub-components needs one render.
+ */
+import ChatComposer from 'astryx-astro/components/Chat/ChatComposer.astro';
+import ChatLayout from 'astryx-astro/components/Chat/ChatLayout.astro';
+import ChatMessageList from 'astryx-astro/components/Chat/ChatMessageList.astro';
+
+const frame = 'display:flex;flex-direction:column;height:320px;border:1px solid var(--color-border);border-radius:var(--radius-container);overflow:hidden;background:var(--color-background-surface)';
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--spacing-5)">
+  <div style={frame}>
+    <ChatLayout density="compact">
+      <div slot="emptyState" style="color:var(--color-text-secondary)">No messages yet. Say hello!</div>
+      <ChatComposer slot="composer" density="compact" placeholder="Start the conversation" />
+    </ChatLayout>
+  </div>
+  <div style={frame}>
+    <ChatLayout density="spacious" scrollButton={null}>
+      <ChatMessageList density="spacious">
+        <div slot="emptyState" style="color:var(--color-text-secondary)">This list is empty</div>
+      </ChatMessageList>
+      <ChatComposer slot="composer" placeholder="Spacious layout" />
+    </ChatLayout>
+  </div>
+</div>
