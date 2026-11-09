@@ -363,13 +363,15 @@ trigger and are promoted to the top layer natively (`popover`, `<dialog>.showMod
 - Don't disable rules to make a panel green. If a story itself causes a violation (missing label
   in story content, duplicate landmark ids across instances in a wrapper), fix the story. If the
   violation comes from the component, leave it and list it in your report.
-- Baseline at the pilot (206 stories, neutral theme, light): 34 stories with violations,
-  11 rules. serious: `color-contrast` (12 Overview stories), `scrollable-region-focusable`
-  (Layout regions, Card, Outline, Resizable, Stack), `label-content-name-mismatch` (Avatar,
-  AvatarGroup, Chat, OverflowList, Stepper, TreeList), `aria-prohibited-attr` (ClickableCard,
-  Skeleton), `aria-conditional-attr` (Table); critical: `aria-allowed-attr` (Slider); moderate:
-  landmark and heading-order rules from demos with several page-level landmarks (AppShell,
-  Markdown, Breadcrumbs, Pagination, SideNav, Table).
+- Baseline after the variant stories (1307 stories, neutral theme, light): 77 stories with
+  violations, 10 rules, none critical. serious: `color-contrast` (36 stories: Overviews, and
+  disabled states whose text Astryx dims with opacity, which axe cannot tell apart; some theme
+  and syntax presets), `label-content-name-mismatch` (Avatar, AvatarGroup, Chat composer drawer,
+  OverflowList, Stepper, TreeList), `scrollable-region-focusable` (Layout regions, Card, Outline,
+  Resizable, Stack), `aria-prohibited-attr` (ClickableCard with a blocked destination),
+  `aria-conditional-attr` (Table); moderate: landmark, heading-order and `scope-attr-valid` rules
+  from demos with several page-level landmarks (AppShell, Breadcrumbs, Markdown, Pagination,
+  SideNav, Table).
 
 ## 14. Docs page
 
