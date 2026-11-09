@@ -1,0 +1,36 @@
+---
+/**
+ * Story wrapper: Sections inside a Card. A Section's outer wrapper escapes the padding its
+ * container publishes (--container-padding-*): the first and last Section reach the card's edges,
+ * so the Card must be in the same render. The middle Section is the one the story varies.
+ */
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Section, {type SectionDivider, type SectionVariant} from 'astryx-astro/components/Section/Section.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to the middle Section. */
+  variant?: SectionVariant;
+  /** Forwarded to the middle Section. */
+  dividers?: SectionDivider[];
+  /** Forwarded to the middle Section. */
+  padding?: SpacingStep;
+  /** Forwarded to the Card (the padding the Sections escape; omit for the theme's). */
+  cardPadding?: SpacingStep;
+}
+const {variant, dividers, padding, cardPadding} = Astro.props;
+---
+<Card maxWidth={480} padding={cardPadding}>
+  <Section variant="muted" dividers={['bottom']} data-testid="first">
+    <Text display="block" weight="semibold">Settings</Text>
+    <Text display="block" type="supporting">First child: escapes the card's padding to its top and side edges.</Text>
+  </Section>
+  <Section variant={variant} dividers={dividers} padding={padding} data-testid="middle">
+    <Text display="block" weight="semibold">Notifications</Text>
+    <Text display="block" type="supporting">Choose which updates reach your inbox.</Text>
+  </Section>
+  <Section variant="muted" dividers={['top']} padding={2} data-testid="last">
+    <Text display="block" type="supporting">Last child, padding 2: reaches the bottom edge.</Text>
+  </Section>
+</Card>

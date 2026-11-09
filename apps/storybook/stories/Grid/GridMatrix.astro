@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: every value of Grid's `align` and `justify` (start, center, end, stretch), or
+ * the whole gap scale, on one canvas, each Grid in a dashed outline with placeholder boxes.
+ */
+import Grid, {type GridAlignment} from 'astryx-astro/components/Grid/Grid.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Which matrix to show (story knob). */
+  matrix?: 'alignment' | 'gap';
+}
+const {matrix = 'alignment'} = Astro.props;
+const alignments: GridAlignment[] = ['start', 'center', 'end', 'stretch'];
+const gaps: SpacingStep[] = [0, 0.5, 1, 1.5, 2, 3, 4, 5, 6, 8, 10];
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)';
+const box = 'padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+const head = 'margin:0;font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const rows = 'display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:var(--spacing-3)';
+---
+<div style={rows}>
+  {matrix === 'alignment' && alignments.map((value) => (
+    <>
+      <p style={head}>align / justify "{value}"</p>
+      <Grid columns={3} gap={2} align={value} justify={value} minHeight={72} style={outline} data-testid={`alignment-${value}`}>
+        <div style={box}>{value}</div><div style={box}>{value}</div><div style={box}>{value}</div>
+      </Grid>
+    </>
+  ))}
+  {matrix === 'gap' && gaps.map((value) => (
+    <>
+      <p style={head}>gap={value}</p>
+      <Grid columns={4} gap={value} style={outline} data-testid={`gap-${value}`}>
+        <div style={box}>1</div><div style={box}>2</div><div style={box}>3</div><div style={box}>4</div>
+      </Grid>
+    </>
+  ))}
+</div>

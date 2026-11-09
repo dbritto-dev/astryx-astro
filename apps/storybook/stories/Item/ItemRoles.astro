@@ -1,0 +1,13 @@
+---
+/**
+ * Story wrapper: Items with `role="option"` inside a listbox (the parent owns keyboard access, so
+ * the Items render no invisible control). A selected option carries `aria-selected`; the listbox
+ * is story scaffolding that gives the options their required parent.
+ */
+import Item from 'astryx-astro/components/Item/Item.astro';
+---
+<div role="listbox" aria-label="Time zone" style="display:grid;gap:var(--spacing-1);max-width:360px">
+  <Item role="option" label="Pacific Time" description="UTC−08:00" />
+  <Item role="option" label="Eastern Time" description="UTC−05:00" isSelected />
+  <Item role="option" label="Central European Time" description="UTC+01:00" isHighlighted />
+</div>

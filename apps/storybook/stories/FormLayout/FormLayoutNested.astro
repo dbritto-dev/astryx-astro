@@ -1,0 +1,21 @@
+---
+/**
+ * Story wrapper: a horizontal FormLayout nested in a vertical one. The inner FormLayout shadows
+ * the outer one's direction (and resets `defaultOptionality`), which needs both in one render.
+ */
+import FormLayout, {type FormOptionality} from 'astryx-astro/components/FormLayout/FormLayout.astro';
+import TextInput from 'astryx-astro/components/TextInput/TextInput.astro';
+
+interface Props {
+  /** Forwarded to the outer FormLayout. */
+  defaultOptionality?: FormOptionality;
+}
+const {defaultOptionality = 'optional'} = Astro.props;
+---
+<FormLayout defaultOptionality={defaultOptionality} style="max-width:520px">
+  <TextInput label="Street" value="221B Baker Street" />
+  <FormLayout direction="horizontal">
+    <TextInput label="City" value="London" />
+    <TextInput label="Country" value="United Kingdom" />
+  </FormLayout>
+</FormLayout>

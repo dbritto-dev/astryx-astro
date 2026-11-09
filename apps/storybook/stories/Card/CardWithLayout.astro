@@ -1,0 +1,38 @@
+---
+/**
+ * Story wrapper: a fixed-height Card holding a Layout (header, scrolling content, footer) and,
+ * next to it, a Card with a full-bleed Divider. Both read the padding the Card publishes
+ * (--container-padding-*), so they are composed with it in one render.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Divider from 'astryx-astro/components/Divider/Divider.astro';
+import Layout from 'astryx-astro/components/Layout/Layout.astro';
+import LayoutContent from 'astryx-astro/components/Layout/LayoutContent.astro';
+import LayoutFooter from 'astryx-astro/components/Layout/LayoutFooter.astro';
+import LayoutHeader from 'astryx-astro/components/Layout/LayoutHeader.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to both Cards. */
+  padding?: SpacingStep;
+}
+const {padding} = Astro.props;
+---
+<div style="display:flex;flex-wrap:wrap;gap:var(--spacing-4);align-items:flex-start">
+  <Card width={320} height={240} padding={padding}>
+    <Layout>
+      <LayoutHeader slot="header" hasDivider><Text weight="semibold">Release notes</Text></LayoutHeader>
+      <LayoutContent>
+        {Array.from({length: 8}, (_, i) => <Text display="block" type="supporting">Fixed issue #{410 + i} in the export dialog.</Text>)}
+      </LayoutContent>
+      <LayoutFooter slot="footer" hasDivider><Button label="Close" size="sm" /></LayoutFooter>
+    </Layout>
+  </Card>
+  <Card maxWidth={280} padding={padding} data-testid="bleed-card">
+    <Text display="block" weight="semibold">Storage</Text>
+    <div style="margin-block:var(--spacing-3)"><Divider isFullBleed data-testid="bleed" /></div>
+    <Text display="block" type="supporting">The divider escapes the card's padding.</Text>
+  </Card>
+</div>

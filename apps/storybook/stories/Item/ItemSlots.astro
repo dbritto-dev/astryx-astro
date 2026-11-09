@@ -1,0 +1,26 @@
+---
+/**
+ * Story wrapper: Items with components in their slots: an Avatar and a Badge, an Icon and a time
+ * stamp. Components in `startContent` / `endContent` are rendered in the same render as the Item.
+ */
+import Avatar from 'astryx-astro/components/Avatar/Avatar.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import Item, {type ItemDensity} from 'astryx-astro/components/Item/Item.astro';
+
+interface Props {
+  /** Forwarded to each Item. */
+  density?: ItemDensity;
+}
+const {density} = Astro.props;
+---
+<div style="display:grid;gap:var(--spacing-1);max-width:420px">
+  <Item label="Ada Lovelace" description="Analytical Engine programmer" density={density}>
+    <Avatar slot="startContent" name="Ada Lovelace" size="sm" />
+    <Badge slot="endContent" label="Admin" variant="blue" />
+  </Item>
+  <Item label="Release notes" description="Version 4.2 is out" density={density}>
+    <Icon slot="startContent" icon="info" size="sm" color="secondary" />
+    <span slot="endContent" style="color:var(--color-text-secondary);font-size:var(--text-supporting-size)">Mon 9:41</span>
+  </Item>
+</div>

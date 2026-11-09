@@ -1,0 +1,41 @@
+---
+/**
+ * Story wrapper: ResizeHandles in a Layout: a collapsible start panel (Enter or double-click
+ * collapses it) and a reversed handle on the end panel. The panels and handles share one
+ * `resizable` configuration and read the Layout's slots, so they are composed in one render.
+ * No `autoSaveId`: the story never writes to localStorage.
+ */
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Layout from 'astryx-astro/components/Layout/Layout.astro';
+import LayoutContent from 'astryx-astro/components/Layout/LayoutContent.astro';
+import LayoutHeader from 'astryx-astro/components/Layout/LayoutHeader.astro';
+import LayoutPanel from 'astryx-astro/components/Layout/LayoutPanel.astro';
+import ResizeHandle from 'astryx-astro/components/Resizable/ResizeHandle.astro';
+import type {ResizableConfig} from 'astryx-astro/components/Resizable/resizableModel';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Forwarded to the start ResizeHandle and its LayoutPanel. */
+  resizable?: ResizableConfig;
+  /** Forwarded to both ResizeHandles. */
+  hasDivider?: boolean;
+}
+const {resizable = {defaultSize: 200, minSize: 140, maxSize: 320, collapsible: true}, hasDivider = true} = Astro.props;
+const inspector: ResizableConfig = {defaultSize: 180, minSize: 120, maxSize: 280};
+---
+<Card height={300}>
+  <Layout>
+    <LayoutHeader slot="header" hasDivider><Text type="label">Project</Text></LayoutHeader>
+    <LayoutPanel slot="start" resizable={resizable} role="navigation" label="Files" data-testid="files">
+      {Array.from({length: 8}, (_, i) => <Text display="block" type="supporting">file-{i + 1}.astro</Text>)}
+    </LayoutPanel>
+    <ResizeHandle slot="start" resizable={resizable} hasDivider={hasDivider} label="Resize file list" />
+    <LayoutContent role="main" label="Editor">
+      {Array.from({length: 8}, (_, i) => <Text display="block" type="supporting">Editor line {i + 1}</Text>)}
+    </LayoutContent>
+    <ResizeHandle slot="end" resizable={inspector} isReversed hasDivider={hasDivider} isAlwaysVisible={false} label="Resize inspector" />
+    <LayoutPanel slot="end" resizable={inspector} role="complementary" label="Inspector">
+      <Text display="block" type="supporting">Hover or focus the handle to reveal its pill.</Text>
+    </LayoutPanel>
+  </Layout>
+</Card>

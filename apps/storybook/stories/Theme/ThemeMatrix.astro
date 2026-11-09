@@ -1,0 +1,31 @@
+---
+/**
+ * Story wrapper: the same small panel in each of the seven shipped themes, in one mode, so a
+ * theme switch can be compared at a glance. Each panel is its own Theme subtree.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import Theme from 'astryx-astro/components/theme/Theme.astro';
+import type {ThemeMode} from 'astryx-astro/components/theme/themeRoot';
+
+interface Props {
+  /** Forwarded to every Theme. */
+  mode?: ThemeMode;
+}
+const {mode = 'light'} = Astro.props;
+const themes = ['neutral', 'butter', 'chocolate', 'gothic', 'matcha', 'stone', 'y2k'];
+---
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--spacing-3)">
+  {themes.map((theme) => (
+    <Theme theme={theme} mode={mode}>
+      <Card data-testid={`matrix-${theme}`}>
+        <div style="display:grid;gap:var(--spacing-2);justify-items:start">
+          <Text weight="semibold">{theme}</Text>
+          <Text type="supporting">mode="{mode}"</Text>
+          <Button label="Continue" variant="primary" size="sm" />
+        </div>
+      </Card>
+    </Theme>
+  ))}
+</div>

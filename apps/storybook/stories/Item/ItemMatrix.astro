@@ -1,0 +1,29 @@
+---
+/**
+ * Story wrapper: every Item `density` (compact, balanced, spacious) and every `align` (center,
+ * start, first-line), each row in a dashed outline so the padding and slot alignment show.
+ */
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import Item, {type ItemAlign, type ItemDensity} from 'astryx-astro/components/Item/Item.astro';
+
+const densities: ItemDensity[] = ['compact', 'balanced', 'spacious'];
+const aligns: ItemAlign[] = ['center', 'start', 'first-line'];
+const outline = 'border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)';
+const cap = 'margin:var(--spacing-2) 0 0;font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--color-text-secondary)';
+const dot = '<svg viewBox="0 0 8 8" width="8" height="8" aria-hidden="true"><circle cx="4" cy="4" r="4" fill="currentColor"/></svg>';
+---
+<div style="display:grid;gap:var(--spacing-1);max-width:440px">
+  <p style={cap}>density</p>
+  {densities.map((density) => (
+    <Item label={`density="${density}"`} description="Supporting text" density={density} style={outline} data-testid={`density-${density}`}>
+      <Icon slot="startContent" icon="calendar" size="sm" />
+    </Item>
+  ))}
+  <p style={cap}>align (a wrapped label beside a small mark)</p>
+  {aligns.map((align) => (
+    <Item align={align} labelLines={3} label={`align="${align}": a long label that wraps onto a second line so the slot alignment shows`} style={outline}>
+      <Icon slot="startContent" icon={dot} size="xsm" color="accent" />
+      <span slot="endContent" style="font-size:var(--text-supporting-size);color:var(--color-text-secondary)">9:41</span>
+    </Item>
+  ))}
+</div>

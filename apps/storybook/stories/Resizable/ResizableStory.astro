@@ -1,0 +1,69 @@
+---
+/**
+ * Story wrapper: a ResizeHandle between a sized pane and the content beside it, in a bordered
+ * row (a column when vertical). The handle resizes the element next to it, so the pane, the
+ * handle and the content are rendered together. With `position="overlay"` the handle sits inside
+ * the pane's edge instead.
+ *
+ * A reversed handle names its pane with `controls`: in a story (as on any Astro page where it
+ * is the first ResizeHandle) the handle's own `<script>` is its next sibling, and a reversed
+ * handle without `controls` would size that script instead of the pane (a component bug,
+ * reported; see Resizable.stories.ts).
+ */
+import ResizeHandle from 'astryx-astro/components/Resizable/ResizeHandle.astro';
+import type {ResizableConfig} from 'astryx-astro/components/Resizable/resizableModel';
+
+interface Props {
+  /** Forwarded to ResizeHandle. */
+  direction?: 'horizontal' | 'vertical';
+  /** Forwarded to ResizeHandle. */
+  position?: 'inline' | 'overlay';
+  /** Forwarded to ResizeHandle (the pane is rendered after the handle). */
+  isReversed?: boolean;
+  /** Forwarded to ResizeHandle. */
+  isDisabled?: boolean;
+  /** Forwarded to ResizeHandle. */
+  hasDivider?: boolean;
+  /** Forwarded to ResizeHandle. */
+  isAlwaysVisible?: boolean;
+  /** Forwarded to ResizeHandle. */
+  pillPlacement?: 'start' | 'end' | 'center' | 'auto';
+  /** Forwarded to ResizeHandle. */
+  label?: string;
+  /** Forwarded to ResizeHandle; its numeric `defaultSize` also sizes the pane's first render. */
+  resizable?: ResizableConfig;
+  /** Render a custom grip in the handle's default slot (story knob). */
+  hasCustomGrip?: boolean;
+}
+const {direction = 'horizontal', position, isReversed = false, isDisabled, hasDivider, isAlwaysVisible, pillPlacement, label, resizable, hasCustomGrip = false} = Astro.props;
+const vertical = direction === 'vertical';
+const size = typeof resizable?.defaultSize === 'number' ? resizable.defaultSize : 220;
+const row = `display:flex;${vertical ? 'flex-direction:column;height:280px;' : 'height:160px;'}border:1px solid var(--color-border);border-radius:var(--radius-element);overflow:hidden`;
+const pad = 'box-sizing:border-box;padding:var(--spacing-3);font-size:var(--font-size-sm);color:var(--color-text-secondary)';
+const pane = `${pad};flex-shrink:0;overflow:auto;background:var(--color-background-muted);${vertical ? `height:${size}px` : `width:${size}px`}`;
+const content = `${pad};flex:1;${vertical ? 'min-height:0' : 'min-width:0'}`;
+const overlay = position === 'overlay';
+// Separate elements with and without a grip: a conditional child would still count as slot
+// content (`Astro.slots.has('default')`) and replace the pill with nothing.
+const handle = {
+  direction, isReversed, isDisabled, hasDivider, isAlwaysVisible, pillPlacement, label, resizable,
+  controls: isReversed ? 'resizable-story-pane' : undefined,
+};
+---
+<div style={row}>
+  {isReversed && <div style={content}>Editor: the content takes the space the pane leaves.</div>}
+  {!isReversed && (
+    <div style={overlay ? `${pane};position:relative;overflow:clip` : pane} data-testid="pane">
+      {vertical ? 'Preview' : 'Invoice preview'}
+      {overlay && <ResizeHandle direction={direction} position="overlay" isDisabled={isDisabled} isAlwaysVisible={isAlwaysVisible} pillPlacement={pillPlacement} label={label} resizable={resizable} />}
+    </div>
+  )}
+  {!overlay && !hasCustomGrip && <ResizeHandle {...handle} />}
+  {!overlay && hasCustomGrip && (
+    <ResizeHandle {...handle}>
+      <span style="position:absolute;z-index:2;padding:2px;border-radius:var(--radius-inner);background:var(--color-background-surface);border:1px solid var(--color-border);font-size:10px;line-height:1;color:var(--color-text-secondary);pointer-events:none">⋮</span>
+    </ResizeHandle>
+  )}
+  {isReversed && <div id="resizable-story-pane" style={pane} data-testid="pane">{vertical ? 'Terminal' : 'Inspector'}</div>}
+  {!isReversed && <div style={content}>Line items, payments and notes take the space the pane leaves.</div>}
+</div>

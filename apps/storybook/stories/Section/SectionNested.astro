@@ -1,0 +1,22 @@
+---
+/**
+ * Story wrapper: a Section with an explicit `padding` and a nested Section without one, which
+ * inherits the parent's step (the propagation goes through a private custom property, so both
+ * Sections are in one render).
+ */
+import Section from 'astryx-astro/components/Section/Section.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to the outer Section. */
+  padding?: SpacingStep;
+}
+const {padding = 6} = Astro.props;
+---
+<Section variant="muted" padding={padding} width={360} data-testid="outer">
+  <Text display="block" weight="semibold">padding {padding} propagates</Text>
+  <Section variant="section" data-testid="inner">
+    <Text display="block" type="supporting">A nested Section without padding inherits the parent's step.</Text>
+  </Section>
+</Section>

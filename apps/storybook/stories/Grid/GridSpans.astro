@@ -1,0 +1,25 @@
+---
+/**
+ * Story wrapper: a four-column Grid with fixed row tracks (`rowHeight`) and GridSpan children
+ * spanning rows, columns and the full width. GridSpan is a sub-component, so it is composed here.
+ */
+import Grid from 'astryx-astro/components/Grid/Grid.astro';
+import GridSpan from 'astryx-astro/components/Grid/GridSpan.astro';
+import type {SpacingStep} from 'astryx-astro/lib/types';
+
+interface Props {
+  /** Forwarded to Grid. */
+  rowHeight?: number;
+  /** Forwarded to Grid. */
+  gap?: SpacingStep;
+}
+const {rowHeight = 48, gap = 2} = Astro.props;
+const box = 'height:100%;box-sizing:border-box;padding:var(--spacing-2) var(--spacing-3);border-radius:var(--radius-inner);background:var(--color-accent-muted);color:var(--color-text-accent);font-size:var(--font-size-sm)';
+---
+<Grid columns={4} rowHeight={rowHeight} gap={gap}>
+  <GridSpan rows={2} data-testid="rows-2"><div style={box}>rows 2</div></GridSpan>
+  <GridSpan columns={2} data-testid="columns-2"><div style={box}>columns 2</div></GridSpan>
+  <div style={box}>1 × 1</div>
+  <GridSpan columns={3}><div style={box}>columns 3</div></GridSpan>
+  <GridSpan columns="full" data-testid="full"><div style={box}>columns full</div></GridSpan>
+</Grid>

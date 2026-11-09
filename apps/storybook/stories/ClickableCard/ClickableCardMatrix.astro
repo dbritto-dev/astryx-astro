@@ -1,0 +1,22 @@
+---
+/**
+ * Story wrapper: every ClickableCard `variant` (13) and `elevation` (4) in a grid. Each card is a
+ * real button card (hover and press overlays work).
+ */
+import type {CardVariant} from 'astryx-astro/components/Card/Card.astro';
+import ClickableCard from 'astryx-astro/components/ClickableCard/ClickableCard.astro';
+import Grid from 'astryx-astro/components/Grid/Grid.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import type {Elevation} from 'astryx-astro/lib/types';
+
+const variants: CardVariant[] = ['default', 'transparent', 'muted', 'blue', 'cyan', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'];
+const elevations: Elevation[] = ['none', 'low', 'med', 'high'];
+---
+<Grid columns={{minWidth: 150}} gap={3}>
+  {variants.map((variant) => (
+    <ClickableCard label={`Variant ${variant}`} variant={variant} padding={3}><Text weight="semibold">{variant}</Text></ClickableCard>
+  ))}
+  {elevations.map((elevation) => (
+    <ClickableCard label={`Elevation ${elevation}`} elevation={elevation} padding={3}><Text weight="semibold">elevation {elevation}</Text></ClickableCard>
+  ))}
+</Grid>

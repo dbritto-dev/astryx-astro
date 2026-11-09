@@ -1,0 +1,15 @@
+---
+/**
+ * Story wrapper: VisuallyHidden as an icon-only Button's accessible name, and as extra context
+ * after visible text. A wrapper because it composes VisuallyHidden inside other markup.
+ */
+import VisuallyHidden from 'astryx-astro/components/VisuallyHidden/VisuallyHidden.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+---
+<div style="display:grid;gap:var(--spacing-4);justify-items:start;color:var(--color-text-primary)">
+  <button type="button" style="display:inline-grid;place-items:center;width:var(--size-element-md);height:var(--size-element-md);border:1px solid var(--color-border);border-radius:var(--radius-element);background:var(--color-background-surface);color:inherit">
+    <Icon icon="close" size="sm" />
+    <VisuallyHidden>Close dialog</VisuallyHidden>
+  </button>
+  <p style="margin:0" data-testid="total">Order total: $42.00<VisuallyHidden>, including tax and shipping</VisuallyHidden></p>
+</div>

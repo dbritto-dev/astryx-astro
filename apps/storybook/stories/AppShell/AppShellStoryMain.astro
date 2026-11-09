@@ -1,0 +1,21 @@
+---
+/** Story part: the main content of AppShellStory (a heading, metric cards and activity rows). */
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Heading from 'astryx-astro/components/Text/Heading.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Number of activity rows (enough to overflow by default). @default 14 */
+  rows?: number;
+}
+const {rows = 14} = Astro.props;
+const metrics = ['Requests', 'Errors', 'Latency'];
+---
+<div style="display:flex;flex-direction:column;gap:var(--spacing-3)">
+  <Heading level={1}>Apollo</Heading>
+  <Text type="body" color="secondary">Main is the shell's scroller and joins the Tab order while it overflows.</Text>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--spacing-3)">
+    {metrics.map((name) => <Card padding={4}><Text type="label">{name}</Text></Card>)}
+  </div>
+  {Array.from({length: rows}, (_, i) => <Text type="body" display="block">Activity {i + 1}: deploy #{1200 + i} finished on web-0{(i % 4) + 1}.</Text>)}
+</div>

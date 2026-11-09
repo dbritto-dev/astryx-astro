@@ -1,0 +1,30 @@
+---
+/**
+ * Story wrapper: vertical Dividers between the actions of a toolbar row. A vertical divider is
+ * `height: 100%` of a flex row, so it needs the row (with a height) around it; the row and its
+ * labels are story scaffolding.
+ */
+import Divider, {type DividerVariant} from 'astryx-astro/components/Divider/Divider.astro';
+
+interface Props {
+  /** Forwarded to each Divider. */
+  variant?: DividerVariant;
+  /** Forwarded to the last Divider (a labelled one). */
+  label?: string;
+}
+const {variant, label} = Astro.props;
+const row = 'display:flex;align-items:center;gap:var(--spacing-3);height:40px;font-size:var(--font-size-sm)';
+---
+<div style={row}>
+  <span>Edit</span>
+  <Divider orientation="vertical" variant={variant} />
+  <span>Share</span>
+  <Divider orientation="vertical" variant={variant} />
+  <span>Archive</span>
+  {label != null && (
+    <>
+      <Divider orientation="vertical" variant={variant} label={label} />
+      <span>Delete</span>
+    </>
+  )}
+</div>

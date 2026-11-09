@@ -1,0 +1,19 @@
+---
+/** Story part: the SideNav of AppShellStory (one section, three rows with inline SVG icons). */
+import SideNav from 'astryx-astro/components/SideNav/SideNav.astro';
+import SideNavItem from 'astryx-astro/components/SideNav/SideNavItem.astro';
+import SideNavSection from 'astryx-astro/components/SideNav/SideNavSection.astro';
+
+const svg = (body: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const homeIcon = svg('<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>');
+const inboxIcon = svg('<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>');
+const folderIcon = svg('<path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>');
+---
+<SideNav>
+  <SideNavSection title="Workspace">
+    <SideNavItem label="Home" icon={homeIcon} href="#home" isSelected />
+    <SideNavItem label="Inbox" icon={inboxIcon} href="#inbox" />
+    <SideNavItem label="Projects" icon={folderIcon} href="#projects" />
+  </SideNavSection>
+</SideNav>

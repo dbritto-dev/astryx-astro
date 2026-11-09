@@ -1,0 +1,20 @@
+---
+/**
+ * Story wrapper: every SelectableCard `variant` (13), unselected and selected, so one canvas
+ * shows a theme's selection ring on each background. The cards stay live (click to toggle).
+ */
+import type {CardVariant} from 'astryx-astro/components/Card/Card.astro';
+import Grid from 'astryx-astro/components/Grid/Grid.astro';
+import SelectableCard from 'astryx-astro/components/SelectableCard/SelectableCard.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+const variants: CardVariant[] = ['default', 'transparent', 'muted', 'blue', 'cyan', 'gray', 'green', 'orange', 'pink', 'purple', 'red', 'teal', 'yellow'];
+---
+<Grid columns={{minWidth: 140}} gap={3}>
+  {variants.map((variant) => (
+    <>
+      <SelectableCard label={`${variant}, not selected`} variant={variant} padding={3}><Text weight="semibold">{variant}</Text></SelectableCard>
+      <SelectableCard label={`${variant}, selected`} variant={variant} padding={3} isSelected><Text weight="semibold">{variant} ✓</Text></SelectableCard>
+    </>
+  ))}
+</Grid>

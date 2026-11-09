@@ -1,0 +1,75 @@
+---
+/**
+ * Story wrapper: a List of ListItems (people with avatars and badges, or plain steps). ListItem
+ * reads the List's density, dividers, edge and marker through a subtree context, so the rows are
+ * composed with it in one render. With `inCard` the List sits in a Card under a heading, which
+ * is where `edge` shows (it lines rows up with the Card's padding). The custom-marker row is its
+ * own element: a conditional `slot="marker"` child would count as a (blank) marker on every row.
+ */
+import Avatar from 'astryx-astro/components/Avatar/Avatar.astro';
+import Badge from 'astryx-astro/components/Badge/Badge.astro';
+import Card from 'astryx-astro/components/Card/Card.astro';
+import Icon from 'astryx-astro/components/Icon/Icon.astro';
+import List, {type ListDensity, type ListEdge, type ListStyle} from 'astryx-astro/components/List/List.astro';
+import ListItem from 'astryx-astro/components/List/ListItem.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+
+interface Props {
+  /** Forwarded to List. */
+  density?: ListDensity;
+  /** Forwarded to List. */
+  hasDividers?: boolean;
+  /** Forwarded to List. */
+  edge?: ListEdge;
+  /** Forwarded to List. */
+  header?: string;
+  /** Forwarded to List. */
+  listStyle?: ListStyle;
+  /** Forwarded to List. */
+  start?: number;
+  /** Which rows to render (story knob): people with slots, or plain steps. @default 'people' */
+  rows?: 'people' | 'steps';
+  /** Put the List in a Card under a heading (story knob). */
+  inCard?: boolean;
+  /** Give the second step its own marker in the `marker` slot (story knob). */
+  hasCustomMarker?: boolean;
+}
+const {density, hasDividers, edge, header, listStyle, start, rows = 'people', inCard = false, hasCustomMarker = false} = Astro.props;
+const people = [
+  {name: 'Ada Lovelace', role: 'Analytical Engine programmer', badge: 'Admin'},
+  {name: 'Grace Hopper', role: 'Compiler pioneer', badge: 'Editor'},
+  {name: 'Alan Turing', role: 'Computability theorist', badge: 'Viewer'},
+];
+const steps = ['Create a project', 'Invite your team', 'Connect a repository', 'Deploy the first build'];
+---
+{inCard ? (
+  <Card maxWidth={420}>
+    <Text display="block" weight="semibold" data-testid="heading">Members</Text>
+    <List density={density} hasDividers={hasDividers} edge={edge} header={header} listStyle={listStyle} start={start} data-testid="list">
+      {people.map((person) => (
+        <ListItem label={person.name} description={person.role}><Avatar slot="startContent" name={person.name} size="sm" /></ListItem>
+      ))}
+    </List>
+  </Card>
+) : (
+  <div style="max-width:420px">
+    <List density={density} hasDividers={hasDividers} edge={edge} header={header} listStyle={listStyle} start={start} data-testid="list">
+      {rows === 'people'
+        ? people.map((person) => (
+            <ListItem label={person.name} description={person.role}>
+              <Avatar slot="startContent" name={person.name} size="sm" />
+              <Badge slot="endContent" label={person.badge} variant={person.badge === 'Admin' ? 'blue' : undefined} />
+            </ListItem>
+          ))
+        : steps.map((step, i) =>
+            i === 1 && hasCustomMarker ? (
+              <ListItem label={step} description="A custom marker in the shared column">
+                <Icon slot="marker" icon="check" size="sm" color="accent" />
+              </ListItem>
+            ) : (
+              <ListItem label={step} />
+            ),
+          )}
+    </List>
+  </div>
+)}

@@ -1,0 +1,47 @@
+---
+/**
+ * Story wrapper: Astryx components that render links (Link, Button with `href`, ClickableCard)
+ * inside a LinkProvider whose component is a custom router link
+ * (LinkProviderRouterLink.astro). The provider publishes the component through subtree locals,
+ * so the links must be in the same render. Clicks are logged in Actions instead of navigating.
+ */
+import Button from 'astryx-astro/components/Button/Button.astro';
+import ClickableCard from 'astryx-astro/components/ClickableCard/ClickableCard.astro';
+import Link from 'astryx-astro/components/Link/Link.astro';
+import LinkProvider from 'astryx-astro/components/LinkProvider/LinkProvider.astro';
+import Text from 'astryx-astro/components/Text/Text.astro';
+import RouterLink from './LinkProviderRouterLink.astro';
+
+interface Props {
+  /** Wrap the links in the provider (story knob; off shows the native `<a>`). @default true */
+  hasProvider?: boolean;
+  /** Add a nested `LinkProvider component="a"` that resets its subtree (story knob). */
+  hasNestedReset?: boolean;
+}
+const {hasProvider = true, hasNestedReset = false} = Astro.props;
+const row = 'display:flex;gap:var(--spacing-4);align-items:center;flex-wrap:wrap;padding:var(--spacing-3);border:1px solid var(--color-border);border-radius:var(--radius-element)';
+---
+{hasProvider ? (
+  <LinkProvider component={RouterLink}>
+    <div style={row} data-testid="provided">
+      <Link href="/docs/">Documentation</Link>
+      <Button label="Pricing" href="/pricing/" variant="secondary" />
+      <Link href="/plain/" as="a">Plain anchor (as="a")</Link>
+      <Link href="javascript:alert(1)">Blocked destination</Link>
+      <ClickableCard label="Changelog" href="/changelog/" padding={3}><Text weight="semibold">Changelog</Text></ClickableCard>
+    </div>
+    {hasNestedReset && (
+      <LinkProvider component="a">
+        <div style={`${row};margin-top:var(--spacing-3)`} data-testid="reset">
+          <Link href="/docs/">Documentation (nested reset)</Link>
+        </div>
+      </LinkProvider>
+    )}
+  </LinkProvider>
+) : (
+  <div style={row} data-testid="provided">
+    <Link href="/docs/">Documentation</Link>
+    <Button label="Pricing" href="/pricing/" variant="secondary" />
+    <ClickableCard label="Changelog" href="/changelog/" padding={3}><Text weight="semibold">Changelog</Text></ClickableCard>
+  </div>
+)}

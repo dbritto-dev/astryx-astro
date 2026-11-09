@@ -1,0 +1,25 @@
+---
+/**
+ * Story wrapper: an OverflowList with `behavior="observeParent"` inside a flex row with a
+ * heading. The list measures its parent's width (story scaffolding around it), staying
+ * content-sized until it overflows.
+ */
+import OverflowList from 'astryx-astro/components/OverflowList/OverflowList.astro';
+
+interface Props {
+  /** Forwarded to OverflowList. */
+  behavior?: 'observeParent' | 'observeSelf';
+  /** Width of the parent row in px (story knob). @default 360 */
+  parentWidth?: number;
+}
+const {behavior = 'observeParent', parentWidth = 360} = Astro.props;
+const tag = 'font-size:var(--font-size-sm);padding:var(--spacing-1) var(--spacing-2);border-radius:var(--radius-full);background:var(--color-background-muted);color:var(--color-text-primary);white-space:nowrap';
+const more = `${tag};background:var(--color-accent-muted);color:var(--color-text-accent)`;
+const labels = ['design', 'frontend', 'astro', 'css', 'tokens', 'theming'];
+---
+<div style={`display:flex;align-items:center;gap:var(--spacing-2);width:${parentWidth}px;max-width:100%;overflow:hidden;padding:var(--spacing-2);border:1px dashed var(--color-border-emphasized);border-radius:var(--radius-element)`} data-testid="parent">
+  <OverflowList behavior={behavior} gap={1.5}>
+    {labels.map((label) => <span style={tag}>{label}</span>)}
+    <span slot="overflow" style={more}>+<span data-overflow-count></span> more</span>
+  </OverflowList>
+</div>
