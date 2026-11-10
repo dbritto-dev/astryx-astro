@@ -268,13 +268,13 @@ const popoverFilters = useTableFilterState({team: 'Platform'});
 const popoverFiltering = useTableFiltering({filters: popoverFilters.filters, searchConfig: peopleSearch, hasClientFiltering: true});
 const inlineFilters = useTableFilterState({status: ['Active', 'Away']});
 const inlineFiltering = useTableFiltering({filters: inlineFilters.filters, searchConfig: peopleSearch, variant: 'inline', hasClientFiltering: true});
-const inlinePaging = useTablePagination({page: 1, pageSize: 5, totalItems: filterPeople.length, hasClientPaging: true, align: 'end', variant: 'count'});
+const inlinePaging = useTablePagination({page: 1, pageSize: 5, totalItems: filterPeople.length, hasClientPaging: true, align: 'end', variant: 'count', label: 'Filtered people pages'});
 const compactFiltering = useTableFiltering({filters: {}, searchConfig: peopleSearch, variant: 'inline-compact'});
 
 // Pagination: client paging of in-page rows, controls above and below, page sizes.
 const paging = useTablePagination({page: 2, pageSize: 5, totalItems: people.length, pageSizeOptions: [5, 10, 20], position: 'both', hasClientPaging: true});
 // Server-driven pages (links): Astryx's paginateData slices the data.
-const linkPaging = useTablePagination({page: 1, pageSize: 4, totalItems: people.length, size: 'sm', align: 'start', href: (p) => `?people-page=${p}`});
+const linkPaging = useTablePagination({page: 1, pageSize: 4, totalItems: people.length, size: 'sm', align: 'start', href: (p) => `?people-page=${p}`, label: 'Linked people pages'});
 
 // Context menus: a custom row-actions plugin (body cells) next to the sort header menus.
 const rowActions: TablePlugin<Person> = {

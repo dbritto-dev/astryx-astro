@@ -158,7 +158,7 @@ check('function overrides render inlineCode and math', o.inline === 'npm run bui
 check('semantic fence plugin renders its node', o.diagram === 'Checkout flow');
 check('text transform plugin applies', o.transformed);
 check('LinkProvider component renders internal links only', o.routerLink === true && o.externalPlain);
-check('markdownSourceLinesPlugin stamps block lines', o.sourceLines.includes('H1:1-1') && o.sourceLines.includes('LI:5-5'), o.sourceLines.join());
+check('markdownSourceLinesPlugin stamps block lines', o.sourceLines.includes('H4:1-1') && o.sourceLines.includes('LI:5-5'), o.sourceLines.join());
 
 const beforeUrl = page.url();
 await page.click('[data-test="link-click"] a');

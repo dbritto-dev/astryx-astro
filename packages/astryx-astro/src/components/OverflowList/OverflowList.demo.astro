@@ -13,7 +13,7 @@ const frame = 'resize:horizontal;overflow:hidden;padding:var(--spacing-2);border
   <div style={`${frame};width:420px;max-width:100%`} id="ol-frame">
     <OverflowList id="ol-end" gap={2}>
       {tabs.map((t) => <button type="button" style={btn}>{t}</button>)}
-      <button type="button" slot="overflow" style={more} aria-label="More tabs">+<span data-overflow-count></span></button>
+      <button type="button" slot="overflow" style={more}>+<span data-overflow-count></span><span class="ax-visually-hidden"> more tabs</span></button>
     </OverflowList>
   </div>
 </div>

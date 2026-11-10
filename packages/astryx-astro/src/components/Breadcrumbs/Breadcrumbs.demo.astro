@@ -33,7 +33,7 @@ const projects = [
 </div>
 <div>
   <p style={label}>Supporting variant (sm menu rows), a current crumb with a composed sibling menu, a chevron separator mirrored in RTL</p>
-  <Breadcrumbs variant="supporting" id="crumbs-supporting">
+  <Breadcrumbs variant="supporting" label="Supporting trail" id="crumbs-supporting">
     <Icon slot="separator" icon="chevronRight" size="xsm" color="inherit" class="ax-mirror-rtl" />
     <BreadcrumbItem href="#org">Acme</BreadcrumbItem>
     <BreadcrumbItem href="#team">Platform</BreadcrumbItem>
@@ -50,7 +50,7 @@ const projects = [
 </div>
 <div>
   <p style={label}>Custom text separator (›, mirrored by the bidi algorithm), <code>{'isCurrent={false}'}</code> opts the last item out, and a right-to-left trail</p>
-  <Breadcrumbs separator="›" id="crumbs-angle">
+  <Breadcrumbs separator="›" label="Custom separator trail" id="crumbs-angle">
     <BreadcrumbItem href="#a">Docs</BreadcrumbItem>
     <BreadcrumbItem href="#b">Guides</BreadcrumbItem>
     <BreadcrumbItem href="#c" isCurrent={false}>Theming</BreadcrumbItem>

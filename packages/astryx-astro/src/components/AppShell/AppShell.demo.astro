@@ -64,7 +64,7 @@ const cards = ['Requests', 'Errors', 'Latency', 'Deploys'];
         <Heading level={1}>Apollo</Heading>
         <Text type="body" color="secondary">Scroll this area: main is the shell's scroller and joins the Tab order while it overflows.</Text>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--spacing-3)">
-          {cards.map((c) => <Card padding={4}><Text type="label">{c}</Text><Heading level={3}>—</Heading></Card>)}
+          {cards.map((c) => <Card padding={4}><Text type="label">{c}</Text><Heading level={3} accessibilityLevel={2}>—</Heading></Card>)}
         </div>
         {Array.from({length: 12}, (_, i) => <Text type="body">Activity {i + 1}: deploy #{1200 + i} finished on web-0{(i % 4) + 1}.</Text>)}
       </div>

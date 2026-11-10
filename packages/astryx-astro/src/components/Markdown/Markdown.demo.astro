@@ -148,7 +148,7 @@ const parity = {
   <h3 style={cap}>createMarkdownHeadingLinks(): copyable permalinks (hover or focus a heading), ids shared with the Outline</h3>
   <div class="docs-md-layout">
     <Markdown id="guide" data-test="heading-links" plugins={guidePlugins} children={guide} />
-    <div class="docs-md-outline"><Outline items={parseOutlineFromMarkdown(guide, {plugins: guidePlugins})} data-test="guide-outline" density="compact" /></div>
+    <div class="docs-md-outline"><Outline items={parseOutlineFromMarkdown(guide, {plugins: guidePlugins})} label="Guide contents" data-test="guide-outline" density="compact" /></div>
   </div>
 </section>
 
@@ -156,7 +156,7 @@ const parity = {
   <h3 style={cap}>LinkProvider: internal links render through the provider's component; markdownSourceLinesPlugin; hasLinkClickEvent</h3>
   <div class="docs-md-grid">
     <LinkProvider component={RouterLink}><Markdown data-test="link-provider" children={linkDoc} /></LinkProvider>
-    <Markdown data-test="source-lines" plugins={[markdownSourceLinesPlugin]} children={sourceLinesDoc} />
+    <Markdown data-test="source-lines" headingLevelStart={4} plugins={[markdownSourceLinesPlugin]} children={sourceLinesDoc} />
     <Markdown data-test="link-click" hasLinkClickEvent children={'Click [this internal link](#md-full) — the page listens for `astryx-link-click` and cancels it.'} />
   </div>
 </section>
