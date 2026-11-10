@@ -2,7 +2,7 @@ import ClickableCard from 'astryx-astro/components/ClickableCard/ClickableCard.a
 import Demo from 'astryx-astro/components/ClickableCard/ClickableCard.demo.astro';
 import demoSource from 'astryx-astro/components/ClickableCard/ClickableCard.demo.astro?raw';
 import {expect, userEvent} from 'storybook/test';
-import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import ClickableCardMatrix from './ClickableCardMatrix.astro';
 import matrixSource from './ClickableCardMatrix.astro?raw';
 import ClickableCardNested from './ClickableCardNested.astro';
@@ -21,7 +21,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (ClickableCard.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "A disabled card dims its content (50% opacity, as Astryx does) and its hidden control carries aria-disabled; WCAG 1.4.3 exempts inactive components."
+})});
 
 /** Clicks on the card's hidden control (the activation): every activation is exactly one of them. */
 function activations(card: Element, control: Element) {
@@ -81,6 +83,9 @@ export const NewTab: Story = {
 
 /** `isDisabled`: dimmed, keeps its tab stop with aria-disabled, and never activates. */
 export const Disabled: Story = {
+  parameters: knownA11y({
+    "color-contrast": "A disabled card dims its content (50% opacity, as Astryx does) and its hidden control carries aria-disabled; WCAG 1.4.3 exempts inactive components."
+  }),
   args: {isDisabled: true},
   play: async ({canvas, canvasElement}) => {
     const control = canvas.getByRole('button', {name: 'Open report'});
@@ -96,6 +101,9 @@ export const Disabled: Story = {
 
 /** A disabled link card renders no destination (a focusable, aria-disabled link without href). */
 export const DisabledLink: Story = {
+  parameters: knownA11y({
+    "color-contrast": "A disabled card dims its content (50% opacity, as Astryx does) and its hidden control carries aria-disabled; WCAG 1.4.3 exempts inactive components."
+  }),
   args: {label: 'Team settings', href: '#team-settings', isDisabled: true, slots: {default: content('Team settings', 'You need admin rights.')}},
   play: async ({canvasElement}) => {
     const link = canvasElement.querySelector('a.ax-clickable-card-action')!;
@@ -105,13 +113,14 @@ export const DisabledLink: Story = {
   },
 };
 
-/** An unsafe destination (`javascript:`) is dropped: the card is inert, not disabled. */
+/** An unsafe destination (`javascript:`) is dropped: the hidden link is named and `aria-disabled`, the card keeps its look. */
 export const BlockedDestination: Story = {
   args: {label: 'Blocked', href: 'javascript:void(0)', slots: {default: content('Blocked destination', 'The unsafe URL is not rendered.')}},
-  play: async ({canvasElement}) => {
-    const link = canvasElement.querySelector('a.ax-clickable-card-action')!;
+  play: async ({canvas}) => {
+    // A named link that goes nowhere (a deliberate deviation from Astryx: docs/accessibility.md).
+    const link = canvas.getByRole('link', {name: 'Blocked'});
     await expect(link).not.toHaveAttribute('href');
-    await expect(link).not.toHaveAttribute('aria-disabled');
+    await expect(link).toHaveAttribute('aria-disabled', 'true');
   },
 };
 

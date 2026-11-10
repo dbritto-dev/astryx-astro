@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/FileInput/FileInput.demo.astro';
 import demoSource from 'astryx-astro/components/FileInput/FileInput.demo.astro?raw';
 import {expect, fn, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents, upgraded} from '../_lib/play';
-import {astryx, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 
 const meta = {
   title: 'Form Controls/File Input',
@@ -14,7 +14,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (FileInput.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+})});
 
 type FileHost = HTMLElement & {files: File[]};
 type Change = {value: File | File[] | null};
@@ -164,6 +166,9 @@ export const Required: Story = {
 
 /** The button keeps its tab stop (`aria-disabled`); Enter opens nothing; the native input leaves its form. */
 export const Disabled: Story = {
+  parameters: knownA11y({
+    "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+  }),
   args: {isDisabled: true, name: 'resume'},
   play: async ({canvasElement}) => {
     await upgraded(canvasElement, 'ax-file-input');
@@ -181,6 +186,9 @@ export const Disabled: Story = {
 
 /** The reason shows as a tooltip on keyboard focus and describes the button. */
 export const DisabledWithMessage: Story = {
+  parameters: knownA11y({
+    "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+  }),
   args: {isDisabled: true, disabledMessage: 'Uploads are paused during maintenance'},
   play: async ({canvasElement}) => {
     await upgraded(canvasElement, 'ax-file-input');

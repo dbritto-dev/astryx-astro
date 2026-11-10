@@ -3,14 +3,16 @@ import Demo from 'astryx-astro/components/Stepper/Stepper.demo.astro';
 import demoSource from 'astryx-astro/components/Stepper/Stepper.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {recordEvents} from '../_lib/play';
-import {astryx, composed, frame, overview, type Meta} from '../_lib/story';
+import {astryx, composed, frame, overview, type Meta, knownA11y} from '../_lib/story';
 import StepperStory from './StepperStory.astro';
 import storySource from './StepperStory.astro?raw';
 
 const meta = {
   title: 'Navigation/Stepper',
   component: Stepper,
-  ...astryx('Stepper'),
+  ...astryx('Stepper', knownA11y({
+    "label-content-name-mismatch": "The name (\"Go to step N: <label>\", Astryx's string) contains the visible label; the visible description and Optional marker describe the button (aria-describedby)."
+  })),
 } satisfies Meta;
 export default meta;
 

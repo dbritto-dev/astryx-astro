@@ -4,7 +4,7 @@ import demoSource from 'astryx-astro/components/Link/Link.demo.astro?raw';
 import Icon from 'astryx-astro/components/Icon/Icon.astro';
 import {expect, fn, userEvent, waitFor} from 'storybook/test';
 import {isShowing} from '../_lib/play';
-import {astryx, composed, frame, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, frame, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import LinkColors from './LinkColors.astro';
 import colorsSource from './LinkColors.astro?raw';
 import LinkCustomComponent from './LinkCustomComponent.astro';
@@ -21,7 +21,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (Link.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "color=\"disabled\" is Astryx's grey colour option; colours are kept as Astryx ships them (docs/accessibility.md)."
+})});
 
 /** Accent link; underlined on hover. Clicking it changes the hash only (other destinations are logged in Actions). */
 export const Default: Story = {
@@ -36,7 +38,10 @@ export const Default: Story = {
 };
 
 /** Every `color`: standalone, always underlined and inline. */
-export const Colors = composed(LinkColors, {}, {source: colorsSource});
+export const Colors = composed(LinkColors, {
+  parameters: knownA11y({
+    "color-contrast": "color=\"disabled\" is Astryx's grey colour option; colours are kept as Astryx ships them (docs/accessibility.md)."
+  }),}, {source: colorsSource});
 
 /** Inside running text, `type="inherit"` adopts the paragraph's type. */
 export const InText = composed(LinkInText, {}, {controls: ['hasUnderline'], source: inTextSource});

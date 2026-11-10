@@ -2,14 +2,16 @@ import SyntaxTheme from 'astryx-astro/components/theme/SyntaxTheme.astro';
 import Demo from 'astryx-astro/components/theme/SyntaxTheme.demo.astro';
 import demoSource from 'astryx-astro/components/theme/SyntaxTheme.demo.astro?raw';
 import {expect} from 'storybook/test';
-import {astryx, composed, overview, type Meta} from '../_lib/story';
+import {astryx, composed, overview, type Meta, knownA11y} from '../_lib/story';
 import SyntaxThemeStory from './SyntaxThemeStory.astro';
 import storySource from './SyntaxThemeStory.astro?raw';
 
 const meta = {
   title: 'Utility/Syntax Theme',
   component: SyntaxTheme,
-  ...astryx('SyntaxTheme'),
+  ...astryx('SyntaxTheme', knownA11y({
+    "color-contrast": "Third-party syntax palettes (Solarized, Dracula, Nord, Tokyo Night, Catppuccin) as Astryx ships them; colours are kept (docs/accessibility.md)."
+  })),
   args: {theme: 'dracula'},
 } satisfies Meta;
 export default meta;

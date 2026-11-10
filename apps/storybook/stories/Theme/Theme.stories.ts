@@ -2,7 +2,7 @@ import Theme from 'astryx-astro/components/theme/Theme.astro';
 import Demo from 'astryx-astro/components/theme/Theme.demo.astro';
 import demoSource from 'astryx-astro/components/theme/Theme.demo.astro?raw';
 import {expect} from 'storybook/test';
-import {astryx, composed, overview, type Meta} from '../_lib/story';
+import {astryx, composed, overview, type Meta, knownA11y} from '../_lib/story';
 import ThemeMatrix from './ThemeMatrix.astro';
 import matrixSource from './ThemeMatrix.astro?raw';
 import ThemeStory from './ThemeStory.astro';
@@ -72,7 +72,10 @@ export const Nested = composed(ThemeStory, {
 }, options);
 
 /** The seven shipped themes, light. */
-export const AllThemesLight = composed(ThemeMatrix, {args: {mode: 'light'}}, {controls: ['mode'], source: matrixSource});
+export const AllThemesLight = composed(ThemeMatrix, {
+  parameters: knownA11y({
+    "color-contrast": "Chocolate and Matcha supporting text in light mode, as Astryx's generated themes define it; colours are kept (docs/accessibility.md)."
+  }),args: {mode: 'light'}}, {controls: ['mode'], source: matrixSource});
 
 /** The seven shipped themes, dark. */
 export const AllThemesDark = composed(ThemeMatrix, {args: {mode: 'dark'}}, {controls: ['mode'], source: matrixSource});

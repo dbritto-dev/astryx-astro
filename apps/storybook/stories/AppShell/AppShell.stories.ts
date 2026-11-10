@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/AppShell/AppShell.demo.astro';
 import demoSource from 'astryx-astro/components/AppShell/AppShell.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {recordEvents, upgraded} from '../_lib/play';
-import {astryx, composed, overview, type Meta} from '../_lib/story';
+import {astryx, composed, overview, type Meta, knownA11y} from '../_lib/story';
 import AppShellStory from './AppShellStory.astro';
 import shellSource from './AppShellStory.astro?raw';
 
@@ -15,7 +15,11 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (AppShell.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "landmark-no-duplicate-banner": "The docs demo shows six app shells on one page; a page has one banner.",
+  "landmark-no-duplicate-main": "The docs demo shows six app shells on one page; a page has one main.",
+  "landmark-unique": "The docs demo shows six app shells on one page, each with its own (identically named) navigations."
+})});
 
 const options = {controls: ['variant', 'contentPadding', 'height', 'mobileNav', 'nav', 'hasBanner', 'rows'], source: shellSource};
 

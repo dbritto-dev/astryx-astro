@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/Tokenizer/Tokenizer.demo.astro';
 import demoSource from 'astryx-astro/components/Tokenizer/Tokenizer.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents, upgraded} from '../_lib/play';
-import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import TokenizerForm from './TokenizerForm.astro';
 import formSource from './TokenizerForm.astro?raw';
 import TokenizerMatrix from './TokenizerMatrix.astro';
@@ -23,7 +23,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (Tokenizer.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+})});
 
 type Item = {id: string; label: string};
 type Change = {values: Item[]; change: {item: Item; type: 'add' | 'create' | 'remove'}};
@@ -286,6 +288,9 @@ export const StartIconAndEndContent = tagStory({
 
 /** Disabled with a reason: tokens lose their ✕ and Backspace removes nothing. */
 export const Disabled = tagStory({
+  parameters: knownA11y({
+    "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+  }),
   args: {value: [tag('Design'), tag('Engineering')], isDisabled: true, disabledMessage: 'Locked by an administrator', hasClear: true},
   play: async ({canvasElement}) => {
     await upgraded(canvasElement, 'ax-tokenizer');

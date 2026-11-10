@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/TreeList/TreeList.demo.astro';
 import demoSource from 'astryx-astro/components/TreeList/TreeList.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {recordEvents, upgraded} from '../_lib/play';
-import {astryx, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 
 const folder = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></svg>';
 const file = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>';
@@ -43,7 +43,9 @@ const nested = [
 const meta = {
   title: 'Table & List/Tree List',
   component: TreeList,
-  ...astryx('TreeList'),
+  ...astryx('TreeList', knownA11y({
+    "label-content-name-mismatch": "A tree item's text includes its nested group (and a row's visible description); the item and its action are named by the label alone (aria-labelledby, the description by aria-describedby), as the WAI-ARIA tree pattern does."
+  })),
   args: {items: files, header: 'Project files'},
 } satisfies Meta;
 export default meta;

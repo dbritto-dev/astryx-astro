@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/SelectableCard/SelectableCard.demo.ast
 import demoSource from 'astryx-astro/components/SelectableCard/SelectableCard.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {recordEvents} from '../_lib/play';
-import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import SelectableCardMatrix from './SelectableCardMatrix.astro';
 import matrixSource from './SelectableCardMatrix.astro?raw';
 import SelectableCardRadio from './SelectableCardRadio.astro';
@@ -22,7 +22,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (SelectableCard.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "A disabled card dims its content (50% opacity, as Astryx does) and its hidden control carries aria-disabled; WCAG 1.4.3 exempts inactive components."
+})});
 
 const cardOf = (input: HTMLElement) => input.closest<HTMLElement>('.astryx-selectable-card')!;
 
@@ -73,6 +75,9 @@ export const Selected: Story = {
 
 /** `isDisabled`: dimmed, still focusable with aria-disabled; clicks, Space and Enter do nothing. */
 export const Disabled: Story = {
+  parameters: knownA11y({
+    "color-contrast": "A disabled card dims its content (50% opacity, as Astryx does) and its hidden control carries aria-disabled; WCAG 1.4.3 exempts inactive components."
+  }),
   args: {isDisabled: true, label: 'Enterprise plan', slots: {default: content('Enterprise plan', 'Contact sales to enable it.')}},
   play: async ({canvas, canvasElement}) => {
     const input = canvas.getByRole('checkbox', {name: 'Enterprise plan'});

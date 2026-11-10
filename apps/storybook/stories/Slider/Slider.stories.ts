@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/Slider/Slider.demo.astro';
 import demoSource from 'astryx-astro/components/Slider/Slider.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents, upgraded} from '../_lib/play';
-import {astryx, composed, frame, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, frame, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import SliderFormatted from './SliderFormatted.astro';
 import formattedSource from './SliderFormatted.astro?raw';
 
@@ -16,7 +16,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (Slider.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+})});
 
 /** Horizontal sliders fill their container: give them a realistic width. */
 const sized = {decorators: [frame({width: 360})]};
@@ -195,6 +197,9 @@ export const VerticalRange: Story = {args: {label: 'Band', value: [25, 75], orie
 
 /** Thumbs keep their tab stop (`aria-disabled`); keys and presses change nothing. */
 export const Disabled: Story = {
+  parameters: knownA11y({
+    "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+  }),
   ...sized,
   args: {value: 30, isDisabled: true, htmlName: 'volume'},
   play: async ({canvas, canvasElement}) => {

@@ -190,7 +190,7 @@ function checkStoryFile(e) {
   const importRe = new RegExp(`^import\\s+${componentId ?? '\\0'}\\s+from\\s+'astryx-astro/components/([^']+)';`, 'm');
   const imported = componentId && src.match(importRe)?.[1];
   if (imported !== e.component?.path) out.push(`${rel}: meta.component must be imported from 'astryx-astro/components/${e.component?.path}'`);
-  if (!new RegExp(`\\.\\.\\.astryx\\('${e.name}'\\)`).test(src)) out.push(`${rel}: meta must spread astryx('${e.name}')`);
+  if (!new RegExp(`\\.\\.\\.astryx\\('${e.name}'[),]`).test(src)) out.push(`${rel}: meta must spread astryx('${e.name}')`);
   if (!/^export const Overview = overview\(/m.test(src)) out.push(`${rel}: needs \`export const Overview = overview(Demo, demoSource)\``);
   const firstStory = src.match(/^export const (\w+)/m)?.[1];
   if (firstStory && firstStory !== 'Overview') out.push(`${rel}: Overview must be the first story (found ${firstStory})`);

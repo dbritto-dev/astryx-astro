@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/Chat/Chat.demo.astro';
 import demoSource from 'astryx-astro/components/Chat/Chat.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents, upgraded} from '../_lib/play';
-import {astryx, composed, overview, type Meta} from '../_lib/story';
+import {astryx, composed, overview, type Meta, knownA11y} from '../_lib/story';
 import ChatBubbles from './ChatBubbles.astro';
 import bubblesSource from './ChatBubbles.astro?raw';
 import ChatComposerStory from './ChatComposerStory.astro';
@@ -29,7 +29,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (Chat.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "The composer's placeholder while it is disabled (streaming): Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+})});
 
 interface ComposerElement extends HTMLElement {
   value: string;
@@ -265,6 +267,9 @@ export const ComposerWarningTop = composed(
 export const ComposerStreaming = composed(
   ChatComposerStory,
   {
+    parameters: knownA11y({
+      "color-contrast": "The composer's placeholder while it is disabled (streaming): Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+    }),
     args: {placeholder: 'Streaming…', isDisabled: true, isStopShown: true},
     play: async ({canvas, canvasElement}) => {
       await upgraded(canvasElement, 'ax-chat-composer');
@@ -290,13 +295,13 @@ export const ComposerDrawer = composed(
     play: async ({canvas, canvasElement, step}) => {
       await upgraded(canvasElement, 'ax-chat-composer-drawer');
       const changes = recordEvents<{isCollapsed: boolean}>(canvasElement, 'astryx-collapsed-change');
-      const toggle = canvas.getByRole('button', {name: 'Collapse Attachments'});
+      const toggle = canvas.getByRole('button', {name: 'Collapse 3 Attachments'});
       const content = document.getElementById(toggle.getAttribute('aria-controls')!)!;
       await expect(toggle).toHaveAttribute('aria-expanded', 'true');
       await step('A click collapses the tray (inert)', async () => {
         await userEvent.click(toggle);
         await waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'false'));
-        await expect(toggle).toHaveAccessibleName('Expand Attachments');
+        await expect(toggle).toHaveAccessibleName('Expand 3 Attachments');
         await expect(content.inert).toBe(true);
       });
       await step('Enter expands it again', async () => {
@@ -311,13 +316,13 @@ export const ComposerDrawer = composed(
   composerOptions,
 );
 
-/** The drawer starting collapsed: a summary with the count. */
+/** The drawer starting collapsed: a summary with the count, which the toggle's name carries too. */
 export const ComposerDrawerCollapsed = composed(
   ChatComposerStory,
   {
     args: {placeholder: 'Message with attachments', drawer: 'collapsed'},
     play: async ({canvas}) => {
-      await expect(canvas.getByRole('button', {name: 'Expand Attachments'})).toHaveAttribute('aria-expanded', 'false');
+      await expect(canvas.getByRole('button', {name: 'Expand 3 Attachments'})).toHaveAttribute('aria-expanded', 'false');
     },
   },
   composerOptions,

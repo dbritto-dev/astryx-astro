@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/SideNav/SideNav.demo.astro';
 import demoSource from 'astryx-astro/components/SideNav/SideNav.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents, upgraded} from '../_lib/play';
-import {astryx, composed, overview, type Meta} from '../_lib/story';
+import {astryx, composed, overview, type Meta, knownA11y} from '../_lib/story';
 import SideNavStory from './SideNavStory.astro';
 import storySource from './SideNavStory.astro?raw';
 
@@ -15,7 +15,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (SideNav.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "landmark-unique": "The docs demo shows five side navs on one page, and Astryx names every SideNav \"Side navigation\" (no label prop); a page has one."
+})});
 
 const options = {controls: ['collapsible', 'resizable', 'content', 'hasOutsideToggle', 'dir'], source: storySource};
 // Fixed ids: each story gets its own frame on the docs page.

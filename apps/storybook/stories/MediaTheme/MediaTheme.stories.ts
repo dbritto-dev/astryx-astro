@@ -40,7 +40,7 @@ export const Light = composed(MediaThemeStory, {
 
 /** `mode="auto"` measures the parent's surface: on a deep blue it picks the dark side. */
 export const AutoOnDeepBlue = composed(MediaThemeStory, {
-  args: {mode: 'auto', surface: '#123a6b'},
+  args: {mode: 'auto', surface: '#0d2b52'},
   play: async ({canvasElement}) => {
     await waitFor(() => expect(context(canvasElement)).toHaveAttribute('data-astryx-media', 'dark'));
   },

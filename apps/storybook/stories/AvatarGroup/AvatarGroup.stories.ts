@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/AvatarGroup/AvatarGroup.demo.astro';
 import demoSource from 'astryx-astro/components/AvatarGroup/AvatarGroup.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {recordEvents} from '../_lib/play';
-import {astryx, composed, overview, type Meta} from '../_lib/story';
+import {astryx, composed, overview, type Meta, knownA11y} from '../_lib/story';
 import AvatarGroupMatrix from './AvatarGroupMatrix.astro';
 import matrixSource from './AvatarGroupMatrix.astro?raw';
 import AvatarGroupStory from './AvatarGroupStory.astro';
@@ -12,7 +12,9 @@ import groupSource from './AvatarGroupStory.astro?raw';
 const meta = {
   title: 'Content/Avatar Group',
   component: AvatarGroup,
-  ...astryx('AvatarGroup'),
+  ...astryx('AvatarGroup', knownA11y({
+    "label-content-name-mismatch": "Initials abbreviate the name each avatar is announced by; its tooltip shows the full name."
+  })),
 } satisfies Meta;
 export default meta;
 

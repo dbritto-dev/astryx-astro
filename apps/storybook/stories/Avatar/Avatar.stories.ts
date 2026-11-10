@@ -4,14 +4,16 @@ import Demo from 'astryx-astro/components/Avatar/Avatar.demo.astro';
 import demoSource from 'astryx-astro/components/Avatar/Avatar.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents} from '../_lib/play';
-import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import AvatarMatrix from './AvatarMatrix.astro';
 import matrixSource from './AvatarMatrix.astro?raw';
 
 const meta = {
   title: 'Content/Avatar',
   component: Avatar,
-  ...astryx('Avatar'),
+  ...astryx('Avatar', knownA11y({
+    "label-content-name-mismatch": "Initials abbreviate the name the avatar is announced by; its tooltip shows the full name."
+  })),
   args: {name: 'Ada Lovelace'},
 } satisfies Meta;
 export default meta;

@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/PowerSearch/PowerSearch.demo.astro';
 import demoSource from 'astryx-astro/components/PowerSearch/PowerSearch.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, recordEvents, upgraded} from '../_lib/play';
-import {astryx, composed, frame, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, frame, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import PowerSearchParts from './PowerSearchParts.astro';
 import partsSource from './PowerSearchParts.astro?raw';
 import PowerSearchStory from './PowerSearchStory.astro';
@@ -19,7 +19,9 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (PowerSearch.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+})});
 
 type Filter = {field: string; operator: string; value: Record<string, unknown>; isReadOnly?: boolean};
 type Change = {filters: Filter[]; changeType: 'add' | 'edit' | 'remove'; index: number};
@@ -409,6 +411,9 @@ export const ReadOnly = issueStory({
 
 /** Disabled with a reason: the input stays focusable and is described by the reason. */
 export const Disabled = issueStory({
+  parameters: knownA11y({
+    "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+  }),
   args: {filters: initial.slice(0, 1), isDisabled: true, disabledMessage: 'Sign in to filter'},
   play: async ({canvasElement}) => {
     const {input} = parts(canvasElement);
@@ -440,6 +445,9 @@ export const OverflowInline = issueStory({
  * its filter without taking focus; Apply, Cancel and Delete report `astryx-save` / `astryx-cancel`.
  */
 export const Parts = composed(PowerSearchParts, {
+  parameters: knownA11y({
+    "color-contrast": "Dimmed text in a disabled control: WCAG 1.4.3 exempts inactive components, and the control itself carries aria-disabled, which axe cannot tie this text to."
+  }),
   play: async ({canvas, canvasElement}) => {
     await upgraded(canvasElement, 'ax-power-search-editor');
     const editor = canvasElement.querySelector<HTMLElement>('ax-power-search-editor')!;

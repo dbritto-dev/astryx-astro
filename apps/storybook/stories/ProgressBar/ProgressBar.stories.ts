@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/ProgressBar/ProgressBar.demo.astro';
 import demoSource from 'astryx-astro/components/ProgressBar/ProgressBar.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing} from '../_lib/play';
-import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import ProgressBarFormatted from './ProgressBarFormatted.astro';
 import formattedSource from './ProgressBarFormatted.astro?raw';
 import ProgressBarMatrix from './ProgressBarMatrix.astro';
@@ -18,10 +18,15 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (ProgressBar.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "A disabled progress bar uses Astryx's disabled colour; colours are kept as Astryx ships them (docs/accessibility.md)."
+})});
 
 /** Every variant with a value, with marks, indeterminate and disabled. */
-export const Matrix = composed(ProgressBarMatrix, {}, {source: matrixSource});
+export const Matrix = composed(ProgressBarMatrix, {
+  parameters: knownA11y({
+    "color-contrast": "A disabled progress bar uses Astryx's disabled colour; colours are kept as Astryx ships them (docs/accessibility.md)."
+  }),}, {source: matrixSource});
 
 /** A progressbar named by its visible label, with its value, range and value text. */
 export const Default: Story = {
@@ -68,6 +73,9 @@ export const Indeterminate: Story = {
 
 /** Disabled colours for a canceled operation; the value stays. */
 export const Disabled: Story = {
+  parameters: knownA11y({
+    "color-contrast": "A disabled progress bar uses Astryx's disabled colour; colours are kept as Astryx ships them (docs/accessibility.md)."
+  }),
   args: {label: 'Canceled', value: 30, isDisabled: true, hasValueLabel: true},
   play: async ({canvas}) => {
     await expect(canvas.getByRole('progressbar', {name: 'Canceled'})).toHaveAttribute('aria-valuenow', '30');

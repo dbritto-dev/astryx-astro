@@ -3,7 +3,7 @@ import Demo from 'astryx-astro/components/Timestamp/Timestamp.demo.astro';
 import demoSource from 'astryx-astro/components/Timestamp/Timestamp.demo.astro?raw';
 import {expect, userEvent, waitFor} from 'storybook/test';
 import {isShowing, upgraded} from '../_lib/play';
-import {astryx, composed, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import TimestampMatrix from './TimestampMatrix.astro';
 import matrixSource from './TimestampMatrix.astro?raw';
 import TimestampTemporal from './TimestampTemporal.astro';
@@ -130,6 +130,9 @@ export const WithTooltipEntries: Story = {
 
 /** Every format, text type and color, and a Timestamp inheriting its surrounding Text. */
 export const Matrix = composed(TimestampMatrix, {
+  parameters: knownA11y({
+    "color-contrast": "color=\"disabled\" is Astryx's grey colour option; colours are kept as Astryx ships them (docs/accessibility.md)."
+  }),
   play: async ({canvasElement}) => {
     await upgraded(canvasElement, 'ax-timestamp');
     const text = (format: string) => canvasElement.querySelector(`[data-format-cell="${format}"] time`)?.textContent;

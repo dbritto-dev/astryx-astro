@@ -5,7 +5,7 @@ import Badge from 'astryx-astro/components/Badge/Badge.astro';
 import Icon from 'astryx-astro/components/Icon/Icon.astro';
 import {expect, fn, userEvent, waitFor} from 'storybook/test';
 import {recordEvents} from '../_lib/play';
-import {astryx, composed, frame, overview, type Meta, type Story} from '../_lib/story';
+import {astryx, composed, frame, overview, type Meta, type Story, knownA11y} from '../_lib/story';
 import TokenMatrix from './TokenMatrix.astro';
 import matrixSource from './TokenMatrix.astro?raw';
 
@@ -18,10 +18,15 @@ const meta = {
 export default meta;
 
 /** Every example from the docs page (Token.demo.astro), pre-rendered as one story. */
-export const Overview = overview(Demo, demoSource);
+export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+  "color-contrast": "A disabled token uses Astryx's disabled colour; colours are kept as Astryx ships them (docs/accessibility.md). An interactive one also carries aria-disabled (WCAG 1.4.3 exempts it)."
+})});
 
 /** Every colour × size, then removable and disabled tokens of each size. */
-export const Matrix = composed(TokenMatrix, {}, {source: matrixSource});
+export const Matrix = composed(TokenMatrix, {
+  parameters: knownA11y({
+    "color-contrast": "A disabled token uses Astryx's disabled colour; colours are kept as Astryx ships them (docs/accessibility.md). An interactive one also carries aria-disabled (WCAG 1.4.3 exempts it)."
+  }),}, {source: matrixSource});
 
 /** A static chip: a plain span with no tab stop. */
 export const Default: Story = {
@@ -127,6 +132,9 @@ export const Clickable: Story = {
 
 /** Disabled: half opacity; the remove button stays focusable but inert. */
 export const Disabled: Story = {
+  parameters: knownA11y({
+    "color-contrast": "A disabled token uses Astryx's disabled colour; colours are kept as Astryx ships them (docs/accessibility.md). An interactive one also carries aria-disabled (WCAG 1.4.3 exempts it)."
+  }),
   args: {label: 'Locked', isDisabled: true, isRemovable: true},
   play: async ({canvas, canvasElement}) => {
     const removes = recordEvents(canvasElement, 'astryx-remove');

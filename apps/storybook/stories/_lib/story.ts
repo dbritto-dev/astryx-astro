@@ -27,16 +27,18 @@ type AstroComponent = unknown;
 
 /**
  * The meta fields every story file spreads: the manifest description for the docs page and the
- * component's manifest name (`parameters.astryx.component`, for tooling).
+ * component's manifest name (`parameters.astryx.component`, for tooling). `parameters` adds
+ * file-wide parameters, e.g. `knownA11y()`.
  *
  *   const meta = {title: 'Action/Button', component: Button, ...astryx('Button')} satisfies Meta;
  */
-export function astryx(name: ComponentName) {
+export function astryx(name: ComponentName, parameters: Record<string, unknown> = {}) {
   const entry = catalog[name];
   return {
     parameters: {
       astryx: {component: name},
       docs: {description: {component: entry.description}},
+      ...parameters,
     },
   } satisfies Partial<Meta>;
 }
@@ -117,4 +119,20 @@ export function composed(Wrapper: AstroComponent, story: Story = {}, options: Co
  */
 export function frame(size: {width?: number | string; height?: number | string}) {
   return () => ({component: Frame, props: size});
+}
+
+/**
+ * Axe findings a story keeps on purpose, each with its reason: the rule is off for that story,
+ * so the check (`a11y.test: 'error'`) fails only on something new. Use it for what
+ * packages/astryx-astro/docs/accessibility.md lists as kept: Astryx's palettes and colour
+ * options, text WCAG exempts that axe cannot recognise (inside a disabled control), naming
+ * patterns axe misreads, and docs demos that show several page-level landmarks at once. Never
+ * for something a component or a story could fix.
+ *
+ *   export const Overview = overview(Demo, demoSource, {parameters: knownA11y({
+ *     'landmark-no-duplicate-main': 'The demo shows six app shells on one page; a page has one.',
+ *   })});
+ */
+export function knownA11y(findings: Record<string, string>): NonNullable<Story['parameters']> {
+  return {a11y: {config: {rules: Object.keys(findings).map((id) => ({id, enabled: false}))}}, a11yKnown: findings};
 }
