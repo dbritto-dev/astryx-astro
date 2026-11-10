@@ -22,7 +22,10 @@
  * exactly one click on the hidden button, which bubbles to the card.
  * `isDisabled`: 50% opacity, no overlay, the hidden control keeps its tab stop with
  * `aria-disabled="true"` and is inert (AST-085); a disabled link renders no destination.
- * A blocked destination renders the link without href (inert, not disabled).
+ * A blocked destination renders the link without href. Deviation from Astryx (accessibility,
+ * docs/accessibility.md): Astryx leaves that anchor without a role, so its `aria-label` is not
+ * allowed and assistive tech meets a nameless, inert element; here it is a `role="link"` named by
+ * `label` and `aria-disabled="true"` (it goes nowhere), with the card's look unchanged.
  *
  * Not ported: the touch press controller (`data-astryx-press` / pressedAlpha) — coarse
  * pointers keep the native :active paint; the remount focus hand-off (no remount in Astro).
@@ -99,7 +102,7 @@ const mode = isDisabled ? undefined : isLink ? (safe != null ? 'link' : undefine
 >
   {isLink ? (
     isDisabled || safe == null ? (
-      <a class="ax-clickable-card-action" role={isDisabled ? 'link' : undefined} aria-label={label} aria-disabled={isDisabled ? 'true' : undefined} tabindex="0" data-ax-clickable-action></a>
+      <a class="ax-clickable-card-action" role="link" aria-label={label} aria-disabled="true" tabindex="0" data-ax-clickable-action></a>
     ) : (
       <LinkTag class="ax-clickable-card-action" href={safe} target={target} rel={rel} aria-label={label} tabindex="0" data-ax-clickable-action></LinkTag>
     )

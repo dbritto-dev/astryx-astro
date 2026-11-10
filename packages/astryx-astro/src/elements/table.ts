@@ -211,7 +211,7 @@ export class AxTable extends AxScrollableArea {
       if (!AxTable.#isDataRow(row)) continue;
       const passes = this.#rowFilters.size === 0 || [...this.#rowFilters].every((accept) => accept(row));
       if (!passes) continue;
-      const level = Number(row.getAttribute('aria-level') ?? '1');
+      const level = Number(row.getAttribute('data-ax-tree-level') ?? '1');
       if (level <= 1) {
         unitIndex++;
         unitInPage = unitIndex >= start && unitIndex < start + pageSize;
@@ -249,10 +249,10 @@ export class AxTable extends AxScrollableArea {
       const managed = row.hasAttribute('data-ax-tree-id') || row.hasAttribute('data-expansion-key') || groupCollapsed || row.hidden || this.#hasFiltered;
       let visible = !groupCollapsed && !filtered;
       if (row.hasAttribute('data-ax-tree-id')) {
-        const level = Number(row.getAttribute('aria-level') ?? '1');
+        const level = Number(row.getAttribute('data-ax-tree-level') ?? '1');
         while (ancestors.length > 0 && ancestors[ancestors.length - 1].level >= level) ancestors.pop();
         if (ancestors.some((a) => !a.expanded)) visible = false;
-        ancestors.push({level, expanded: row.getAttribute('aria-expanded') === 'true'});
+        ancestors.push({level, expanded: row.getAttribute('data-ax-tree-expanded') === 'true'});
       }
       if (managed) row.hidden = !visible;
       if (!filtered) visibleRows++;
@@ -320,7 +320,7 @@ export class AxTable extends AxScrollableArea {
     }
     const out: HTMLTableRowElement[] = [];
     const flush = (units: Unit[]) => {
-      // Forest by aria-level (flat rows are all level 1).
+      // Forest by tree level (flat rows are all level 1).
       const roots: Unit[] = [];
       const stack: Unit[] = [];
       for (const unit of units) {
@@ -346,7 +346,7 @@ export class AxTable extends AxScrollableArea {
       } else if (row.hasAttribute('data-expansion-panel') && units.length > 0) {
         units[units.length - 1].rest.push(row);
       } else {
-        units.push({row, rest: [], level: Number(row.getAttribute('aria-level') ?? '1'), children: []});
+        units.push({row, rest: [], level: Number(row.getAttribute('data-ax-tree-level') ?? '1'), children: []});
       }
     }
     flush(units);

@@ -45,8 +45,10 @@ const scrollRegion = isScrollable && role == null;
   data-ax-inherit="layout"
   data-padding={padding}
   data-scrollable={isScrollable ? '' : undefined}
+  data-ax-scroll-keyboard={isScrollable ? '' : undefined}
   data-ax-scroll-region={scrollRegion ? (label ?? t('@astryx.scrollRegion.label')) : undefined}
   style={mergeStyles({'--_ax-pad': spacing(padding)}, style as StyleValue)}
   {...rest}
 ><slot /></div>
 {scrollRegion && <script>import '../../behaviors/scrollRegion';</script>}
+{isScrollable && <script>import '../../behaviors/scrollKeyboard';</script>}

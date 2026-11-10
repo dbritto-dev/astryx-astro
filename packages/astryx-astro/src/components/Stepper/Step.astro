@@ -108,6 +108,11 @@ const nameFor = (w: string | null) => (w != null
 const completedName = nameFor(statusWord(status, 'completed'));
 const pendingName = nameFor(statusWord(status, 'not-started'));
 const descriptionId = hasDescription ? uid(Astro, 'ax-step-desc') : undefined;
+// Deviation from Astryx (accessibility, docs/accessibility.md): the button's aria-label replaces
+// its content, so Astryx's visible "Optional" never reached assistive tech; it now describes the
+// button, ahead of the description.
+const optionalId = isOptional ? uid(Astro, 'ax-step-optional') : undefined;
+const describedBy = [optionalId, descriptionId].filter(Boolean).join(' ') || undefined;
 const statusGlyphIcon = status === 'success' || status === 'warning' || status === 'error' ? status : null;
 
 const themeState = {progress, status: status ?? undefined};
@@ -143,7 +148,7 @@ const glyphHtml = ind.glyph === 'number' ? String(step + 1) : ind.glyph === 'che
 const optionalLabel = t('@astryx.step.optional');
 const headAttrs: Record<string, unknown> = hasButton
   ? {type: 'button', 'aria-label': nameFor(word),
-     'aria-describedby': descriptionId, 'aria-disabled': isDisabled ? 'true' : undefined,
+     'aria-describedby': describedBy, 'aria-disabled': isDisabled ? 'true' : undefined,
      'data-ax-step-button': '', 'data-ax-name': pendingName, 'data-ax-name-completed': completedName}
   : {};
 const Head = hasButton ? 'button' : 'div';
@@ -179,7 +184,7 @@ const liAttrs: Record<string, unknown> = {
               <div class="ax-step-label-line">
                 <span class={labelTarget.themeClass} {...labelTarget.attrs}>{label}</span>
                 <VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden>
-                {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional">{optionalLabel}</span></Fragment>}
+                {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional" id={optionalId}>{optionalLabel}</span></Fragment>}
                 {endHtml !== '' && <Fragment set:html={endHtml} />}
               </div>
               {hasDescription && <span id={descriptionId} class={descriptionTarget.themeClass} {...descriptionTarget.attrs}>{description}</span>}
@@ -197,7 +202,7 @@ const liAttrs: Record<string, unknown> = {
               <div class="ax-step-label-line">
                 <span class={labelTarget.themeClass} {...labelTarget.attrs}>{label}</span>
                 <VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden>
-                {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional">{optionalLabel}</span></Fragment>}
+                {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional" id={optionalId}>{optionalLabel}</span></Fragment>}
                 {endHtml !== '' && <Fragment set:html={endHtml} />}
               </div>
               {hasDescription && <span id={descriptionId} class={descriptionTarget.themeClass} {...descriptionTarget.attrs}>{description}</span>}
@@ -223,7 +228,7 @@ const liAttrs: Record<string, unknown> = {
           {' '}
           <span class={labelTarget.themeClass} {...labelTarget.attrs}>{label}</span>
           <VisuallyHidden data-ax-step-status>{statusText}</VisuallyHidden>
-          {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional">{optionalLabel}</span></Fragment>}
+          {isOptional && <Fragment><span class="ax-step-optional">•</span><span class="ax-step-optional" id={optionalId}>{optionalLabel}</span></Fragment>}
           {endHtml !== '' && <Fragment set:html={endHtml} />}
         </div>
         {hasDescription && <div id={descriptionId} class="ax-step-description-row"><span class={descriptionTarget.themeClass} {...descriptionTarget.attrs}>{description}</span></div>}

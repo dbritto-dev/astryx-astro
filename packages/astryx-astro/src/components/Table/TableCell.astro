@@ -8,6 +8,10 @@
  * `table-density`), the rest follows from the table's attributes. Standalone it renders a
  * plain `<td>`. Theme hook: `.astryx-table-cell[data-density]`.
  *
+ * `scope` (Astryx: "used on `<td>` acting as a row header") renders a `<th>`. Deviation from
+ * Astryx (accessibility, docs/accessibility.md): HTML allows `scope` only on `<th>`, so on a
+ * `<td>` it is ignored and the row has no header. The cell keeps a data cell's look (Table.css).
+ *
  * `contextMenuActions` (Astryx wrapInTableContextMenu): the content sits in a ContextMenu
  * trigger that fills the cell and carries the density padding (moved off the `<td>`), so a
  * right-click anywhere in the cell opens the menu. Choosing a row dispatches `astryx-select`
@@ -25,7 +29,7 @@ import type {TableContextActions} from './types';
 import './Table.css';
 
 export interface Props extends HTMLAttributes<'td'> {
-  /** For a `<td>` acting as a row header. */
+  /** Makes the cell a header for its row (`row`) or row group: it renders a `<th>`. */
   scope?: 'col' | 'row' | 'colgroup' | 'rowgroup';
   /** Space-separated ids of the header cells describing this cell. */
   headers?: string;
@@ -40,8 +44,9 @@ export interface Props extends HTMLAttributes<'td'> {
 const {colSpan, rowSpan, contextMenuActions, class: className, slot: _slot, ...rest} = Astro.props as typeof Astro.props & {slot?: string};
 const {themeClass} = themeProps('table-cell');
 const menuItems = contextMenuItems(contextMenuActions);
+const Tag = rest.scope ? 'th' : 'td';
 ---
-<td
+<Tag
   {...rest}
   colspan={colSpan ?? rest.colspan}
   rowspan={rowSpan ?? rest.rowspan}
@@ -49,4 +54,4 @@ const menuItems = contextMenuItems(contextMenuActions);
   data-ax-inherit="table-density"
 >{menuItems ? (
   <ContextMenu items={menuItems} triggerClass="ax-table-context-trigger" data-ax-context-kind="body" data-ax-inherit="table-density"><slot /></ContextMenu>
-) : <slot />}</td>
+) : <slot />}</Tag>

@@ -24,7 +24,9 @@ const t = translator(Astro);
   {...attrs}
   data-cross-align-self={crossAlignSelf}
   data-scrollable={isScrollable ? '' : undefined}
+  data-ax-scroll-keyboard={isScrollable ? '' : undefined}
   data-ax-scroll-region={scrollRegion ? t('@astryx.scrollRegion.label') : undefined}
   {...rest}
 ><slot /></Tag>
 {scrollRegion && <script>import '../../behaviors/scrollRegion';</script>}
+{isScrollable && <script>import '../../behaviors/scrollKeyboard';</script>}

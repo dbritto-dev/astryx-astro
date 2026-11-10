@@ -4,14 +4,14 @@
  * `hasRowClickExpansion`, a plain click on an expandable row) toggles its subtree; the
  * header's expand-all toggle expands every expandable row, or collapses all once all are
  * open. `astryx-expanded-ids-change` {ids, id, isExpanded} fires first (cancelable); then the
- * rows' `aria-expanded`, the expanders' names and the descendants' `hidden` follow.
+ * rows' `data-ax-tree-expanded`, the expanders' `aria-expanded` and names, and the descendants' `hidden` follow.
  * API: `table.expandedIds` (get/set).
  */
 import {registerTableBehavior, type AxTable} from '../table';
 
 registerTableBehavior('tree', (table: AxTable) => {
-  const expandable = () => table.bodyRows().filter((r) => r.hasAttribute('data-ax-tree-id') && r.hasAttribute('aria-expanded'));
-  const expandedIds = () => expandable().filter((r) => r.getAttribute('aria-expanded') === 'true').map((r) => r.getAttribute('data-ax-tree-id') ?? '');
+  const expandable = () => table.bodyRows().filter((r) => r.hasAttribute('data-ax-tree-id') && r.hasAttribute('data-ax-tree-expanded'));
+  const expandedIds = () => expandable().filter((r) => r.getAttribute('data-ax-tree-expanded') === 'true').map((r) => r.getAttribute('data-ax-tree-id') ?? '');
 
   const setLabel = (button: Element | null, isExpanded: boolean) => {
     if (!button) return;
@@ -23,11 +23,11 @@ registerTableBehavior('tree', (table: AxTable) => {
   const render = (ids: Set<string>) => {
     for (const row of expandable()) {
       const isExpanded = ids.has(row.getAttribute('data-ax-tree-id') ?? '');
-      row.setAttribute('aria-expanded', String(isExpanded));
+      row.setAttribute('data-ax-tree-expanded', String(isExpanded));
       setLabel(row.querySelector('[data-ax-tree-toggle]'), isExpanded);
     }
     const all = expandable();
-    const allExpanded = all.length > 0 && all.every((r) => r.getAttribute('aria-expanded') === 'true');
+    const allExpanded = all.length > 0 && all.every((r) => r.getAttribute('data-ax-tree-expanded') === 'true');
     for (const button of table.querySelectorAll('thead [data-ax-tree-expand-all]')) {
       if (table.owns(button)) setLabel(button, allExpanded);
     }
@@ -41,7 +41,7 @@ registerTableBehavior('tree', (table: AxTable) => {
 
   const toggleRow = (row: HTMLTableRowElement) => {
     const id = row.getAttribute('data-ax-tree-id') ?? '';
-    const isExpanded = row.getAttribute('aria-expanded') !== 'true';
+    const isExpanded = row.getAttribute('data-ax-tree-expanded') !== 'true';
     const ids = new Set(expandedIds());
     if (isExpanded) ids.add(id);
     else ids.delete(id);

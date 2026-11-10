@@ -70,6 +70,8 @@ c = await clicks();
 check('disabled button card: Enter does not activate', c.every((x) => !x.action), JSON.stringify(c));
 check('disabled card: dimmed, no overlay', await page.$eval(sel('disabled-card'), (el) => getComputedStyle(el).opacity === '0.5' && getComputedStyle(el, '::after').content === 'none'));
 check('blocked destination renders no href', await page.$eval(`${sel('blocked-card')} a`, (a) => !a.hasAttribute('href')));
+// Deviation from Astryx (docs/accessibility.md): a role so its name is allowed, and aria-disabled.
+check('blocked destination: a named, aria-disabled link', await page.$eval(`${sel('blocked-card')} a`, (a) => a.getAttribute('role') === 'link' && a.getAttribute('aria-disabled') === 'true' && a.getAttribute('aria-label')?.length > 0 && a.tabIndex === 0));
 
 // Accessible name and focus ring.
 check('hidden control carries the label as its name', await page.$eval(`${sel('link-card')} a.ax-clickable-card-action`, (a) => a.getAttribute('aria-label') === 'Settings'));

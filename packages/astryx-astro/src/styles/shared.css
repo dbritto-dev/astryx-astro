@@ -51,6 +51,15 @@
     outline-offset: var(--focus-outline-offset);
   }
 
+  /* A scrolling region that joined the Tab order (behaviors/scrollKeyboard): the standard ring,
+   * inset so the region's clip and its container's keep it. */
+  [data-ax-scroll-keyboard-stop]:focus-visible {
+    outline-width: var(--focus-outline-width);
+    outline-style: var(--focus-outline-style);
+    outline-color: var(--focus-outline-color);
+    outline-offset: calc(-1 * var(--focus-outline-width));
+  }
+
   /* ── Interaction overlay (hover / pressed paint) ─────────────────────────
    * Enabled guard: :where(:not(:disabled,[aria-disabled="true"])). Hover only under
    * (hover: hover). Astryx's coarse-pointer press controller (data-astryx-press) is not

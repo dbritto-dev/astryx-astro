@@ -106,4 +106,13 @@ check('widening leaves the compact layout', await page.$eval(C, (ol) => !ol.hasA
 // Vertical.
 check('vertical: list of steps with aria-current', await page.$eval('[data-test="vertical"]', (ol) => ol.dataset.orientation === 'vertical' && ol.children[1].getAttribute('aria-current') === 'step' && !ol.parentElement.classList.contains('astryx-stepper-frame')));
 
+// Deviation from Astryx (docs/accessibility.md): an optional step's button is described by its
+// visible "Optional" (its aria-label replaces the content that shows it).
+const optional = await page.evaluate(() => {
+  const button = [...document.querySelectorAll('#stepper-wizard [data-ax-step-button]')].find((b) => b.getAttribute('aria-label')?.includes('Team'));
+  const ids = (button?.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+  return ids.map((id) => document.getElementById(id)?.textContent.trim());
+});
+check('optional step: the button is described by "Optional"', optional[0] === 'Optional', JSON.stringify(optional));
+
 await done();

@@ -45,9 +45,13 @@ const isCollapsed = controlled ?? defaultIsCollapsed;
 const canCollapse = count != null;
 const collapsed = canCollapse && isCollapsed;
 const contentId = uid(Astro, 'ax-chat-drawer');
-const expandLabel = t('@astryx.chatComposerDrawer.expand', {label});
-const collapseLabel = t('@astryx.chatComposerDrawer.collapse', {label});
 const summaryHtml = Astro.slots.has('collapsedSummary') ? await Astro.slots.render('collapsedSummary') : null;
+// Deviation from Astryx (accessibility, docs/accessibility.md): the toggle's name carries what
+// its default summary shows, the count and the label ("Expand 3 Attachments"); Astryx names it
+// with the label alone, so the count (shown, but aria-hidden) never reached assistive tech.
+const named = summaryHtml == null && count != null ? `${count} ${label}` : label;
+const expandLabel = t('@astryx.chatComposerDrawer.expand', {label: named});
+const collapseLabel = t('@astryx.chatComposerDrawer.collapse', {label: named});
 // Astryx reflects `collapsed` from its state, so a drawer without `count` can still report it.
 const {themeClass, attrs} = themeProps('chat-composer-drawer', {collapsed: isCollapsed ? 'collapsed' : null});
 ---

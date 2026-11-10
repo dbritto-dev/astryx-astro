@@ -73,6 +73,7 @@ const {themeClass, attrs} = themeProps('layout-panel');
   data-ax-inherit="layout"
   data-padding={padding}
   data-scrollable={isScrollable ? '' : undefined}
+  data-ax-scroll-keyboard={isScrollable && !isZeroWidth ? '' : undefined}
   data-divider={hasDivider ? '' : undefined}
   data-zero-width={isZeroWidth ? '' : undefined}
   data-ax-scroll-region={scrollRegion ? (label ?? t('@astryx.scrollRegion.label')) : undefined}
@@ -83,3 +84,4 @@ const {themeClass, attrs} = themeProps('layout-panel');
   data-collapsed={isConcealed ? '' : undefined}
 ><slot /></div>
 {scrollRegion && <script>import '../../behaviors/scrollRegion';</script>}
+{(isScrollable && !isZeroWidth) && <script>import '../../behaviors/scrollKeyboard';</script>}

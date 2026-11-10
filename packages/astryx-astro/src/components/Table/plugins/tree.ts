@@ -4,8 +4,12 @@
  *
  * `useTableTreeState()` flattens nested data depth-first (cycle-safe, siblings optionally
  * sorted) and returns the rows plus a config for `useTableTreeData()`, which decorates the
- * tree column's cells in place (per-level indent + chevron, or a spacer on leaves) and puts
- * `aria-level` / `aria-expanded` on the rows. Deviation by necessity: Astryx unmounts
+ * tree column's cells in place (per-level indent + chevron, or a spacer on leaves) and marks
+ * the rows' level and expansion (`data-ax-tree-level` / `data-ax-tree-expanded`).
+ * Deviation from Astryx (accessibility, docs/accessibility.md): Astryx puts `aria-level` /
+ * `aria-expanded` on the rows, which ARIA defines for rows only inside a treegrid, and this
+ * is a table (no grid keyboard model). Expansion is exposed on each row's expander button
+ * (`aria-expanded`, "Expand <row>"); nesting is shown by indent. Deviation by necessity: Astryx unmounts
  * collapsed subtrees; here every row is rendered and descendants of a collapsed row are
  * `hidden`, so the client expands without a round trip (`visibleData` therefore holds every
  * row in tree order). Lazy children (`isItemExpandable` without children) are the caller's:
@@ -164,8 +168,8 @@ export function useTableTreeData<T extends Record<string, unknown>>(config: UseT
         htmlProps: {
           ...props.htmlProps,
           'data-ax-tree-id': meta.id,
-          'aria-level': meta.level + 1,
-          'aria-expanded': meta.hasChildren ? String(meta.isExpanded) : undefined,
+          'data-ax-tree-level': meta.level + 1,
+          'data-ax-tree-expanded': meta.hasChildren ? String(meta.isExpanded) : undefined,
           hidden: meta.isHidden ? true : props.htmlProps.hidden,
           'data-ax-row-click-expansion': rowClick ? 'tree' : props.htmlProps['data-ax-row-click-expansion'],
         },

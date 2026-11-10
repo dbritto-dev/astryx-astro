@@ -54,6 +54,7 @@ const {themeClass, attrs} = themeProps('card', {variant, elevation});
   class={cx(themeClass, className)}
   {...attrs}
   data-scrollable={hasFixedHeight ? '' : undefined}
+  data-ax-scroll-keyboard={hasFixedHeight ? '' : undefined}
   style={mergeStyles(
     {'--_ax-pad': spacing(padding)},
     {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)},
@@ -61,3 +62,4 @@ const {themeClass, attrs} = themeProps('card', {variant, elevation});
   )}
   {...rest}
 ><slot /></div>
+{hasFixedHeight && <script>import '../../behaviors/scrollKeyboard';</script>}

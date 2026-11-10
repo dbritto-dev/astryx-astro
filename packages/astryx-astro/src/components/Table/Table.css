@@ -79,6 +79,8 @@
   :where(.astryx-table:is([data-dividers="columns"], [data-dividers="grid"]) > * > tr) > .astryx-table-header-cell[data-density]:where(:nth-last-child(1 of :not([hidden]))) { border-inline-end-width: 0; }
 
   /* ── TableCell: density, overflow, edge, vertical align, dividers, glide ── */
+  /* A TableCell with `scope` is a <th> (TableCell.astro) that keeps a data cell's look. */
+  .astryx-table-cell:where(th) { font-weight: inherit; text-align: inherit; }
   .astryx-table-cell[data-density="compact"] { padding-block: var(--spacing-1); padding-inline: var(--spacing-2); font-size: var(--text-body-size); box-sizing: border-box; }
   .astryx-table-cell[data-density="balanced"] { padding-block: var(--spacing-2); padding-inline: var(--spacing-3); font-size: var(--text-body-size); box-sizing: border-box; }
   .astryx-table-cell[data-density="spacious"] { padding-block: var(--spacing-3); padding-inline: var(--spacing-4); font-size: var(--text-body-size); box-sizing: border-box; }

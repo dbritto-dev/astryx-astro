@@ -82,7 +82,8 @@ check('defaultIsExpanded renders open with the custom label', await page.$$eval(
 // ── ChatComposerDrawer (on the chat page) ───────────────────────────────────
 await open('chat');
 const drawers = await page.$$eval('.astryx-chat-composer-drawer', (els) => els.map((el) => ({collapsed: el.getAttribute('data-collapsed'), label: el.querySelector('[role="button"]')?.getAttribute('aria-label')})));
-check('drawers render data-collapsed="collapsed" when collapsed, labels name the action', drawers.some((d) => d.collapsed === 'collapsed' && d.label === 'Expand Attachments') && drawers.some((d) => d.collapsed == null && d.label === 'Collapse Files'), JSON.stringify(drawers));
+// The name carries the summary's count and label (deviation from Astryx: docs/accessibility.md).
+check('drawers render data-collapsed="collapsed" when collapsed, labels name the action and the count', drawers.some((d) => d.collapsed === 'collapsed' && d.label === 'Expand 3 Attachments') && drawers.some((d) => d.collapsed == null && d.label === 'Collapse 2 Files'), JSON.stringify(drawers));
 await page.evaluate(() => {
   window.__drawer = [];
   document.addEventListener('astryx-collapsed-change', (e) => window.__drawer.push(e.detail.isCollapsed));
@@ -96,11 +97,11 @@ const drawer = () => page.$eval(DRAWER, (el) => {
 });
 await page.click(toggle);
 let dr = await drawer();
-check('drawer toggle collapses: data-collapsed, aria-expanded=false, "Expand Files", content inert', dr.collapsed === 'collapsed' && dr.expanded === 'false' && dr.label === 'Expand Files' && dr.inert && dr.isCollapsed, JSON.stringify(dr));
+check('drawer toggle collapses: data-collapsed, aria-expanded=false, "Expand 2 Files", content inert', dr.collapsed === 'collapsed' && dr.expanded === 'false' && dr.label === 'Expand 2 Files' && dr.inert && dr.isCollapsed, JSON.stringify(dr));
 await page.focus(toggle);
 await page.keyboard.press('Enter');
 dr = await drawer();
-check('Enter expands it again', dr.collapsed == null && dr.expanded === 'true' && dr.label === 'Collapse Files' && !dr.inert, JSON.stringify(dr));
+check('Enter expands it again', dr.collapsed == null && dr.expanded === 'true' && dr.label === 'Collapse 2 Files' && !dr.inert, JSON.stringify(dr));
 check('astryx-collapsed-change reports each toggle', JSON.stringify(await page.evaluate(() => window.__drawer)) === '[true,false]');
 
 await done();

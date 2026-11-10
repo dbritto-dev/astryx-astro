@@ -60,6 +60,8 @@ const {themeClass, attrs} = themeProps('stack', {direction, gap, wrap});
   data-main-align={mainAlign}
   data-cross-align={crossAlign}
   data-scrollable={isScrollable ? '' : undefined}
+  data-ax-scroll-keyboard={isScrollable ? '' : undefined}
   style={mergeStyles(paddingVars(pad), {width: cssSize(width), height: cssSize(height), maxWidth: cssSize(maxWidth), minHeight: cssSize(minHeight)}, style as StyleValue)}
   {...rest}
 ><slot /></Tag>
+{isScrollable && <script>import '../../behaviors/scrollKeyboard';</script>}

@@ -116,7 +116,7 @@ export function useTablePagination<T extends Record<string, unknown>>(config: Us
         for (const row of rows) {
           const attrs = (row.attrs ??= {});
           if (attrs['data-ax-filter-rejected'] != null) continue;
-          const level = Number(attrs['aria-level'] ?? 1);
+          const level = Number(attrs['data-ax-tree-level'] ?? 1);
           if (level <= 1) {
             unit++;
             inPage = unit >= start && unit < start + pageSize;

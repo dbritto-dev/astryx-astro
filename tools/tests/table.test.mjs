@@ -196,7 +196,11 @@ const visibleNames = () => firstColumn('table-tree');
 eq('tree starts with src expanded', await visibleNames(), ['src', 'components', 'lib', 'index.ts', 'docs', 'README.md']);
 await page.click('#table-tree tr[data-ax-tree-id="components"] [data-ax-tree-toggle]');
 eq('expanding a folder shows its children', await visibleNames(), ['src', 'components', 'Table.astro', 'Button.astro', 'lib', 'index.ts', 'docs', 'README.md']);
-eq('aria-level / aria-expanded on rows', await page.$eval('#table-tree tr[data-ax-tree-id="components"]', (r) => [r.getAttribute('aria-level'), r.getAttribute('aria-expanded')]), ['2', 'true']);
+eq('tree level / expansion on rows (data attributes)', await page.$eval('#table-tree tr[data-ax-tree-id="components"]', (r) => [r.getAttribute('data-ax-tree-level'), r.getAttribute('data-ax-tree-expanded')]), ['2', 'true']);
+// Deviation from Astryx (docs/accessibility.md): no row-level aria-level/aria-expanded in a table;
+// the expander button carries aria-expanded.
+eq('no aria-level / aria-expanded on table rows', await page.$$eval('#table-tree tr', (rows) => rows.filter((r) => r.hasAttribute('aria-level') || r.hasAttribute('aria-expanded')).length), 0);
+eq('expander button carries aria-expanded', await page.$eval('#table-tree tr[data-ax-tree-id="components"] [data-ax-tree-toggle]', (b) => b.getAttribute('aria-expanded')), 'true');
 await page.click('#table-tree [data-ax-tree-expand-all]');
 eq('expand all', (await visibleNames()).length, 10);
 eq('expand-all toggle now collapses', await page.$eval('#table-tree [data-ax-tree-expand-all]', (b) => [b.getAttribute('aria-expanded'), b.getAttribute('aria-label')]), ['true', 'Collapse all rows']);
@@ -252,5 +256,16 @@ await page.focus('#table-resize th[data-column-key="email"] [data-resize-handle]
 await page.keyboard.press('ArrowLeft');
 check('RTL: ArrowLeft widens the column', Math.abs((await thWidth('email')) - (wr0 + 10)) <= 1, `${wr0} → ${await thWidth('email')}`);
 await page.evaluate(() => document.documentElement.removeAttribute('dir'));
+
+// ── Row headers (children mode) ──────────────────────────────────────────
+// Deviation from Astryx (docs/accessibility.md): TableCell with `scope` renders a <th> (HTML
+// allows scope only there), keeping a data cell's look.
+const rowHeads = await page.$$eval('#table-children tbody [scope="row"]', (cells) => cells.map((c) => {
+  const cs = getComputedStyle(c);
+  const data = c.parentElement.querySelector('td');
+  return {tag: c.localName, weight: cs.fontWeight === getComputedStyle(data).fontWeight, align: cs.textAlign};
+}));
+check('TableCell scope="row" renders <th> cells', rowHeads.length === 3 && rowHeads.every((c) => c.tag === 'th'), JSON.stringify(rowHeads));
+check('…with a data cell\'s weight and start alignment', rowHeads.every((c) => c.weight && c.align === 'start'), JSON.stringify(rowHeads));
 
 await done();
