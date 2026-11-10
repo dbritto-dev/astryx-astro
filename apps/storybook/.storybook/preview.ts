@@ -79,9 +79,10 @@ const preview: ProjectAnnotations<AstroRenderer> = {
     controls: {disable: import.meta.env.PROD, expanded: true},
     // Themes own the canvas background (preview.css); the backgrounds toolbar would fight them.
     backgrounds: {disable: true},
-    // Report a11y violations (panel, test runs) without failing: Astryx's own choices are
-    // reviewed in STORIES.md before this becomes 'error'.
-    a11y: {test: 'todo'},
+    // An axe violation fails the story's test. Findings kept on purpose (Astryx's colours,
+    // WCAG-exempt disabled text, naming axe misreads) are turned off per story with knownA11y(),
+    // each with its reason: packages/astryx-astro/docs/accessibility.md.
+    a11y: {test: 'error'},
     docs: {codePanel: true},
   },
 

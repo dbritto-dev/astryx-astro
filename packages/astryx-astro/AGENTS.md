@@ -102,7 +102,10 @@ Generated Astryx themes style components through stable hooks, e.g.
   `data-ax-<name>` attribute. Only conditionally include the `<script>` when the feature is
   used, as Text does for truncation tooltips.
 - Accessibility parity: keep every ARIA attribute, role, keyboard interaction and live-region
-  announcement the React source has. Port keyboard maps from `src/keyboard` / hooks.
+  announcement the React source has. Port keyboard maps from `src/keyboard` / hooks. The
+  exceptions are markup Astryx gets wrong (invalid HTML/ARIA, information kept from assistive
+  tech): fix it, note the deviation in the header comment and in `docs/accessibility.md`, and
+  add a `tools/tests` check. Colours stay as Astryx ships them.
 
 ## Shared building blocks (use these; don't re-invent)
 

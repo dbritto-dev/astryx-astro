@@ -363,20 +363,24 @@ trigger and are promoted to the top layer natively (`popover`, `<dialog>.showMod
 ## 13. Accessibility
 
 - addon-a11y runs axe on every story in `pnpm -F storybook test` and in the Accessibility panel.
-  `parameters.a11y.test` is `'todo'`: violations are reported, not failures, while Astryx's own
-  choices are reviewed. `pnpm -F storybook a11y` prints the summary of the last test run.
-- Don't disable rules to make a panel green. If a story itself causes a violation (missing label
-  in story content, duplicate landmark ids across instances in a wrapper), fix the story. If the
-  violation comes from the component, leave it and list it in your report.
-- Baseline after the variant stories (1307 stories, neutral theme, light): 77 stories with
-  violations, 10 rules, none critical. serious: `color-contrast` (36 stories: Overviews, and
-  disabled states whose text Astryx dims with opacity, which axe cannot tell apart; some theme
-  and syntax presets), `label-content-name-mismatch` (Avatar, AvatarGroup, Chat composer drawer,
-  OverflowList, Stepper, TreeList), `scrollable-region-focusable` (Layout regions, Card, Outline,
-  Resizable, Stack), `aria-prohibited-attr` (ClickableCard with a blocked destination),
-  `aria-conditional-attr` (Table); moderate: landmark, heading-order and `scope-attr-valid` rules
-  from demos with several page-level landmarks (AppShell, Breadcrumbs, Markdown, Pagination,
-  SideNav, Table).
+  `parameters.a11y.test` is `'error'`: a violation fails the story's test.
+  `pnpm -F storybook a11y` prints the summary of the last test run.
+- A violation is fixed where it comes from:
+  - **Story content** (a missing label, two instances in a wrapper with the same landmark name,
+    a scroller you made focusable or not): fix the story.
+  - **A component** whose markup is invalid or keeps information from assistive tech: fix the
+    component as a documented deviation from Astryx (`packages/astryx-astro/docs/accessibility.md`,
+    and the component's header comment), with a `tools/tests` check.
+- A finding is **kept** only for what docs/accessibility.md lists as kept: Astryx's colours (theme
+  palettes, syntax themes, `color="disabled"` options), dimmed text in a control that already
+  carries `aria-disabled` (WCAG 1.4.3 exempts it), naming patterns axe misreads (tree items,
+  avatar initials, Stepper), and docs demos that show several page-level landmarks. Record it on
+  the stories it affects with `knownA11y({rule: reason})` from `_lib/story.ts`, on the story, in
+  the Overview's third argument, or file-wide through `astryx(name, knownA11y(…))`; add it to
+  docs/accessibility.md if it is a new kind. Never use it for something a component or story
+  could fix, and never turn a rule off in the preview.
+- Baseline (1307 stories, neutral theme, light): no violations; the kept findings are listed in
+  docs/accessibility.md.
 
 ## 14. Docs page
 
@@ -411,7 +415,7 @@ Run from the repository root:
    in story files, and `tsc` over `.storybook/` and `stories/`.
 3. `pnpm -F storybook test stories/<Name>/`: every story of the component passes (the path
    argument limits the run to that folder).
-4. `pnpm -F storybook a11y`: no new violation caused by story content.
+4. `pnpm -F storybook test` passes, axe included: no violation, and any kept finding recorded with `knownA11y()` (section 13).
 5. `pnpm -F storybook build && pnpm -F storybook verify <story-id-prefix>` (e.g.
    `verify action-button`): renders, play passes, custom elements upgrade, no page error or failed
    request under `/astryx-astro/storybook/`; date components also pass on the Temporal polyfill.

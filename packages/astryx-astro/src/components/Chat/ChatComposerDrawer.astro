@@ -71,7 +71,7 @@ const {themeClass, attrs} = themeProps('chat-composer-drawer', {collapsed: isCol
       <div class="ax-chat-drawer-summary" aria-hidden="true" inert>
         {summaryHtml != null ? <Fragment set:html={summaryHtml} /> : (
           <>
-            <Badge variant="neutral" label={count} />
+            <Badge variant="neutral" label={count} />{' '}
             <span class="ax-chat-drawer-label">{label}</span>
           </>
         )}

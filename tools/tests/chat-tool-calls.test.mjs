@@ -84,6 +84,8 @@ await open('chat');
 const drawers = await page.$$eval('.astryx-chat-composer-drawer', (els) => els.map((el) => ({collapsed: el.getAttribute('data-collapsed'), label: el.querySelector('[role="button"]')?.getAttribute('aria-label')})));
 // The name carries the summary's count and label (deviation from Astryx: docs/accessibility.md).
 check('drawers render data-collapsed="collapsed" when collapsed, labels name the action and the count', drawers.some((d) => d.collapsed === 'collapsed' && d.label === 'Expand 3 Attachments') && drawers.some((d) => d.collapsed == null && d.label === 'Collapse 2 Files'), JSON.stringify(drawers));
+// The summary's text reads as words (count, space, label), as its name does.
+check('drawer summary text: "3 Attachments"', (await page.$$eval('.ax-chat-drawer-summary', (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()))).includes('3 Attachments'));
 await page.evaluate(() => {
   window.__drawer = [];
   document.addEventListener('astryx-collapsed-change', (e) => window.__drawer.push(e.detail.isCollapsed));
